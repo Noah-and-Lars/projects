@@ -223,7 +223,7 @@ kbd,.prompt b{display:inline-block;min-width:26px;padding:2px 8px;border-radius:
 #mates{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
 .mate{position:relative;background:var(--pan2);border-radius:8px;padding:3px 8px 9px;font-size:13px;font-weight:700;overflow:hidden}
 .mate i{position:absolute;left:0;height:3px;border-radius:2px}.mate i.s{bottom:4px;background:var(--sh)}.mate i.h{bottom:0;background:var(--hp)}
-.mate.down{color:#ff8a7a}.mate.down i.h{background:#ff5a4a}.mate.out{opacity:.45;text-decoration:line-through}
+.mate.card{color:#2ee6a6;opacity:.85}.mate.down{color:#ff8a7a}.mate.down i.h{background:#ff5a4a}.mate.out{opacity:.45;text-decoration:line-through}
 #downTag{position:absolute;left:50%;top:36%;transform:translateX(-50%);padding:9px 20px;font-size:22px;font-weight:900;color:#ff6b5e;text-shadow:none}
 
 #buildBar{display:flex;gap:6px;align-items:flex-end}
@@ -583,7 +583,7 @@ html.lob #wip{display:flex}html.lob .ltop{padding-top:22px}
 </div>
 <div id="specBar" class="pan hidden"><button class="btn ghost" id="specPrev">◀</button><div><div class="muted">Spectating</div><div id="specName"></div></div><button class="btn ghost" id="specNext">▶</button><button class="btn ghost" id="specBack">Lobby</button></div>
 
-<div id="bigwrap" class="hidden"><button class="xbtn bigx" onclick="toggleBigMap(false)">✕</button><canvas id="bigmap" width="900" height="900"></canvas><p>Click to place a marker · right-click to clear · <kbd>M</kbd> to close</p></div>
+<div id="bigwrap" class="hidden"><button class="xbtn bigx" onclick="toggleBigMap(false)">✕</button><canvas id="bigmap" width="900" height="900"></canvas><p>Click to ping a spot for your squad · right-click to take it away · <kbd>M</kbd> to close</p></div>
 
 <div id="touch" class="hidden">
   <div class="tz" id="tMove"></div><div class="tz" id="tLook"></div><div id="tStick"><i></i></div>
@@ -619,7 +619,7 @@ html.lob #wip{display:flex}html.lob .ltop{padding-top:22px}
 /* ==========================================================================
    STORM DROP: core helpers, noise, settings, save and input
    ========================================================================== */
-const VERSION = '0.16.0';
+const VERSION = '0.17.0';
 // Beta 0.15 speed-up: the built-in Math.hypot is slow and makes garbage in hot loops (stutter from clean-ups); same results
 { const H = Math.hypot; Math.hypot = function (a, b, c, d) { return d !== undefined ? H.apply(Math, arguments) : c !== undefined ? Math.sqrt(a * a + b * b + c * c) : b !== undefined ? Math.sqrt(a * a + b * b) : Math.abs(a); }; }
 const $ = id => document.getElementById(id);
@@ -5369,10 +5369,11 @@ function interactTarget(p, dir) {
   for (const c of ABOXES) { if (c.open || Math.abs(c.x - ex) > 3 || Math.abs(c.z - ez) > 3) continue; const s = score(c.x, c.y + 0.3, c.z, 2.6) - 0.2; if (s < bs) { bs = s; best = { k: 'abox', o: c }; } }
   { const sd = nearDrop(p); if (sd) { const s = Math.hypot(sd.x - ex, sd.z - ez) - 1; if (s < bs) { bs = s; best = { k: 'drop', o: sd }; } } }
   { const cf = nearCampfire(p); if (cf) { const s = Math.hypot(cf.x - ex, cf.z - ez) - 0.5; if (s < bs) { bs = s; best = { k: 'fire', o: cf }; } } }
+  if (typeof squadInteract === 'function') { const s = squadInteract(p, ex, ez); if (s && s.s < bs) { bs = s.s; best = s; } }
   if (typeof reviveTarget === 'function') { const r = reviveTarget(p); if (r) best = { k: 'revive', o: r }; }
   return best;
 }
-function interact(p, t) { if (!t) return; if (t.k === 'car') return enterVehicle(p, t.o); if (t.k === 'exit') return exitVehicle(p); if (t.k === 'item') pickUp(p, t.o); else if (t.k === 'chest') openChest(t.o, p); else if (t.k === 'abox') openAbox(t.o, p); else if (t.k === 'fire') lightCampfire(t.o); else if (t.k === 'drop') openDrop(t.o, p); }
+function interact(p, t) { if (!t) return; if (t.k === 'car') return enterVehicle(p, t.o); if (t.k === 'exit') return exitVehicle(p); if (t.k === 'item') pickUp(p, t.o); else if (t.k === 'chest') openChest(t.o, p); else if (t.k === 'abox') openAbox(t.o, p); else if (t.k === 'fire') lightCampfire(t.o); else if (t.k === 'drop') openDrop(t.o, p); else if (t.k === 'card') takeCard(t.o, p); }
 function updateLoot(dt) {
   for (let i = ITEMS.length - 1; i >= 0; i--) {
     const o = ITEMS[i]; if (!o.alive) { ITEMS.splice(i, 1); continue; }
@@ -5422,7 +5423,7 @@ function drawItem(o, cx, cz, t) {
 }
 function poolsEnd(cx, cz) {
   if (!POOL.ar) return;
-  drawLoot(cx, cz); drawThrown(); drawTracers(); drawExtras(); drawDrops();
+  drawLoot(cx, cz); drawThrown(); drawTracers(); drawExtras(); drawDrops(); if (typeof drawSquadPools === 'function') drawSquadPools();
   for (const k in POOL) { const P = POOL[k]; P.m.count = P.n; P.m.instanceMatrix.needsUpdate = true; }
   beamPool.m.count = beamPool.n; beamPool.m.instanceMatrix.needsUpdate = true; if (beamPool.m.instanceColor) beamPool.m.instanceColor.needsUpdate = true;
   tracerPool.m.count = tracerPool.n; tracerPool.m.instanceMatrix.needsUpdate = true; if (tracerPool.m.instanceColor) tracerPool.m.instanceColor.needsUpdate = true;
@@ -5454,6 +5455,7 @@ function gameKey(code) {
   if (!ME || !ME.alive || !ME.inv) return;
   if (code === keyOf('inv')) { toggleInv(); return; }
   if (INV.open) { if (code === 'Escape') toggleInv(false); return; }
+  if (code === keyOf('ping') || (code === 'Mouse2' && !codeAction.Mouse2)) { pingNow(); return; }
   if (code === keyOf('emote')) { if (EW.open) emoteWheelPick(); else emoteWheel(true); return; }
   if (buildKey(code)) return;
   for (let i = 1; i <= 5; i++) if (code === keyOf('s' + i) && ME.inv[i - 1]) { selectSlot(ME, i); Sound.ui(); }
@@ -5525,7 +5527,7 @@ function updateInvHUD() {
   $('itemName').style.color = it && w.type === 'gun' ? RAR[it.r].c : '#fff';
   setText('mWood', String(p.mats.wood)); setText('mStone', String(p.mats.stone)); setText('mMetal', String(p.mats.metal));
   // reload / healing progress
-  const busy = p.use ? [p.use.t / p.use.dur, 'Using ' + WEAPONS[p.use.it.id].n, p.use.dur - p.use.t] : p.rl > 0 ? [1 - p.rl / p.rlMax, 'Reloading', p.rl] : null;
+  const busy = p.use ? [p.use.t / p.use.dur, 'Using ' + WEAPONS[p.use.it.id].n, p.use.dur - p.use.t] : p.rl > 0 ? [1 - p.rl / p.rlMax, 'Reloading', p.rl] : p.rbT > 0 ? [p.rbT / REBOOT_T, 'Rebooting', REBOOT_T - p.rbT] : null;
   show('useBar', !!busy);
   if (busy) { $('useFill').style.width = (busy[0] * 100).toFixed(1) + '%'; setText('useTxt', busy[1] + ' · ' + busy[2].toFixed(1) + 's'); }
   // pickup prompt with a stat comparison
@@ -5536,6 +5538,7 @@ function updateInvHUD() {
     else if (t.k === 'exit') html = E + 'Get out';
     else if (t.k === 'chest') html = E + 'Open chest'; else if (t.k === 'abox') html = E + 'Open ammo box';
     else if (t.k === 'revive') html = E + 'Hold to revive ' + esc(t.o.name);
+    else if (t.k === 'card' || t.k === 'van') html = squadPrompt(t, E);
     else if (t.k === 'drop') html = E + 'Open the supply drop <small class="muted">· rare loot</small>';
     else if (t.k === 'fire') html = E + 'Light the campfire <small class="muted">· heals everyone near it</small>';
     else if (isFood(t.o.id)) { const fw = WEAPONS[t.o.id]; html = E + 'Eat ' + esc(fw.n) + ` <small class="muted">· +${fw.hp || fw.sh} ${fw.sh ? 'shield' : 'health'}</small>`; }
@@ -5812,7 +5815,7 @@ function makeBusPath(r) {
 }
 function startMatch(o) {
   o = o || {};
-  M.seed = o.seed || (Math.random() * 1e9) | 0; M.t = 0; M.paused = false; M.ping = null; M.mode = o.mode || 'solo'; M.recorded = false; M.over = false; M.online = NET.live;
+  M.seed = o.seed || (Math.random() * 1e9) | 0; M.t = 0; M.paused = false; M.ping = null; M.mode = o.mode || 'solo'; M.recorded = false; M.over = false; M.online = NET.live; M.ranked = !!MENU.ranked && M.mode !== 'practice';
   const r = rng(M.seed);
   M.bus = makeBusPath(r);
   ME = newPlayer(0, o.name || 'You'); ME.local = true; ME.outfit = o.outfit || 0; ME.glider = o.glider || 0; ME.pick = SAVE.locker ? SAVE.locker.pickaxe : 0; ME.back = SAVE.locker ? SAVE.locker.back || 0 : 0; ME.wrap = SAVE.locker ? SAVE.locker.wrap || 0 : 0;
@@ -5837,7 +5840,7 @@ function beginBus() {
   if (NET.live) for (const p of M.players) if (!mine(p)) p.nb = null; // forget warm-up positions (they'd show players back on the islet)
   for (const p of M.players) { const pk = p.pick; initInv(p); p.pick = pk; p.st = 'bus'; p.alive = true; p.crouch = false; p.cr = 0; p.swim = false; p.dist = 0; }
   M.bus.t = Math.max(0, M.bus.a - 8);
-  resetBuilds(); THROWN.length = 0; M.ping = null; // the warm-up island's builds don't come along
+  resetBuilds(); THROWN.length = 0; M.ping = null; if (typeof squadMatchReset === 'function') squadMatchReset(); // the warm-up island's builds (and pings) don't come along
   CAM.yaw = M.bus.yaw; CAM.pitch = -0.25; CAM.cur = 62;
   busGroup.visible = true; busGroup.rotation.y = M.bus.yaw;
   if (ST && ST.rng) resetStorm(ST.rng);
@@ -6240,6 +6243,7 @@ function playerKilled(t, src, how, head) {
   if (typeof tryDown === 'function' && tryDown(t, src, how)) return; // duos/squads: knocked first
   if (t.vehicle) exitVehicle(t);
   t.alive = false; if (t.local) IN.adsT = false; t.place = aliveCount() + 1; t.deathT = M.t; t.use = null; t.reviver = null;
+  if (typeof cardOnDeath === 'function') cardOnDeath(t, how); // Beta 0.17: duos/squads leave a reboot card
   if (t.revWho) { t.revWho.reviver = null; t.revWho = null; }
   if (mine(t)) { if (NET.live) netEv(['k', t.id, src ? src.id : -1, how, head ? 1 : 0, 0]); dropAll(t); }
   const nm = p => `<b class="${p.local ? 'me' : ''}">${esc(p.name)}</b>`;
@@ -6249,7 +6253,7 @@ function playerKilled(t, src, how, head) {
   else { const was = t.local && t.name === 'You' ? 'were' : 'was'; feedLine(how === 'Storm' ? `${nm(t)} ${was} lost in the storm` : how === 'Fall' ? `${nm(t)} took a fall` : how === 'Left' ? `${nm(t)} left the match` : how === 'Bleed out' ? `${nm(t)} bled out` : `${nm(t)} ${was} eliminated`); }
   for (let i = 0; i < 14; i++) fx(t.x, t.y + 1, t.z, (Math.random() - 0.5) * 3, Math.random() * 3, (Math.random() - 0.5) * 3, 0.9, 0.3, 0.9, 0.9, 1, 1, 'add');
   if (src && src.local && src !== t) { elimPop(`You eliminated <b>${esc(t.name)}</b>`); Sound.tone({ f: 660, f2: 1320, dur: 0.3, type: 'triangle', gain: 0.18 }); }
-  if (t.local) { M.elimBy = src; M.spec = mates(t).find(o => o.alive) || (src && src.alive ? src : null); Sound.tone({ f: 300, f2: 90, dur: 0.9, type: 'sawtooth', gain: 0.12 }); setTimeout(() => { if (GAME.playing && M.players.includes(ME) && !ME.alive) endScreen(false); }, 1400); if (INV.open) toggleInv(false); }
+  if (t.local) { M.elimBy = src; M.spec = mates(t).find(o => o.alive) || (src && src.alive ? src : null); Sound.tone({ f: 300, f2: 90, dur: 0.9, type: 'sawtooth', gain: 0.12 }); setTimeout(() => { if (GAME.playing && M.players.includes(ME) && !ME.alive) meOut(); }, 1400); if (INV.open) toggleInv(false); }
   if (M.spec === t) M.spec = src && src.alive ? src : nextSpec(1);
   if (!M.over && teamsAlive() <= 1) {
     M.over = true; M.phase = 'over';
@@ -6268,17 +6272,20 @@ function recordMatch(won) {
   const score = (won ? 1000 : 0) + ME.kills * 100 - place;
   if (!SAVE.best || score > SAVE.best.score) SAVE.best = { score, mode, place, kills: ME.kills, damage: Math.round(ME.dmg || 0), size: M.size, date: Date.now() };
   if (place <= 10 && typeof chalEvent === 'function') chalEvent('top10');
+  const rk = M.ranked && typeof rankedMatch === 'function' ? rankedMatch(place, ME.kills, won) : null; // Beta 0.17
   saveGame();
-  return { xp, X, coins, ups: pr.ups, got: pr.got, place, secs, levelUp: levelOf(SAVE.xp) > lv0 };
+  return { xp, X, coins, ups: pr.ups, got: pr.got, place, secs, levelUp: levelOf(SAVE.xp) > lv0, rk };
 }
 function endScreen(won) {
+  if (typeof SQ !== 'undefined' && SQ.wait) { SQ.wait = false; showWait(false); }
   const r = recordMatch(won) || M.lastResult; M.lastResult = r;
+  if (r && r.rk && r.rk.up && !r.rkSaid) { r.rkSaid = true; setTimeout(() => toast('Promoted to ' + r.rk.after.name + '!', 3000), 600); }
   const E = $('endScreen');
   $('endBanner').innerHTML = won ? 'LAST ONE STANDING' : '#' + r.place + ' <small>of ' + M.size + '</small>';
   $('endBanner').classList.toggle('win', won);
   $('endSub').textContent = won ? 'You won the match' : M.elimBy ? 'Eliminated by ' + M.elimBy.name : 'Eliminated';
   const km = (ME.dist / 1000).toFixed(2);
-  $('endStats').innerHTML = [['Eliminations', ME.kills], ['Damage', Math.round(ME.dmg || 0)], ['Distance', km + ' km'], ['Time survived', fmtTime(r.secs)], ['XP earned', '+' + r.xp + (r.levelUp ? ' · level up!' : '')], ['Coins', '+' + (r.coins || 0)], ['Battle Pass', r.ups ? '+' + r.ups + ' tier' + (r.ups > 1 ? 's' : '') + '!' : passState() ? 'Tier ' + passState().tier : 'Season soon']].map(s => `<div><span>${s[0]}</span><b>${s[1]}</b></div>`).join('');
+  $('endStats').innerHTML = [['Eliminations', ME.kills], ['Damage', Math.round(ME.dmg || 0)], ['Distance', km + ' km'], ['Time survived', fmtTime(r.secs)], ['XP earned', '+' + r.xp + (r.levelUp ? ' · level up!' : '')], ['Coins', '+' + (r.coins || 0)], ['Battle Pass', r.ups ? '+' + r.ups + ' tier' + (r.ups > 1 ? 's' : '') + '!' : passState() ? 'Tier ' + passState().tier : 'Season soon']].concat(r.rk ? [['Ranked', (r.rk.delta >= 0 ? '+' : '') + r.rk.delta + ' RP · ' + r.rk.after.name]] : []).map(s => `<div><span>${s[0]}</span><b>${s[1]}</b></div>`).join('');
   $('endSpec').classList.toggle('hidden', won || aliveCount() === 0);
   $('endAgain').classList.toggle('hidden', !!M.online);
   $('endLobby').textContent = M.online ? 'Back to lobby' : 'Lobby';
@@ -6412,6 +6419,8 @@ function botTeamGoal(b) {
     ai.reviving = false; routeTo(b, down.x, down.y, down.z); ai.goalKind = 'mate'; ai.state = 'move'; return true;
   }
   ai.reviving = false;
+  if (typeof botCardGoal === 'function' && botCardGoal(b)) return true;
+  if (typeof botPingGoal === 'function' && botPingGoal(b)) return true;
   const L = ai.lead || ME;
   if (ai.followMe && L && L.alive && L.st === 'ground' && Math.hypot(L.x - b.x, L.z - b.z) > 35) { routeTo(b, L.x + (b.id % 3 - 1) * 4, L.y, L.z + (b.id % 2 ? 4 : -4)); ai.goalKind = 'mate'; ai.state = 'move'; return true; }
   return false;
@@ -6431,10 +6440,10 @@ let mateSig = '';
 function updateMateHUD() {
   updateMateTags();
   const list = teamSize() > 1 && ME ? mates(ME) : [];
-  const sig = list.map(o => o.name + (o.alive ? (o.st === 'down' ? 'D' : 'A') + Math.ceil(o.hp) + ':' + Math.ceil(o.sh) : 'X')).join('|');
+  const sig = list.map(o => o.name + (o.alive ? (o.st === 'down' ? 'D' : 'A') + Math.ceil(o.hp) + ':' + Math.ceil(o.sh) : 'X' + squadMateNote(o))).join('|');
   if (sig !== mateSig) {
     mateSig = sig;
-    $('mates').innerHTML = list.map(o => `<div class="mate ${!o.alive ? 'out' : o.st === 'down' ? 'down' : ''}"><span>${esc(o.name)}${!o.alive ? ' · out' : o.st === 'down' ? ' · down' : ''}</span><i class="s" style="width:${o.alive ? o.sh : 0}%"></i><i class="h" style="width:${o.alive ? o.hp : 0}%"></i></div>`).join('');
+    $('mates').innerHTML = list.map(o => `<div class="mate ${!o.alive ? (SQ.cards.some(c => c.pid === o.id) ? 'card' : 'out') : o.st === 'down' ? 'down' : ''}"><span>${esc(o.name)}${!o.alive ? squadMateNote(o) : o.st === 'down' ? ' · down' : ''}</span><i class="s" style="width:${o.alive ? o.sh : 0}%"></i><i class="h" style="width:${o.alive ? o.hp : 0}%"></i></div>`).join('');
   }
   // downed: bleeding out timer; reviving: progress
   const down = ME && ME.alive && ME.st === 'down';
@@ -6479,10 +6488,10 @@ function initHUD() {
   HUD.mm = $('mini').getContext('2d'); HUD.cp = $('compass').getContext('2d'); HUD.big = $('bigmap').getContext('2d');
   $('bigmap').addEventListener('click', e => {
     const r = $('bigmap').getBoundingClientRect(), u = (e.clientX - r.left) / r.width, v = (e.clientY - r.top) / r.height;
-    M.ping = { x: (u - 0.5) * BIGSPAN, z: (v - 0.5) * BIGSPAN }; if (NET.live && ME) netEv(['pg', ME.id, r2(M.ping.x), r2(M.ping.z)]);
+    pingMap((u - 0.5) * BIGSPAN, (v - 0.5) * BIGSPAN); // Beta 0.17: a spot ping for your squad
     drawBigMap();
   });
-  $('bigmap').addEventListener('contextmenu', e => { e.preventDefault(); M.ping = null; if (NET.live && ME) netEv(['pg', ME.id, null]); drawBigMap(); });
+  $('bigmap').addEventListener('contextmenu', e => { e.preventDefault(); pingMap(null); drawBigMap(); });
 }
 const BIGSPAN = 2900;    // metres across the full map
 const MMR = 190;         // metres from the centre of the minimap to its edge
@@ -6498,7 +6507,7 @@ function drawMapExtras(c, X, Y, S, big) { // things drawn on both maps; X/Y turn
     c.fillStyle = '#ffb347'; c.strokeStyle = '#1c1f24'; c.lineWidth = 2; c.beginPath(); c.arc(X(b.x), Y(b.z), big ? 7 : 5, 0, TAU); c.fill(); c.stroke();
   }
   if (typeof drawStormOnMap === 'function') drawStormOnMap(c, X, Y, S, big);
-  if (M.ping) { const x = X(M.ping.x), y = Y(M.ping.z); c.fillStyle = '#ffd84a'; c.strokeStyle = '#1c1f24'; c.lineWidth = 2; c.beginPath(); c.moveTo(x, y); c.lineTo(x - 6, y - 14); c.arc(x, y - 16, 6, Math.PI, 0); c.lineTo(x, y); c.fill(); c.stroke(); }
+  if (typeof drawSquadOnMap === 'function') drawSquadOnMap(c, X, Y, S, big); // Beta 0.17: vans, cards and pings
   if (typeof drawMatesOnMap === 'function') drawMatesOnMap(c, X, Y, S, big);
 }
 function drawMinimap() {
@@ -6557,7 +6566,7 @@ function drawCompass() {
     c.fillStyle = 'rgba(255,255,255,.8)'; c.fillRect(x - 0.75, 22, 1.5, d % 15 === 0 ? 7 : 4);
   }
   const mark = (wx, wz, col) => { const b = Math.atan2(wx - ME.x, -(wz - ME.z)) * 180 / Math.PI, dd = ((b - head + 540) % 360) - 180; if (Math.abs(dd) < 66) { c.globalAlpha = 1; c.fillStyle = col; c.beginPath(); c.moveTo(W / 2 + dd * ppd, 31); c.lineTo(W / 2 + dd * ppd - 5, 41); c.lineTo(W / 2 + dd * ppd + 5, 41); c.fill(); } };
-  if (M.ping) mark(M.ping.x, M.ping.z, '#ffd84a');
+  if (typeof squadCompass === 'function') squadCompass(mark);
   if (typeof compassMarks === 'function') compassMarks(mark);
   c.globalAlpha = 1; c.fillStyle = '#fff'; c.fillRect(W / 2 - 1, 20, 2, 12);
   setText('heading', String(Math.round(head) % 360));
@@ -6606,6 +6615,7 @@ function initGame() {
   $('endAgain').onclick = () => playAgain();
   $('endLobby').onclick = $('specBack').onclick = () => toLobby();
   $('specPrev').onclick = () => { M.spec = nextSpec(-1); }; $('specNext').onclick = () => { M.spec = nextSpec(1); };
+  if (typeof initSquad === 'function') initSquad();
 }
 function playAgain() { if (M.online) return toLobby(); $('endScreen').classList.add('hidden'); $('specBar').classList.add('hidden'); M.recorded = false; startMatch({ seed: 0, mode: M.mode, outfit: ME.outfit, glider: ME.glider, name: ME.name, warmup: M.mode === 'practice' ? 15 : 30 }); GAME.playing = true; wantLock(); }
 function toLobby() { if (NET.live) netLeave(); $('endScreen').classList.add('hidden'); $('specBar').classList.add('hidden'); GAME.playing = false; $('hud').classList.add('hidden'); M.players = []; if (typeof showMenu === 'function') showMenu(); else $('start').classList.remove('hidden'); }
@@ -6614,6 +6624,7 @@ function onMatchStart(r) {
   for (const p of M.players) initInv(p);
   spawnLoot(r); setupExtras(); setupDrops(); igridRebuild();
   if (typeof setupMatch === 'function') setupMatch(r);
+  if (typeof squadMatchReset === 'function') squadMatchReset();
 }
 function updateGame(dt) {
   netTick(dt);
@@ -6622,7 +6633,7 @@ function updateGame(dt) {
   updateEmotes(dt); updateTeams(dt); updateBuild(dt); updateVehicles(dt);
   stepBullets(dt); stepThrown(dt); updateLoot(dt);
   if (typeof updateStorm === 'function') updateStorm(dt);
-  updateExtras(dt); updateDrops(dt); updateWildlife(dt); updateBeacons(dt); updateFX(dt); updateHitFX(dt); updateInvHUD(); updateMatchHUD(dt); winCam(dt); updateMateHUD(); updateVehHud();
+  updateExtras(dt); updateDrops(dt); updateWildlife(dt); updateBeacons(dt); updateFX(dt); updateHitFX(dt); updateInvHUD(); updateMatchHUD(dt); winCam(dt); updateMateHUD(); updateVehHud(); if (typeof updateSquad === 'function') updateSquad(dt);
   const tr = TRAILS[SAVE.locker.trail]; if (tr && tr.c && ME.alive && (ME.st === 'fall' || ME.st === 'glide') && Math.random() < 0.8) fx(ME.x + (Math.random() - 0.5) * 0.6, ME.y + 0.6, ME.z + (Math.random() - 0.5) * 0.6, -ME.vx * 0.1, 0.5, -ME.vz * 0.1, 1.2, 0.35, tr.c[0], tr.c[1], tr.c[2], -0.4, 'add', 1, 2);
   if (ME.alive && ME.ground && ME.spd > 1.5 && !ME.swim) { const s = Math.floor(ME.walkPh / Math.PI); if (s !== ME.stepN) { ME.stepN = s; Sound.step(ME.x, ME.y, ME.z); } }
   Sound.setWind(ME.alive && ME.st === 'fall' ? 1 : ME.alive && ME.st === 'glide' ? 0.35 : 0);
@@ -6637,6 +6648,7 @@ function menuOpen() { return INV.open || CHAT.open || (typeof pauseOpen === 'fun
    menu, help and patch notes.
    ========================================================================== */
 const PATCH = [
+  ['Beta 0.17.0', 'Pings, reboot cards and Ranked', ['Pings: press Z (or the middle mouse button, D-pad up, or PING on touch) to mark an item, a chest, a car, an enemy or a spot for your squad. Press twice quickly for a danger ping. Pings show in the world, on the minimap, the full map and the compass, and go to your squad online', 'Bot teammates call out enemies they spot and head to the spot you ping', 'Reboot cards: in Duos and Squads an eliminated teammate leaves a card for 90 seconds. Pick it up and hold E at a blue reboot van to bring them back (bots do it too)', 'Ranked: switch on Ranked in Change Mode and climb from Bronze to Champion. Points come from placement and eliminations, you never drop out of a division, and everyone starts again each season. See your division in Profile', 'Item Shop wish list: add items from the shop or locked ones in your locker. The shop shows when each one is due back, and the lobby tells you when one is in the shop', 'Controllers: D-pad right (hold) opens the emote wheel; pick with the right stick and let go to dance. D-pad left opens the inventory', 'Messages now show in the lobby too']],
   ['Beta 0.16.0', 'A better island and no more invisible walls', ['Fixed the invisible walls cars kept crashing into: on Medium and Low graphics some trees and rocks were not drawn but were still solid. Everything solid is now always drawn close by', 'Fallen logs, wrecks, towers, the big wheel and parked cars at an angle no longer have empty space round them that you crash into; bridges are solid edge to edge with railings', 'Five new places: Frostbite Station (a polar research base), Copperhead Mine, Fort Cobalt (a wooden stockade fort with watchtowers), Coyote Gulch (a ghost town) and Timberline Mill (a sawmill)', 'New ground: layered sandstone buttes and dunes in the desert, rocky ridges across the snow, crags on the mountain and rolling hills in the green', 'Autumn trees and birch groves, and rock outcrops on the steep slopes', 'Online: everyone in a match now gets exactly the same rooms, furniture and loot spots (they could differ from player to player before)']],
   ['Beta 0.15.2', 'A livelier island and lots of polish', ['Wildlife: deer and rabbits in the meadows and forests (they run when you get close)', 'Billboards along the highways, a lighthouse on the coast and a radio mast on the hills', 'Hay bale rows and tractors at the farms', 'Sounds of the island: birdsong in the woods, waves on the beaches, wind up high and crickets in the desert', 'Leaderboards: the top Storm Drop players on the arcade, by wins', 'The Store tab shows the Battle Pass, today\'s bundles and how coins are earned', 'Patch notes for every update since 0.12', 'Lots of small fixes and polish']],
   ['Beta 0.15.1', 'Supply drops and gas cans', ['A supply drop parachutes in at the start of every storm phase: follow the blue smoke for rare loot', 'Gas cans at gas stations and barns: hold one next to a car and click to refuel it', 'Ferns, fallen logs and stumps in the forests, fences on the farm roads, reflector posts on every road', 'Snowmen, rowboats on the beaches, lily pads on the lake, picnic tables, deeper snow drifts']],
@@ -6664,7 +6676,7 @@ const PICKAXES = [{ n: 'Prospector', head: 0x50565e, tip: 0xc9ccd0 }, { n: 'Gild
 const TRAILS = [{ n: 'None', c: null }, { n: 'Mint Sparks', c: [0.2, 1, 0.7] }, { n: 'Golden Dust', c: [1, 0.8, 0.3] }, { n: 'Smoke Ribbon', c: [0.7, 0.7, 0.75] }, { n: 'Violet Glow', c: [0.7, 0.4, 1] }];
 SAVE.locker = Object.assign({ outfit: 0, glider: 0, pickaxe: 0, trail: 1 }, SAVE.locker || {});
 SAVE.name = window.ARCADE_NAME || SAVE.name || 'Player' + (100 + Math.floor(Math.random() * 900));
-const MENU = { tab: 'lobby', mode: 'squads', diff: SAVE.diff || 'normal', open: false, cam: 0, preview: null, locker: 'outfit', setTab: 'graphics', rebind: null, paused: false };
+const MENU = { tab: 'lobby', mode: 'squads', diff: SAVE.diff || 'normal', ranked: !!SAVE.rankedOn, open: false, cam: 0, preview: null, locker: 'outfit', setTab: 'graphics', rebind: null, paused: false };
 const MENU_SPOT = { x: -668, z: 664 };
 let menuChar = null;
 
@@ -6774,7 +6786,7 @@ function matchmake() {
 }
 function launch(size) {
   hideMenu(); $('hud').classList.remove('hidden');
-  M.size = size; M.diff = MENU.diff;
+  M.size = size; M.diff = rankedOn() ? rankDiff() : MENU.diff;
   M.party = PARTY.members.slice(1).map(m => ({ name: m.name, outfit: m.outfit })); M.fill = PARTY.fill;
   startMatch({ mode: MENU.mode, name: SAVE.name, outfit: SAVE.locker.outfit, glider: SAVE.locker.glider, warmup: MENU.mode === 'practice' ? 15 : 30 });
   GAME.playing = true; wantLock();
@@ -6790,9 +6802,9 @@ function openPause(view) {
   const v = view || 'main';
   if (v === 'main') { $('pauseBody').innerHTML = `<h2>Paused</h2><p class="muted">${offline ? 'The match is paused.' : 'Online matches keep going while you are here.'}</p><div class="pbtns"><button class="btn" data-p="resume">Resume</button><button class="btn ghost" data-p="settings">Settings</button><button class="btn ghost" data-p="help">Help and controls</button><button class="btn ghost" data-p="leave">Leave match</button></div>`; }
   else if (v === 'settings') { $('pauseBody').innerHTML = settingsHTML() + '<button class="btn ghost sm" data-p="main">Back</button>'; bindMenu($('pauseBody')); }
-  else if (v === 'help') $('pauseBody').innerHTML = `<h2>Help</h2><div class="help">${[['Move', 'W A S D'], ['Look', 'Mouse'], ['Shoot / aim', 'Left / right mouse'], ['Jump · open glider', keyName(keyOf('jump'))], ['Sprint', keyName(keyOf('sprint'))], ['Crouch', keyName(keyOf('crouch')) + ' or ' + keyName(keyOf('crouch2'))], ['Interact (open, pick up, revive)', keyName(keyOf('use'))], ['Reload', keyName(keyOf('reload'))], ['Slots', '1 – 5, wheel, ' + keyName(keyOf('pick')) + ' for the pickaxe'], ['Map', keyName(keyOf('map'))], ['Inventory', keyName(keyOf('inv'))], ['Climb a ledge', 'hold Jump into it']].map(r => `<div><span>${r[0]}</span><kbd>${r[1]}</kbd></div>`).join('')}</div><p class="muted">Get to the white circle before the storm closes in. The last one standing wins.</p><button class="btn ghost sm" data-p="main">Back</button>`;
+  else if (v === 'help') $('pauseBody').innerHTML = `<h2>Help</h2><div class="help">${[['Move', 'W A S D'], ['Look', 'Mouse'], ['Shoot / aim', 'Left / right mouse'], ['Jump · open glider', keyName(keyOf('jump'))], ['Sprint', keyName(keyOf('sprint'))], ['Crouch', keyName(keyOf('crouch')) + ' or ' + keyName(keyOf('crouch2'))], ['Interact (open, pick up, revive)', keyName(keyOf('use'))], ['Reload', keyName(keyOf('reload'))], ['Slots', '1 – 5, wheel, ' + keyName(keyOf('pick')) + ' for the pickaxe'], ['Map', keyName(keyOf('map'))], ['Inventory', keyName(keyOf('inv'))], ['Ping (twice for danger)', keyName(keyOf('ping'))], ['Emote wheel', 'hold ' + keyName(keyOf('emote'))], ['Climb a ledge', 'hold Jump into it']].map(r => `<div><span>${r[0]}</span><kbd>${r[1]}</kbd></div>`).join('')}</div><p class="muted">Get to the white circle before the storm closes in. The last one standing wins.</p><button class="btn ghost sm" data-p="main">Back</button>`;
   $('pauseBody').classList.toggle('wide', v === 'settings');
-  $('pauseBody').querySelectorAll('[data-p]').forEach(b => b.onclick = () => { const p = b.dataset.p; Sound.ui(); if (p === 'resume') closePause(); else if (p === 'leave') { closePause(); if (ME.alive && !M.over && M.phase !== 'warmup') { ME.place = aliveCount(); ME.deathT = M.t; recordMatch(false); } toLobby(); } else openPause(p); });
+  $('pauseBody').querySelectorAll('[data-p]').forEach(b => b.onclick = () => { const p = b.dataset.p; Sound.ui(); if (p === 'resume') closePause(); else if (p === 'leave') { closePause(); if (ME.alive && !M.over && M.phase !== 'warmup') { ME.place = aliveCount(); ME.deathT = M.t; recordMatch(false); } else if (!ME.alive && !M.recorded && M.phase !== 'warmup') recordMatch(false); toLobby(); } else openPause(p); });
 }
 function closePause() { MENU.paused = false; M.paused = false; $('pause').classList.add('hidden'); if (GAME.playing) wantLock(); }
 function onReady() { applySettings(true); let seen = false; try { seen = !!sessionStorage.getItem('sd-intro'); } catch (e) { } if (seen || /[?&]nointro/.test(location.search)) showMenu(); else playIntro(showMenu); }
@@ -7031,13 +7043,13 @@ function drawRight() {
   const m = MENU.mode, fill = FILL_NAME[m], ready = PARTY.members[0] && PARTY.members[0].ready, lead = isLeader();
   $('lobRight').innerHTML = MENU.tab !== 'lobby' && MENU.tab !== 'locker' ? '' : `
     <div class="lnew" data-act="patch" style="cursor:pointer">What's new in ${VERSION} ›</div>
-    <div class="lmode"><small>GAME MODE</small><b>${MODE_NAMES[m]}</b>
+    <div class="lmode"><small>GAME MODE</small><b>${rankedOn() ? rankBadge(rankOf(rankedState().rp), 18) + 'Ranked ' : ''}${MODE_NAMES[m]}</b>
       <button class="lchange ${lead ? '' : 'off'}" data-act="mode">${ICON.key('M')}${lead ? 'Change Mode' : 'Leader picks the mode'}</button>
-      <div class="lfill"><span>${fill || 'Bots'}</span><button data-act="${fill ? 'fill' : 'botdiff'}" class="${fill && PARTY.fill ? 'on' : ''}">${fill ? ICON.fill + (PARTY.fill ? 'Fill' : 'No Fill') : ICON.fill + MENU.diff[0].toUpperCase() + MENU.diff.slice(1)}</button></div>
+      <div class="lfill"><span>${fill || 'Bots'}</span><button data-act="${fill ? 'fill' : 'botdiff'}" class="${fill && PARTY.fill ? 'on' : ''}">${fill ? ICON.fill + (PARTY.fill ? 'Fill' : 'No Fill') : ICON.fill + (rankedOn() ? 'Ranked · ' + rankDiff()[0].toUpperCase() + rankDiff().slice(1) : MENU.diff[0].toUpperCase() + MENU.diff.slice(1))}</button></div>
       <button class="lready ${ready ? 'is' : ''}" data-act="ready">${ICON.key('␣')}${ready ? 'CANCEL' : 'READY'}</button>
     </div>`;
   const bd = $('lobRight').querySelector('[data-act=botdiff]');
-  if (bd) bd.onclick = e => { e.stopPropagation(); const o = ['easy', 'normal', 'hard']; MENU.diff = SAVE.diff = o[(o.indexOf(MENU.diff) + 1) % 3]; saveGame(); drawRight(); };
+  if (bd) bd.onclick = e => { e.stopPropagation(); if (rankedOn()) { toast('Ranked bots get tougher as you climb', 1800); return; } const o = ['easy', 'normal', 'hard']; MENU.diff = SAVE.diff = o[(o.indexOf(MENU.diff) + 1) % 3]; saveGame(); drawRight(); };
 }
 function drawPage() {
   const P = $('lobPage'), t = MENU.tab; let h = '';
@@ -7052,7 +7064,7 @@ function drawPage() {
   } else if (t === 'challenges') h = `<div class="lpanel lwide"><div class="lph">CHALLENGES</div><p class="lsub">Daily challenges refresh every day. Each one gives 500 XP and 5 stars.</p>${dailyList().map(c => { const D = CHAL_DEFS.find(x => x.id === c.id); return `<div class="lchal big ${c.done ? 'done' : ''}"><span>${D.n}</span><i class="lpb"><i style="width:${(c.p / D.goal * 100).toFixed(1)}%"></i></i><b>${c.p} / ${D.goal}</b><em>▸</em>${ICON.xp}<b>500</b>${ICON.star}<b>5</b></div>`; }).join('')}</div>`;
   else if (t === 'profile') {
     const rows = [['solo', 'Solo'], ['duos', 'Duos'], ['squads', 'Squads'], ['practice', 'Practice']];
-    h = `<div class="lpanel lwide"><div class="lph">PROFILE · ${esc(SAVE.name)}</div><div class="ltable"><div class="lth"><span>MODE</span><span>MATCHES</span><span>WINS</span><span>TOP 10</span><span>ELIMS</span><span>K/D</span><span>DAMAGE</span><span>TIME</span></div>
+    h = `<div class="lpanel lwide"><div class="lph">PROFILE · ${esc(SAVE.name)}</div>${rankedPanel()}<div class="ltable"><div class="lth"><span>MODE</span><span>MATCHES</span><span>WINS</span><span>TOP 10</span><span>ELIMS</span><span>K/D</span><span>DAMAGE</span><span>TIME</span></div>
       ${rows.map(r => { const C = SAVE.career[r[0]] || {}; return `<div><span>${r[1]}</span><span>${C.matches || 0}</span><span>${C.wins || 0}</span><span>${C.top10 || 0}</span><span>${C.kills || 0}</span><span>${((C.kills || 0) / Math.max(1, C.deaths || 0)).toFixed(2)}</span><span>${C.damage || 0}</span><span>${Math.floor((C.time || 0) / 3600)}h ${Math.floor((C.time || 0) % 3600 / 60)}m</span></div>`; }).join('')}</div>
       <div class="lph sm">BEST GAME</div><p class="lsub">${SAVE.best ? `${SAVE.best.place === 1 ? 'Victory Royale' : '#' + SAVE.best.place + ' of ' + SAVE.best.size} in ${MODE_NAMES[SAVE.best.mode] || SAVE.best.mode} · ${SAVE.best.kills} eliminations · ${SAVE.best.damage} damage` : 'Play a match to set your best game.'}</p></div>`;
   } else if (t === 'pass') {
@@ -7075,7 +7087,7 @@ function drawPage() {
       return `<button class="lshopc ${big ? 'big' : ''} ${have ? 'own' : ''} ${free ? 'free' : ''} c-${x.cat}" data-buy="${x.cat}:${x.i}" style="--rc:${RAR_COL[x.it.r]}"><i style="background:${x.cat === 'loading' ? 'none' : swatch(x.cat, x.it) + ','}radial-gradient(circle at 50% 30%,${RAR_COL[x.it.r]}aa,#0b1430 75%)">${x.cat === 'loading' ? loadArt(x.it) : ''}</i><span>${esc(x.it.n)}</span><small>${sub}</small><b>${have ? 'OWNED' : free ? 'FREE · CLAIM' : was + ICON.coin + ' ' + pr}</b></button>`; };
     const sec = (t, list, cls) => list.length ? `<div class="lsec ${cls || ''}"><div class="lph sm">${t}</div><div class="lsecg">${list.map(x => card(x)).join('')}</div></div>` : '';
     h = `<div class="lpanel lwide lshop"><div class="lph">ITEM SHOP <span>New items in <em class="lcd" data-cd="${S.ends}"></em></span></div>${pirateShopBanner()}
-      <div class="lshopscroll"><div class="lshopg"><div class="lfeat"><div class="lph sm">FEATURED</div><div class="lfeatg">${S.featured.map(x => card(x, true)).join('')}</div></div><div class="ldaily"><div class="lph sm">DAILY</div><div class="ldailyg">${S.daily.map(x => card(x)).join('')}</div></div></div>
+      <div class="lshopscroll">${wishSection()}<div class="lshopg"><div class="lfeat"><div class="lph sm">FEATURED</div><div class="lfeatg">${S.featured.map(x => card(x, true)).join('')}</div></div><div class="ldaily"><div class="lph sm">DAILY</div><div class="ldailyg">${S.daily.map(x => card(x)).join('')}</div></div></div>
       ${sec('BUNDLES', S.bundles, 'bun')}${sec('EMOTES', S.emotes)}${sec('WRAPS', S.wraps)}${sec('MUSIC &amp; LOADING SCREENS', S.extras)}</div>
       <p class="lsub">Coins come from playing: every match, eliminations, top 10s and wins, and the Battle Pass. Hover an item to try it on.</p></div>`;
   } else if (t === 'leaderboards') {
@@ -7088,14 +7100,15 @@ function drawPage() {
       <div class="lstoreg">
         <div class="lscard" data-tab="pass"><small>BATTLE PASS</small><b>${P2 ? (P2.premium ? 'Owned · tier ' + P2.tier : PASS_COST + ' coins') : 'Next season soon'}</b><span>30 tiers of outfits, gliders, pickaxes and contrails</span></div>
         <div class="lscard" data-tab="shop"><small>TODAY'S BUNDLE</small><b>${B ? esc(B.it.n) : 'See the Item Shop'}</b><span>${B ? 'Save ' + Math.max(0, B.it.full - bundlePrice(B.it)) + ' coins on its parts' : ''}</span></div>
-        <div class="lscard" data-tab="shop"><small>ITEM SHOP</small><b>${S.all.length} items today</b><span>New items every day at 8:30 am Sydney time</span></div>
+        <div class="lscard" data-tab="shop"><small>ITEM SHOP</small><b>${S.all.length} items today</b><span>New items in <em class="lcd" data-cd="${S.ends}"></em> (every day at 8:30 am Sydney time)</span></div>
       </div>
       <div class="lph sm">HOW TO EARN COINS</div><div class="ltable lcoins">${row('Every match', '25')}${row('Each elimination', '+5')}${row('Top 10', '+40')}${row('Victory', '+150')}${row('Battle Pass free tiers', 'up to 150 each')}</div>
       <p class="lsub">Coins are only ever earned by playing: nothing in Storm Drop is sold for real money. You have ${ICON.coin} ${SAVE.coins || 0}.</p></div>`;
   }
   P.innerHTML = h;
   P.querySelectorAll('[data-lcat]').forEach(b => b.onclick = () => { MENU.locker = b.dataset.lcat; Sound.ui(); drawPage(); });
-  P.querySelectorAll('[data-litem]').forEach(b => { const i = +b.dataset.litem; b.onmouseenter = () => { MENU.preview = { [MENU.locker]: i }; if (MENU.locker === 'music') MUS.preview = i; }; b.onmouseleave = () => { MENU.preview = null; MUS.preview = null; }; b.onclick = () => { if (MENU.locker === 'emote') { MENU.emotePrev = { id: i, until: GAME.time + 12 }; Sound.ui(); drawPage(); return; } if (!owns(MENU.locker, i)) { toast('Locked · get it from the ' + (CATS[MENU.locker][i].season ? 'Season ' + CATS[MENU.locker][i].season + ' Battle Pass' : 'Item Shop'), 1800); return; } SAVE.locker[MENU.locker] = i; saveGame(); Sound.ui(); MENU.preview = null; partyInit(); drawPage(); }; });
+  P.querySelectorAll('[data-litem]').forEach(b => { const i = +b.dataset.litem; b.onmouseenter = () => { MENU.preview = { [MENU.locker]: i }; if (MENU.locker === 'music') MUS.preview = i; }; b.onmouseleave = () => { MENU.preview = null; MUS.preview = null; }; b.onclick = () => { if (MENU.locker === 'emote') { MENU.emotePrev = { id: i, until: GAME.time + 12 }; Sound.ui(); drawPage(); return; } if (!owns(MENU.locker, i)) { const wt = wishTarget(MENU.locker, i); if (wt) { Sound.ui(); wishModal(wt[0], wt[1]); return; } toast('Locked · get it from the ' + (CATS[MENU.locker][i].season ? 'Season ' + CATS[MENU.locker][i].season + ' Battle Pass' : 'Item Shop'), 1800); return; } SAVE.locker[MENU.locker] = i; saveGame(); Sound.ui(); MENU.preview = null; partyInit(); drawPage(); }; });
+  P.querySelectorAll('[data-wish]').forEach(b => b.onclick = () => { Sound.ui(); wishOpen(b.dataset.wish); });
   P.querySelectorAll('[data-buy]').forEach(b => { const [cat, i] = b.dataset.buy.split(':'), n = +i; b.onmouseenter = () => { if (cat === 'outfit' || cat === 'back' || cat === 'emote') MENU.preview = { [cat]: n }; if (cat === 'music') MUS.preview = n; }; b.onmouseleave = () => { MENU.preview = null; MUS.preview = null; }; b.onclick = () => confirmBuy(cat, n); });
   const pg = P.querySelector('[data-act=pirgo]'); if (pg) pg.onclick = e => { e.stopPropagation(); if (pirateActivate()) { Sound.chest(); toast('The Pirate Shop is open for 14 days: everything is free!', 2600); } drawLobby(); };
   const ub = P.querySelector('[data-act=unlockpass]'); if (ub) ub.onclick = e => { e.stopPropagation(); const r = unlockPass(); if (r === 'coins') toast('Not enough coins yet: play matches and climb the free track', 2200); else if (r === 'ok') { Sound.chest(); toast('Battle Pass unlocked!', 1800); } drawLobby(); };
@@ -7138,8 +7151,10 @@ function modal(title, body, wide) { $('lmodal').innerHTML = `<div class="lmbox $
 function closeModal() { $('lmodal').classList.add('hidden'); }
 function openModeModal() {
   if (!isLeader()) { toast('The party leader picks the mode', 1600); return; }
-  modal('SELECT GAME MODE', `<div class="lmodes">${[['solo', 'Solo', 'Go it alone, 50 players'], ['duos', 'Duos', 'Team up with one more'], ['squads', 'Squads', 'Teams of four'], ['practice', 'Practice', 'Offline vs 19 bots, you can pause']].map(x => `<button class="${MENU.mode === x[0] ? 'on' : ''}" data-m="${x[0]}"><b>${x[1]}</b><small>${x[2]}</small></button>`).join('')}</div>`);
-  $('lmodal').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { if (b.dataset.m === 'practice' && partyHumans().length > 1) { toast('Practice is offline: leave the party to practice', 2000); return; } MENU.mode = b.dataset.m; PARTY.members[0].ready = false; Sound.ui(); closeModal(); drawLobby(); });
+  modal('SELECT GAME MODE', `<div class="lmodes">${[['solo', 'Solo', 'Go it alone, 50 players'], ['duos', 'Duos', 'Team up with one more'], ['squads', 'Squads', 'Teams of four'], ['practice', 'Practice', 'Offline vs 19 bots, you can pause']].map(x => `<button class="${MENU.mode === x[0] ? 'on' : ''}" data-m="${x[0]}"><b>${x[1]}</b><small>${x[2]}</small></button>`).join('')}</div>
+    <p class="sqrkh">Ranked: climb from Bronze to Champion (not in Practice). Everyone starts again each season.</p><div class="lmodes sqrk"><button class="${MENU.ranked ? '' : 'on'}" data-rk="0"><b>Casual</b><small>Just for fun</small></button><button class="${MENU.ranked ? 'on' : ''}" data-rk="1"><b>${rankBadge(rankOf(rankedState().rp), 18)} Ranked</b><small>${rankOf(rankedState().rp).name} · ${rankedState().rp} RP</small></button></div>`);
+  $('lmodal').querySelectorAll('[data-rk]').forEach(b => b.onclick = () => { if (b.dataset.rk === '1' && MENU.mode === 'practice') { toast('Practice is never ranked: pick Solo, Duos or Squads', 2000); return; } MENU.ranked = SAVE.rankedOn = b.dataset.rk === '1'; saveGame(); PARTY.members[0].ready = false; Sound.ui(); openModeModal(); drawLobby(); });
+  $('lmodal').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { if (b.dataset.m === 'practice' && partyHumans().length > 1) { toast('Practice is offline: leave the party to practice', 2000); return; } MENU.mode = b.dataset.m; if (MENU.mode === 'practice') MENU.ranked = false; PARTY.members[0].ready = false; Sound.ui(); closeModal(); drawLobby(); });
 }
 function openPartyModal() {
   const on = partyOnline(), lead = isLeader(), solo = partyHumans().length === 1;
@@ -7197,6 +7212,7 @@ function showMenu() {
   drawLobby();
   if (!MENU.warned) { MENU.warned = true; $('beta').classList.remove('hidden'); }
   pirateLobbyMessage();
+  if (typeof wishCheck === 'function') setTimeout(() => wishCheck(true), 600);
 }
 function hideMenu() { MENU.open = false; $('lobby').classList.add('hidden'); document.documentElement.classList.remove('lob'); closeModal(); moveCharMeshes(scene); }
 const _tv = new THREE.Vector3();
@@ -7256,7 +7272,8 @@ function confirmBuy(cat, i) {
   const bun = cat === 'bundle', it = bun ? BUNDLES[i] : CATS[cat][i]; if (bun ? bundleOwned(it) : owns(cat, i)) { toast('You already own ' + it.n, 1400); return; }
   const pr = priceOf(cat, i), free = pr === 0;
   const inside = bun ? `<div class="lbunl">${it.items.map(([c, k]) => `<div class="${owns(c, k) ? 'own' : ''}"><i style="background:${c === 'loading' ? `linear-gradient(160deg,${CATS[c][k].a},${CATS[c][k].b})` : swatch(c, CATS[c][k])}"></i><span>${esc(CATS[c][k].n)}</span><small>${CAT_NAME[c]}${owns(c, k) ? ' · owned' : ''}</small></div>`).join('')}</div>` : '';
-  modal((free ? 'CLAIM ' : 'BUY ') + CAT_NAME[cat].toUpperCase(), `<div class="lbuy"><i style="background:${cat === 'loading' ? `linear-gradient(160deg,${it.a},${it.b})` : swatch(cat, it) + ','}radial-gradient(circle at 50% 30%,${RAR_COL[it.r]}aa,#0b1430 75%)"></i><b>${esc(it.n)}</b><small>${RAR_NAME[it.r]} ${CAT_NAME[cat]}${cat === 'emote' && it.trav ? ' · you can walk while doing it' : ''}</small>${inside}<p>${free ? '<b class="lfree">FREE</b> with your Pirate Shop' : `${ICON.coin} ${pr} · you have ${SAVE.coins}`}</p><button class="lyel" id="lBuyGo">${free ? 'CLAIM' : 'BUY'}</button></div>`);
+  modal((free ? 'CLAIM ' : 'BUY ') + CAT_NAME[cat].toUpperCase(), `<div class="lbuy"><i style="background:${cat === 'loading' ? `linear-gradient(160deg,${it.a},${it.b})` : swatch(cat, it) + ','}radial-gradient(circle at 50% 30%,${RAR_COL[it.r]}aa,#0b1430 75%)"></i><b>${esc(it.n)}</b><small>${RAR_NAME[it.r]} ${CAT_NAME[cat]}${cat === 'emote' && it.trav ? ' · you can walk while doing it' : ''}</small>${inside}<p>${free ? '<b class="lfree">FREE</b> with your Pirate Shop' : `${ICON.coin} ${pr} · you have ${SAVE.coins}`}</p><button class="lyel" id="lBuyGo">${free ? 'CLAIM' : 'BUY'}</button>${wishButton(cat, i)}</div>`);
+  bindWishButton(cat, i);
   if (cat === 'emote') MENU.emotePrev = { id: i, until: GAME.time + 30 };
   $('lBuyGo').onclick = () => { const r = buyItem(cat, i); if (r === 'coins') toast('Not enough coins', 1400); else if (r === 'ok') { Sound.chest(); toast(it.n + (bun ? ' items are' : ' is') + ' in your locker', 1800); closeModal(); drawLobby(); } };
 }
@@ -7588,7 +7605,7 @@ const newCode = () => Array.from({ length: 5 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ'
 const partyOnline = () => PTY.on && !!PTY.ch && !PTY.ch.gone;
 const isLeader = () => !partyOnline() || PTY.leaderId === NET.id;
 const partyHumans = () => PARTY.members.filter(m => !m.bot);
-function partyMeta() { const me = PARTY.members[0]; return { i: NET.id, n: SAVE.name, o: SAVE.locker.outfit | 0, b: SAVE.locker.back | 0, r: me && me.ready ? 1 : 0, t: PTY.t0, s: GAME.playing || NET.live ? 'match' : 'lobby', m: MENU.mode, f: PARTY.fill ? 1 : 0, q: PTY.qOn ? 1 : 0 }; }
+function partyMeta() { const me = PARTY.members[0]; return { i: NET.id, n: SAVE.name, o: SAVE.locker.outfit | 0, b: SAVE.locker.back | 0, r: me && me.ready ? 1 : 0, t: PTY.t0, s: GAME.playing || NET.live ? 'match' : 'lobby', m: MENU.mode, f: PARTY.fill ? 1 : 0, q: PTY.qOn ? 1 : 0, rk: MENU.ranked ? 1 : 0 }; }
 function partyTrack(force) { if (!partyOnline()) return; const m = partyMeta(), j = JSON.stringify(m); if (!force && j === PTY.lastMeta) return; PTY.lastMeta = j; rtTrack(PTY.ch, m); }
 setInterval(() => partyTrack(false), 700);
 
@@ -7634,7 +7651,7 @@ function partySync() {
   const bots = others.length ? [] : PARTY.members.filter(m => m.bot);
   me.leader = PTY.leaderId === NET.id; me.name = SAVE.name; me.outfit = SAVE.locker.outfit;
   PARTY.members = [me, ...others, ...bots];
-  if (!me.leader && lead) { if (lead.m && MODE_NAMES[lead.m]) MENU.mode = lead.m; PARTY.fill = !!lead.f; }
+  if (!me.leader && lead) { if (lead.m && MODE_NAMES[lead.m]) MENU.mode = lead.m; PARTY.fill = !!lead.f; MENU.ranked = !!lead.rk; }
   // the leader is finding a match: show it to everyone in the party
   const searching = !me.leader && lead && lead.q && !NET.live && !GAME.playing;
   if (searching && $('mm').classList.contains('hidden')) { showMM('Your party leader is finding a match…', () => { me.ready = false; partyTrack(true); $('mm').classList.add('hidden'); if (MENU.open) drawRight(); }); PTY.mmByParty = true; }
@@ -7651,6 +7668,7 @@ function partyOnGo(m) {
   const me = PARTY.members[0]; if (!me.ready) return;
   PTY.mmByParty = false;
   if (MODE_NAMES[m.mode]) MENU.mode = m.mode;
+  MENU.ranked = !!m.rk;
   netJoin(m.mid, false, { pt: PARTY.code, fill: !!m.fill, mode: m.mode });
 }
 // a join didn't work out: back to the lobby, not ready
@@ -7665,16 +7683,16 @@ async function queueStart() {
   try { PTY.q = await rtJoin('sd8-q-' + MENU.mode, NET.id, {}); }
   catch (e) { const was = PTY.qOn; queueCancel(); if (was) { toast('Could not reach the server · playing with bots', 2400); offlineMatch(); } return; }
   if (!PTY.qOn) { rtLeave(PTY.q); PTY.q = null; return; }
-  rtTrack(PTY.q, { i: NET.id, pt: PARTY.code, n: partyHumans().length, t: PTY.qStart, s: 'q', mode: MENU.mode });
+  rtTrack(PTY.q, { i: NET.id, pt: PARTY.code, n: partyHumans().length, t: PTY.qStart, s: 'q', mode: MENU.mode, rk: rankedOn() ? 1 : 0 });
   clearInterval(PTY.qT); PTY.qT = setInterval(queueThink, 500); queueThink();
 }
 function queueThink() {
   if (!PTY.qOn || !PTY.q) return;
   if (PARTY.members.some(m => !m.bot && (!m.ready || m.st === 'match'))) { queueCancel(); toast('Someone in your party is not ready', 1800); return; }
   const list = rtList(PTY.q), n = partyHumans().length, waited = Date.now() - PTY.qStart;
-  const open = list.filter(m => m.s === 'h' && typeof m.mid === 'string' && m.mode === MENU.mode && (m.wl | 0) >= 8 && (m.c | 0) + n <= (m.cap | 0)).sort((a, b) => (b.c | 0) - (a.c | 0))[0];
+  const open = list.filter(m => m.s === 'h' && typeof m.mid === 'string' && m.mode === MENU.mode && !!m.rk === rankedOn() && (m.wl | 0) >= 8 && (m.c | 0) + n <= (m.cap | 0)).sort((a, b) => (b.c | 0) - (a.c | 0))[0];
   if (open) return queueGo(open.mid, false);
-  const srch = list.filter(m => m.s === 'q');
+  const srch = list.filter(m => m.s === 'q' && m.mode === MENU.mode && !!m.rk === rankedOn());
   if (waited > 2500 && ((srch[0] && srch[0].i === NET.id) || waited > 12000 || !srch.length)) return queueGo(Math.random().toString(36).slice(2, 10), true);
   const others = srch.filter(m => m.i !== NET.id).reduce((a, m) => a + (m.n | 0), 0);
   $('mmTxt').textContent = `Finding a match… ${others ? others + ' more player' + (others === 1 ? '' : 's') + ' searching' : Math.ceil(waited / 1000) + 's'}`;
@@ -7684,7 +7702,7 @@ function queueGo(mid, host) {
   if (!host) { rtLeave(PTY.q); PTY.q = null; }
   $('mm').classList.add('hidden');
   const bf = partyHumans().length === 1 ? PARTY.members.filter(m => m.bot).map(m => [m.name, m.outfit | 0]) : [];
-  rtSend(PTY.ch, 'go', { mid, mode: MENU.mode, fill: PARTY.fill ? 1 : 0 });
+  rtSend(PTY.ch, 'go', { mid, mode: MENU.mode, fill: PARTY.fill ? 1 : 0, rk: rankedOn() ? 1 : 0 });
   netJoin(mid, host, { pt: PARTY.code, fill: PARTY.fill, bf, mode: MENU.mode });
   partyTrack(true);
 }
@@ -8310,6 +8328,10 @@ function pollPad() {
       if (pressed(14)) { BLD.mat = (BLD.mat + 1) % 3; drawBuildBar(); }
       if (pressed(11)) { BLD.rot = (BLD.rot + 1) & 3; }
     } else { IN.fireHeld = now[7]; IN.ads = now[6]; }
+    // Beta 0.17: hold D-pad right for the emote wheel (right stick picks, let go to dance, B closes); Y stops waiting for a reboot
+    if (EW.open) { IN.lookX = IN.lookY = 0; IN.fireHeld = false; ewStick(rx, ry); if (!now[15] && GP.prev[15]) emoteWheelPick(); else if (pressed(0)) emoteWheelPick(); else if (pressed(1)) emoteWheel(false); GP.prev = now; return; }
+    if (pressed(15)) emoteWheel(true);
+    if (SQ.wait && pressed(3)) giveUp();
     IN.jump = now[0]; if (pressed(0)) IN.jumpHit = true;
     if (pressed(1)) { GP.bT = t; } if (!now[1] && GP.prev[1] && t - (GP.bT || 0) < 350) toggleBuild(); // tap B / Circle: build mode
     if (now[1] && t - (GP.bT || 0) > 400 && !GP.bHeld) { GP.bHeld = true; gameKey(keyOf('edit')); } if (!now[1]) GP.bHeld = false; // hold: edit
@@ -8317,9 +8339,9 @@ function pollPad() {
     if (pressed(2)) { IN.reloadHit = true; gameKey(keyOf('use')); } IN.useHeld = now[2];
     if (pressed(3)) { if (BLD.on) toggleBuild(false); selectSlot(ME, ME.sel ? 0 : (GP.lastSlot || 1)); }
     if (!BLD.on && (pressed(4) || pressed(5))) { if (BLD.on) { BLD.piece = (BLD.piece + (pressed(5) ? 1 : 3)) % 4; drawBuildBar(); } else { cycleSlot(ME, pressed(5) ? 1 : -1); if (ME.sel) GP.lastSlot = ME.sel; } }
-    if (pressed(12)) toggleBuild(); if (BLD.edit && pressed(11)) BLD.edit.sel.clear();
+    if (pressed(12)) pingNow(); if (BLD.edit && pressed(11)) BLD.edit.sel.clear(); // D-pad up: ping (twice for danger)
     if (pressed(13) || pressed(8)) toggleBigMap();
-    if (pressed(14) || pressed(15)) toggleInv();
+    if (pressed(14) && !BLD.on) toggleInv();
     if (pressed(11) && BLD.on) { BLD.mat = (BLD.mat + 1) % 3; drawBuildBar(); }
     if (pressed(9)) openPause();
   }
@@ -8494,7 +8516,7 @@ document.addEventListener('visibilitychange', () => { if (NET.ch && NET.live) rt
 
 /* ---------- the host: making the match, people joining, the roster ---------- */
 function hostStart(mode) {
-  M.size = 50; M.diff = MENU.diff; M.party = []; M.fill = NET.fill;
+  M.size = 50; M.diff = rankedOn() ? rankDiff() : MENU.diff; M.party = []; M.fill = NET.fill;
   beginPlay({ mode, name: SAVE.name, outfit: SAVE.locker.outfit, glider: SAVE.locker.glider, warmup: 40 });
 }
 // after setupMatch (host): number everyone, add yourself as the first human
@@ -8597,7 +8619,7 @@ function applyRoster(m) {
         if (M.phase === 'warmup') { warmPlace(p); if (!bot) { p.inv[0] = null; p.sel = 0; } } else p.st = 'bus';
       }
       p.name = String(name).slice(0, 16); p.remote = !bot; p.netId = nid; p.bot = !!bot;
-      if (!alive && p.alive) { p.alive = false; p.place = p.place || aliveCount(); }
+      if (!alive && p.alive && !(p.rbAt && performance.now() - p.rbAt < 6000)) { p.alive = false; p.place = p.place || aliveCount(); }
     }
     p.outfit = outfit; p.glider = glider; p.pick = pick; p.back = back; p.team = team; p._lead = lead;
     list.push(p);
@@ -8623,7 +8645,7 @@ function becomeHost() {
 }
 // the host lists the match in the queue while people can still join
 function advertise(on) {
-  if (typeof queueAdvertise === 'function') queueAdvertise(on ? { mid: NET.mid, c: M.players.filter(p => p.netId && p.alive).length, cap: M.size, wl: Math.round(M.warmT || 0), mode: M.mode } : null);
+  if (typeof queueAdvertise === 'function') queueAdvertise(on ? { mid: NET.mid, c: M.players.filter(p => p.netId && p.alive).length, cap: M.size, wl: Math.round(M.warmT || 0), mode: M.mode, rk: M.ranked ? 1 : 0 } : null);
 }
 function hostTick(dt) {
   NET.roT -= dt;
@@ -8799,7 +8821,8 @@ function netEvent(e, from) {
     else if (k === 'vh') { const v = VEH[e[1]]; if (v) damageVehicle(v, +e[2] || 0, plById(e[3]), true); }
     else if (k === 'tr') { const L = e[1] === 'T' ? TREES : ROCKS, o = L[e[2]]; if (o && !o.dead) { o.dead = true; hideScatter(o); } }
     else if (k === 'bus') { if (!NET.host && M.phase === 'warmup') beginBus(); }
-    else if (k === 'pg') { const p = plById(e[1]); if (p && sameTeam(p, ME)) { M.ping = e[2] == null ? null : { x: e[2], z: e[3] }; if (M.ping) toast(p.name + ' marked a spot', 1400); } }
+    else if (k === 'pn' || k === 'rc' || k === 'rb') squadNet(e);
+    else if (k === 'pg') { const p = plById(e[1]); if (p && !mine(p)) { SQ.pings = SQ.pings.filter(q => !(q.by === p && q.k === 'loc')); if (e[2] != null) addPing({ by: p, k: 'loc', x: +e[2], y: floorAt(+e[2], 400, +e[3], 0), z: +e[3], label: 'a spot', id: -1 }); } }
   } finally { NET.apply = false; NET.noDown = false; }
 }
 // items: every item has an id that's the same on every computer
@@ -8974,6 +8997,583 @@ addEventListener('keydown', async e => {
 });
 addEventListener('keyup', e => { if (e.code === keyOf('voice') && SET.voice === 'ptt') { VC.held = false; vcTalk(false); } });
 addEventListener('blur', () => { if (SET.voice === 'ptt') { VC.held = false; vcTalk(false); } });
+</script>
+<script id="sd-91-squad">
+'use strict';
+/* ==========================================================================
+   Beta 0.17: squad tools, the ranked ladder and the wish list.
+   - Pings: press Z (or the middle mouse button, D-pad up on a controller,
+     PING on touch) to mark what you're looking at for your squad: an item,
+     a chest, a car, an enemy or a spot on the ground. Press twice quickly
+     for a danger ping. Pings show in the world, on the minimap, the full map
+     and the compass, and online they go to your squadmates with the match's
+     other events. Bot teammates ping enemies they spot and head to the spot
+     you ping.
+   - Reboot cards: in Duos and Squads an eliminated player leaves a reboot
+     card for 90 s. A teammate picks it up (E) and takes it to a reboot van
+     (hold E for 4 s) to bring them back with a pistol and some wood. Bots do
+     the same, for you and for their own squads.
+   - Ranked: Bronze to Champion. Points come from placement and eliminations;
+     every season (each week, with the Battle Pass) everyone starts again.
+   - Wish list: add items from the Item Shop or locked ones in the locker;
+     when one is in the shop again the lobby tells you.
+   ========================================================================== */
+const SQ = { pings: [], pid: 0, lastPing: null, lastPingT: -9, tags: [], cards: [], vans: [], vansBuilt: false, wait: false, botPingT: new Map(), note: 0 };
+const PING_ME = '#2ee6a6', PING_MATES = ['#ffd84a', '#ff8ad8', '#6cc4ff'], PING_RED = '#ff4a4a', VAN_COL = '#3a8fff';
+const PING_LIFE = { loc: 25, item: 14, enemy: 7, danger: 10 };
+const CARD_LIFE = 90, REBOOT_T = 4, VAN_CD = 30;
+const byId = id => { if (id == null || id < 0) return null; if (NET.live) { const p = plById(id); if (p) return p; } return M.players.find(p => p.id === id) || null; };
+const isMyTeam = p => !!(p && ME && (p === ME || p.team === ME.team));
+function pingCol(p, k) {
+  if (k === 'enemy' || k === 'danger') return PING_RED;
+  if (!p || p === ME) return PING_ME;
+  const i = ME ? mates(ME).indexOf(p) : -1; return PING_MATES[(i < 0 ? 0 : i) % 3];
+}
+const PICON = {
+  loc: '<svg viewBox="0 0 16 16"><path d="M8 1.5a4.6 4.6 0 00-4.6 4.6C3.4 9.6 8 14.5 8 14.5s4.6-4.9 4.6-8.4A4.6 4.6 0 008 1.5z" fill="#fff"/><circle cx="8" cy="6.1" r="1.8" fill="#0b1430"/></svg>',
+  item: '<svg viewBox="0 0 16 16"><path d="M8 1.5l6 6.5-6 6.5L2 8z" fill="#fff"/></svg>',
+  enemy: '<svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2"><circle cx="8" cy="8" r="5"/><path d="M8 1v4M8 11v4M1 8h4M11 8h4"/></svg>',
+  danger: '<svg viewBox="0 0 16 16"><path d="M8 1.5l7 12.5H1z" fill="#fff"/><path d="M8 6v4" stroke="#c0392b" stroke-width="2"/><circle cx="8" cy="12" r="1" fill="#c0392b"/></svg>',
+  van: '<svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2"><path d="M12.5 5.5A5 5 0 103 9"/><path d="M13 2v4H9"/></svg>',
+  card: '<svg viewBox="0 0 16 16"><rect x="3.5" y="1.5" width="9" height="13" rx="1.5" fill="#fff"/><path d="M6 5h4M6 8h4" stroke="#0b1430" stroke-width="1.5"/></svg>'
+};
+
+/* ---------- keys: Z pings (it can be changed in Settings › Keybinds) ---------- */
+DEFAULT_KEYS.ping = 'KeyZ'; KEY_LABELS.ping = 'Ping (twice for danger)';
+{ const g = KEY_GROUPS.find(x => x[0] === 'Combat and items'); if (g && !g[1].includes('ping')) g[1].push('ping'); }
+codeAction = CODE_ACTION();
+
+/* ---------- pings ---------- */
+function addPing(o) {
+  o.t0 = GAME.time; o.life = o.life || PING_LIFE[o.k] || 12; o.label = String(o.label || '').replace(/[<>]/g, '').slice(0, 40);
+  if (o.k === 'loc' || o.k === 'danger') SQ.pings = SQ.pings.filter(q => !(q.by === o.by && q.k === o.k));
+  else { const own = SQ.pings.filter(q => q.by === o.by && q.k !== 'loc' && q.k !== 'danger'); if (own.length >= 3) SQ.pings.splice(SQ.pings.indexOf(own[0]), 1); }
+  SQ.pings.push(o);
+  if (isMyTeam(o.by)) {
+    const bad = o.k === 'enemy' || o.k === 'danger';
+    Sound.tone({ f: bad ? 520 : 880, f2: bad ? 390 : 1320, dur: 0.13, type: bad ? 'square' : 'sine', gain: bad ? 0.06 : 0.11 });
+    if (o.by !== ME && typeof chatAdd === 'function') chatAdd({ sys: true, t: o.by.name + (o.k === 'loc' ? ' marked ' + o.label : o.k === 'danger' ? ' says: danger here!' : o.k === 'enemy' ? ' spotted an enemy' : ' pinged ' + o.label) });
+  }
+  return o;
+}
+function removePing(o, quiet) {
+  const n = SQ.pings.indexOf(o); if (n < 0) return; SQ.pings.splice(n, 1);
+  if (!quiet && NET.live && o.by && mine(o.by)) netEv(['pn', o.by.id, 'x', o.id]);
+}
+function sendPing(t, by) {
+  by = by || ME;
+  const o = addPing(Object.assign({ by, id: ++SQ.pid }, t));
+  if (NET.live) netEv(['pn', by.id, o.k, r2(o.x), r2(o.y), r2(o.z), o.label, o.id, o.r | 0]);
+  return o;
+}
+// what's under the crosshair: an enemy, an item, a chest, a car, a van, a card, or the spot you're looking at
+const _pd = new THREE.Vector3();
+function pingTarget() {
+  const cp = camera.position; camera.getWorldDirection(_pd); const d = _pd;
+  const wall = rayWorld(cp.x, cp.y, cp.z, d.x, d.y, d.z, 900, null), tMax = wall < 0 ? 900 : wall;
+  let best = null, bs = 1e9;
+  const look = (x, y, z, rad, make) => {
+    const dx = x - cp.x, dy = y - cp.y, dz = z - cp.z, al = dx * d.x + dy * d.y + dz * d.z;
+    if (al < 0.8 || al > tMax + rad + 0.6) return;
+    const off = Math.hypot(dx - d.x * al, dy - d.y * al, dz - d.z * al), lim = rad + al * 0.018; if (off > lim) return;
+    const s = off / lim + al * 0.001; if (s < bs) { bs = s; best = make; }
+  };
+  for (const p of M.players) if (p.alive && p !== ME && p.team !== ME.team && p.st !== 'bus' && !p.hidden && Math.hypot(p.x - cp.x, p.z - cp.z) < 300) look(p.x, p.y + 1.1, p.z, 0.9, () => ({ k: 'enemy', x: p.x, y: p.y, z: p.z, label: 'Enemy' }));
+  const R = 70, px = ME.x, pz = ME.z;
+  forItemsNear(px, pz, R, o => { if (!o.moving && o.alive) look(o.x, o.y + 0.3, o.z, 0.45, () => ({ k: 'item', x: o.x, y: o.y, z: o.z, r: o.r | 0, label: itemName(o) + (o.n > 1 ? ' ×' + o.n : '') })); });
+  for (const c of CHESTS) if (!c.open && Math.abs(c.x - px) < R && Math.abs(c.z - pz) < R) look(c.x, c.y + 0.4, c.z, 0.6, () => ({ k: 'item', x: c.x, y: c.y, z: c.z, label: 'Chest' }));
+  for (const c of ABOXES) if (!c.open && Math.abs(c.x - px) < R && Math.abs(c.z - pz) < R) look(c.x, c.y + 0.3, c.z, 0.5, () => ({ k: 'item', x: c.x, y: c.y, z: c.z, label: 'Ammo box' }));
+  for (const c of DROPS) if (c.landed && !c.open) look(c.x, c.y + 0.6, c.z, 1, () => ({ k: 'item', x: c.x, y: c.y, z: c.z, r: 4, label: 'Supply drop' }));
+  for (const v of VEH) if (!v.dead && Math.hypot(v.x - px, v.z - pz) < 160) look(v.x, v.y + 0.8, v.z, 1.6, () => ({ k: 'item', x: v.x, y: v.y, z: v.z, label: v.type.n + (v.seats.some(Boolean) ? '' : ' · ' + Math.round(v.fuel) + '% fuel') }));
+  if (teamSize() > 1) {
+    for (const v of SQ.vans) look(v.x, v.y + 1.3, v.z, 2.4, () => ({ k: 'item', x: v.x, y: v.y, z: v.z, label: 'Reboot van' }));
+    for (const c of SQ.cards) if (!c.carrier && c.team === ME.team) look(c.x, c.y + 0.6, c.z, 0.6, () => ({ k: 'item', x: c.x, y: c.y, z: c.z, r: 3, label: cardName(c) + "'s reboot card" }));
+  }
+  if (best) return best();
+  if (wall < 0) return null;
+  const x = cp.x + d.x * wall, z = cp.z + d.z * wall, pl = placeAt(x, z);
+  return { k: 'loc', x, y: cp.y + d.y * wall, z, label: pl ? pl.name : 'this spot' };
+}
+// the ping key: what you look at; twice quickly: danger; at your own spot ping again: take it away
+function pingNow() {
+  if (!GAME.playing || !ME || !ME.alive || ME.st === 'bus' || overlayOpen()) return;
+  const now = GAME.time, L = SQ.lastPing;
+  if (L && now - SQ.lastPingT < 0.45 && L.k !== 'danger' && SQ.pings.includes(L)) { removePing(L); SQ.lastPing = sendPing({ k: 'danger', x: L.x, y: L.y, z: L.z, label: 'Danger' }); SQ.lastPingT = -9; return; }
+  const t = pingTarget();
+  if (!t) { toast('Look at the ground or at something to ping it', 1300); return; }
+  if (t.k === 'loc') { const old = SQ.pings.find(p => p.by === ME && p.k === 'loc'); if (old && Math.hypot(old.x - t.x, old.z - t.z) < 3.5) { removePing(old); SQ.lastPing = null; return; } }
+  SQ.lastPing = sendPing(t); SQ.lastPingT = now;
+}
+// a spot clicked on the full map (right click takes yours away)
+function pingMap(x, z) {
+  if (!ME || !GAME.playing) return;
+  if (x == null) { const old = SQ.pings.find(p => p.by === ME && p.k === 'loc'); if (old) removePing(old); return; }
+  const pl = placeAt(x, z); sendPing({ k: 'loc', x, y: floorAt(x, 400, z, 0), z, label: pl ? pl.name : 'this spot' });
+}
+function updatePings() {
+  for (let i = SQ.pings.length - 1; i >= 0; i--) { const o = SQ.pings[i]; if (GAME.time - o.t0 > o.life || !o.by || !M.players.includes(o.by)) SQ.pings.splice(i, 1); }
+  // bot teammates call out the enemies they spot (one ping per bot every 10 s at most)
+  if (teamSize() > 1 && ME) for (const b of M.players) {
+    if (!b.bot || !b.alive || !mine(b) || !b.ai || b.st !== 'ground') continue;
+    const e = b.ai.enemy; if (e === b._pe) continue; b._pe = e;
+    if (!e || !e.alive || GAME.time - (SQ.botPingT.get(b) || -99) < 10) continue;
+    SQ.botPingT.set(b, GAME.time); sendPing({ k: 'enemy', x: e.x, y: e.y, z: e.z, label: 'Enemy' }, b);
+  }
+}
+// bots that follow a player go to that player's spot ping
+function botPingGoal(b) {
+  const ai = b.ai, L = ai.lead; if (!ai.followMe || !L || !L.alive) return false;
+  const p = SQ.pings.find(q => q.by === L && q.k === 'loc' && GAME.time - q.t0 < 60); if (!p) return false;
+  const d = Math.hypot(p.x - b.x, p.z - b.z); if (d < 9 || d > 700) return false;
+  if (ai.goalKind !== 'ping' || !ai.path.length || ai.pingId !== p.id) { routeTo(b, p.x + (b.id % 3 - 1) * 3, p.y, p.z + (b.id % 2 ? 3 : -3)); ai.pingId = p.id; if (L === ME && !p.said) { p.said = true; chatAdd({ sys: true, t: b.name + ': On my way!' }); } }
+  ai.goalKind = 'ping'; ai.state = 'move'; ai.goal = null; return true;
+}
+
+/* ---------- reboot vans and cards ---------- */
+MODELS.rvan = [
+  [-2.5, .4, -1.1, 1.25, 2.3, 1.1, 0x2f6fd6], [1.25, .4, -1.1, 2.5, 1.55, 1.1, 0x2f6fd6], [1.3, 1.55, -1.04, 2.15, 2.2, 1.04, 0x26303a],
+  [-2.53, 1.0, -1.13, 1.27, 1.22, 1.13, 0x2ee6a6], [2.5, .55, -.9, 2.56, .9, .9, 0xd9dde2], [-1.9, 1.35, -1.14, .4, 2.05, 1.14, 0x7fe9ff],
+  [-0.45, 2.3, -.2, .45, 2.42, .2, 0xd9dde2], [-0.08, 2.42, -.55, .08, 3.15, .55, 0xeef2f6], [-2.1, 2.3, -.8, -1.7, 2.46, .8, 0xff4f4f],
+  [1.3, 0, -1.16, 2.1, .78, -.86, 0x1c1f24], [1.3, 0, .86, 2.1, .78, 1.16, 0x1c1f24], [-2.0, 0, -1.16, -1.2, .78, -.86, 0x1c1f24], [-2.0, 0, .86, -1.2, .78, 1.16, 0x1c1f24]
+];
+MODELS.rcard = [[-.2, -.28, -.025, .2, .28, .025, 0x2ee6a6], [-.16, .04, -.032, .16, .22, .032, 0xffffff], [-.12, -.21, -.032, .12, -.13, .032, 0x1c2239]];
+function vanFits(x, z, hx, hz) {
+  const hs = [terrainH(x - hx, z - hz), terrainH(x + hx, z - hz), terrainH(x - hx, z + hz), terrainH(x + hx, z + hz), terrainH(x, z)];
+  const lo = Math.min(...hs), hi = Math.max(...hs); if (lo < 1.3 || hi - lo > 0.6) return null;
+  colQuery(x - hx - 1.6, z - hz - 1.6, x + hx + 1.6, z + hz + 1.6, _cq); if (_cq.some(c => !c.dead && c.y1 > lo + 0.12 && c.y0 < hi + 3.2)) return null;
+  const near = (L, r) => L.some(s => Math.abs(s.x - x) < r + hx && Math.abs(s.z - z) < r + hz);
+  if (near(BARREL_SPOTS, 2) || near(CHEST_SPOTS, 2) || near(LOOT_SPOTS, 1.5) || near(GASCANS, 2) || near(CAMPFIRES, 4)) return null;
+  return (lo + hi) / 2;
+}
+// one van at about ten places spread over the island (the same on every computer)
+function buildVans() {
+  if (SQ.vansBuilt) return; SQ.vansBuilt = true;
+  const rest = PLACES.filter(P => !P.minor && Math.hypot(P.x - WARM.x, P.z - WARM.z) > 300).sort((a, b) => Math.hypot(a.x, a.z) - Math.hypot(b.x, b.z)), pick = [];
+  if (rest.length) pick.push(rest.shift());
+  while (pick.length < 10 && rest.length) { let bi = 0, bd = -1; rest.forEach((P, i) => { const d = Math.min(...pick.map(q => Math.hypot(q.x - P.x, q.z - P.z))); if (d > bd) { bd = d; bi = i; } }); pick.push(rest.splice(bi, 1)[0]); }
+  const r = rng(WSEED + 917);
+  for (const P of pick) {
+    for (let k = 0; k < 80; k++) {
+      const a = r() * TAU, dd = P.r * (0.45 + r() * 0.8), x = P.x + Math.cos(a) * dd, z = P.z + Math.sin(a) * dd, rot = r() < 0.5 ? 0 : 1, hx = rot ? 1.2 : 2.6, hz = rot ? 2.6 : 1.2;
+      const y = vanFits(x, z, hx, hz); if (y == null) continue;
+      const v = { i: SQ.vans.length, x, y, z, rot, hx, hz, cd: 0, place: P.name };
+      v.sx = rot ? x + hx + 1.4 : x; v.sz = rot ? z : z + hz + 1.4; // where you stand to use it (by the side screen)
+      v.col = colAdd(x - hx, y, z - hz, x + hx, y + 2.35, z + hz, -1, 3);
+      SQ.vans.push(v); break;
+    }
+  }
+}
+function nearVan(p) { for (const v of SQ.vans) if (Math.hypot(v.x - p.x, v.z - p.z) < Math.max(v.hx, v.hz) + 2.6 && Math.abs(v.y - p.y) < 2.5) return v; return null; }
+function bestVan(p) { let best = null, bs = 1e9; for (const v of SQ.vans) { const d = Math.hypot(v.x - p.x, v.z - p.z), safe = !ST.on || Math.hypot(v.x - ST.cur.x, v.z - ST.cur.z) < ST.cur.r * 0.92; const s = d + (safe ? 0 : 1500) + Math.max(0, v.cd) * 4; if (s < bs) { bs = s; best = v; } } return best; }
+const cardName = c => { const p = byId(c.pid); return p ? (p === ME ? 'Your' : p.name) : 'A teammate'; };
+const cardsOf = p => SQ.cards.filter(c => c.carrier === p);
+function cardOnDeath(t, how) {
+  if (teamSize() < 2 || M.phase === 'warmup' || M.phase === 'idle') return;
+  for (const c of SQ.cards) if (c.carrier === t) { c.carrier = null; c.x = t.x; c.y = floorAt(t.x, t.y + 1, t.z, 0.5) + 0.05; c.z = t.z; c.t0 = M.t; } // what they carried falls where they fell
+  SQ.cards = SQ.cards.filter(c => c.pid !== t.id);
+  if (how === 'Left' || !M.players.some(o => o !== t && o.alive && o.team === t.team)) return;
+  SQ.cards.push({ pid: t.id, team: t.team, x: t.x, y: floorAt(t.x, t.y + 1, t.z, 0.5) + 0.05, z: t.z, t0: M.t, carrier: null });
+  if (t === ME) chatAdd({ sys: true, t: 'You dropped your reboot card. A teammate can take it to a reboot van.' });
+  else if (isMyTeam(t)) chatAdd({ sys: true, t: t.name + ' is out: grab their reboot card within 90 s' });
+}
+function takeCard(c, p) {
+  if (!c || c.carrier || !mine(p) || p.team !== c.team) return;
+  c.carrier = p; if (NET.live) netEv(['rc', c.pid, p.id]);
+  cardTaken(c, p);
+}
+function cardTaken(c, p) {
+  if (!isMyTeam(p)) return;
+  const who = byId(c.pid);
+  if (p === ME) { Sound.pickup(); toast('Got ' + (who ? who.name + "'s" : 'the') + ' reboot card · take it to a reboot van (blue on the map)', 2800); }
+  else chatAdd({ sys: true, t: p.name + ' picked up ' + (who === ME ? 'your' : who ? who.name + "'s" : 'a') + ' reboot card' });
+}
+function doReboot(v, p) {
+  const ids = cardsOf(p).map(c => c.pid); if (!ids.length) return;
+  if (NET.live) netEv(['rb', v.i, p.id, ids]);
+  applyReboot(v, p, ids);
+}
+function applyReboot(v, by, ids) {
+  if (!v) return; v.cd = VAN_CD;
+  const back = [];
+  ids.forEach((id, k) => { SQ.cards = SQ.cards.filter(c => c.pid !== id); const t = byId(id); if (t && !t.alive && M.players.includes(t)) { bringBack(t, v, k); back.push(t); } });
+  if (!back.length) return;
+  Sound.tone({ f: 392, f2: 784, dur: 0.5, type: 'triangle', gain: 0.16, x: v.x, y: v.y + 1, z: v.z }); Sound.tone({ f: 587, f2: 1175, dur: 0.6, type: 'triangle', gain: 0.12, x: v.x, y: v.y + 1, z: v.z, delay: 0.2 });
+  for (let i = 0; i < 30; i++) fx(v.sx, v.y + 0.5, v.sz, (Math.random() - 0.5) * 3, 2 + Math.random() * 5, (Math.random() - 0.5) * 3, 1.2, 0.18, 0.35, 0.65, 1, 2, 'add');
+  const nm = p => `<b class="${p.local ? 'me' : ''}">${esc(p.name)}</b>`;
+  feedLine(`${nm(by)} rebooted ${back.map(nm).join(', ')}`);
+}
+function vanSpot(v, k) {
+  const a = (k - 1) * 1.3, x = v.rot ? v.sx + 0.4 : v.sx + a, z = v.rot ? v.sz + a : v.sz + 0.4;
+  return [x, floorAt(x, v.y + 2, z, 0.5) + 0.05, z];
+}
+function bringBack(t, v, k) {
+  const [x, y, z] = vanSpot(v, k);
+  Object.assign(t, { alive: true, st: 'ground', x, y, z, vx: 0, vy: 0, vz: 0, ground: true, fallY: y, noFall: true, hp: 100, sh: 0, place: 0, deathT: 0, downT: 0, reviver: null, revWho: null, use: null, rl: 0, swim: false, mantle: null, emote: null, crouch: false, nb: null, rbT: 0 });
+  t.rbAt = performance.now();
+  if (mine(t)) {
+    if (!t.inv) initInv(t);
+    t.inv = [makeItem('pistol', 0), null, null, null, null]; t.sel = 1; t.hold = 'gun'; t.equipT = 0.3;
+    t.ammo.light = Math.max(t.ammo.light || 0, 48); t.mats.wood = Math.max(t.mats.wood || 0, 100);
+  }
+  if (t.bot && t.ai && mine(t)) { const ai = t.ai; ai.state = 'loot'; ai.path = []; ai.goal = null; ai.enemy = null; ai.think = 0; if (ai.bad) ai.bad.clear(); }
+  if (t.local) meBack();
+}
+// you were rebooted
+function meBack() {
+  SQ.wait = false; showWait(false);
+  $('endScreen').classList.add('hidden'); $('specBar').classList.add('hidden'); M.spec = null;
+  CAM.py = ME.y; CAM.pitch = -0.12; wantLock();
+  toast("You're back! Grab some loot and get your revenge", 2600);
+}
+// you're out: wait for a reboot if a teammate can still bring your card back, otherwise the end screen
+function canBeRebooted(p) { return teamSize() > 1 && !M.over && SQ.cards.some(c => c.pid === p.id) && M.players.some(o => o !== p && o.team === p.team && o.alive); }
+function meOut() {
+  if (!GAME.playing || !M.players.includes(ME) || ME.alive) return;
+  if (canBeRebooted(ME)) { SQ.wait = true; showWait(true); return; }
+  endScreen(false);
+}
+function giveUp() { if (!SQ.wait) return; SQ.wait = false; showWait(false); if (GAME.playing && !ME.alive) endScreen(false); }
+function showWait(on) {
+  let el = $('sqWait');
+  if (!el) { el = document.createElement('div'); el.id = 'sqWait'; el.className = 'pan hidden'; el.setAttribute('role', 'status'); el.innerHTML = '<b>Waiting for a reboot</b><span id="sqWaitTxt"></span><button class="btn ghost sm" id="sqGiveUp">Stop waiting</button>'; document.body.appendChild(el); $('sqGiveUp').onclick = () => { Sound.ui(); giveUp(); }; }
+  el.classList.toggle('hidden', !on);
+}
+function updateCards(dt) {
+  for (let i = SQ.cards.length - 1; i >= 0; i--) {
+    const c = SQ.cards[i], p = byId(c.pid);
+    if (!p || p.alive || M.over || !M.players.some(o => o.team === c.team && o.alive) || (!c.carrier && M.t - c.t0 > CARD_LIFE)) { SQ.cards.splice(i, 1); continue; }
+    if (c.carrier && (!c.carrier.alive || !M.players.includes(c.carrier))) { const q = c.carrier; c.carrier = null; c.x = q.x; c.y = floorAt(q.x, q.y + 1, q.z, 0.5) + 0.05; c.z = q.z; c.t0 = M.t; }
+    if (c.carrier) { c.x = c.carrier.x; c.y = c.carrier.y; c.z = c.carrier.z; }
+  }
+  // bots (yours, or the host's online) pick a card up when they reach it
+  for (const c of SQ.cards) {
+    if (c.carrier) continue;
+    for (const b of M.players) if (b.bot && b.alive && b.st === 'ground' && b.team === c.team && mine(b) && Math.hypot(b.x - c.x, b.z - c.z) < 1.9 && Math.abs(b.y - c.y) < 2) { takeCard(c, b); break; }
+  }
+  for (const v of SQ.vans) if (v.cd > 0) v.cd -= dt;
+  // rebooting: hold Interact at a van with a card (bots stand there with the 'reboot' state)
+  for (const p of M.players) {
+    if (!p.rbT && !SQ.cards.length) continue;
+    const ok = p.alive && mine(p) && p.st === 'ground' && !p.vehicle && SQ.cards.some(c => c.carrier === p);
+    const v = ok ? nearVan(p) : null, holding = p.local ? (held('use') || IN.useHeld) && !overlayOpen() : p.ai && p.ai.state === 'reboot';
+    if (v && v.cd <= 0 && holding) { p.rbT = (p.rbT || 0) + dt; p.slowMul = 0; if (p.rbT >= REBOOT_T) { p.rbT = 0; doReboot(v, p); } } else p.rbT = 0;
+  }
+  // waiting for your own reboot
+  if (SQ.wait) {
+    if (ME.alive) { SQ.wait = false; showWait(false); }
+    else if (!canBeRebooted(ME)) { SQ.wait = false; showWait(false); if (GAME.playing && $('endScreen').classList.contains('hidden')) endScreen(false); }
+    else { const c = SQ.cards.find(q => q.pid === ME.id), txt = c.carrier ? c.carrier.name + ' has your card and is heading to a reboot van' : 'A teammate can grab your card · ' + fmtTime(CARD_LIFE - (M.t - c.t0)) + ' left' + (M.spec && M.spec.alive ? ' · watching ' + M.spec.name : ''); setText('sqWaitTxt', txt); }
+  }
+}
+// bots look after their squad's cards: fetch a card, then take it to the best van
+function botCardGoal(b) {
+  if (!SQ.cards.length || !mine(b)) return false;
+  const ai = b.ai;
+  if (SQ.cards.some(c => c.carrier === b)) {
+    const v = bestVan(b); if (!v) return false;
+    if (Math.hypot(v.sx - b.x, v.sz - b.z) < 2.2) { ai.path = []; ai.state = 'reboot'; ai.goal = null; return true; }
+    if (ai.goalKind !== 'van' || !ai.path.length) routeTo(b, v.sx, v.y, v.sz);
+    ai.goalKind = 'van'; ai.state = 'move'; ai.goal = null; return true;
+  }
+  let best = null, bd = 240;
+  for (const c of SQ.cards) { if (c.carrier || c.team !== b.team) continue; const d = Math.hypot(c.x - b.x, c.z - b.z); if (d < bd && CARD_LIFE - (M.t - c.t0) > d / 7) { bd = d; best = c; } }
+  if (!best) return false;
+  if (ai.goalKind !== 'card' || !ai.path.length) routeTo(b, best.x, best.y, best.z);
+  ai.goalKind = 'card'; ai.state = 'move'; ai.goal = null; return true;
+}
+function squadInteract(p, ex, ez) {
+  if (teamSize() < 2) return null;
+  if (cardsOf(p).length) { const v = nearVan(p); if (v) return { k: 'van', o: v, s: -1 }; }
+  let best = null;
+  for (const c of SQ.cards) { if (c.carrier || c.team !== p.team) continue; const d = Math.hypot(c.x - ex, c.z - ez); if (d < 2.2 && Math.abs(c.y - p.y) < 1.8 && (!best || d < best.s)) best = { k: 'card', o: c, s: d - 0.5 }; }
+  return best;
+}
+function squadPrompt(t, E) {
+  if (t.k === 'card') return E + 'Pick up ' + esc(cardName(t.o) === 'Your' ? 'your' : cardName(t.o) + "'s") + ' reboot card';
+  const v = t.o, names = cardsOf(ME).map(c => cardName(c)).join(', ');
+  return v.cd > 0 ? 'Reboot van recharging · ' + Math.ceil(v.cd) + 's' : E + 'Hold to reboot ' + esc(names) + ' <small class="muted">· ' + REBOOT_T + ' s</small>';
+}
+
+/* ---------- drawing: vans, cards, markers in the world, the maps and the compass ---------- */
+function drawSquadPools() {
+  if (!GAME.playing || !SQ.vans.length || !POOL.rvan) return;
+  const cx = camera.position.x, cz = camera.position.z, t = GAME.time;
+  for (const v of SQ.vans) { const dx = v.x - cx, dz = v.z - cz; if (dx * dx + dz * dz > 260 * 260) continue; _he.set(0, v.rot * Math.PI / 2, 0); _hq.setFromEuler(_he); _hv.set(v.x, v.y, v.z); _hs.set(1, 1, 1); _hm.compose(_hv, _hq, _hs); poolAdd('rvan', _hm); }
+  for (const c of SQ.cards) {
+    const dx = c.x - cx, dz = c.z - cz; if (dx * dx + dz * dz > 120 * 120) continue;
+    if (c.carrier && (c.carrier === ME && CAM.fp > 0.5)) continue;
+    _he.set(0, t * 2 + c.pid, 0); _hq.setFromEuler(_he); _hv.set(c.x, c.y + (c.carrier ? 2.5 : 0.75 + Math.sin(t * 2.5) * 0.08), c.z); _hs.set(1.6, 1.6, 1.6); _hm.compose(_hv, _hq, _hs); poolAdd('rcard', _hm);
+    if (!c.carrier && beamPool.n < beamPool.max) { _hm.makeTranslation(c.x, c.y, c.z); beamPool.m.setMatrixAt(beamPool.n, _hm); _hc.set(0.2, 0.9, 0.65).multiplyScalar(0.8); beamPool.m.setColorAt(beamPool.n, _hc); beamPool.n++; }
+  }
+}
+const _pv = new THREE.Vector3(), _mk = [];
+function squadMarkers() {
+  const list = _mk; list.length = 0;
+  if (GAME.playing && ME && !HUD.bigOn && !MENU.paused) {
+    for (const o of SQ.pings) if (isMyTeam(o.by)) list.push({ o, x: o.x, y: o.y + (o.k === 'enemy' ? 2.3 : o.k === 'item' ? 1.0 : 1.4), z: o.z, col: pingCol(o.by, o.k), ic: o.k, lb: o.k === 'enemy' ? (o.by === ME ? 'Enemy' : o.by.name + ': enemy') : o.k === 'danger' ? 'Danger' : o.label, clamp: o.k !== 'item', fresh: GAME.time - o.t0 < 0.6 });
+    if (teamSize() > 1) {
+      for (const c of SQ.cards) if (!c.carrier && c.team === ME.team) list.push({ x: c.x, y: c.y + 1.4, z: c.z, col: '#2ee6a6', ic: 'card', lb: (cardName(c) === 'Your' ? 'Your card' : cardName(c) + "'s card") + ' · ' + fmtTime(CARD_LIFE - (M.t - c.t0)), clamp: true });
+      if (ME.alive && cardsOf(ME).length) { const v = bestVan(ME); if (v) list.push({ x: v.x, y: v.y + 3.6, z: v.z, col: VAN_COL, ic: 'van', lb: v.cd > 0 ? 'Reboot van · ' + Math.ceil(v.cd) + 's' : 'Reboot van', clamp: true }); }
+    }
+  }
+  while (SQ.tags.length < list.length) { const d = document.createElement('div'); d.className = 'sqp'; d.innerHTML = '<i></i><b></b><span></span>'; document.body.appendChild(d); SQ.tags.push(d); }
+  const W = innerWidth, H = innerHeight, mX = 40, mT = 70, mB = 110, t = camTarget ? camTarget() : ME;
+  SQ.tags.forEach((d, i) => {
+    const m = list[i]; if (!m) { if (d.style.display !== 'none') d.style.display = 'none'; return; }
+    _pv.set(m.x, m.y, m.z).project(camera);
+    let sx = (_pv.x * 0.5 + 0.5) * W, sy = (-_pv.y * 0.5 + 0.5) * H; const behind = _pv.z > 1;
+    if (behind) { sx = W - sx; sy = H - sy; }
+    const off = behind || sx < mX || sx > W - mX || sy < mT || sy > H - mB;
+    if (off && !m.clamp) { if (d.style.display !== 'none') d.style.display = 'none'; return; }
+    if (off) { let dx = sx - W / 2, dy = sy - H / 2; if (!dx && !dy) dy = 1; const k = Math.min((W / 2 - mX) / Math.max(1e-3, Math.abs(dx)), (dy > 0 ? H / 2 - mB : H / 2 - mT) / Math.max(1e-3, Math.abs(dy))); if (behind || k < 1) { sx = W / 2 + dx * k; sy = H / 2 + dy * k; } }
+    d.style.display = ''; d.style.transform = `translate(${sx.toFixed(0)}px,${sy.toFixed(0)}px) translate(-50%,-100%)`;
+    const dist = Math.round(Math.hypot(m.x - t.x, m.z - t.z)), key = m.col + m.ic + m.lb + '|' + dist + (off ? 'e' : '');
+    if (d._k !== key) {
+      d._k = key; d.style.setProperty('--pc', m.col); d.classList.toggle('edge', off); d.classList.toggle('bad', m.ic === 'enemy' || m.ic === 'danger');
+      if (d._ic !== m.ic) { d._ic = m.ic; d.firstChild.innerHTML = PICON[m.ic] || PICON.item; }
+      d.children[1].textContent = m.lb; d.children[2].textContent = dist + ' m';
+    }
+    if (m.fresh && !d._fresh) { d._fresh = true; d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop'); } else if (!m.fresh) d._fresh = false;
+  });
+}
+function drawSquadOnMap(c, X, Y, S, big) {
+  if (!ME) return;
+  const team = teamSize() > 1, s = big ? 1.25 : 1;
+  if (team) for (const v of SQ.vans) {
+    const x = X(v.x), y = Y(v.z), r = 7 * s; if (!big && (x < -10 || y < -10 || x > c.canvas.width + 10 || y > c.canvas.height + 10)) continue;
+    c.fillStyle = v.cd > 0 ? '#5a6a85' : VAN_COL; c.strokeStyle = '#0b1430'; c.lineWidth = 2; c.beginPath(); c.roundRect ? c.roundRect(x - r, y - r, r * 2, r * 2, 3) : c.rect(x - r, y - r, r * 2, r * 2); c.fill(); c.stroke();
+    c.strokeStyle = '#fff'; c.lineWidth = 1.6 * s; c.beginPath(); c.arc(x, y, r * 0.5, -0.3, Math.PI * 1.45); c.stroke();
+  }
+  if (team) for (const k of SQ.cards) { if (k.carrier || k.team !== ME.team) continue; const x = X(k.x), y = Y(k.z); c.fillStyle = '#2ee6a6'; c.strokeStyle = '#0b1430'; c.lineWidth = 2; c.fillRect(x - 4 * s, y - 6 * s, 8 * s, 12 * s); c.strokeRect(x - 4 * s, y - 6 * s, 8 * s, 12 * s); }
+  for (const o of SQ.pings) {
+    if (!isMyTeam(o.by)) continue;
+    const x = X(o.x), y = Y(o.z), col = pingCol(o.by, o.k), age = GAME.time - o.t0;
+    if (age < 1.5) { c.strokeStyle = col; c.globalAlpha = 1 - age / 1.5; c.lineWidth = 2; c.beginPath(); c.arc(x, y, 6 + age * 18 * s, 0, TAU); c.stroke(); c.globalAlpha = 1; }
+    c.fillStyle = col; c.strokeStyle = '#1c1f24'; c.lineWidth = 2; c.beginPath();
+    if (o.k === 'loc') { c.moveTo(x, y); c.lineTo(x - 6 * s, y - 14 * s); c.arc(x, y - 16 * s, 6 * s, Math.PI, 0); c.lineTo(x, y); }
+    else if (o.k === 'item') { c.moveTo(x, y - 6 * s); c.lineTo(x + 6 * s, y); c.lineTo(x, y + 6 * s); c.lineTo(x - 6 * s, y); c.closePath(); }
+    else { c.moveTo(x, y - 8 * s); c.lineTo(x + 7 * s, y + 5 * s); c.lineTo(x - 7 * s, y + 5 * s); c.closePath(); }
+    c.fill(); c.stroke();
+  }
+}
+function squadCompass(mark) {
+  for (const o of SQ.pings) if (isMyTeam(o.by) && o.k !== 'item') mark(o.x, o.z, pingCol(o.by, o.k));
+  if (ME && ME.alive && cardsOf(ME).length) { const v = bestVan(ME); if (v) mark(v.x, v.z, VAN_COL); }
+}
+function squadMateNote(o) { // the line next to a teammate who is out
+  const c = SQ.cards.find(k => k.pid === o.id); if (!c) return ' · out';
+  return c.carrier ? ' · card with ' + (c.carrier === ME ? 'you' : c.carrier.name) : ' · card ' + fmtTime(CARD_LIFE - (M.t - c.t0));
+}
+function updateCarryTag() {
+  let el = $('sqCarry');
+  if (!el) { el = document.createElement('div'); el.id = 'sqCarry'; el.className = 'pan hidden'; document.body.appendChild(el); }
+  const L = GAME.playing && ME && ME.alive ? cardsOf(ME) : [], on = L.length > 0;
+  if (on) { const v = bestVan(ME), txt = 'Carrying ' + L.map(c => cardName(c) + "'s").join(' and ') + ' reboot card' + (v ? ' · van ' + Math.round(Math.hypot(v.x - ME.x, v.z - ME.z)) + ' m' : ''); if (el._t !== txt) { el._t = txt; el.textContent = txt; } }
+  if (el._on !== on) { el._on = on; el.classList.toggle('hidden', !on); }
+}
+
+/* ---------- each match and each frame ---------- */
+function squadMatchReset() {
+  SQ.pings.length = 0; SQ.cards.length = 0; SQ.lastPing = null; SQ.wait = false; SQ.botPingT.clear(); showWait(false);
+  for (const v of SQ.vans) v.cd = 0;
+}
+function updateSquad(dt) {
+  updatePings(); updateCards(dt); squadMarkers(); updateCarryTag();
+}
+// online: pings ('pn'), a card picked up ('rc') and a reboot ('rb')
+function squadNet(e) {
+  const k = e[0];
+  if (k === 'pn') {
+    const by = byId(e[1]); if (!by || mine(by)) return;
+    if (e[2] === 'x') { const o = SQ.pings.find(q => q.by === by && q.id === e[3]); if (o) removePing(o, true); return; }
+    if (!PING_LIFE[e[2]]) return;
+    addPing({ by, k: e[2], x: +e[3] || 0, y: +e[4] || 0, z: +e[5] || 0, label: e[6], id: e[7], r: e[8] | 0 });
+  } else if (k === 'rc') {
+    const c = SQ.cards.find(q => q.pid === e[1]), p = byId(e[2]); if (!c || !p || mine(p)) return;
+    c.carrier = p; cardTaken(c, p);
+  } else if (k === 'rb') {
+    const v = SQ.vans[e[1] | 0], by = byId(e[2]); if (!v || !by || !Array.isArray(e[3])) return;
+    applyReboot(v, by, e[3].map(Number));
+  }
+}
+// anything left on screen once the match is over
+setInterval(() => {
+  if (!GAME.playing) { for (const d of SQ.tags) if (d.style.display !== 'none') d.style.display = 'none'; if (SQ.wait) { SQ.wait = false; } showWait(false); const c = $('sqCarry'); if (c && c._on) { c._on = false; c.classList.add('hidden'); } }
+  // Beta 0.17: messages show in the lobby too (the toast lives outside the match HUD now)
+  if (!MENU.open) { const n = $('sqNote'); if (n && n.classList.contains('on')) n.classList.remove('on'); }
+  if (!GAME.playing && HUD.toastT > 0) { HUD.toastT -= 0.25; if (HUD.toastT <= 0) $('toast').classList.add('hidden'); }
+}, 250);
+
+/* ---------- controller: the emote wheel on D-pad right, picked with the right stick ---------- */
+function ewStick(x, y) { if (!EW.open || !EW.list.length || Math.hypot(x, y) < 0.5) return; let a = Math.atan2(y, x) + Math.PI / 2; a = ((a % TAU) + TAU) % TAU; const k = Math.round(a / TAU * EW.list.length) % EW.list.length; if (k !== EW.sel) { ewSelect(k); Sound.ui(); } }
+
+/* ==========================================================================
+   Ranked (Beta 0.17): Bronze, Silver, Gold, Platinum and Diamond (each with
+   tiers I, II and III, 100 points each), then Elite and Champion. A ranked
+   match costs a few points to enter (more in higher divisions) and pays for
+   placement and eliminations. You never drop out of a division you reached
+   this season. Every season (each week, from Monday 8:30 am Sydney time)
+   everyone starts again at Bronze I; last season's division is kept.
+   Ranked bots get tougher as you climb.
+   ========================================================================== */
+const RANKS = [['Bronze', '#c27c46'], ['Silver', '#aeb9c4'], ['Gold', '#f3c22b'], ['Platinum', '#38d3c0'], ['Diamond', '#5aa8ff'], ['Elite', '#b25cff'], ['Champion', '#ff4f6a']];
+const RANK_COST = [0, 10, 20, 30, 40, 55, 70];
+function rankOf(rp) {
+  rp = Math.max(0, rp | 0);
+  if (rp >= 2000) return { d: 6, tier: 0, name: 'Champion', col: RANKS[6][1], floor: 2000, lo: 2000, next: null };
+  if (rp >= 1500) return { d: 5, tier: 0, name: 'Elite', col: RANKS[5][1], floor: 1500, lo: 1500, next: 2000 };
+  const d = Math.floor(rp / 300), tier = Math.floor(rp % 300 / 100) + 1;
+  return { d, tier, name: RANKS[d][0] + ' ' + ['I', 'II', 'III'][tier - 1], col: RANKS[d][1], floor: d * 300, lo: d * 300 + (tier - 1) * 100, next: d * 300 + tier * 100 };
+}
+function rankSeason(t) {
+  t = t == null ? nowMs() : t; const idx = Math.max(0, Math.floor((t - SEASON1_START) / WEEK) + 1);
+  return { idx, end: SEASON1_START + idx * WEEK, name: idx === 0 ? 'Pre-season' : idx <= SEASONS.length ? 'Season ' + idx + ' · ' + SEASONS[idx - 1].name : 'Season ' + idx };
+}
+function rankedState() {
+  const s = rankSeason().idx; let R = SAVE.ranked;
+  if (!R || R.s !== s) { const prev = R && R.m ? { s: R.s, rp: R.rp, best: R.best } : (R && R.prev) || null; R = SAVE.ranked = { s, rp: 0, best: 0, m: 0, w: 0, top10: 0, prev }; saveGame(); }
+  return R;
+}
+const rankedOn = () => !!MENU.ranked && MENU.mode !== 'practice';
+function rankDiff() { const d = rankOf(rankedState().rp).d; return d <= 1 ? 'easy' : d <= 3 ? 'normal' : 'hard'; }
+function rankBadge(R, px) {
+  const t = R.tier ? ['I', 'II', 'III'][R.tier - 1] : R.d === 6 ? 'C' : 'E';
+  return `<svg class="rkb" viewBox="0 0 40 46" width="${px}" height="${Math.round(px * 1.15)}" aria-hidden="true"><path d="M20 2l16 6v14c0 11-7 18-16 22C11 40 4 33 4 22V8z" fill="${R.col}" stroke="#0b1430" stroke-width="2.5"/><path d="M20 7l11 4v11c0 8-5 13-11 16-6-3-11-8-11-16V11z" fill="rgba(255,255,255,.2)"/>${R.d >= 5 ? '<path d="M12 9l4 4 4-6 4 6 4-4-1 6H13z" fill="#fff" opacity=".85"/>' : ''}<text x="20" y="${R.d >= 5 ? 31 : 28}" text-anchor="middle" font-size="13" font-weight="900" font-family="Barlow Condensed,Arial" fill="#fff" stroke="#0b1430" stroke-width=".8">${t}</text></svg>`;
+}
+// after a ranked match (called from recordMatch)
+function rankedMatch(place, kills, won) {
+  const R = rankedState(), before = rankOf(R.rp);
+  const pl = won ? 100 : place <= 3 ? 60 : place <= 5 ? 45 : place <= 10 ? 30 : place <= 15 ? 20 : place <= 25 ? 10 : 0, el = Math.min(8, kills) * 10, cost = RANK_COST[before.d];
+  const rp = Math.max(before.floor, R.rp + pl + el - cost), delta = rp - R.rp;
+  R.rp = rp; R.m++; if (won) R.w++; if (place <= 10) R.top10++; R.best = Math.max(R.best, rp);
+  const after = rankOf(rp);
+  return { delta, rp, before, after, up: after.lo > before.lo, pl, el, cost };
+}
+function rankedPanel() {
+  const R = rankedState(), K = rankOf(R.rp), S = rankSeason(), span = K.next ? K.next - K.lo : 1, have = K.next ? R.rp - K.lo : 1;
+  const prev = R.prev ? rankOf(R.prev.best || R.prev.rp) : null;
+  return `<div class="sqrank"><div class="sqrb">${rankBadge(K, 64)}</div><div class="sqri"><small>RANKED · ${esc(S.name.toUpperCase())}</small><b style="color:${K.col}">${K.name}</b>
+    <i class="lpb"><i style="width:${(have / span * 100).toFixed(1)}%;background:${K.col}"></i></i><span>${R.rp} RP${K.next ? ' · ' + (K.next - R.rp) + ' to ' + rankOf(K.next).name : ' · the top of the ladder'}</span>
+    <p class="lsub">${R.m} ranked match${R.m === 1 ? '' : 'es'} · ${R.w} win${R.w === 1 ? '' : 's'} · best this season ${rankOf(R.best).name}${prev ? ' · last season ' + prev.name : ''}. Resets in <em class="lcd" data-cd="${S.end}"></em>.</p></div>
+    <div class="sqrp"><b>POINTS</b><span>Win +100 · top 3 +60 · top 5 +45 · top 10 +30 · top 15 +20 · top 25 +10</span><span>Each elimination +10 (up to 8)</span><span>Entry: ${RANK_COST.map((c, i) => RANKS[i][0] + ' ' + c).join(' · ')}</span><span>You never drop out of a division once you reach it.</span></div></div>`;
+}
+
+/* ==========================================================================
+   Item Shop wish list (Beta 0.17). Coins only (earned by playing). The shop
+   is the same for everyone each day, so the game can work out when an item
+   is coming back.
+   ========================================================================== */
+const shopDay = t => Math.floor(((t == null ? nowMs() : t) - SEASON1_START) / DAY);
+const SHOPC = new Map();
+function shopForDay(day) { let S = SHOPC.get(day); if (!S) { S = shopToday(SEASON1_START + day * DAY + 1000); SHOPC.set(day, S); if (SHOPC.size > 80) SHOPC.delete(SHOPC.keys().next().value); } return S; }
+function wishList() { if (!Array.isArray(SAVE.wish)) SAVE.wish = []; return SAVE.wish; }
+const wishKey = (cat, i) => cat + ':' + i;
+const onWish = (cat, i) => wishList().includes(wishKey(cat, i));
+function wishItem(k) { const [cat, s] = String(k).split(':'), i = +s, it = cat === 'bundle' ? BUNDLES[i] : CATS[cat] && CATS[cat][i]; return it ? { cat, i, it, k } : null; }
+const wishOwned = w => w.cat === 'bundle' ? bundleOwned(w.it) : owns(w.cat, w.i);
+function wishTarget(cat, i) { // the shop entry for a locker item: itself, or the bundle it comes in
+  const it = CATS[cat] && CATS[cat][i]; if (!it) return null;
+  if (it.from === 'shop') return [cat, i];
+  if (it.from === 'bundle') { const b = BUNDLES.findIndex(B => B.items.some(([c, k]) => c === cat && k === i)); return b >= 0 ? ['bundle', b] : null; }
+  return null;
+}
+function nextInShop(cat, i) { const d0 = shopDay(); for (let k = 0; k <= 60; k++) if (shopForDay(d0 + k).all.some(x => x.cat === cat && x.i === i)) return k; return -1; }
+const dayStart = k => SEASON1_START + (shopDay() + k) * DAY;
+function wishToggle(cat, i) {
+  const L = wishList(), k = wishKey(cat, i), n = L.indexOf(k);
+  if (n >= 0) L.splice(n, 1); else { if (L.length >= 24) { toast('Your wish list is full (24 items)', 1600); return; } L.push(k); }
+  saveGame(); toast(n >= 0 ? 'Taken off your wish list' : "On your wish list: we'll tell you when it's in the shop", 2000); wishCheck(true, true);
+}
+function wishPrune() { const L = wishList(); for (let i = L.length - 1; i >= 0; i--) { const w = wishItem(L[i]); if (!w || wishOwned(w)) L.splice(i, 1); } }
+function wishNext(cat, i) {
+  const k = nextInShop(cat, i);
+  if (k === 0) return 'In the Item Shop now, until ' + new Date(dayStart(1)).toLocaleString([], { weekday: 'long', hour: 'numeric', minute: '2-digit' }) + '.';
+  if (k < 0) return "Not due back in the next 60 days. Keep it on your wish list and you'll be told when it's back.";
+  return 'Next in the Item Shop on ' + new Date(dayStart(k)).toLocaleString([], { weekday: 'long', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + ' (in ' + fmtDur(dayStart(k) - nowMs()) + ').';
+}
+function wishButton(cat, i) { return `<button class="lyel lgrey sqwbtn" id="sqWishBtn" aria-pressed="${onWish(cat, i)}">${onWish(cat, i) ? '♥ On your wish list' : '♡ Add to wish list'}</button>`; }
+function bindWishButton(cat, i) { const b = $('sqWishBtn'); if (b) b.onclick = e => { e.stopPropagation(); Sound.ui(); wishToggle(cat, i); b.outerHTML = wishButton(cat, i); bindWishButton(cat, i); if (MENU.tab === 'shop') drawPage(); }; }
+function wishModal(cat, i) {
+  const bun = cat === 'bundle', it = bun ? BUNDLES[i] : CATS[cat][i];
+  modal('WISH LIST', `<div class="lbuy"><i style="background:${cat === 'loading' ? `linear-gradient(160deg,${it.a},${it.b})` : swatch(cat, it) + ','}radial-gradient(circle at 50% 30%,${RAR_COL[it.r || 0]}aa,#0b1430 75%)"></i><b>${esc(it.n)}</b><small>${bun ? 'Item Shop bundle' : RAR_NAME[it.r || 0] + ' ' + CAT_NAME[cat]}</small><p>${esc(wishNext(cat, i))}</p>${wishButton(cat, i)}</div>`);
+  bindWishButton(cat, i);
+}
+function wishOpen(k) { const w = wishItem(k); if (!w) return; if (shopToday().all.some(x => x.cat === w.cat && x.i === w.i) && !wishOwned(w)) confirmBuy(w.cat, w.i); else wishModal(w.cat, w.i); }
+function wishSection() {
+  const L = wishList().map(wishItem).filter(Boolean);
+  if (!L.length) return '<div class="lsec sqwish"><div class="lph sm">WISH LIST</div><p class="lsub">Nothing here yet. Click an item (or a locked one in your locker) and press Add to wish list: the lobby tells you when it is in the shop.</p></div>';
+  return `<div class="lsec sqwish"><div class="lph sm">WISH LIST · ${L.length}</div><div class="sqwg">${L.map(w => {
+    const own = wishOwned(w), k = own ? -2 : nextInShop(w.cat, w.i);
+    const st = own ? 'Owned' : k === 0 ? 'In the shop now!' : k > 0 ? `Back in <em class="lcd" data-cd="${dayStart(k)}"></em>` : 'Not due soon';
+    return `<button class="sqwi ${k === 0 ? 'now' : ''}" data-wish="${w.k}" style="--rc:${RAR_COL[w.it.r || 0]}"><i style="background:${w.cat === 'loading' ? `linear-gradient(160deg,${w.it.a},${w.it.b})` : swatch(w.cat, w.it)},linear-gradient(160deg,${RAR_COL[w.it.r || 0]}55,#0b1430)"></i><span>${esc(w.it.n)}</span><small>${st}</small></button>`;
+  }).join('')}</div></div>`;
+}
+// the alert: once a day for each wished item that's in today's shop
+function wishCheck(force, quiet) {
+  const day = shopDay(); if (!force && SQ.wishDay === day) return; SQ.wishDay = day;
+  wishPrune();
+  const S = shopToday(), here = wishList().map(wishItem).filter(w => w && !wishOwned(w) && S.all.some(x => x.cat === w.cat && x.i === w.i));
+  const seen = SAVE.wishSeen = SAVE.wishSeen && typeof SAVE.wishSeen === 'object' ? SAVE.wishSeen : {};
+  for (const k in seen) if (!wishList().includes(k)) delete seen[k];
+  const fresh = here.filter(w => seen[w.k] !== day);
+  if (fresh.length) {
+    fresh.forEach(w => seen[w.k] = day); saveGame();
+    if (!quiet) {
+      const names = fresh.map(w => w.it.n), txt = (names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' are' : names[0] + ' is') + ' in the Item Shop today!';
+      lobNote('♥ From your wish list: ' + txt, 'Go to the shop', () => { MENU.tab = 'shop'; drawLobby(); });
+      if (typeof lobChat === 'function') lobChat('Wish list: ' + txt);
+      Sound.tone({ f: 659, f2: 1318, dur: 0.35, type: 'triangle', gain: 0.14 }); Sound.tone({ f: 880, f2: 1760, dur: 0.4, type: 'triangle', gain: 0.12, delay: 0.15 });
+    }
+  }
+  const tab = document.querySelector('#lobby .ltab[data-tab=shop]');
+  if (tab) { let em = tab.querySelector('.sqwb'); if (here.length && !em) { em = document.createElement('em'); em.className = 'sqwb'; em.textContent = '♥'; em.title = 'Something on your wish list is in the shop'; tab.appendChild(em); } else if (!here.length && em) em.remove(); }
+}
+function lobNote(text, btn, fn) {
+  let el = $('sqNote');
+  if (!el) { el = document.createElement('div'); el.id = 'sqNote'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+  el.innerHTML = `<span>${esc(text)}</span>${btn ? `<button class="lyel sm">${esc(btn)}</button>` : ''}<button class="sqnx" aria-label="Close">✕</button>`;
+  el.classList.add('on'); clearTimeout(SQ.note); SQ.note = setTimeout(() => el.classList.remove('on'), 9000);
+  const b = el.querySelector('.lyel'); if (b) b.onclick = () => { Sound.ui(); el.classList.remove('on'); fn && fn(); };
+  el.querySelector('.sqnx').onclick = () => el.classList.remove('on');
+}
+setInterval(() => { if (MENU.open && GAME.ready) wishCheck(false); }, 1000);
+
+/* ---------- start-up ---------- */
+function initSquad() {
+  buildVans();
+  document.body.appendChild($('toast')); // the toast works in the lobby as well as in a match
+  const tb = document.createElement('button'); tb.className = 'tb'; tb.id = 'tPing'; tb.textContent = 'PING'; tb.setAttribute('aria-label', 'Ping');
+  $('touch').appendChild(tb); tb.addEventListener('pointerdown', e => { Sound.init(); pingNow(); e.preventDefault(); e.stopPropagation(); });
+  const st = document.createElement('style'); st.textContent = `
+#toast{position:fixed;z-index:60;font-family:var(--lf)}
+.sqp{position:fixed;left:0;top:0;z-index:4;pointer-events:none;display:flex;flex-direction:column;align-items:center;font:800 12px/1.1 var(--lf,sans-serif);color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000;white-space:nowrap}
+.sqp i{width:26px;height:26px;border-radius:50%;background:var(--pc);border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 12px var(--pc)}
+.sqp.bad i{border-radius:6px}.sqp i svg{width:15px;height:15px;display:block}
+.sqp b{margin-top:3px;background:rgba(9,16,23,.75);padding:1px 7px;border-radius:6px;color:var(--pc);max-width:190px;overflow:hidden;text-overflow:ellipsis;text-shadow:none}
+.sqp span{font-size:11px;margin-top:1px}.sqp.edge b{display:none}.sqp.edge i{width:22px;height:22px;opacity:.9}
+.sqp.pop i{animation:sqpop .5s ease-out}@keyframes sqpop{0%{transform:scale(2.2);opacity:.2}100%{transform:scale(1);opacity:1}}
+#sqWait{position:fixed;left:50%;top:calc(78px + env(safe-area-inset-top));transform:translateX(-50%);z-index:7;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 22px;font-family:var(--lf);text-align:center;max-width:92vw}
+#sqWait b{font-size:22px;color:#2ee6a6}#sqWait span{font-size:15px;font-weight:700}
+#sqCarry{position:fixed;left:50%;bottom:calc(196px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:5;padding:5px 14px;font:800 14px var(--lf,sans-serif);color:#2ee6a6;pointer-events:none;white-space:nowrap}
+#tPing{right:calc(246px + env(safe-area-inset-right));top:calc(300px + env(safe-area-inset-top));width:50px;height:50px;font-size:10px}
+.sqrank{display:grid;grid-template-columns:auto 1fr;gap:calc(2*var(--u)) calc(4*var(--u));align-items:center;background:rgba(10,18,46,.6);border:1px solid rgba(255,255,255,.12);border-radius:calc(2*var(--u));padding:calc(3*var(--u));margin:calc(2*var(--u)) 0}
+.sqri small{display:block;font-size:calc(4*var(--u));color:#aab4c8;font-weight:800;letter-spacing:.5px}.sqri b{display:block;font-size:calc(10*var(--u));font-weight:900;line-height:1}
+.sqri .lpb{position:relative;left:auto;top:auto;width:100%;max-width:calc(160*var(--u));height:calc(3*var(--u));margin:calc(1.5*var(--u)) 0}.sqri span{font-size:calc(4.4*var(--u));font-weight:700}.sqri .lsub{margin:calc(1*var(--u)) 0 0}
+.sqrp{grid-column:1/-1;display:flex;flex-direction:column;gap:calc(.6*var(--u));font-size:calc(4*var(--u));color:#cfd8ea}.sqrp b{color:#f3ec2b;font-size:calc(4.4*var(--u))}
+.lmode b .rkb{height:1em;width:auto;vertical-align:-.12em;margin-right:.2em}
+.lmodes.sqrk{flex-direction:row;padding-top:0}.lmodes.sqrk button{flex:1}.sqrkh{padding:0 calc(3*var(--u));font-size:calc(3.6*var(--u));color:#c9d4e8;margin:0}
+.sqwish .lsub{margin:4px 0}.sqwg{display:flex;flex-wrap:wrap;gap:calc(2*var(--u))}
+.sqwi{position:relative;width:calc(34*var(--u));background:rgba(10,18,46,.85);border:2px solid var(--rc);border-radius:calc(2*var(--u));padding:calc(1.5*var(--u));display:flex;flex-direction:column;align-items:center;color:#fff;font-family:var(--lf)}
+.sqwi i{width:100%;height:calc(16*var(--u));border-radius:calc(1.5*var(--u));display:block}.sqwi span{font-size:calc(3.6*var(--u));font-weight:800;margin-top:calc(1*var(--u));text-align:center}
+.sqwi small{font-size:calc(3*var(--u));color:#aab4c8;font-weight:700}.sqwi.now{box-shadow:0 0 0 2px #f3ec2b,0 0 16px rgba(243,236,43,.5)}.sqwi.now small{color:#f3ec2b}
+.sqwi small em{font-style:normal}
+.ltab .sqwb{position:absolute;right:2px;top:-6px;font-style:normal;color:#ff4f8a;font-size:12px;text-shadow:0 0 4px #000}
+.sqwbtn{margin-top:8px}
+#sqNote{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translate(-50%,20px);z-index:55;display:flex;align-items:center;gap:12px;padding:10px 14px 10px 18px;max-width:94vw;background:rgba(10,18,46,.96);border:2px solid #ff4f8a;border-radius:12px;font:800 15px var(--lf,sans-serif);color:#fff;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
+#sqNote.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}#sqNote .sqnx{color:#aab4c8;font-size:16px;padding:2px 6px}
+@media (max-width:700px){.sqp b{max-width:110px}#sqWait b{font-size:18px}#sqCarry{font-size:12px;bottom:calc(170px + env(safe-area-inset-bottom))}}`;
+  document.head.appendChild(st);
+}
 </script>
 <script id="sd-90-main">
 'use strict';
