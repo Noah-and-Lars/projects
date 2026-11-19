@@ -1,6 +1,6 @@
 // Profile tags (the owner, 2026-11-12): a small label next to a player's name on their Players and Social profile.
 // Keys are lower-case usernames. Pages show it with profileTag(name).
-window.ARCADE_TAGS = { samlad: 'Tester', cjrey28: 'Tester' };
+window.ARCADE_TAGS = { samlad: 'Tester', cjrey28: 'Tester', misty: 'Moderator' };
 window.profileTag = function (name) {
   var t = window.ARCADE_TAGS[String(name || '').toLowerCase()];
   if (!t) return null;
