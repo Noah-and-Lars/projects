@@ -934,6 +934,17 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
   or the earliest diver left; 8 divers max. Hosts list open lobbies in 'kd-lobbies' (presence keyed by code).
   Versus dives count like practice (no leaderboard, no daily save). `window.KD_RT_SRC` points rt.js elsewhere for
   tests (with `ARCADE_RT_URL`); two players test as two origins (127.0.0.1 and localhost) with their own accounts.
+  1.6 (2026-11-18): every list was checked for missing answers (about 30,000 entries and 6,000 aliases added, clearly
+  misplaced ones moved between bands) and 547 prompts were added: 360 new lists, then cut prompts. **Every list now has an
+  entry in `KD_DATA.cuts`** (its bands); new answers go at the end of the band they belong to, keeping the cuts in step.
+  Word-shape filters are checked per name (`answersFor`): an entry counts if any of its names fits and only the fitting
+  names are accepted (Myanmar/Burma counts as "Burma" for B); write them with `lead(a)` (first letter, skipping "The").
+  Named-set prompts use `inSet(named(...))` (`whole: true`: the entry is checked by its main name, all names accepted).
+  A filtered prompt scores by `cutFor(P)`: the full list's cuts counted over its answers, with at least its first 15%
+  common. `STAGES` holds [first prompt index, first UTC day] for each batch (72 from 14 Nov, 272 from 20 Nov) so earlier
+  days keep their prompts: new prompts always go at the END of `P` with a new stage. Matching: `keysOf` also keys a
+  name without a bracketed note; ı/ø/æ/œ/ß/ł/đ/þ are mapped to plain letters; a 1-letter typo is forgiven from 4
+  letters; a trailing "s" is tried before "es". A literal slash inside a name is written with ⁄ (U+2044), e.g. AC⁄DC.
 
 - `intro.js` (2026-11-08): the "Made by The Arcade" intro, a 2.2 s canvas cinematic drawn inside `#stage` on
   play.html, so it plays where the game goes. The game's iframe only gets its `src` when `ArcadeIntro.load` resolves

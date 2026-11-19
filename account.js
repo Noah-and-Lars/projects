@@ -638,6 +638,9 @@
   // the owner's tools: open the site with ?admin (admin password), or sign in as an admin account (no password).
   // Look up, ban, unban, rename or delete any account.
   var ADMIN_ACCOUNTS = ['noah', 'lars', 'claude'];
+  // Post moderators (owner, 2026-11-19): can only approve/deny Social posts, no other admin tools.
+  var MOD_ACCOUNTS = ['misty'];
+  function isMod() { return !!(acct && acct.token && MOD_ACCOUNTS.indexOf(String(acct.name).toLowerCase()) >= 0); }
   function isAdmin() { return !!(acct && acct.token && ADMIN_ACCOUNTS.indexOf(String(acct.name).toLowerCase()) >= 0); }
   function openAdmin() {
     var me = isAdmin();
@@ -875,6 +878,7 @@
     server: API.replace(/\/acct\/$/, ''), token: function () { return acct ? acct.token : ''; },
     api: function (path, opt) { return api(path, opt); },
     isAdmin: function () { return isAdmin(); },
+    isMod: function () { return isMod(); },
     onLive: function (f) { liveHandlers.push(f); }, toast: toast,
     social: function () { return social; }, onSocial: function (f) { socialHandlers.push(f); if (social) f(social); }, setSocial: setSocial,
     _test: { groupOf: groupOf, localGroups: localGroups, hash: hash, score: score, syncMap: function () { return syncMap; } }

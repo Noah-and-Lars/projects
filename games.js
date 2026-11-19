@@ -1,6 +1,6 @@
 // Profile tags (the owner, 2026-11-12): a small label next to a player's name on their Players and Social profile.
 // Keys are lower-case usernames. Pages show it with profileTag(name).
-window.ARCADE_TAGS = { samlad: 'Tester', cjrey28: 'Tester' };
+window.ARCADE_TAGS = { samlad: 'Tester', cjrey28: 'Tester', misty: 'Moderator' };
 window.profileTag = function (name) {
   var t = window.ARCADE_TAGS[String(name || '').toLowerCase()];
   if (!t) return null;
@@ -91,7 +91,7 @@ window.GAMES = [
     path: 'turn-turn-turn/index.html',
     thumb: 'turn-turn-turn/thumb.jpg',
     added: '2026-11-08T22:00:00+11:00',
-    updated: '2026-11-19T23:00:00+11:00',
+    updated: '2026-11-19T23:30:00+11:00',
     stat() { const s = readSave('turnturnturn.save', true); if (!s || !s.best) return null; const n = Object.keys(s.best).filter(k => s.best[k].solo || s.best[k].crew).length; return n ? n + (n === 1 ? ' stage' : ' stages') + ' finished' : null; },
   },
   {
@@ -105,7 +105,7 @@ window.GAMES = [
     path: 'krill-dive/index.html',
     thumb: 'krill-dive/thumb.svg',
     added: '2026-11-07T08:00:00+11:00',
-    updated: '2026-11-13T14:00:00+11:00',
+    updated: '2026-11-19T12:00:00+11:00',
     stat() { const s = readSave('krilldive', true); return s && s.played ? 'Best ' + ((s.best || 0) * 10).toLocaleString() + ' m' : null; },
   },
   {
@@ -381,6 +381,9 @@ window.NEWS = [
   { date: '2026-11-19', game: 'card-royale', imgs: ['card-royale/news/1.2-2v2.jpg', 'card-royale/news/1.2-decks.jpg', 'card-royale/news/1.2-card-info.jpg', 'card-royale/news/1.2-mana-graph.jpg'], headline: 'Card Royale 1.2: 2v2, clans, replays and more', text: 'Card Royale 1.2 is huge: 2v2 battles with a friend, a random partner or a bot, friendly battles with a code, Challenges (Triple Mana, Mirror and Draft) and a Training Camp with every card. Five deck slots with deck stats, card mastery, daily quests, a monthly Season Road and a new Legend arena, Starfall Summit. Watch replays and live battles on TV Royale, join a clan to chat and donate cards, collect emotes and tower skins, and see a Mana graph after every battle. Every card, arena and chest has a new original name, and nine cards got balance changes.',
     post: '🃏 Card Royale 1.2 is HERE!\n\n👥 2v2 with a friend, a random partner or a bot\n🤝 Friendly battles with a code\n🏅 Challenges: Triple Mana, Mirror and Draft\n🎯 Training Camp: try every card\n🛡️ Clans: chat, ask for cards, donate, and Clan Wars on weekends\n🎬 Replays + 📺 TV Royale\n🛣️ Season Road, daily quests, card mastery\n✨ New Legend arena: Starfall Summit at 4000 trophies\n\nWhich mode are you trying first? 👇\n\n#TheArcade #CardRoyale' },
   { date: '2026-11-19', game: 'chess', imgs: ['chess/news/1.8-accuracy.jpg'], headline: 'Chess 1.8: how accurate were you?', text: 'Chess 1.8: after every game the computer looks back over all the moves and gives both players an accuracy score, like 87%, with a count of best moves, good moves, inaccuracies, mistakes and blunders. The bad moves are marked in the move list, and the review runs in the background so the page never freezes.' },
+  { date: '2026-11-19', game: 'turn-turn-turn', imgs: ['turn-turn-turn/news/1.6-garage.jpg', 'turn-turn-turn/news/1.6.1-music.jpg'], headline: 'Turn! Turn! TURN! 1.6.1: menu music', text: 'Turn! Turn! TURN! 1.6.1: a song now plays in the menus and on the results screen, and fades out when a stage starts. A new Menu music slider in Settings turns it up, down or off.', post: '🎵 Turn! Turn! TURN! 1.6.1: menu music!\n\n🔊 A song now plays in the garage, the menus and on the results screen\n🏁 It fades out when the stage starts, so you can still hear your co-driver\n🎚️ New Menu music slider in Settings to turn it up, down or off\n\n#turnturnturn #TheArcade #Update' },
+  { date: '2026-11-19', game: 'krill-dive', imgs: ['krill-dive/thumb.svg'], headline: '547 new Krill Dive questions', text: 'Krill Dive 1.6: 547 new questions, from Pok\u00e9mon types and Bond films to countries in Africa and words that rhyme with "cat". Every old question was checked too, and about 30,000 missing answers were added, so a right answer now counts. They start showing up in the daily dive on 20 November.',
+    post: '🦐 Krill Dive 1.6 is here!\n\n\u2753 547 new questions, from Pok\u00e9mon types and Bond films to countries in Africa and words that rhyme with "cat".\n\u2705 Every old question checked: about 30,000 missing answers added, plus other spellings and old names (Burma, Holland, AC/DC...).\n📅 The new ones join the daily dive on 20 November.\n\nHow deep can you dive? #KrillDive' },
   { date: '2026-11-19', game: 'turn-turn-turn', imgs: ['turn-turn-turn/news/1.6-garage.jpg', 'turn-turn-turn/news/1.6-courses.jpg', 'turn-turn-turn/news/1.6-events.jpg'], headline: 'Turn! Turn! TURN! 1.6: a whole new menu', text: 'Turn! Turn! TURN! 1.6 has a brand new menu. Your car spins on a turntable in the garage, with your name, gold medals, level and stars along the top. Play and Multiplayer each let you pick Classic or Horror, every course has its own card with a picture, its gold time and your best time, and Events has the Daily Stage with a countdown, a Play button and its own leaderboard. The full leaderboard is under the trophy at the top.', post: '🏁 Turn! Turn! TURN! 1.6: a whole new menu\n\n🚗 Your car now spins on a turntable in the garage. Drag it to spin it yourself.\n👤 Your name, gold medals, level and stars along the top\n▶️ Play and Multiplayer: pick Classic or Horror\n🗺️ Every course gets its own card with a picture, its gold time and your best time\n📅 Events: today\'s Daily Stage with a countdown, a Play button and its own leaderboard\n🏆 The full leaderboard is under the trophy at the top\n\nGo set some gold times. 👇\n\n#turnturnturn #TheArcade #Update' },
   { date: '2026-11-19', href: 'index.html', imgs: ['news/online-spots.jpg'], headline: 'See who is on Social, Global chat and Players', text: 'The online now list on the home page shows how many people are on Social, in the Global chat and on the Players tab right now, above the games. Tap one to go straight there.', post: '👀 New on the home page!\n\nOpen the 🟢 online now list and you can see how many people are on 📸 Social, 💬 Global chat and 👥 Players right now, not just in games. Tap one to jump straight in.' },
   { date: '2026-11-19', game: 'turn-turn-turn', imgs: ['turn-turn-turn/news/1.5.1-lights.jpg'], headline: 'Turn! Turn! TURN! 1.5.1: better lights in Horror mode', text: 'Turn! Turn! TURN! 1.5.1: in Horror mode the headlights are much brighter and reach further down the road, and a dim, warm light in the roof lets you see the inside of the car at night.', post: '💡 Turn! Turn! TURN! 1.5.1\n\n🔦 Horror mode headlights are now much brighter and reach further down the road. You\'ll see the corners (and the dead trees) coming.\n🕯️ A dim, warm light in the roof so you can actually see the inside of your car at night.\n\nIt\'s still dark out there. It\'s still behind you. 👇\n\n#turnturnturn #TheArcade #Update' },

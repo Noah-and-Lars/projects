@@ -416,8 +416,8 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round
   <div id="view" aria-live="polite"></div>
 </main>
 
-<script src="games.js?v=265"></script>
-<script src="account.js?v=42"></script>
+<script src="games.js?v=267"></script>
+<script src="account.js?v=43"></script>
 <script src="assistant.js?v=6"></script>
 <script src="console.js?v=4"></script>
 <script src="call.js?v=8"></script>
@@ -439,6 +439,7 @@ const ADMIN_Q = /[?&]admin\b/.test(location.search);
 // 2026-11-11: the admin tools show with ?admin (password) or for a signed-in admin account (no password)
 const owner = () => { try { return !!(window.ArcadeAccount && ArcadeAccount.isAdmin && ArcadeAccount.isAdmin()); } catch (e) { return false; } };
 const isAdm = () => ADMIN_Q || owner();
+const canReview = () => owner() || (() => { try { return !!(window.ArcadeAccount && ArcadeAccount.isMod && ArcadeAccount.isMod()); } catch (e) { return false; } })();
 const API = () => ArcadeAccount.server + '/clips/';
 const me = () => ArcadeAccount.kind() === 'online' ? ArcadeAccount.name() : '';
 const lc = s => String(s || '').toLowerCase();
@@ -1565,7 +1566,7 @@ async function editUpload(files) {
       const res = await postMedia(Object.assign({}, item, { t: cap.value, g: gs.value, more: items.slice(1) }), p => { bi.style.width = Math.round(p * 100) + '%'; });
       ov.close(); forYouCache = null;
       // 2026-11-11: uploaded photos and videos wait for approval before anyone sees them
-      if (res.pend) { ArcadeAccount.toast('Sent for approval', 'Photos and videos are checked before they go up. Yours will appear once it\u2019s approved.'); location.hash = 'home'; if (owner()) paintReview(); return; }
+      if (res.pend) { ArcadeAccount.toast('Sent for approval', 'Photos and videos are checked before they go up. Yours will appear once it\u2019s approved.'); location.hash = 'home'; if (canReview()) paintReview(); return; }
       ArcadeAccount.toast('Shared', 'Your post is up.', '#c=' + res.id);
       location.hash = 'c=' + res.id;
     } catch (e) { busy = false; share.disabled = false; cancel.disabled = false; bar.hidden = true; err(String(e.message || e)); }
@@ -1749,7 +1750,7 @@ function editAvatar() {
 let reviewList = [];
 async function paintReview() {
   const b = $('topReview'); if (!b) return;
-  b.hidden = !owner(); if (!owner()) return;
+  b.hidden = !canReview(); if (!canReview()) return;
   const r = await acct('admin', { method: 'POST', auth: true, body: { op: 'pending', r: ROOM } });
   reviewList = r.status === 200 ? r.list || [] : [];
   const n = $('reviewN'); n.hidden = !reviewList.length; n.textContent = reviewList.length > 99 ? '99+' : reviewList.length;
@@ -1757,7 +1758,7 @@ async function paintReview() {
 }
 async function showReview() {
   setNav('');
-  if (!owner()) { view.replaceChildren(empty('Not for you', 'Only the site\u2019s admin can approve posts.')); return; }
+  if (!canReview()) { view.replaceChildren(empty('Not for you', 'Only the site\u2019s admin and moderators can approve posts.')); return; }
   const my = ++gen; loading('Loading posts to approve…');
   const r = await paintReview(); if (my !== gen) return;
   if (!r || r.status !== 200) { view.replaceChildren(offline(showReview)); return; }
