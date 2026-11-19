@@ -729,6 +729,9 @@ function updateInteraction(dt) {
     if (!(hit.n && hit.n[1] > 0.5)) py = Math.round(py * 20) / 20;
     py = clamp(py, 0, CEIL - h);
     const item = world.items.get(P.carry.id);
+    // Shift: let it drop onto whatever is below instead of leaving it floating
+    const dropIt = input.keys.has('ShiftLeft') || input.keys.has('ShiftRight');
+    if (dropIt) py = world.supportHeight(px - w / 2, pz - d / 2, px + w / 2, pz + d / 2, py + 0.01, item);
     const box = { x0: px - w / 2, x1: px + w / 2, z0: pz - d / 2, z1: pz + d / 2, y0: py, y1: py + h };
     const pr = P.radius + 0.02;
     const onMe = !t.flat && box.x0 < P.x + pr && box.x1 > P.x - pr && box.z0 < P.z + pr && box.z1 > P.z - pr && box.y0 < P.y + P.height && box.y1 > P.y + 0.01;
@@ -738,7 +741,7 @@ function updateInteraction(dt) {
     itemMatrix(ghost.matrix, P.carry.t, px, py + 0.005, pz, P.carry.r, P.carry.tl);
     ghostMat.color.setHex(ok ? 0x44ff66 : 0xff4444);
     ghost.visible = true;
-    text = `Carrying ${t.name} · <b>E</b>/click place · <b>R</b> turn · <b>T</b> tilt (${['upright', 'on its back', 'on its side'][P.carry.tl | 0]}) · <b>wheel</b> distance · <b>Q</b> drop · <b>F</b> throw`;
+    text = `Carrying ${t.name} · <b>E</b>/click place${dropIt ? ' (dropped)' : ' (Shift: drop)'} · <b>R</b> turn · <b>T</b> tilt (${['upright', 'on its back', 'on its side'][P.carry.tl | 0]}) · <b>wheel</b> distance · <b>Q</b> drop · <b>F</b> throw`;
     if (pressedUse || clicked) {
       if (placement && placement.ok) placeCarry(placement);
       else sfx.deny();

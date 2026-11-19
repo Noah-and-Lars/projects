@@ -128,6 +128,8 @@ They're decided by the room's seed and the day, so every screen agrees.
   green or red ghost where it would go.
 - **Furniture stays exactly where you put it**, even in mid-air. Nothing
   falls. That's how you build floating floors and stairs you can take away.
+  Hold **Shift** while placing to drop the piece onto whatever is below it
+  instead.
 - **R** turns it, **T** tilts it: upright, on its back (a pallet becomes a
   wall) or on its side, the
   **mouse wheel** moves it nearer or further, **Q** puts it down at your feet,
