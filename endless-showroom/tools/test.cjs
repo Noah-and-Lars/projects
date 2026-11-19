@@ -207,6 +207,35 @@ fs.mkdirSync(out, { recursive: true });
   const upY = await g(() => +__game.P.y.toFixed(2));
   console.log((stairs && upY > 2.9 ? 'ok   ' : 'FAIL ') + `walked up a mezzanine staircase (y ${upY})`);
 
+  // Staff climb a staircase of furniture: two crates stacked (2 m) are safe
+  // alone, but put one crate beside them as a step and they come up.
+  const climbSetup = await g(() => {
+    const w = __game.world, P = __game.P;
+    __game.setClock(400, 3);
+    __game.spawnAt(P.x, P.z, 10);
+    let spot = null;
+    for (let k = 0; k < 80 && !spot; k++) {
+      const x = P.x + (Math.random() - 0.5) * 40, z = P.z + (Math.random() - 0.5) * 40;
+      if (w.fits({ x0: x - 3, x1: x + 3, z0: z - 3, z1: z + 3, y0: 0.02, y1: 3.5 })) spot = [x, z];
+    }
+    if (!spot) return null;
+    // three crates made just for this test
+    const put = (id, x, y, z) => w.applyState(id, { t: 'crate', k: 'f', v: 0, x, y, z, r: 0, tl: 0, hp: 120, g: 0, c: 0, d: 0 });
+    const crates = [put('test:a', spot[0], 0, spot[1]), put('test:b', spot[0], 1, spot[1]), put('test:c', spot[0] + 60, 0, spot[1] + 60)];
+    P.x = spot[0]; P.z = spot[1]; P.y = 2.0; P.vy = 0; P.hp = 100;
+    const S = __game.staff; for (const s of S.staff.values()) S.staff.delete(s.id);
+    S.spawnNear(P); const s = [...S.staff.values()][0];
+    s.x = spot[0] + 1.6; s.z = spot[1]; s.y = 0; s.look = Object.assign({}, s.look, { speedScale: 1 });
+    return { spot, step: crates[2].id };
+  });
+  { const t0 = await g(() => __game.clock.t); await page.waitForFunction((t0) => __game.clock.t > t0 + 4, t0, { timeout: 200000 }); }
+  const aloneHp = await g(() => __game.P.hp);
+  await g((c) => { const w = __game.world, it = w.items.get(c.step); const st = w.stateOf(it); st.x = c.spot[0] + 1.0; st.z = c.spot[1]; st.y = 0; w.applyState(it.id, st); __game.P.hp = 100; }, climbSetup);
+  { const t0 = await g(() => __game.clock.t); await page.waitForFunction((t0) => __game.clock.t > t0 + 8 || __game.P.hp < 100, t0, { timeout: 300000 }); }
+  const stepHp = await g(() => __game.P.hp);
+  console.log((climbSetup && aloneHp === 100 ? 'ok   ' : 'FAIL ') + `two crates high is out of reach (hp ${aloneHp})`);
+  console.log((climbSetup && stepHp < 100 ? 'ok   ' : 'FAIL ') + `with a step beside it, the staff climb up (hp ${stepHp})`);
+
   // Food restocks on Mondays and Fridays only.
   const rs = await g(() => [1, 2, 4, 5, 7, 8, 12].map((d) => __game.restockEpoch(d)).join(','));
   console.log((rs === '1,1,1,2,2,3,4' ? 'ok   ' : 'FAIL ') + 'restock days (' + rs + ')');

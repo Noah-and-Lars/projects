@@ -70,7 +70,13 @@ export class StaffSim {
       for (const c of cand) {
         if (c.h + BODY_H > CEIL + 0.01 && c.h > 0) continue;
         let ok = true;
-        for (const o of boxes) if (o.y0 < c.h + BODY_H && o.y1 > c.h + 0.05) { ok = false; break; }
+        // Something right overhead, or a wall too tall to climb beside you,
+        // rules the spot out. Something lower beside you is just a step.
+        for (const o of boxes) {
+          if (!(o.y0 < c.h + BODY_H && o.y1 > c.h + 0.05)) continue;
+          const over = o.x0 <= x && o.x1 >= x && o.z0 <= z && o.z1 >= z;
+          if (over || o.y1 > c.h + 2.3) { ok = false; break; }
+        }
         if (ok && !v.some((s) => Math.abs(s.h - c.h) < 0.05)) v.push(c);
       }
       v.sort((a, b) => a.h - b.h);
