@@ -317,7 +317,8 @@ cd tools && npm install && npm run build
 | `tools/build.mjs` | Builds the single-file `index.html` |
 | `tools/test.cjs` | Solo smoke test (see below) |
 | `tools/test-mp.cjs`, `tools/mock-rt.js` | Two-player test with a stand-in realtime server |
-| `tools/shots.cjs` | Screenshots of the look: day, close-up, night, torch, staff, third person |
+| `tools/shots.cjs` | Screenshots of the look: day, close-up, night, lamps, staff, Crimson Night, Fog Day, Floor Manager, hail, third person |
+| `tools/soak.cjs` | Runs through every day and night transition and event, checking for errors |
 
 ### Testing
 
@@ -335,11 +336,17 @@ node tools/test-mp.cjs <screenshot-dir>
 - eating, placing a tilted piece in mid-air (it stays), shoving staff down,
   standing room inside a wardrobe, throwing, dropping food, crouching, hail
   hurting you under a skylight, and the Monday and Friday restock days;
-- that the staff can't reach you on a wardrobe but can on the floor;
+- that the staff can't reach you on a wardrobe, or on two stacked crates,
+  but can on the floor, and climb up to you once there's a step beside the
+  crates;
 - that there are no console errors.
 
 The test machine has no GPU, so the game runs slowly there. The checks wait
 on game time rather than wall-clock time.
+
+`soak.cjs` jumps the clock through every kind of transition (dawn, closing
+time, Crimson Night, Fog Day, power cut, hailstorm, a whole week) and fails
+on any page error.
 
 `test-mp.cjs` opens two pages that share `mock-rt.js` (BroadcastChannel in
 place of the realtime server). It checks:
@@ -348,8 +355,9 @@ place of the realtime server). It checks:
   earlier changes;
 - carrying and placing furniture on the host and the guest;
 - the host's staff, clock and hits reaching the guest;
-- the guest taking over as host, with the store's changes kept, when the
-  host leaves.
+- chat arriving with a bubble over the speaker;
+- the guest taking over as host, with the store's changes kept and anything
+  the old host was carrying let go, when the host leaves.
 
 ## Not done yet
 
