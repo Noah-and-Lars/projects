@@ -492,13 +492,16 @@ export class World {
       }
       if (f.render) { this.focusX = f.x; this.focusZ = f.z; }
     }
-    let built = 0;
+    // Build the visuals nearest the player first, a couple per update.
+    const fcx = this.focusX / CHUNK - 0.5, fcz = this.focusZ / CHUNK - 0.5, toBuild = [];
     for (const [k, render] of want) {
       let ch = this.chunks.get(k);
       if (!ch) { const [cx, cz] = k.split(',').map(Number); ch = this._load(cx, cz); }
-      if (render && !ch.mesh && built < 2) { this._buildVisual(ch); built++; }
+      if (render && !ch.mesh) toBuild.push(ch);
       if (!render && ch.mesh) this._dropVisual(ch);
     }
+    toBuild.sort((a, b) => Math.hypot(a.cx - fcx, a.cz - fcz) - Math.hypot(b.cx - fcx, b.cz - fcz));
+    for (let i = 0; i < Math.min(2, toBuild.length); i++) this._buildVisual(toBuild[i]);
     for (const [k, ch] of this.chunks) if (!want.has(k)) this._unload(ch);
     // Loading and changes mark the items dirty themselves; walking only
     // matters once we've moved far enough to change which ones are drawn.

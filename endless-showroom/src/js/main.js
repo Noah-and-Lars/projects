@@ -716,8 +716,9 @@ function updateNpcs(dt) {
     if (npcViews.has(n.id)) continue;
     const m = makeShopper(nameHash(n.id), (nameHash(n.id) >> 3) % 10);
     m.root.position.set(n.x, n.y, n.z); m.root.rotation.y = n.ry;
+    // seated: hips on the bench (0.45 m), legs out in front
     m.legL.rotation.x = m.legR.rotation.x = -1.5; m.armL.rotation.x = -0.4; m.armR.rotation.x = -0.4;
-    m.body.position.y = -0.4;
+    m.root.position.y = 0; m.body.position.y = 0.45 - 0.82 + 0.05;
     scene.add(m.root);
     npcViews.set(n.id, { m, n });
   }
@@ -1564,5 +1565,5 @@ resize();
 requestAnimationFrame(frame);
 
 // Test hook for tools/test.cjs.
-window.__game = { P, clock, world, net, renderer, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
+window.__game = { P, clock, world, net, renderer, npcViews, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
   useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, dayEventForTest: (d) => dayEvent(world.seed, d), get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };
