@@ -130,6 +130,20 @@ body.touch .slot { pointer-events: auto; }
 body.touch #bars { width: 150px; bottom: auto; top: calc(max(12px, env(safe-area-inset-top)) + 40px); }
 body.touch #chat { display: none; }
 
+@media (max-width: 1100px) {
+  #hotbar { gap: 4px; }
+  .slot { width: 46px; height: 46px; font-size: 9px; }
+  .slot .ic { width: 26px; height: 26px; }
+  #bars { width: 170px; }
+}
+@media (max-width: 900px) {
+  #help-hint { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 58px); }
+  #whistle { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 84px); }
+}
+@media (max-width: 760px) {
+  body:not(.touch) #bars { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 58px); }
+  body:not(.touch) #chat { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 140px); }
+}
 @media (max-width: 600px) {
   .slot { width: 46px; height: 46px; font-size: 9px; }
   #bars { width: 160px; }
