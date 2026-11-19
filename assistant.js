@@ -19,7 +19,10 @@
      search (the Search button filters and highlights); a kind note under a blocked reply; a "Good for" line per model;
      a tip to switch to a lighter model when it would stretch the allowance; Bigger text and High contrast.
    Per-device panel settings: 'arcade-acct-ai-prefs' { tts, big, hc, coach, mem, screen } (NEVER-pattern, so never synced).
-   - Screen pictures (opt-in, see SERVER.vision below): one still picture per message, `img` in the request. */
+   - Screen pictures (opt-in, see SERVER.vision below): one still picture per message, `img` in the request. Only Llama 4
+    Scout takes them on the server; it checks each picture first and answers { done, blocked: 1, img: 1 } for an unsafe one.
+    SERVER.vision turns on by itself once the Worker's { usage: 1 } answer says vision: 1 (remembered on the device in
+    'arcade-acct-ai-vision', so it never cloud-syncs). */
 (function () {
   if (window.ArcadeAssistant) return;
   var KEY = 'arcade-acct-ai:', KEEP = 40, SEND = 8, MAX = 500;
@@ -35,7 +38,7 @@
     { k: 'oss120', n: 'GPT-OSS 120B', d: 'Smartest', e: 65, g: 'homework help, tricky questions, long explanations' },
     { k: 'qwen27', n: 'Qwen 3.8 27B', d: 'Smart', e: 69, g: 'step-by-step maths and science' },
     { k: 'llama70', n: 'Llama 3.3 70B', d: 'Smart', e: 44, g: 'clear explanations and writing help' },
-    { k: 'mistral', n: 'Mistral Small 3.1', d: 'All-rounder', e: 38, g: 'everyday questions and game tips', v: 1 },
+    { k: 'mistral', n: 'Mistral Small 3.1', d: 'All-rounder', e: 38, g: 'everyday questions and game tips' },
     { k: 'scout', n: 'Llama 4 Scout', d: 'All-rounder', e: 38, g: 'facts, summaries, everyday questions and pictures', v: 1 },
     { k: 'oss20', n: 'GPT-OSS 20B', d: 'Quick', e: 31, g: 'quick answers that need a bit of thinking' },
     { k: 'gemma4', n: 'Gemma 4 26B', d: 'Quick, light', e: 23, g: 'game tips, quick facts and fun chat' },
@@ -63,8 +66,10 @@
   // (inside the frame's requestAnimationFrame, so WebGL frames aren't blank); otherwise, or for games drawn with HTML,
   // the browser's own screen-share prompt (getDisplayMedia) gives one frame and the tracks stop straight away. The picture
   // goes as `img` (a JPEG data URL, ~768 px, under ~150 KB) only to a model that can see pictures (`v` in MODELS).
-  // SERVER.vision stays false until the Worker's /ai accepts `img`; until then the setting shows "Coming soon".
-  var SERVER = { vision: false };
+  // SERVER.vision turns on when the Worker says it takes pictures (vision: 1 in the usage answer); until then the setting
+  // shows "Coming soon". The last answer is remembered on this device so the setting doesn't flicker.
+  var SERVER = { vision: false }, VKEY = 'arcade-acct-ai-vision';
+  try { if (localStorage.getItem(VKEY) === '1') SERVER.vision = true; } catch (e) {}
   try { if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && (localStorage.getItem('arcade-ai-vision-test') === '1' || /[?&]aivision=1/.test(location.search))) SERVER.vision = true; } catch (e) {} // tests only
   var IMG_SIDE = 768, IMG_MAX = 150000, shot = null; // shot = { url, w, h, from } while a picture waits for Send
   function isWatch() { return !!window.ARCADE_WATCH || document.documentElement.classList.contains('watch'); }
@@ -499,12 +504,13 @@
     if (i < text.length) e.appendChild(document.createTextNode(text.slice(i)));
     return e;
   }
+  var PIC_NOTE = 'That picture didn’t pass the Assistant’s safety check, so it wasn’t looked at. You’re not in trouble. Try a picture of just the game, or ask without one.';
   var SAFE_NOTE = 'That topic was declined by the Assistant’s safety check. It skips things that aren’t right for a kids’ games site, like scary or violent details, grown-up topics, personal information or anything that could be risky. You’re not in trouble. Try asking in a different way, or ask about something else.';
   function addMsg(m, q) {
     log.appendChild(fill(el('div', 'ai-msg ' + m.r), m.t, q));
     if (m.r === 'a' && modelOf(m.m)) log.appendChild(el('div', 'ai-by', modelOf(m.m).n));
     if (m.s) log.appendChild(el('div', 'ai-by ai-sent', '📷 screenshot sent'));
-    if (m.b) log.appendChild(el('div', 'ai-safe', SAFE_NOTE));
+    if (m.b) log.appendChild(el('div', 'ai-safe', m.b === 2 ? PIC_NOTE : SAFE_NOTE));
   }
   function renderChips() {
     chipRow.textContent = '';
@@ -582,8 +588,15 @@
     useAt = Date.now();
     try {
       var r = await fetch(((A() && A().server) || 'https://arcade-realtime.arcade-realtime.workers.dev') + '/ai', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token() }, body: '{"usage":1}' });
-      var j = await r.json(); if (j && j.use) setUse(j.use);
+      var j = await r.json(); if (j && j.use) { setUse(j.use); setVision(!!j.vision); }
     } catch (e) {}
+  }
+  function setVision(v) {
+    if (SERVER.vision === v) return;
+    SERVER.vision = v;
+    try { if (v) localStorage.setItem(VKEY, '1'); else localStorage.removeItem(VKEY); } catch (e) {}
+    if (scrChk) { scrChk.disabled = !v; var soon = setBox && setBox.querySelector('.ai-soon'); if (v && soon) soon.remove(); }
+    if (!v) setScreen(false); else look();
   }
   function limitText(j) {
     var u = fresh(j.use), m = modelOf(getModel());
@@ -734,11 +747,11 @@
     else if (!reply.trim()) reply = 'Hmm, I didn’t get an answer that time. Try asking again!';
     reply = plainMd(reply); bubble.textContent = reply;
     var mk = done && modelOf(done.m) ? done.m : '', rec2 = { r: 'a', t: reply };
-    if (mk) rec2.m = mk; if (blocked) rec2.b = 1;
+    if (mk) rec2.m = mk; if (blocked) rec2.b = done && done.img ? 2 : 1;
     msgs.push(rec2); save();
     var after = bubble;
     if (mk) { var by = el('div', 'ai-by', modelOf(mk).n); after.after(by); after = by; }
-    if (blocked) after.after(el('div', 'ai-safe', SAFE_NOTE));
+    if (blocked) after.after(el('div', 'ai-safe', done && done.img ? PIC_NOTE : SAFE_NOTE));
     else if (about) remember(about.id, text);
     if (done && done.use) setUse(done.use);
     speak(blocked ? REFUSED : reply);

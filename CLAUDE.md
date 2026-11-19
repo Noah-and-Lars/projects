@@ -132,7 +132,14 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
   object 'ai-budget' every 150 neurons or minute; past the cutoff everyone gets "Assistant's resting until 11am" (00:00
   UTC). The system prompt (`AI_SYSTEM`): the Arcade Assistant, kid-friendly, any topic a kid might ask (homework explained
   rather than just answered, facts, jokes) plus the site and its games; never the name of anyone who made, runs or plays on
-  the site, no personal details, no links, plain text (assistant.js `plainMd` drops markdown that slips through). Bump `assistant.js?v=N` in those 7 pages when it changes. Its classes are
+  the site, no personal details, no links, plain text (assistant.js `plainMd` drops markdown that slips through). Bump `assistant.js?v=N` in every page that loads it when it changes (8 pages; grep for it).
+  2026-11-19 additions (assistant.js header lists them): Coach mode, patch-note context, quick chips, voice in/out, history
+  search, per-game memory, "open <game>", safety notes, model "good for" lines, lighter-model tips, bigger text / high
+  contrast. Screen pictures (the owner's request): opt-in, one still screenshot per message as `img` (never stored), only
+  to Llama 4 Scout (`AI_VISION` in the Worker). The Worker checks each picture with Scout first (`AI_IMG_CHECK`; fails
+  closed, answers { done, blocked: 1, img: 1 }), charges `AI_IMG_EST` more up front, and its { usage: 1 } answer carries
+  vision: 1, which turns the setting on in assistant.js by itself (cached in 'arcade-acct-ai-vision'). Until the Worker
+  with that change is deployed, the setting says "Coming soon". Its classes are
   prefixed `ai-` (arcade.css has a global `.msg` rule from the chat).
 - `notify.js` and `tickets.js` (2026-11-19; loaded by account.js's add-on list, so every page with an account button has
   them; bump their `?v=` there). notify.js: the bell (`#ntfBtn`, rail/top bar, before the assistant) and `#ntfPanel`
