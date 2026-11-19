@@ -110,6 +110,8 @@ export const sfx = {
       o.connect(g); node.connect(master); o.start(t + at); o.stop(t + at + dur + 0.05);
     }
   },
+  hailTick() { burst(0.03, 2500 + Math.random() * 3000, 0.04 + Math.random() * 0.05, 3, 'bandpass', Math.random() * 2 - 1); },
+  staffStep(pan, vol) { burst(0.12, 110 + Math.random() * 30, 0.22 * vol, 1.1, 'lowpass', pan); },
   shove() { burst(0.12, 300, 0.35, 0.8); tone(90, 0.12, 'sine', 0.2); },
   drink() { for (let i = 0; i < 4; i++) setTimeout(() => tone(300 + Math.random() * 80, 0.07, 'sine', 0.08), i * 140); },
   tick(n) { tone(1500 + n * 120, 0.05, 'square', 0.04 + n * 0.02); burst(0.03, 4000, 0.05 + n * 0.02, 4); },

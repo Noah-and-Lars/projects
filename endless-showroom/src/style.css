@@ -24,6 +24,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .bar { position: relative; height: 18px; background: #0009; border-radius: 9px; overflow: hidden; }
 .bar i { position: absolute; inset: 0; right: auto; width: 100%; border-radius: 9px; transition: width 0.2s; }
 .bar span { position: absolute; left: 10px; top: 0; font-size: 11px; line-height: 18px; font-weight: 700; z-index: 1; text-shadow: 0 1px 2px #000; }
+.bar em { position: absolute; right: 10px; top: 0; font-size: 11px; line-height: 18px; font-weight: 800; font-style: normal; z-index: 1; text-shadow: 0 1px 2px #000; font-variant-numeric: tabular-nums; }
 .bar.hp i { background: linear-gradient(90deg, #b83232, #e85d5d); }
 .bar.food i { background: linear-gradient(90deg, #b9772a, #e8a74d); }
 .bar.stam i { background: linear-gradient(90deg, #2c7a9e, #5cb6dd); }
@@ -133,3 +134,10 @@ body.touch #chat { display: none; }
 #voice { position: absolute; left: 50%; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 86px); transform: translateX(-50%); background: #000c; color: #e9e2d6; padding: 6px 14px; border-radius: 8px; font-style: italic; letter-spacing: 0.04em; border-left: 3px solid #1f6f6b; }
 #voice::before { content: 'Staff: '; font-style: normal; font-weight: 700; color: #6fc9c2; }
 body.touch #whistle { display: none; }
+
+.shirt-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin: -4px 0 14px; font-weight: 600; }
+#shirts { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
+.sw-btn { width: 22px; height: 22px; border-radius: 6px; border: 2px solid #ffffff33; padding: 0; }
+.sw-btn.on { border-color: #fff; box-shadow: 0 0 0 2px #ffd34d; }
+body.crimson #dark { background: radial-gradient(ellipse at center, rgba(90, 0, 0, 0.1) 30%, rgba(80, 0, 0, 0.75)); }
+body.crimson #clock-day { color: #ff8a8a; }

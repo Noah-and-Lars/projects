@@ -36,6 +36,7 @@ const SECTIONS = {
   market: { label: 'MARKET HALL', color: '#6b46c1' },
   food: { label: 'CAFETERIA', color: '#c53030' },
   storage: { label: 'STOCK ROOM', color: '#4a5568' },
+  garden: { label: 'GARDEN CENTRE', color: '#4f8a2b' },
 };
 
 function sectionOf(seed, cx, cz) {
@@ -43,7 +44,8 @@ function sectionOf(seed, cx, cz) {
   const h = hashInts(seed, cx, cz, 11) % 100;
   if (h < 37) return 'showroom';
   if (h < 58) return 'warehouse';
-  if (h < 75) return 'display';
+  if (h < 69) return 'display';
+  if (h < 75) return 'garden';
   if (h < 87) return 'market';
   if (h < 91) return 'food'; // cafeterias are rare, and worth finding
   return 'storage';
@@ -80,6 +82,8 @@ class ChunkGen {
     this.items = [];
     this.r = rng(hashInts(world.seed, cx, cz, 1));
     this.section = sectionOf(world.seed, cx, cz);
+    this.skylights = [];
+    if (this.section === 'garden') this.skylights.push({ x0: this.ox + 2, z0: this.oz + 2, x1: this.ox + CHUNK - 2, z1: this.oz + CHUNK - 2 });
   }
   // Static solid, in chunk-local coordinates.
   solid(x0, z0, x1, z1, y0, y1, hex, draw = true) {
@@ -296,6 +300,26 @@ class ChunkGen {
     for (let i = 0, n = r.int(3); i < n; i++) this.fd(f, STOCK.any, 3.3 + i * 0.5, 5.4, 0);
   }
 
+  // A garden centre under open skylights: grass, planters, trees, patio sets.
+  q_garden(f) {
+    const { r } = this;
+    { const [a, b, c, d] = f.rect(0, 0, Q, Q); this.deco(a, b, c, d, 0, 0.02, 0x5e8a3a); }
+    for (let i = 0; i < 2; i++) { // planters
+      const u0 = 0.5 + i * 5.2;
+      this.fs(f, u0, 0.4, u0 + 3.6, 1.4, 0, 0.5, 0x7a5a3a);
+      const [a, b, c, d] = f.rect(u0 + 0.1, 0.5, u0 + 3.5, 1.3); this.deco(a, b, c, d, 0.5, 0.52, 0x4a3426);
+      for (let k = 0; k < 3; k++) this.ff(f, 'plant', u0 + 0.6 + k * 1.2, 0.9, r.int(4), 0.5);
+    }
+    // a tree in a big pot
+    const [tx, tz] = f.pt(7.6, 6.8);
+    this.solid(tx - 0.5, tz - 0.5, tx + 0.5, tz + 0.5, 0, 0.6, 0x9a5b3a);
+    this.solid(tx - 0.14, tz - 0.14, tx + 0.14, tz + 0.14, 0.6, 2.4, 0x6b4a2f);
+    for (const [dx, dy, dz, sz] of [[0, 3.0, 0, 1.8], [0.5, 2.6, 0.3, 1.2], [-0.5, 2.7, -0.3, 1.3], [0.1, 3.6, -0.2, 1.1]]) this.deco(tx + dx - sz / 2, tz + dz - sz / 2, tx + dx + sz / 2, tz + dz + sz / 2, dy - sz / 2, dy + sz / 2, r.pick([0x3f7a3a, 0x4f8f45, 0x356a32]));
+    this.ff(f, 'diningTable', 3.2, 5.6, 1); this.ff(f, 'chair', 2.4, 5.6, 1); this.ff(f, 'chair', 4.0, 5.6, 3);
+    this.ff(f, 'bench', 3.2, 8.6, 0); this.ff(f, 'plant', 0.8, 8.8, 0); this.ff(f, 'pallet', 6.0, 8.6, 0);
+    if (r.chance(0.5)) this.fd(f, STOCK.play, 3.0, 5.4, 0.77);
+  }
+
   // A first aid station: a white kiosk with four kits on it.
   q_firstaid(f) {
     this.fs(f, 3.2, 0.3, 6.4, 1.0, 0, 1.0, 0xf2f2f2);
@@ -327,6 +351,33 @@ class ChunkGen {
     if (r.chance(0.2)) { const [x, z] = f.pt(r.range(1, 8), r.range(1, 8)); this.randomFood(x, z, 0); }
   }
 }
+
+// The sky through a skylight: a gradient that follows the time of day.
+let _skyMat = null;
+function skyMaterial() {
+  if (_skyMat) return _skyMat;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d'); const gr = x.createLinearGradient(0, 0, 128, 128);
+  gr.addColorStop(0, '#bfe0ff'); gr.addColorStop(1, '#7fb6ee'); x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
+  x.fillStyle = 'rgba(255,255,255,0.5)'; for (let i = 0; i < 6; i++) { x.beginPath(); x.ellipse(20 + i * 19, 30 + (i % 3) * 30, 22, 9, 0, 0, 7); x.fill(); }
+  x.strokeStyle = '#5b6470'; x.lineWidth = 3; for (let i = 0; i <= 4; i++) { x.beginPath(); x.moveTo(i * 32, 0); x.lineTo(i * 32, 128); x.stroke(); x.beginPath(); x.moveTo(0, i * 32); x.lineTo(128, i * 32); x.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  _skyMat = new THREE.MeshBasicMaterial({ map: t, fog: false, toneMapped: false });
+  return _skyMat;
+}
+export function setSkyLight(day, storm) { const m = skyMaterial(); m.color.setRGB(0.06 + 0.94 * day * (storm ? 0.45 : 1), 0.07 + 0.93 * day * (storm ? 0.48 : 1), 0.12 + 0.88 * day * (storm ? 0.55 : 1)); }
+
+let _glowMat = null;
+function glowMaterial() {
+  if (_glowMat) return _glowMat;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,230,180,1)'); gr.addColorStop(0.25, 'rgba(255,200,120,0.45)'); gr.addColorStop(1, 'rgba(255,170,80,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+  _glowMat = new THREE.PointsMaterial({ size: 1.6, map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, toneMapped: false, sizeAttenuation: true });
+  return _glowMat;
+}
+export function setLampGlow(k) { glowMaterial().opacity = k; }
 
 // Canvas text for the hanging aisle signs.
 function signTexture(label, color, line2) {
@@ -396,7 +447,7 @@ export class World {
   _load(cx, cz) {
     const gen = new ChunkGen(this, cx, cz).run();
     this.version++;
-    const ch = { cx, cz, key: World.key(cx, cz), gen, boxes: gen.boxes, itemIds: [], mesh: null, sign: null };
+    const ch = { cx, cz, key: World.key(cx, cz), gen, boxes: gen.boxes, skylights: gen.skylights, itemIds: [], mesh: null, sign: null };
     gen.items.forEach((spec, i) => {
       const id = ch.key + ':' + i;
       ch.itemIds.push(id);
@@ -439,12 +490,32 @@ export class World {
     sign.position.set(ch.cx * CHUNK + 6, 4.9, ch.cz * CHUNK + 0.6);
     this.group.add(sign);
     ch.sign = sign;
+    for (const sk of ch.skylights) {
+      const m2 = new THREE.Mesh(new THREE.PlaneGeometry(sk.x1 - sk.x0, sk.z1 - sk.z0), skyMaterial());
+      m2.rotation.x = Math.PI / 2; m2.position.set((sk.x0 + sk.x1) / 2, CEIL - 0.03, (sk.z0 + sk.z1) / 2);
+      this.group.add(m2); (ch.sky = ch.sky || []).push(m2);
+    }
   }
 
   _dropVisual(ch) {
     if (ch.mesh) { this.group.remove(ch.mesh); ch.mesh.geometry.dispose(); ch.mesh = null; }
     if (ch.shadow) { this.group.remove(ch.shadow); ch.shadow.geometry.dispose(); ch.shadow = null; }
+    if (ch.sky) { for (const m of ch.sky) { this.group.remove(m); m.geometry.dispose(); } ch.sky = null; }
     if (ch.sign) { this.group.remove(ch.sign); const m = ch.sign.children[0]; m.material.map.dispose(); m.material.dispose(); m.geometry.dispose(); ch.sign = null; }
+  }
+
+  // Open skylights (garden centres) near a point.
+  skylightsNear(x, z, r) {
+    const out = [];
+    for (const ch of this.chunks.values()) for (const sk of ch.skylights) if (sk.x1 > x - r && sk.x0 < x + r && sk.z1 > z - r && sk.z0 < z + r) out.push(sk);
+    return out;
+  }
+  underSky(x, y, z) {
+    const ch = this.chunks.get(World.key(Math.floor(x / CHUNK), Math.floor(z / CHUNK)));
+    if (!ch || !ch.skylights.some((sk) => x > sk.x0 && x < sk.x1 && z > sk.z0 && z < sk.z1)) return false;
+    let covered = false;
+    this.forBoxes(x - 0.2, z - 0.2, x + 0.2, z + 0.2, (b) => { if (b.y0 >= y && b.x0 <= x && b.x1 >= x && b.z0 <= z && b.z1 >= z) covered = true; });
+    return !covered;
   }
 
   staticMeshes() { const out = []; for (const ch of this.chunks.values()) if (ch.mesh) out.push(ch.mesh); return out; }
@@ -526,6 +597,21 @@ export class World {
     }
     const m4 = this._m4 || (this._m4 = new THREE.Matrix4()), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), pos = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
     for (const [key, im] of this.inst) if (!groups.has(key)) { im.count = 0; im.visible = false; }
+    // a soft glow over every lamp (shown at night)
+    {
+      const lamps = [];
+      for (const list of groups.values()) for (const it of list) if (it.k === 'f' && TYPES[it.t].lamp) lamps.push(it);
+      if (!this.glow || this.glow.geometry.attributes.position.count < lamps.length) {
+        if (this.glow) { this.group.remove(this.glow); this.glow.geometry.dispose(); }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(Math.max(32, lamps.length * 2) * 3), 3));
+        this.glow = new THREE.Points(g, glowMaterial()); this.glow.frustumCulled = false; this.glow.renderOrder = 2;
+        this.group.add(this.glow);
+      }
+      const a = this.glow.geometry.attributes.position;
+      lamps.forEach((it, i) => { const h = itemDims(it.t, it.r, it.tl)[1]; a.setXYZ(i, it.x, it.y + h * 0.82, it.z); });
+      a.needsUpdate = true; this.glow.geometry.setDrawRange(0, lamps.length);
+    }
     // soft shadows under furniture
     let shadows = 0;
     for (const list of groups.values()) for (const it of list) if (it.k === 'f' && !TYPES[it.t].flat) shadows++;

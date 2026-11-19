@@ -37,6 +37,8 @@ export function myName() {
   return 'Shopper';
 }
 
+export function myShirt() { try { const v = parseInt(localStorage.getItem('es-shirt'), 10); return v >= 0 && v < 10 ? v : -1; } catch (_) { return -1; } }
+
 export function createNet(h) {
   const myId = (Math.random().toString(36) + '00000000').slice(2, 10);
   let client = null, libLoad = null, ch = null, me = null, members = [], hostId = null;
@@ -81,7 +83,7 @@ export function createNet(h) {
       drop();
       const joinedAt = Date.now();
       api.seed = (Math.random() * 4294967296) >>> 0;
-      me = { id: myId, n: myName(), t: joinedAt, sd: api.seed };
+      me = { id: myId, n: myName(), t: joinedAt, sd: api.seed, lk: myShirt() };
       ch = client.channel(BASE + '-' + name, { config: { broadcast: { self: false, ack: false }, presence: { key: myId } } });
       const c = ch;
       let done = false;

@@ -159,6 +159,28 @@ fs.mkdirSync(out, { recursive: true });
   const back = await g((id) => { const it = __game.world.items.get(id); return it ? { active: __game.world.active(it), d: +Math.hypot(it.x - __game.P.x, it.z - __game.P.z).toFixed(2), slot: __game.P.inv[0] } : null; }, dropped);
   console.log((back && back.active && back.d < 1.5 && !back.slot ? 'ok   ' : 'FAIL ') + 'dropped food lands at your feet (' + JSON.stringify(back) + ')');
 
+  // Crouching makes you short enough for low gaps.
+  await page.keyboard.down('KeyC'); await page.waitForTimeout(600);
+  const crouchH = await g(() => __game.P.height);
+  await page.keyboard.up('KeyC'); await page.waitForTimeout(600);
+  const standH = await g(() => __game.P.height);
+  console.log((crouchH < 1.2 && standH > 1.7 ? 'ok   ' : 'FAIL ') + `crouching lowers you (${crouchH} then ${standH})`);
+
+  // A hailstorm hurts you under an open skylight.
+  const hailInfo = await g(() => {
+    const w = __game.world; let found = null;
+    for (let r = 0; r < 14 && !found; r++) for (let i = -r; i <= r && !found; i++) for (let j = -r; j <= r && !found; j++) if (w.sectionAt(i * 24 + 12, j * 24 + 12) === 'garden') found = [i * 24 + 12, j * 24 + 12];
+    if (!found) return null;
+    __game.spawnAt(found[0], found[1], 3); __game.P.hp = 100;
+    let day = 0; for (let d = 2; d < 600; d++) if (__game.dayEventForTest(d) === 'hail') { day = d; break; }
+    __game.setClock(150, day);
+    return day;
+  });
+  await page.waitForTimeout(1500);
+  { const t0 = await g(() => __game.clock.t); await page.waitForFunction((t0) => __game.clock.t > t0 + 3.5 || __game.P.hp < 100, t0, { timeout: 150000 }); }
+  const hailHp = await g(() => __game.P.hp);
+  console.log((hailInfo && hailHp < 100 ? 'ok   ' : 'FAIL ') + `hail hurts you under an open skylight (day ${hailInfo}, hp ${hailHp})`);
+
   // Food restocks on Mondays and Fridays only.
   const rs = await g(() => [1, 2, 4, 5, 7, 8, 12].map((d) => __game.restockEpoch(d)).join(','));
   console.log((rs === '1,1,1,2,2,3,4' ? 'ok   ' : 'FAIL ') + 'restock days (' + rs + ')');

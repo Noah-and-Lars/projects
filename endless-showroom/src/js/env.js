@@ -12,6 +12,8 @@ import { uniforms } from './mats.js';
 
 export const DAY_LEN = 360, NIGHT_LEN = 300, CYCLE = DAY_LEN + NIGHT_LEN;
 export const POWERCUT = [150, 240];
+export const HAIL = [120, 300];
+export const hailing = (t, ev) => ev === 'hail' && t >= HAIL[0] && t < HAIL[1];
 export const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 export const weekday = (day) => WEEKDAYS[(day - 1) % 7];
 
@@ -25,6 +27,7 @@ export const isRestockDay = (day) => { const r = (day - 1) % 7; return r === 0 |
 export const EVENTS = {
   fog: { name: 'Fog Day', desc: 'Thick fog fills the store. The staff are hunting, slowly, and they hit very hard. You can\'t shove them.' },
   powercut: { name: 'Power Cut', desc: 'The power will fail for a while this afternoon. Staff hunt in the dark.' },
+  hail: { name: 'Hailstorm', desc: 'Hail will fall through the garden centre skylights this afternoon. Stay under cover there.' },
   crimson: { name: 'Crimson Night', desc: 'More staff, twice as fast, and they climb and jump higher. Build walls high.' },
 };
 
@@ -34,6 +37,7 @@ export function dayEvent(seed, day) {
   const h = hashInts(seed, day, 77) % 1000;
   if (h < 10) return 'fog';
   if (h < 40) return 'powercut';
+  if (h < 80) return 'hail';
   return '';
 }
 export function nightEvent(seed, day) {

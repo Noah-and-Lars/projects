@@ -34,9 +34,9 @@
   <div id="cross"></div>
   <div id="prompt" class="hidden"></div>
   <div id="bars">
-    <div class="bar hp"><span>Health</span><i></i></div>
-    <div class="bar food"><span>Hunger</span><i></i></div>
-    <div class="bar stam"><span>Energy</span><i></i></div>
+    <div class="bar hp"><span>Health</span><em></em><i></i></div>
+    <div class="bar food"><span>Hunger</span><em></em><i></i></div>
+    <div class="bar stam"><span>Energy</span><em></em><i></i></div>
   </div>
   <div id="hotbar"></div>
   <div id="roster" class="hidden"></div>
@@ -71,6 +71,7 @@
     <div class="logo"><span class="logo-a">ENDLESS</span><span class="logo-b">SHOWROOM</span></div>
     <p class="tag">An endless furniture store. Friendly staff by day. Not by night.</p>
     <label class="name-row">Your name <input id="name-in" maxlength="16" autocomplete="off"></label>
+    <div class="shirt-row"><span>Shirt</span><div id="shirts"></div></div>
     <div class="btns">
       <button id="b-online" class="primary">Play Online</button>
       <button id="b-create">Create Private Room</button>
@@ -121,7 +122,8 @@
     <label class="slider">Sound volume <input id="s-vol" type="range" min="0" max="1" step="0.05"></label>
     <label class="slider">Music volume <input id="s-music" type="range" min="0" max="1" step="0.05"></label>
     <label class="slider">Field of view <input id="s-fov" type="range" min="60" max="100" step="1"></label>
-    <label class="check"><input id="s-low" type="checkbox"> Low graphics (shorter view distance)</label>
+    <label class="check"><input id="s-low" type="checkbox"> Low graphics (shorter view distance, simpler lighting)</label>
+    <label class="check"><input id="s-voice" type="checkbox"> Staff speak out loud (subtitles always show)</label>
     <button class="back primary">Back</button>
   </div>
 </div>
@@ -154,6 +156,9 @@
     <div class="tb" data-key="KeyH">Whistle</div>
     <div class="tb" data-key="KeyT">Tilt</div>
     <div class="tb" data-key="KeyG">Bag</div>
+    <div class="tb" data-key="KeyC">Crouch</div>
+    <div class="tb" data-key="KeyF">Throw</div>
+    <div class="tb" data-key="KeyQ">Drop</div>
   </div>
   <div class="tb tb-pause" data-key="Escape">II</div>
 </div>

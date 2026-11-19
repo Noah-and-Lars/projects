@@ -5,15 +5,15 @@
 // changes to furniture and food (world.js). Solo play is simply being the
 // host of a room with nobody else in it.
 import * as THREE from 'three';
-import { World, CHUNK, CEIL } from './world.js';
+import { World, CHUNK, CEIL, setLampGlow, setSkyLight } from './world.js';
 import { TYPES, ITEMS, itemDims, itemMatrix, furnitureGeometry, itemGeometry } from './furniture.js';
 import { moveBody, bodyFits } from './physics.js';
 import { StaffSim } from './staff.js';
-import { createNet, myName, cleanName } from './net.js';
+import { createNet, myName, cleanName, myShirt } from './net.js';
 import { input, initInput, initTouch, lockPointer, endFrame } from './input.js';
-import { makeShopper, makeStaff, animate, setHeld, nameTag, nameHash } from './models.js';
+import { makeShopper, makeStaff, animate, setHeld, nameTag, nameHash, SHIRT_COLORS } from './models.js';
 import { initAudio, sfx, setAmbience, setVolume, setMusic, setMusicVolume } from './audio.js';
-import { DAY_LEN, CYCLE, EVENTS, POWERCUT, eventAt, nightEvent, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
+import { DAY_LEN, CYCLE, EVENTS, POWERCUT, HAIL, hailing, dayEvent, eventAt, nightEvent, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
 import { clamp, lerp, angLerp } from './rng.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { uniforms, storeMaterial, SURF, makeFixtures, makeDust, setLowQuality, furnitureMaterial as furnitureMaterialRef } from './mats.js';
@@ -24,7 +24,7 @@ const darkEl = $('dark');
 const IS_TOUCH = matchMedia('(pointer: coarse)').matches && 'ontouchstart' in window;
 
 // ---------------------------------------------------------------- settings
-const settings = { sens: 1, vol: 0.7, music: 0.5, fov: 75, low: IS_TOUCH };
+const settings = { sens: 1, vol: 0.7, music: 0.5, fov: 75, low: IS_TOUCH, voice: true };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('es-settings') || '{}')); } catch (_) {}
 const saveSettings = () => { try { localStorage.setItem('es-settings', JSON.stringify(settings)); } catch (_) {} };
 const stats = { best: 0, days: 0 };
@@ -167,6 +167,18 @@ function toast(msg) { chatLine('', msg, true); }
 // ---------------------------------------------------------------- menus
 $('name-in').value = myName();
 $('name-in').addEventListener('change', () => { const n = cleanName($('name-in').value) || 'Shopper'; $('name-in').value = n; try { localStorage.setItem('es-name', n); } catch (_) {} });
+// Shirt colour picker on the menu.
+{
+  const row = $('shirts');
+  SHIRT_COLORS.forEach((c, i) => {
+    const b = document.createElement('button'); b.className = 'sw-btn'; b.style.background = '#' + c.toString(16).padStart(6, '0');
+    b.title = 'Shirt colour'; b.setAttribute('aria-label', 'Shirt colour ' + (i + 1));
+    b.onclick = () => { try { localStorage.setItem('es-shirt', String(i)); } catch (_) {} mark(); };
+    row.append(b);
+  });
+  const mark = () => { const v = myShirt(); [...row.children].forEach((b, i) => b.classList.toggle('on', i === v)); };
+  mark();
+}
 function nameIsArcade() { try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); return !!(a && a.name); } catch (_) { return false; } }
 if (nameIsArcade()) $('name-in').disabled = true;
 function refreshBest() { $('best').textContent = stats.best ? `Most nights survived: ${stats.best} · Nights survived in total: ${stats.days}` : ''; }
@@ -204,7 +216,7 @@ $('p-settings').onclick = () => { returnTo = 'pause'; openSettings(); };
 $('p-leave').onclick = leaveGame;
 
 function openSettings() {
-  $('s-sens').value = settings.sens; $('s-vol').value = settings.vol; $('s-music').value = settings.music; $('s-fov').value = settings.fov; $('s-low').checked = settings.low;
+  $('s-sens').value = settings.sens; $('s-vol').value = settings.vol; $('s-music').value = settings.music; $('s-fov').value = settings.fov; $('s-low').checked = settings.low; $('s-voice').checked = settings.voice;
   show('settings');
 }
 $('s-sens').oninput = (e) => { settings.sens = +e.target.value; saveSettings(); };
@@ -213,6 +225,7 @@ $('s-fov').oninput = (e) => { settings.fov = +e.target.value; camera.fov = setti
 $('s-low').onchange = (e) => { settings.low = e.target.checked; setLowQuality(settings.low); renderer.setPixelRatio(Math.min(devicePixelRatio, settings.low ? 1 : 1.75)); saveSettings(); };
 setVolume(settings.vol);
 setMusicVolume(settings.music);
+$('s-voice').onchange = (e) => { settings.voice = e.target.checked; saveSettings(); };
 $('s-music').oninput = (e) => { settings.music = +e.target.value; setMusicVolume(settings.music); saveSettings(); };
 
 initInput(canvas, {
@@ -239,7 +252,8 @@ function startGame(seed, waitForState) {
     const a = Math.random() * Math.PI * 2, d = 20 + Math.random() * 130;
     spawnAt(Math.cos(a) * d, Math.sin(a) * d, 10);
   }
-  if (!myModel) { myModel = makeShopper(nameHash(net.id)); scene.add(myModel.root); }
+  if (myModel) scene.remove(myModel.root);
+  myModel = makeShopper(nameHash(net.id), myShirt()); scene.add(myModel.root);
   mode = 'play'; paused = false; lastPhase = ''; warned = false;
   show(null);
   $('hud').classList.remove('hidden');
@@ -280,7 +294,7 @@ function spawnAt(x, z, spread) {
 function onMembers(list) {
   for (const [id, r] of remotes) if (!list.some((m) => m.id === id)) { scene.remove(r.model.root); remotes.delete(id); toast(`${r.name} left the store.`); }
   for (const m of list) if (m.id !== net.id && !remotes.has(m.id)) {
-    const model = makeShopper(nameHash(m.id));
+    const model = makeShopper(nameHash(m.id), (m.lk | 0) >= 0 && (m.lk | 0) < 10 && m.lk !== undefined ? m.lk | 0 : -1);
     const name = cleanName(m.n) || 'Shopper';
     const tag = nameTag(name); tag.position.y = 2.15; model.root.add(tag);
     model.root.visible = false;
@@ -420,7 +434,7 @@ function die(why) {
   for (let i = waypoints.length - 1; i >= 0; i--) if (waypoints[i].death) waypoints.splice(i, 1);
   waypoints.push({ x: P.x, y: P.y + 1, z: P.z, name: 'Where you were caught', death: true });
   $('death').classList.remove('hidden');
-  $('death-msg').textContent = why === 'hunger' ? 'You starved.' : why === 'fall' ? 'You fell too far.' : why === 'food' ? 'Something you ate finished you off.' : `You survived ${P.nights} night${P.nights === 1 ? '' : 's'}.`;
+  $('death-msg').textContent = why === 'hunger' ? 'You starved.' : why === 'fall' ? 'You fell too far.' : why === 'food' ? 'Something you ate finished you off.' : why === 'hail' ? 'The hail got you.' : `You survived ${P.nights} night${P.nights === 1 ? '' : 's'}.`;
   net.send('x', { n: P.nights, w: why });
   P.nights = 0;
 }
@@ -800,6 +814,8 @@ function updateHud(dt) {
   hudT -= dt;
   const bars = document.querySelectorAll('#bars .bar i');
   bars[0].style.width = P.hp + '%'; bars[1].style.width = P.food + '%'; bars[2].style.width = P.en + '%';
+  const nums = document.querySelectorAll('#bars .bar em');
+  nums[0].textContent = Math.ceil(P.hp); nums[1].textContent = Math.ceil(P.food); nums[2].textContent = Math.ceil(P.en);
   $('bars').classList.toggle('starving', P.food <= 0); $('bars').classList.toggle('tired', P.en <= 0);
   const wh = $('whistle');
   wh.textContent = P.whistleT > 0 ? `Whistle ${Math.ceil(P.whistleT)} s` : 'H · Whistle';
@@ -810,7 +826,7 @@ function updateHud(dt) {
   $('clock-day').textContent = `Day ${clock.day} · ${weekday(clock.day)}`;
   $('clock-time').textContent = clockText(clock.t);
   const tm = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-  $('clock-phase').textContent = night ? `Closed · opens in ${tm(CYCLE - clock.t)}` : isHostile(clock.t, clock.ev) ? (clock.ev === 'fog' ? `Fog · staff hunting · ${tm(DAY_LEN - clock.t)}` : 'Power cut · staff hunting') : `Open · closes in ${tm(DAY_LEN - clock.t)}`;
+  $('clock-phase').textContent = night ? `Closed · opens in ${tm(CYCLE - clock.t)}` : isHostile(clock.t, clock.ev) ? (clock.ev === 'fog' ? `Fog · staff hunting · ${tm(DAY_LEN - clock.t)}` : 'Power cut · staff hunting') : hailing(clock.t, clock.ev) ? `Hailstorm · closes in ${tm(DAY_LEN - clock.t)}` : `Open · closes in ${tm(DAY_LEN - clock.t)}`;
   $('clock').classList.toggle('red', clock.ev === 'crimson');
   const ev = $('event');
   if (clock.ev) { ev.textContent = EVENTS[clock.ev].name; ev.classList.remove('hidden'); } else ev.classList.add('hidden');
@@ -857,6 +873,8 @@ function updateClock(dt) {
   if (phase === 'day' && left <= 5 && left >= 1 && left !== lastTick) { lastTick = left; sfx.tick(6 - left); }
   if (clock.ev === 'powercut' && Math.abs(clock.t - POWERCUT[0]) < dt * 1.5) { sfx.lightsOff(false); announce('Power cut!', 'The staff hunt in the dark until the power comes back.', 4); }
   if (clock.ev === 'powercut' && Math.abs(clock.t - POWERCUT[1]) < dt * 1.5) sfx.lightsOn();
+  if (clock.ev === 'hail' && Math.abs(clock.t - HAIL[0]) < dt * 1.5) announce('Hailstorm!', 'Hail is coming through the garden centre skylights. Stay under cover there.', 5);
+  if (clock.ev === 'hail' && Math.abs(clock.t - HAIL[1]) < dt * 1.5) toast('The hail has stopped.');
   lastPhase = phase;
 }
 
@@ -883,7 +901,7 @@ function speak(line, vol) {
   el.textContent = line; el.classList.remove('hidden');
   clearTimeout(speak.t); speak.t = setTimeout(() => el.classList.add('hidden'), 2600);
   try {
-    if (!('speechSynthesis' in window) || settings.vol <= 0) return;
+    if (!('speechSynthesis' in window) || settings.vol <= 0 || !settings.voice) return;
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(line);
     u.pitch = 0.05; u.rate = 0.82; u.volume = clamp(vol * settings.vol, 0, 1);
@@ -908,6 +926,8 @@ function drawStaff(dt, now) {
     const d = Math.hypot(m.root.position.x - P.x, m.root.position.z - P.z);
     if (s1.f & 1) { anyHostile = true; if (d < nearest) { nearest = d; const a = Math.atan2(m.root.position.x - P.x, m.root.position.z - P.z) - P.yaw; nearPan = clamp(-Math.sin(a), -1, 1); } }
     if (s1.tg === net.id) hunter = Math.min(hunter, d);
+    // heavy footsteps you can hear coming
+    if (hostile && d < 18 && s1.s > 1) { v.stepAcc = (v.stepAcc || 0) + s1.s * dt; if (v.stepAcc > 1.5) { v.stepAcc = 0; const a = Math.atan2(m.root.position.x - P.x, m.root.position.z - P.z) - P.yaw; sfx.staffStep(clamp(-Math.sin(a), -1, 1), 1 - d / 18); } }
   }
   murmurT -= dt;
   if (anyHostile && nearest < 14 && murmurT <= 0) { sfx.staffNear(nearPan); murmurT = 0.5 + nearest / 10; }
@@ -957,6 +977,7 @@ function frame() {
   }
   updateInteraction(dt);
   updateFlying(dt);
+  updateHail(dt);
   // host: staff
   if (net.isHost() && staffSim) {
     const players = [{ id: net.id, x: P.x, y: P.y, z: P.z, alive: P.alive, sprinting: P.sprinting, crouch: P.crouch }];
@@ -984,6 +1005,8 @@ function frame() {
   floor.position.set(Math.round(P.x / 4) * 4, 0, Math.round(P.z / 4) * 4);
   ceiling.position.set(Math.round(P.x / 6) * 6, CEIL, Math.round(P.z / 6) * 6);
   fixtures.update(P.x, P.z, L, uniforms.uEmerg.value, CEIL);
+  setSkyLight(isNight(clock.t) ? 0 : 1, hailing(clock.t, clock.ev));
+  document.body.classList.toggle('crimson', clock.ev === 'crimson' && isNight(clock.t));
   const vig = (0.45 + 0.55 * (1 - L)).toFixed(2);
   if (darkEl.style.opacity !== vig) darkEl.style.opacity = vig;
   dust.update(dt, P.x, P.z, L);
@@ -1007,6 +1030,7 @@ function updateLamps(L) {
     lampList = lampList.slice(0, lampLights.length);
   }
   const k = Math.max(0, 1 - L * 1.4);
+  setLampGlow(k * 0.9);
   lampLights.forEach((l, i) => {
     const e = lampList[i];
     if (!e || k <= 0) { l.intensity = 0; return; }
@@ -1014,6 +1038,40 @@ function updateLamps(L) {
     else l.position.set(e.x, e.y, e.z);
     l.intensity = 9 * k;
   });
+}
+
+// Hail through the skylights: falling stones you can see, a rattle you can
+// hear, and damage every few seconds while nothing covers your head.
+const HAIL_N = 700;
+const hail = (() => {
+  const pos = new Float32Array(HAIL_N * 3);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const m = new THREE.PointsMaterial({ color: 0xe8f2ff, size: 0.06, transparent: true, opacity: 0.85, depthWrite: false });
+  const pts = new THREE.Points(g, m); pts.frustumCulled = false; pts.visible = false; scene.add(pts);
+  return { pts, pos, t: 0, hitT: 0 };
+})();
+function updateHail(dt) {
+  const on = hailing(clock.t, clock.ev);
+  const near = on ? world.skylightsNear(P.x, P.z, 26) : [];
+  hail.pts.visible = near.length > 0;
+  setAmbience.hail?.(near.length > 0 ? 1 : 0);
+  if (near.length) {
+    const p = hail.pos;
+    for (let i = 0; i < HAIL_N; i++) {
+      let y = p[i * 3 + 1] - 16 * dt;
+      if (y < 0.05 || Math.abs(p[i * 3] - P.x) > 26 || Math.abs(p[i * 3 + 2] - P.z) > 26) {
+        const sk = near[i % near.length];
+        p[i * 3] = sk.x0 + Math.random() * (sk.x1 - sk.x0); p[i * 3 + 2] = sk.z0 + Math.random() * (sk.z1 - sk.z0); y = CEIL - Math.random() * CEIL;
+      }
+      p[i * 3 + 1] = y;
+    }
+    hail.pts.geometry.attributes.position.needsUpdate = true;
+    if (Math.random() < dt * 8) sfx.hailTick();
+  }
+  if (on && P.alive && world.underSky(P.x, P.y + P.height, P.z)) {
+    hail.hitT -= dt;
+    if (hail.hitT <= 0) { hail.hitT = 3; hurt(9 + Math.floor(Math.random() * 8), 'hail'); toast('The hail is hitting you. Get under cover!'); }
+  } else hail.hitT = Math.min(hail.hitT, 1);
 }
 
 // Camera feel: head bob while walking, a wider view when sprinting, a dip on
@@ -1158,6 +1216,7 @@ function renderMenuBackdrop(dt) {
   camera.position.set(x, 2.2, z);
   camera.rotation.set(-0.12, Math.PI + Math.sin(menuT * 0.07) * 0.6, 0, 'YXZ');
   for (const l of lampLights) l.intensity = 0;
+  setLampGlow(0); setSkyLight(1, false);
   fixtures.update(x, z, 1, 0, CEIL);
   dust.update(dt, x, z, 1);
   world.flushItems();
@@ -1175,4 +1234,4 @@ requestAnimationFrame(frame);
 
 // Test hook for tools/test.cjs.
 window.__game = { P, clock, world, net, renderer, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
-  useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };
+  useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, dayEventForTest: (d) => dayEvent(world.seed, d), get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };

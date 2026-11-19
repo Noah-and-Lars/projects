@@ -26,12 +26,18 @@ fs.mkdirSync(out, { recursive: true });
     if (best) { P.x = best.x + 2.2; P.z = best.z + 2.2; P.y = 0; P.yaw = Math.atan2(P.x - best.x, P.z - best.z); P.pitch = -0.35; }
   });
   await shot('look-3-night.png', () => { __game.setClock(400); __game.P.pitch = 0; }, 3000);
-  await shot('look-4-torch.png', () => { __game.P.torch = true; __game.P.pitch = -0.15; }, 1500);
+  await shot('look-4-lamps.png', () => {
+    const P = __game.P, w = __game.world;
+    const l = [...w.items.values()].filter((i) => (i.t === 'floorLamp' || i.t === 'tableLamp') && w.active(i)).sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z))[0];
+    if (l) { P.x = l.x + 3; P.z = l.z + 1; P.y = 0; P.yaw = Math.atan2(P.x - l.x, P.z - l.z); P.pitch = -0.15; }
+  }, 2500);
   await shot('look-5-staff.png', () => {
     const s = __game.staff && [...__game.staff.staff.values()][0]; const P = __game.P;
     if (s) { s.x = P.x - Math.sin(P.yaw) * 3; s.z = P.z - Math.cos(P.yaw) * 3; s.y = P.y; }
   }, 1200);
-  await shot('look-6-third.png', () => { __game.setClock(60); __game.P.torch = false; __game.P.third = true; __game.P.pitch = -0.3; }, 2000);
+  await shot('look-7-crimson.png', () => { __game.setClock(420, 10); __game.P.pitch = 0; }, 3500);
+  await shot('look-8-fog.png', () => { __game.setClock(120, 15); __game.P.pitch = -0.05; }, 3000);
+  await shot('look-6-third.png', () => { __game.setClock(60, 16); __game.P.third = true; __game.P.pitch = -0.3; }, 2000);
   console.log(errors.length ? 'ERRORS ' + errors.join('\n') : 'no page errors');
   await b.close();
 })();

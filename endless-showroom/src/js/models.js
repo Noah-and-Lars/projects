@@ -27,8 +27,10 @@ const HAIR = [0x2a1d14, 0x5b3a1e, 0xc9a25a, 0x1a1a1a, 0x8a3b1f, 0xd9d0c0];
 export function nameHash(s) { let h = 7; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; }
 
 // A shopper. look = hash of the player's id/name, so everyone sees the same.
-export function makeShopper(look) {
-  const shirt = SHIRTS[look % SHIRTS.length], pants = PANTS[(look >> 4) % PANTS.length], skin = SKIN[(look >> 8) % SKIN.length], hair = HAIR[(look >> 12) % HAIR.length];
+export const SHIRT_COLORS = SHIRTS;
+// shirtPick: a chosen shirt colour (0..9), or -1 to pick one from the look hash.
+export function makeShopper(look, shirtPick = -1) {
+  const shirt = SHIRTS[shirtPick >= 0 && shirtPick < SHIRTS.length ? shirtPick : look % SHIRTS.length], pants = PANTS[(look >> 4) % PANTS.length], skin = SKIN[(look >> 8) % SKIN.length], hair = HAIR[(look >> 12) % HAIR.length];
   const root = new THREE.Group();
   const body = new THREE.Group(); root.add(body);
   const legL = part((g) => { g.box(0, -0.4, 0, 0.2, 0.8, 0.22, pants); g.box(0, -0.78, 0.04, 0.22, 0.08, 0.3, 0x222222); }, -0.12, 0.82, 0);
