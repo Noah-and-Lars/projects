@@ -367,7 +367,7 @@
   /* =================================================================================================== */
   function initBug() {
     var form = $('spBugForm'); if (!form) return;
-    var g = $('spBugGame'), what = $('spBugWhat'), steps = $('spBugSteps'), often = $('spBugOften'), info = $('spBugInfo'), id = newId();
+    var g = $('spBugGame'), what = $('spBugWhat'), steps = $('spBugSteps'), often = $('spBugOften'), id = newId();
     gameOptions(g, 'The site itself (not a game)');
     var pre = (/[?&]game=([\w-]+)/.exec(location.search) || [])[1];
     if (pre && gameById(pre)) g.value = pre;
@@ -376,10 +376,9 @@
         'Game: ' + (g.value ? gameLabel(g.value) : 'The site') + '\n' +
         'What happened: ' + (what.value.trim() || '(not filled in)') + '\n' +
         (steps.value.trim() ? 'Steps: ' + steps.value.trim() + '\n' : '') +
-        'How often: ' + often.value + '\n\n' +
-        '--- Device (filled in automatically) ---\n' + deviceInfo('');
+        'How often: ' + often.value + '\n';
     }
-    function draw() { info.textContent = deviceInfo(g.value); $('spBugVer').textContent = g.value ? (gameVersion(g.value) ? 'Version ' + gameVersion(g.value) + ', from the latest patch notes.' : 'This game’s version number isn’t in its patch notes; the date it last updated is ' + new Date((gameById(g.value) || {}).updated || Date.now()).toLocaleDateString() + '.') : ''; }
+    function draw() { $('spBugVer').textContent = g.value ? (gameVersion(g.value) ? 'Version ' + gameVersion(g.value) + ', from the latest patch notes.' : 'This game’s version number isn’t in its patch notes; the date it last updated is ' + new Date((gameById(g.value) || {}).updated || Date.now()).toLocaleDateString() + '.') : ''; }
     [g, what, steps, often].forEach(function (x) { x.addEventListener('input', draw); x.addEventListener('change', draw); });
     draw();
     if (window.ArcadeOutage && ArcadeOutage.onChange) ArcadeOutage.onChange(draw);
