@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#11161c">
 <title>Turn! Turn! TURN!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;0,900;1,700;1,800;1,900&display=swap" rel="stylesheet">
 <script id="arcade-name">
 // Your name in this game is your arcade account's name (made on the arcade's home page, or your local account's).
 (() => {
@@ -305,6 +307,294 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
   #navpad button{min-width:56px;padding:8px 6px}
   .call{font-size:28px}.call svg{width:40px;height:40px}
 }
+
+/* ==========================================================================
+   1.6: the new menu. A top bar, your car in the garage, cards along the bottom,
+   and full-screen pages (courses, events, leaderboard) with the same top bar.
+   ========================================================================== */
+:root{--u:min(1vw,1.8vh);--cf:"Barlow Condensed","Arial Narrow","Roboto Condensed","Avenir Next Condensed",system-ui,sans-serif;
+  --bar:max(40px,calc(var(--u)*4.8));--edge:#2b3c4e;--orangeD:#ee670b}
+.topbar{display:flex;align-items:stretch;gap:2px;height:var(--bar);background:#04070a;font-family:var(--cf);position:relative;z-index:3;flex:none;box-shadow:0 3px 14px rgba(0,0,0,.45)}
+#menu>.topbar{position:absolute;left:0;right:0;top:0}
+.tb-cell{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:calc(var(--bar)*.16);padding:0 calc(var(--bar)*.26);background:linear-gradient(180deg,#252d36,#141a21);color:#fff;font-weight:700;font-size:calc(var(--bar)*.47);line-height:1;white-space:nowrap;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.tb-cell b{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.tb-cell .ic{width:calc(var(--bar)*.58);height:calc(var(--bar)*.58);flex:none;display:flex}
+.ic svg,.tb-sq svg,.tile svg,.sb-back svg,.sb-home svg,.pg svg,.timer svg,.tclock svg{width:100%;height:100%;display:block}
+.ic.g{color:#f6c431}.ic.s{color:#d5dde4}.ic.b{color:#dc8f55}.ic.t{color:#36dcc7}.ic.y{color:#ffd23f}
+.tb-prof{flex:1.5 1 0;position:relative;overflow:visible;padding-left:calc(var(--bar)*1.52)}
+.tb-prof .av{position:absolute;left:calc(var(--bar)*.12);top:calc(var(--bar)*.05);width:calc(var(--bar)*1.22);height:calc(var(--bar)*1.22);border-radius:50%;border:3px solid var(--orange);
+  background:radial-gradient(circle at 35% 30%,#33414f,#10171f);display:flex;align-items:center;justify-content:center;font:900 italic calc(var(--bar)*.62)/1 var(--cf);color:#fff;box-shadow:0 3px 10px rgba(0,0,0,.6);background-size:cover;background-position:center;z-index:4}
+.tb-prof .nm{margin:0;font-weight:800;text-transform:uppercase;letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis}
+.tb-hi{flex:.7 1 0;justify-content:center;background:linear-gradient(180deg,#43e6d0,#13a693);color:#fff;cursor:pointer}
+.tb-hi svg{width:calc(var(--bar)*.66);height:calc(var(--bar)*.66);filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
+.tb-hi:hover{filter:brightness(1.08)}
+.tb-lvl{flex:1.05 1 0;flex-direction:column;align-items:stretch;justify-content:center;gap:4px}
+.tb-lvl b{margin:0;font-weight:800;font-size:calc(var(--bar)*.42);text-align:center}
+.tb-lvl .xp{display:block;height:4px;background:rgba(255,255,255,.14);border-radius:2px;overflow:hidden}
+.tb-lvl .xp i{display:block;height:100%;width:0;background:var(--orange);transition:width .4s}
+.tb-star{flex:.8 1 0}
+.tb-sq{flex:none;width:calc(var(--bar)*1.15);display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#fff,#e2e6e9);color:var(--orange);padding:calc(var(--bar)*.18)}
+button.tb-sq:hover{background:#fff}
+.tb-logo{width:calc(var(--bar)*1.5);padding:calc(var(--bar)*.2) calc(var(--bar)*.14)}
+.sb-back,.sb-home{flex:none;width:calc(var(--bar)*1.3);display:flex;align-items:center;justify-content:center;padding:calc(var(--bar)*.22)}
+.sb-back{background:linear-gradient(180deg,#ffa04a,var(--orangeD));color:#fff}
+.sb-home{background:linear-gradient(180deg,#fff,#e2e6e9);color:#1d3654}
+.sb-back:hover{filter:brightness(1.08)}.sb-home:hover{background:#fff}
+.sb-gap{flex:1.8 1 0;background:linear-gradient(180deg,#1a2129,#10151b)}
+#ui.racing .sb-home{display:none}
+
+/* home: tiles down the right, cards along the bottom */
+#menu{padding:0;display:block;overflow:hidden;background:none}
+.garage-hit{position:absolute;left:0;right:0;top:var(--bar);bottom:calc(var(--u)*18.5);z-index:1;cursor:grab;touch-action:none}
+.garage-hit.drag{cursor:grabbing}
+.side{position:absolute;right:calc(var(--u)*1.4);top:calc(var(--bar) + var(--u)*2.2);display:flex;flex-direction:column;gap:calc(var(--u)*1.1);z-index:2}
+.tile{position:relative;width:max(46px,calc(var(--u)*7));height:max(46px,calc(var(--u)*7));background:linear-gradient(180deg,#fff,#e4e8eb);color:var(--orange);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:max(9px,calc(var(--u)*1.35));box-shadow:0 4px 12px rgba(0,0,0,.45);border-radius:2px;transition:transform .08s}
+.tile:hover{background:#fff}.tile:active{transform:scale(.95)}
+.tile.lab{height:auto;padding:max(7px,calc(var(--u)*1.05)) 4px max(6px,calc(var(--u)*.75))}
+.tile.lab svg{height:max(22px,calc(var(--u)*3.4))}
+.tile.lab span{font:800 max(10px,calc(var(--u)*1.22))/1 var(--cf);color:#1a2430;margin-top:calc(var(--u)*.6);letter-spacing:.02em}
+.tile .new{position:absolute;top:-7px;right:-7px;background:#ff3b30;color:#fff;font:800 italic 12px/1 var(--cf);padding:3px 5px;border-radius:2px;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.dock{position:absolute;left:calc(var(--u)*1.4);right:calc(var(--u)*1.4);bottom:calc(var(--u)*1.4);height:calc(var(--u)*16.5);min-height:120px;display:grid;grid-template-columns:36fr 30fr 33fr;gap:calc(var(--u)*1);z-index:2}
+.hcard{position:relative;overflow:hidden;background:#0b1118;border:2px solid #e9edf0;border-radius:2px;text-align:left;color:#fff;font-family:var(--cf);box-shadow:0 6px 18px rgba(0,0,0,.5)}
+.hcard img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;transition:transform .45s}
+.hcard:hover img{transform:scale(1.05)}
+.hcard:active{transform:scale(.985)}
+.pr-top{position:absolute;left:0;top:0;right:0;padding:calc(var(--u)*.8) calc(var(--u)*1.1) calc(var(--u)*2);background:linear-gradient(180deg,rgba(0,0,0,.82),rgba(0,0,0,0))}
+.pr-top b{display:block;color:#ffd23f;font:900 italic max(15px,calc(var(--u)*2))/1 var(--cf);text-transform:uppercase}
+.pr-top small{display:block;font:700 max(11px,calc(var(--u)*1.35))/1.2 var(--cf);text-transform:uppercase;margin-top:3px;color:#fff;letter-spacing:.02em}
+.pr-bot{position:absolute;right:0;bottom:0;display:flex;align-items:center;gap:6px;padding:calc(var(--u)*.6) calc(var(--u)*1.3) calc(var(--u)*.6) calc(var(--u)*2.4);background:linear-gradient(180deg,#ffa04a,var(--orangeD));
+  font:900 italic max(15px,calc(var(--u)*2.3))/1 var(--cf);text-transform:uppercase;clip-path:polygon(calc(var(--u)*1.3) 0,100% 0,100% 100%,0 100%);text-shadow:0 1px 0 rgba(120,40,0,.4)}
+.pr-bot svg{width:max(13px,calc(var(--u)*1.8));height:max(13px,calc(var(--u)*1.8))}
+.ev-tab{position:absolute;right:0;top:0;padding:calc(var(--u)*.55) calc(var(--u)*1.3) calc(var(--u)*.55) calc(var(--u)*2.4);background:linear-gradient(180deg,#ffa04a,var(--orangeD));color:#fff;
+  font:800 max(14px,calc(var(--u)*2.1))/1 var(--cf);text-transform:uppercase;letter-spacing:.02em;clip-path:polygon(0 0,100% 0,100% 100%,calc(var(--u)*1.3) 100%);text-shadow:0 1px 0 rgba(120,40,0,.4)}
+.ev-tab.red{background:linear-gradient(180deg,#ff5a4a,#c41f14)}
+.ev-bot{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:flex-end;justify-content:space-between;gap:8px;padding:calc(var(--u)*2.2) calc(var(--u)*1.1) calc(var(--u)*.8);background:linear-gradient(0deg,rgba(0,0,0,.86),rgba(0,0,0,0))}
+.ev-bot>b{font:800 max(13px,calc(var(--u)*1.85))/1 var(--cf);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.02em}
+.timer{display:flex;align-items:center;gap:6px;font:800 max(13px,calc(var(--u)*1.95))/1 var(--cf);white-space:nowrap;color:#fff}
+.timer b{font-variant-numeric:tabular-nums}
+.timer i{width:max(16px,calc(var(--u)*2.2));height:max(16px,calc(var(--u)*2.2));display:flex;background:#fff;color:#17212c;border-radius:50%;padding:2px;flex:none}
+.bigs{display:grid;grid-template-rows:1fr 1fr;gap:calc(var(--u)*1)}
+.big-btn{position:relative;overflow:hidden;display:flex;align-items:center;padding-left:calc(var(--u)*1.7);background:linear-gradient(180deg,#ffa54f,#ff7a1a 55%,var(--orangeD));color:#fff;
+  font:900 italic max(22px,calc(var(--u)*3.5))/1 var(--cf);text-transform:uppercase;letter-spacing:.01em;text-shadow:0 2px 0 rgba(120,40,0,.35);border:2px solid #ffd2aa;border-radius:2px;box-shadow:0 6px 18px rgba(0,0,0,.45);transition:transform .08s,filter .15s}
+.big-btn:hover{filter:brightness(1.07)}.big-btn:active{transform:scale(.98)}
+.big-btn i{position:absolute;right:0;top:0;bottom:0;width:27%;background:linear-gradient(180deg,#fff,#e8ebee);clip-path:polygon(calc(var(--u)*2.4) 0,100% 0,100% 100%,0 100%);display:flex;align-items:center;justify-content:center;color:var(--orange);padding-left:calc(var(--u)*1.7)}
+.big-btn i svg{width:max(24px,calc(var(--u)*4.4));height:max(24px,calc(var(--u)*4.4))}
+#onlineNote{position:absolute;left:50%;bottom:calc(var(--u)*19.4 + 6px);transform:translateX(-50%);z-index:2;background:rgba(150,22,22,.94);color:#fff;font:700 14px/1.3 var(--ff);padding:8px 14px;border-radius:2px;max-width:90%;text-align:center;margin:0;text-shadow:none}
+#onlineNote:empty{display:none}
+
+/* full-screen pages */
+.screen.sub{padding:0;align-items:stretch;justify-content:flex-start;overflow:hidden;font-family:var(--cf);
+  background:repeating-linear-gradient(135deg,rgba(255,255,255,.022) 0 2px,rgba(255,255,255,0) 2px 16px),radial-gradient(120% 85% at 50% 0%,#203448 0%,#0f1b27 55%,#09111a 100%)}
+.titlebar{flex:none;display:flex;align-items:center;justify-content:center;height:max(42px,calc(var(--u)*5.2));padding:0 calc(var(--u)*2);position:relative;
+  background:linear-gradient(90deg,rgba(0,0,0,0),rgba(0,0,0,.4) 18%,rgba(0,0,0,.4) 82%,rgba(0,0,0,0))}
+.titlebar h2{font:800 max(19px,calc(var(--u)*2.8))/1 var(--cf);text-transform:uppercase;letter-spacing:.03em;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%}
+.tstars{position:absolute;right:calc(var(--u)*2.4);top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:7px;font:800 max(16px,calc(var(--u)*2.3))/1 var(--cf);color:#fff}
+.tstars svg{width:max(18px,calc(var(--u)*2.5));height:max(18px,calc(var(--u)*2.5));color:#ffd23f}
+.tclock{display:flex;width:max(18px,calc(var(--u)*2.4));height:max(18px,calc(var(--u)*2.4));color:#fff}
+.titlebar .seg{position:absolute;right:calc(var(--u)*2.4);top:50%;transform:translateY(-50%)}
+
+/* courses: three by two, a page at a time */
+.cg-wrap{flex:1 1 auto;min-height:0;display:flex;overflow:auto;padding:calc(var(--u)*1.2) calc(var(--u)*3) 0}
+.cgrid{display:grid;margin:auto}
+.ccard{position:relative;overflow:hidden;background:#0a1118;border:2px solid var(--edge);border-radius:3px;color:#fff;text-align:left;font-family:var(--cf);transition:border-color .15s,transform .08s;box-shadow:0 8px 18px rgba(0,0,0,.45);animation:cardIn .25s ease-out both}
+@keyframes cardIn{from{opacity:0;transform:translateY(8px)}}
+.ccard:hover{border-color:#fff}.ccard:active{transform:scale(.98)}
+.ccard.sel{border-color:var(--orange)}
+.ccard img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover}
+.cc-top{position:absolute;left:0;right:0;top:0;padding:calc(var(--u)*.85) calc(var(--u)*1.2) calc(var(--u)*2.6);background:linear-gradient(180deg,rgba(5,9,13,.95) 0%,rgba(5,9,13,.78) 50%,rgba(5,9,13,0) 100%)}
+.cc-top b{display:block;font:800 max(13px,calc(var(--u)*1.8))/1 var(--cf);text-transform:uppercase;letter-spacing:.04em}
+.cc-top small{display:block;font:700 max(10px,calc(var(--u)*1.32))/1.15 var(--cf);text-transform:uppercase;color:#a9b9c8;margin-top:3px;letter-spacing:.03em}
+.cc-corner{position:absolute;right:0;top:0;width:max(34px,calc(var(--u)*5.4));height:max(34px,calc(var(--u)*5.4));background:linear-gradient(225deg,#2c3a48 50%,rgba(0,0,0,0) 50%);color:rgba(255,255,255,.35)}
+.cc-corner svg{position:absolute;right:12%;top:12%;width:38%;height:38%}
+.cc-corner.m-gold{background:linear-gradient(225deg,#f2bd22 50%,rgba(0,0,0,0) 50%);color:#fff}
+.cc-corner.m-silver{background:linear-gradient(225deg,#aebbc6 50%,rgba(0,0,0,0) 50%);color:#fff}
+.cc-corner.m-bronze{background:linear-gradient(225deg,#cf8146 50%,rgba(0,0,0,0) 50%);color:#fff}
+.cc-corner.dark{background:linear-gradient(225deg,#9b1b12 50%,rgba(0,0,0,0) 50%);color:#fff}
+.cc-bot{position:absolute;left:0;right:0;bottom:0;padding:calc(var(--u)*2.4) calc(var(--u)*1.2) calc(var(--u)*.85);background:linear-gradient(0deg,rgba(5,9,13,.94),rgba(5,9,13,.62) 60%,rgba(5,9,13,0))}
+.cc-name{display:block;font:800 max(15px,calc(var(--u)*2.1))/1 var(--cf);text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cc-line{display:flex;justify-content:space-between;align-items:center;margin-top:calc(var(--u)*.5);font:700 max(11px,calc(var(--u)*1.45))/1 var(--cf);color:#d9e2ea;gap:6px;text-transform:uppercase;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cc-line .medal{width:.8em;height:.8em}
+.cc-best{font-weight:800}
+.cc-best.new{color:#43e6b5}
+.ccard.hor{border-color:#5a1d1d}.ccard.hor .cc-best.new{color:#ff6a5a}
+.pager{flex:none;position:relative;display:flex;align-items:center;justify-content:center;height:max(50px,calc(var(--u)*6.4))}
+.dots{display:flex;gap:9px}
+.dots i{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.28);cursor:pointer}
+.dots i.on{background:#fff;box-shadow:0 0 0 2px rgba(255,122,26,.7)}
+.pg{position:absolute;top:50%;transform:translateY(-50%);width:max(40px,calc(var(--u)*5.2));height:max(34px,calc(var(--u)*4.2));background:linear-gradient(180deg,#ffa04a,var(--orangeD));color:#fff;display:flex;align-items:center;justify-content:center;padding:7px;border-radius:2px;box-shadow:0 4px 10px rgba(0,0,0,.4)}
+.pg.prev{left:calc(var(--u)*3)}.pg.next{right:calc(var(--u)*3)}
+.pg[disabled]{opacity:.2;pointer-events:none}
+.pg:hover{filter:brightness(1.08)}
+
+/* a course, opened */
+.detail{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:calc(var(--u)*2.6);background:rgba(3,7,11,.74)}
+.dt-box{position:relative;display:grid;grid-template-columns:1.12fr 1fr;width:min(1000px,100%);max-height:100%;background:linear-gradient(180deg,#152332,#0e1822);border:2px solid var(--edge);border-top:4px solid var(--orange);box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden;animation:pop .18s ease-out}
+@keyframes pop{from{transform:scale(.95);opacity:0}}
+.dt-pic{position:relative;min-height:320px}
+.dt-pic img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover}
+.dt-info,.ev-info{padding:calc(var(--u)*2.1) calc(var(--u)*2.3);overflow:auto;display:flex;flex-direction:column;gap:10px;font-family:var(--ff);min-height:0}
+.dt-reg{font:800 15px/1 var(--cf);text-transform:uppercase;letter-spacing:.07em;color:var(--orange)}
+.dt-info h3,.ev-info h3{font:900 italic clamp(26px,calc(var(--u)*3.7),44px)/1 var(--cf);text-transform:uppercase;margin-top:-3px;padding-right:34px}
+.dt-info p,.ev-info p{color:#c5d0da;font-size:14px;line-height:1.4}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips span{font:700 13px/1 var(--cf);text-transform:uppercase;letter-spacing:.05em;background:#1d2d3c;padding:6px 9px;border-radius:2px;color:#e3eaf0}
+.dt-medals{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.dt-medals div,.dt-best div{background:#0b141c;border:1px solid #23313f;padding:8px 10px;font:800 19px/1 var(--cf);font-variant-numeric:tabular-nums;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dt-medals small,.dt-best small{display:flex;align-items:center;gap:5px;font:700 11.5px/1 var(--cf);letter-spacing:.08em;color:#8fa0b0;margin-bottom:6px;text-transform:uppercase}
+.dt-medals .medal{margin:0}
+.dt-best{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.dt-best div{background:#182635}
+.dt-best .nb{color:#43e6b5}
+.dt-btns{display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:auto;padding-top:6px;flex-wrap:wrap}
+.dt-x{position:absolute;right:8px;top:8px;width:36px;height:36px;background:#f2f3f4;color:#111;font-size:16px;font-weight:900;border-radius:2px;z-index:2}
+.dt-x:hover{background:#fff}
+.mods.compact{margin-top:0;gap:6px}
+.mods.compact .mod{flex:1 1 80px;padding:7px 9px}
+.mods.compact .mod span{display:none}
+.mods.compact .mods-h{width:auto;align-self:center;margin-right:2px}
+.ev-times{display:grid;grid-template-columns:3fr 2fr;gap:6px}
+.ev-times .dt-medals div,.ev-times .dt-best div{font-size:17px;padding:7px 8px}
+#horrorScr .dt-reg{color:#ff5a4a}
+
+/* play / multiplayer: pick a mode */
+.modes{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*2.2);padding:calc(var(--u)*1.6) calc(var(--u)*5) calc(var(--u)*4)}
+.mcard{position:relative;overflow:hidden;border:2px solid var(--edge);border-radius:3px;background:#0a1118;color:#fff;text-align:left;font-family:var(--cf);box-shadow:0 10px 26px rgba(0,0,0,.45);transition:border-color .15s,transform .08s;animation:cardIn .25s ease-out both}
+.mcard img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;transition:transform .5s}
+.mcard:hover{border-color:#fff}.mcard:hover img{transform:scale(1.05)}.mcard:active{transform:scale(.985)}
+.mc-bot{position:absolute;left:0;right:0;bottom:0;padding:calc(var(--u)*6) calc(var(--u)*2.4) calc(var(--u)*2.4);background:linear-gradient(0deg,rgba(4,8,12,.96),rgba(4,8,12,.72) 55%,rgba(4,8,12,0))}
+.mc-bot b{display:block;font:900 italic max(40px,calc(var(--u)*6.4))/.9 var(--cf);text-transform:uppercase}
+.mc-bot span{display:block;font:700 max(14px,calc(var(--u)*1.9))/1.2 var(--cf);color:#d3dce4;margin-top:calc(var(--u)*.7);text-transform:uppercase;letter-spacing:.03em}
+.mc-bar{position:absolute;left:0;bottom:0;width:100%;height:5px;background:var(--orange)}
+.mcard.hor{border-color:#5e2020}.mcard.hor b{color:#ff4f43}.mcard.hor .mc-bar{background:#ff3b30}
+.mc-em{position:absolute;right:calc(var(--u)*1.5);top:calc(var(--u)*1.5);font:800 max(14px,calc(var(--u)*2))/1 var(--cf);background:rgba(4,8,12,.8);padding:calc(var(--u)*.7) calc(var(--u)*1.1);display:flex;align-items:center;gap:6px;border-radius:2px;text-transform:uppercase}
+.mc-em svg{width:1em;height:1em;color:#ffd23f}
+.mc-em:empty{display:none}
+.mode-note{flex:none;text-align:center;color:#9fb0bf;font:600 14px/1.3 var(--ff);padding:0 16px calc(var(--u)*2.4)}
+.mode-note.warn{color:#ffb4a8}
+.mp-grid{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:calc(var(--u)*1.8);padding:calc(var(--u)*1.6) calc(var(--u)*6) calc(var(--u)*2);align-content:center;overflow:auto}
+.mp-grid.hor{grid-template-columns:repeat(2,minmax(0,1fr));padding-left:calc(var(--u)*14);padding-right:calc(var(--u)*14)}
+.mp-tile{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:calc(var(--u)*.8);padding:calc(var(--u)*2.2);min-height:max(130px,calc(var(--u)*18));background:linear-gradient(180deg,#fff,#e6e9ec);color:#14202c;text-align:left;border-radius:3px;
+  box-shadow:0 8px 20px rgba(0,0,0,.4);border-bottom:5px solid var(--orange);transition:transform .08s;animation:cardIn .25s ease-out both}
+.mp-tile:hover{background:#fff}.mp-tile:active{transform:scale(.98)}
+.mp-tile i{width:max(30px,calc(var(--u)*5));height:max(30px,calc(var(--u)*5));color:var(--orange);display:flex}
+.mp-tile i svg{width:100%;height:100%}
+.mp-tile b{font:900 italic max(22px,calc(var(--u)*3.1))/1 var(--cf);text-transform:uppercase}
+.mp-tile span{font:600 max(12.5px,calc(var(--u)*1.55))/1.3 var(--ff);color:#4b5a68}
+.mp-tile em{position:absolute;right:calc(var(--u)*1.4);top:calc(var(--u)*1.4);font:800 12px/1 var(--cf);letter-spacing:.06em;background:var(--teal);color:#03201c;padding:4px 7px;border-radius:2px;font-style:normal}
+.mp-grid.hor .mp-tile{border-bottom-color:#ff3b30}.mp-grid.hor .mp-tile i{color:#e0281d}
+
+/* events + horror: a big card on the left, a board on the right */
+.ev-wrap{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:1.3fr 1fr;gap:calc(var(--u)*2);padding:calc(var(--u)*1.2) calc(var(--u)*3) calc(var(--u)*2.6)}
+.ev-card,.ev-board{min-height:0;background:linear-gradient(180deg,#152332,#0e1822);border:2px solid var(--edge);border-radius:3px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 10px 26px rgba(0,0,0,.4)}
+.ev-card{border-top:4px solid var(--orange)}
+.ev-card.hor{border-top-color:#ff3b30}
+.ev-pic{position:relative;flex:1 1 45%;min-height:110px}
+.ev-pic img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover}
+.ev-pic .timer{position:absolute;right:10px;bottom:10px;background:rgba(4,8,12,.8);padding:6px 10px;border-radius:2px;font-size:19px}
+.ev-info{flex:0 1 auto}
+.evb-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:2px solid var(--edge);flex:none}
+.evb-head b{font:800 21px/1 var(--cf);text-transform:uppercase;letter-spacing:.04em}
+.ev-board .lb-list{flex:1;max-height:none;padding:10px;min-height:0}
+.hor-rules .hor-list{margin:0;padding:14px 16px 14px 34px;overflow:auto;font:15px/1.45 var(--ff);gap:9px}
+#horrorScr{background:repeating-linear-gradient(135deg,rgba(255,255,255,.018) 0 2px,rgba(255,255,255,0) 2px 16px),radial-gradient(120% 85% at 50% 0%,#3a1414 0%,#170b0d 55%,#0a0708 100%)}
+
+/* the full leaderboard */
+.lb-wrap{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(220px,30%) 1fr;gap:calc(var(--u)*1.6);padding:calc(var(--u)*1.2) calc(var(--u)*3) calc(var(--u)*2.6)}
+#lbScr .lb-tabs{flex-direction:column;overflow:auto;gap:6px;padding:0 4px 0 0;margin:0;min-height:0}
+#lbScr .lb-tabs button{display:flex;align-items:center;gap:10px;padding:5px;background:#132131;border:2px solid transparent;border-radius:2px;color:#fff;text-align:left;white-space:normal;flex:none}
+#lbScr .lb-tabs button:hover{border-color:rgba(255,255,255,.35)}
+#lbScr .lb-tabs button img{width:68px;height:40px;object-fit:cover;flex:none;border-radius:1px}
+#lbScr .lb-tabs button b{display:block;font:800 16px/1.05 var(--cf);text-transform:uppercase;letter-spacing:.02em}
+#lbScr .lb-tabs button small{display:block;font:700 12px/1 var(--cf);color:#8fa0b0;text-transform:uppercase;margin-top:3px;letter-spacing:.04em}
+#lbScr .lb-tabs button.on{border-color:var(--orange);background:#1d3045}
+.lb-main{min-height:0;display:flex;flex-direction:column;background:linear-gradient(180deg,#152332,#0e1822);border:2px solid var(--edge);border-top:4px solid var(--teal);border-radius:3px;padding:12px}
+.lb-main .lb-list{flex:1;max-height:none;min-height:0}
+#lbSub{color:#9fb0bf;font:600 13.5px/1.35 var(--ff);margin:0 2px 10px}
+.lb-row{background:#16232f;border:0;border-left:4px solid #2b3c4e;border-radius:2px;padding:9px 14px}
+.lb-row .rk{font:900 italic 24px/1 var(--cf)}
+.lb-row .crew{font:800 19px/1.1 var(--cf);letter-spacing:.01em}
+.lb-row .crew small{font:600 12px/1.2 var(--ff)}
+.lb-row .tm{font:800 21px/1 var(--cf);font-variant-numeric:tabular-nums}
+.lb-row .dt{font:700 13px/1 var(--cf);text-transform:uppercase}
+.lb-row.top1{border-left-color:#f6c431}.lb-row.top2{border-left-color:#cfd8e0}.lb-row.top3{border-left-color:#d8955a}
+.lb-row.me{border-left-color:var(--orange);background:#2b2318}
+.lb-empty{font:600 14px/1.4 var(--ff)}
+
+/* pop-up panels over the garage (settings, notes, crews, pause, results) */
+.screen.dim{background:rgba(3,7,11,.68)}
+.panel{background:linear-gradient(180deg,#162434,#0e1822);border:2px solid var(--edge);border-top:4px solid var(--orange);border-radius:3px;box-shadow:0 30px 80px rgba(0,0,0,.6);backdrop-filter:none;-webkit-backdrop-filter:none}
+.panel h2{font:900 italic 30px/1.05 var(--cf);text-transform:uppercase;letter-spacing:.01em}
+.panel .sub{color:#9fb0bf}
+.panel-head{padding-bottom:12px;border-bottom:2px solid #1f2d3b}
+.close{background:#f2f3f4;color:#111;border-radius:2px;font-weight:900}
+.close:hover{background:#fff}
+.btn{border-radius:2px;background:linear-gradient(180deg,#fff,#e2e6e9);color:#13202c;border:0;font:800 17px/1.1 var(--cf);text-transform:uppercase;letter-spacing:.03em;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.btn:hover{background:#fff;border-color:transparent}
+.btn.primary{background:linear-gradient(180deg,#ffa54f,#ff7a1a 55%,var(--orangeD));color:#fff;font-style:italic;font-weight:900;text-shadow:0 1px 0 rgba(120,40,0,.4);box-shadow:0 3px 0 #9a3f05,0 8px 20px rgba(255,122,26,.22)}
+.btn.primary:hover{filter:brightness(1.07);background:linear-gradient(180deg,#ffa54f,#ff7a1a 55%,var(--orangeD))}
+.btn.big{font-size:26px;padding:12px 44px}
+.btn.small{font-size:14px;padding:8px 12px;border-radius:2px}
+.btn small{font:700 13px var(--cf);opacity:.6}
+.seg{background:#0a121a;border:1px solid #23313f;border-radius:2px}
+.seg button{font:800 14px/1 var(--cf);text-transform:uppercase;letter-spacing:.05em;border-radius:1px;color:#9fb0bf;padding:7px 12px}
+.seg button.on{background:var(--orange);color:#fff}
+.mod{border-radius:2px;background:#16232f;border:2px solid #23313f}
+.mod b{font:800 16px/1.1 var(--cf);text-transform:uppercase;letter-spacing:.02em}
+.mods .mods-h{font:800 13px/1 var(--cf);letter-spacing:.1em}
+.qm-card{background:linear-gradient(180deg,#fff,#e6e9ec);color:#14202c;border:0;border-radius:3px;box-shadow:none;border-bottom:5px solid var(--teal)}
+.qm-card.vs{border-bottom-color:var(--orange);box-shadow:none}
+.qm-card:hover{background:#fff}
+.qm-card b{font:900 italic 28px/1 var(--cf);text-transform:uppercase}
+.qm-card span{color:#4b5a68}
+.qm-title{font:900 italic 26px/1.2 var(--cf);text-transform:uppercase}
+.seat,.vs-crew,.lobby-stage,.note,.help-card,.res-rows div{background:#16232f;border:1px solid #23313f;border-radius:2px}
+.seat .role,.vs-crew .r{font-family:var(--cf);font-size:13px}
+.seat .who,.vs-crew .p{font-family:var(--cf);font-size:22px}
+.crew-code .digits{font-family:var(--cf);border-radius:2px;background:#0a121a}
+.code-boxes input{border-radius:2px;background:#0a121a;font-family:var(--cf)}
+.res-time{font-family:var(--cf);font-weight:900;font-size:76px}
+.note h3,.help-card h3{font-family:var(--cf);font-size:21px;text-transform:uppercase}
+.lobby-stage img{width:92px;height:54px;object-fit:cover;border-radius:2px;flex:none}
+.lobby-stage .nm{font:800 19px/1.1 var(--cf);text-transform:uppercase}
+.trailer-panel{width:min(1040px,100%);padding:14px}
+.trailer-panel video{display:block;width:100%;aspect-ratio:16/9;background:#000}
+
+@media (max-width:760px){
+  .tb-runs,.tb-logo,.sb-br,.sb-gap{display:none}
+  .tb-lvl{flex:.9 1 0}
+  .dock{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;height:calc(var(--u)*30);min-height:220px}
+  .dock .bigs{grid-column:1/3;grid-row:1;grid-template-rows:none;grid-template-columns:1fr 1fr}
+  .garage-hit{bottom:calc(var(--u)*32)}
+  #onlineNote{bottom:calc(var(--u)*30 + 26px)}
+  .modes{grid-template-columns:1fr;grid-template-rows:1fr 1fr;padding:12px}
+  .mp-grid,.mp-grid.hor{grid-template-columns:1fr 1fr;padding:12px}
+  .ev-wrap,.lb-wrap{grid-template-columns:1fr;overflow:auto;padding:10px}
+  .ev-pic{min-height:180px}
+  .ev-board{min-height:320px}
+  #lbScr .lb-tabs{flex-direction:row;overflow-x:auto;padding:0 0 4px}
+  #lbScr .lb-tabs button{width:210px}
+  .dt-box{grid-template-columns:1fr;overflow:auto}
+  .dt-pic{min-height:28vh}
+  .pg.prev{left:10px}.pg.next{right:10px}
+  .cg-wrap{padding:8px 10px 0}
+  .titlebar h2{max-width:56%}
+}
+.dt-info{max-height:calc(100vh - var(--u)*5.2 - 12px)}
+@media (max-height:520px){
+  .dt-info p,.ev-info .chips{display:none}
+  .dt-pic{min-height:0}
+  .dt-info,.ev-info{gap:7px;padding:12px 14px}
+  .dt-info h3,.ev-info h3{font-size:26px}
+  .dt-medals div,.dt-best div{font-size:16px;padding:6px 8px}
+  .btn.big{font-size:22px;padding:9px 30px}
+  .ev-pic{flex:0 0 72px;min-height:72px}
+  .ev-info .mods{display:none}
+  .mp-tile{min-height:0;padding:12px 14px}
+  .mp-tile i{width:26px;height:26px}
+  .detail{padding:8px}
+}
+@media (max-width:480px){.tb-star{display:none}.mp-grid,.mp-grid.hor{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -335,54 +625,114 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
 
   <div id="blindCover" class="hidden"></div>
   <div id="menu" class="screen">
-    <svg class="route" viewBox="0 0 110 34" fill="none"><path d="M4 28 C 22 28, 22 6, 40 6 S 58 28, 74 22 S 92 4, 106 8" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".9"/><circle cx="106" cy="8" r="5" fill="#ff7a1a"/></svg>
-    <div class="logo"><span class="w1">Turn!</span> <span class="w2">Turn!</span> <b>TURN!</b></div>
-    <div class="tag">Co-op dirt rally. One of you drives blind. The other reads the map.</div>
-    <div class="menu-col">
-      <button class="btn primary big" data-go="quick"><span>Quick match</span><small>Find players</small></button>
-      <div class="menu-row">
-        <button class="btn big2" data-go="crew"><span>Make a crew</span><small>2 players</small></button>
-        <button class="btn big2" data-go="vsroom"><span>Versus room</span><small>4 to 6 players</small></button>
-      </div>
-      <button class="btn big" data-go="join"><span>Join with a code</span><small>6 digits</small></button>
-      <button class="btn big" data-go="solo"><span>Solo run</span><small>AI co-driver</small></button>
-      <button class="btn big horror-btn" data-go="horror"><span>Horror mode</span><small>New · a night chase</small></button>
-      <div class="menu-row">
-        <button class="btn" data-go="stages">Stages</button>
-        <button class="btn" data-go="settings">Settings</button>
-        <button class="btn" data-go="help">How to play</button>
-      </div>
-      <div class="menu-row">
-        <button class="btn" data-go="lb">🏆 Leaderboard</button>
-        <button class="btn" data-go="notes">Patch notes <small id="notesVer"></small></button>
-      </div>
-      <div class="online-note" id="onlineNote"></div>
+    <div class="topbar">
+      <div class="tb-cell tb-prof" title="Your arcade name"><span class="av" id="tbAv"></span><b class="nm" id="tbName">YOU</b></div>
+      <div class="tb-cell" title="Gold medals"><i class="ic g"><svg viewBox="0 0 24 24"><path fill="#e8453c" d="M5.5 1h4.2l3 6.6H8.5zM18.5 1h-4.2l-3 6.6h4.2z"/><circle cx="12" cy="15" r="7.6" fill="currentColor"/><circle cx="12" cy="15" r="5.1" fill="none" stroke="rgba(0,0,0,.22)" stroke-width="1.6"/></svg></i><b class="xGold">0</b></div>
+      <div class="tb-cell tb-runs" title="Runs finished"><i class="ic t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="12" r="2.3"/><path d="M3.2 10.4c3.2-1.3 14.4-1.3 17.6 0M12 14.3v7.4"/></svg></i><b id="tbRuns">0</b></div>
+      <button class="tb-cell tb-hi" data-go="lb" title="Leaderboard" aria-label="Leaderboard"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M7 2.5h10v2h3.5v3.2a4.3 4.3 0 0 1-4.3 4.3h-.4a5.2 5.2 0 0 1-2.8 3V17h3v3.5H8V17h3v-2a5.2 5.2 0 0 1-2.8-3h-.4a4.3 4.3 0 0 1-4.3-4.3V4.5H7v-2zm0 4H5.5v1.2c0 .9.6 1.7 1.5 2V6.5zm10 0v3.2c.9-.3 1.5-1.1 1.5-2V6.5H17z"/></svg></button>
+      <div class="tb-cell tb-lvl" title="Every finished run and every star earns XP"><b>LEVEL <span id="tbLvl">1</span></b><i class="xp"><i id="tbXp"></i></i></div>
+      <div class="tb-cell tb-star" title="Stars: bronze 1, silver 2, gold 3 on every course"><i class="ic y"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 1.6l3.2 6.5 7.1 1-5.2 5 1.3 7.1L12 17.9l-6.4 3.3 1.3-7.1-5.2-5 7.1-1z"/></svg></i><b class="xStars">0</b></div>
+      <button class="tb-sq" data-go="settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M10.3 2h3.4l.5 2.6c.7.2 1.4.5 2 .9l2.2-1.5 2.4 2.4-1.5 2.2c.4.6.7 1.3.9 2l2.6.5v3.4l-2.6.5c-.2.7-.5 1.4-.9 2l1.5 2.2-2.4 2.4-2.2-1.5c-.6.4-1.3.7-2 .9l-.5 2.6h-3.4l-.5-2.6c-.7-.2-1.4-.5-2-.9l-2.2 1.5-2.4-2.4 1.5-2.2c-.4-.6-.7-1.3-.9-2L2 13.7v-3.4l2.6-.5c.2-.7.5-1.4.9-2L4 5.6l2.4-2.4 2.2 1.5c.6-.4 1.3-.7 2-.9L10.3 2zM12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2z"/></svg></button>
+      <div class="tb-sq tb-logo" id="tbLogo"><svg viewBox="0 0 110 40" fill="none"><path d="M6 32 C 24 32, 24 8, 42 8 S 60 32, 76 26 S 94 6, 104 10" stroke="currentColor" stroke-width="7" stroke-linecap="round"/><circle cx="104" cy="10" r="6" fill="#1fc7b2"/></svg></div>
     </div>
-    <div class="ver" id="verTxt"></div>
-  </div>
-
-  <div id="horrorScr" class="screen dim hidden">
-    <div class="panel hor-panel" style="width:min(580px,100%)">
-      <div class="panel-head"><div><h2>Horror mode</h2><div class="sub" style="margin:0">Dead Woods · night · the road never ends</div></div><button class="close" data-back>✕</button></div>
-      <ul class="hor-list">
-        <li>It is night and all you have are your headlights. Something tall is following you down the road. Check your mirror.</li>
-        <li>The <b>required speed</b> at the top is how fast it runs. Stay above it. Every 20 to 30 seconds it gets 5 to 10 km/h faster, up to 80 to 90 km/h.</li>
-        <li>If it catches you, it is over. One crash can be enough.</li>
-        <li>It throws black tar over the windscreen: <b>five sweeps of the wipers</b> (<kbd>E</kbd>) to clear it.</li>
-        <li>It cuts the navigator's map: the navigator holds <kbd>R</kbd> for <b>7 seconds</b> to get it back.</li>
-        <li>The road loops forever. Get as far as you can.</li>
-      </ul>
-      <div class="hor-best" id="horBest"></div>
-      <div class="btn-row"><button class="btn primary" id="horSolo">Play solo</button><button class="btn" id="horCrew">Make a crew</button><button class="btn" id="horJoin">Join a crew</button></div>
+    <div class="garage-hit" id="garageHit"></div>
+    <div class="side">
+      <button class="tile" data-go="notes" title="Patch notes" aria-label="Patch notes"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M5 1.5h10.5l3.5 3.5v6.6a6.4 6.4 0 0 0-2.2-.3V6h-2.6V3.7H7.2v16.6h5.1c.2.8.5 1.6.9 2.2H5v-21zm3.7 6.2h6.6v2H8.7v-2zm0 4h4.4v2H8.7v-2zm9 2.3h2v3h3v2h-3v3h-2v-3h-3v-2h3v-3z"/></svg><em class="new" id="notesNew">NEW</em></button>
+      <button class="tile" data-go="help" title="How to play" aria-label="How to play"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 1.5a10.5 10.5 0 1 1 0 21 10.5 10.5 0 0 1 0-21zm0 3.6c-2.3 0-4 1.5-4.1 3.7h2.5c.1-.9.7-1.4 1.6-1.4.9 0 1.5.5 1.5 1.3 0 .6-.3 1-1.3 1.7-1.2.8-1.7 1.6-1.6 3.1v.6h2.4v-.5c0-.8.3-1.2 1.3-1.8 1.2-.8 1.9-1.7 1.9-3.1 0-2.1-1.8-3.6-4.2-3.6zm-.1 11.6a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg></button>
+      <button class="tile lab" data-go="mods" title="Game modifiers"><svg viewBox="0 0 32 18"><path fill="currentColor" d="M6.2 6 9.6 1.8h11l4.4 4.3 3.8.8c1.3.3 2.2 1.4 2.2 2.6v4.3h-2.7a3.5 3.5 0 0 0-7 0H10.6a3.5 3.5 0 0 0-7 0H1V9.6c0-1 .7-1.9 1.7-2.2L6.2 6zm4.1-2.4L8.5 6h6.3V3.6h-4.5zm6.5 0V6h6.4l-2.4-2.4h-4zM7.1 11.4a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zm17 0a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg><span>MODIFIERS</span></button>
+    </div>
+    <div class="online-note" id="onlineNote"></div>
+    <div class="dock">
+      <button class="hcard promo" data-go="trailer"><img src="img/trailer.jpg" alt="" draggable="false"><div class="pr-top"><b>New trailer!</b><small>Turn! Turn! TURN! in one minute</small></div><div class="pr-bot">Watch trailer! <svg viewBox="0 0 24 24"><path fill="currentColor" d="M6.5 3.5v17l14-8.5z"/></svg></div></button>
+      <button class="hcard event" data-go="event"><img id="evImg" alt="" draggable="false"><div class="ev-tab">Events</div><div class="ev-bot"><b id="evName">Daily Stage</b><span class="timer"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="8.8"/><path d="M12 7v5.4l3.4 2.1"/></svg></i><b id="evLeft"></b></span></div></button>
+      <div class="bigs">
+        <button class="big-btn" data-go="play"><span>Play</span><i><svg viewBox="0 0 24 24"><path fill="currentColor" d="M3.5 1.5h2.2v21H3.5z"/><path fill="currentColor" opacity=".28" d="M6.5 2.5h15v12h-15z"/><path fill="currentColor" d="M6.5 2.5h3.75v3h-3.75zM14 2.5h3.75v3H14zM10.25 5.5H14v3h-3.75zM17.75 5.5h3.75v3h-3.75zM6.5 8.5h3.75v3h-3.75zM14 8.5h3.75v3H14zM10.25 11.5H14v3h-3.75zM17.75 11.5h3.75v3h-3.75z"/></svg></i></button>
+        <button class="big-btn" data-go="multi"><span>Multiplayer</span><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9.6"/><ellipse cx="12" cy="12" rx="4.3" ry="9.6"/><path d="M2.4 12h19.2M3.9 7h16.2M3.9 17h16.2"/></svg></i></button>
+      </div>
     </div>
   </div>
 
-  <div id="stagesScr" class="screen dim hidden">
-    <div class="panel" style="width:min(900px,100%)">
-      <div class="panel-head"><div><h2 id="stagesTitle">Stages</h2><div class="sub" id="stagesSub" style="margin:0">Pick a stage. Beat the gold time with your crew.</div></div><button class="close" data-back>✕</button></div>
-      <div class="stages" id="stageGrid"></div>
-      <div class="mods" id="modsStage"></div>
-      <div class="btn-row" style="margin-top:14px;justify-content:flex-end"><button class="btn primary hidden" id="stageGo">Start run</button></div>
+  <div id="modeScr" class="screen sub hidden">
+    <div class="titlebar"><h2 id="modeTitle">Play</h2></div>
+    <div class="modes">
+      <button class="mcard" data-mode="classic"><img src="img/golden.jpg" alt="" draggable="false"><span class="mc-em" id="mcClassicEm"></span><div class="mc-bot"><b>Classic</b><span id="mcClassicSub"></span></div><i class="mc-bar"></i></button>
+      <button class="mcard hor" data-mode="horror"><img src="news/1.5-behind.jpg" alt="" draggable="false"><span class="mc-em" id="mcHorrorEm"></span><div class="mc-bot"><b>Horror</b><span id="mcHorrorSub"></span></div><i class="mc-bar"></i></button>
+    </div>
+  </div>
+
+  <div id="mpScr" class="screen sub hidden">
+    <div class="titlebar"><h2 id="mpTitle">Multiplayer</h2></div>
+    <div class="mp-grid" id="mpGrid"></div>
+    <div class="mode-note" id="mpNote"></div>
+  </div>
+
+  <div id="eventScr" class="screen sub hidden">
+    <div class="titlebar"><h2>Events</h2><span class="tstars"><i class="tclock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="8.8"/><path d="M12 7v5.4l3.4 2.1"/></svg></i><span id="evEnds"></span></span></div>
+    <div class="ev-wrap">
+      <div class="ev-card">
+        <div class="ev-pic"><img id="evBig" alt="" draggable="false"><div class="ev-tab">Daily event</div><span class="timer"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="8.8"/><path d="M12 7v5.4l3.4 2.1"/></svg></i><b id="evLeft2"></b></span></div>
+        <div class="ev-info">
+          <div class="dt-reg" id="evReg"></div>
+          <h3 id="evTitle">Daily Stage</h3>
+          <div class="chips" id="evMeta"></div>
+          <div class="ev-times"><div class="dt-medals" id="evMedals"></div><div class="dt-best" id="evBest"></div></div>
+          <div class="mods compact" id="modsEvent"></div>
+          <div class="dt-btns"><button class="btn" id="evCrew">Play with a crew</button><button class="btn primary big" id="evPlay">Play</button></div>
+        </div>
+      </div>
+      <div class="ev-board">
+        <div class="evb-head"><b>Leaderboard</b><div class="seg" id="evKind"><button data-k="solo" class="on">Solo</button><button data-k="crew">Crews</button></div></div>
+        <div class="lb-list" id="evList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="horrorScr" class="screen sub hor hidden">
+    <div class="titlebar"><h2>Horror · Dead Woods</h2></div>
+    <div class="ev-wrap">
+      <div class="ev-card hor">
+        <div class="ev-pic"><img src="news/1.5-behind.jpg" alt="" draggable="false"><div class="ev-tab red">Horror</div></div>
+        <div class="ev-info">
+          <div class="dt-reg">Dead Woods · Night · Endless</div>
+          <h3>Outrun it</h3>
+          <div class="dt-best" id="horBest"></div>
+          <div class="mods compact" id="modsHorror"></div>
+          <div class="dt-btns"><button class="btn primary big" id="horSolo">Play</button></div>
+        </div>
+      </div>
+      <div class="ev-board hor-rules">
+        <div class="evb-head"><b>How it works</b></div>
+        <ul class="hor-list">
+          <li>It is night and all you have are your headlights. Something tall is following you down the road. Check your mirror.</li>
+          <li>The <b>required speed</b> at the top is how fast it runs. Stay above it. Every 20 to 30 seconds it gets 5 to 10 km/h faster, up to 80 to 90 km/h.</li>
+          <li>If it catches you, it is over. One crash can be enough.</li>
+          <li>It throws black tar over the windscreen: <b>five sweeps of the wipers</b> (<kbd>E</kbd>) to clear it.</li>
+          <li>It cuts the navigator's map: the navigator holds <kbd>R</kbd> for <b>7 seconds</b> to get it back.</li>
+          <li>The road loops forever. Get as far as you can. Play it with a friend from Multiplayer.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div id="stagesScr" class="screen sub hidden">
+    <div class="titlebar"><h2 id="stagesTitle">Courses</h2><span class="tstars" id="stagesStars"></span></div>
+    <div class="cg-wrap" id="cgWrap"><div class="cgrid" id="stageGrid"></div></div>
+    <div class="pager"><button class="pg prev" id="pgPrev" aria-label="Previous page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4 7 12l8 8"/></svg></button><div class="dots" id="pgDots"></div><button class="pg next" id="pgNext" aria-label="Next page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 4 8 8-8 8"/></svg></button></div>
+    <div id="stageDetail" class="detail hidden">
+      <div class="dt-box">
+        <div class="dt-pic"><img id="dtImg" alt="" draggable="false"></div>
+        <div class="dt-info">
+          <div class="dt-reg" id="dtReg"></div>
+          <h3 id="dtName"></h3>
+          <p id="dtBlurb"></p>
+          <div class="chips" id="dtFacts"></div>
+          <div class="dt-medals" id="dtMedals"></div>
+          <div class="dt-best" id="dtBest"></div>
+          <div class="mods compact" id="modsStage"></div>
+          <div class="dt-btns"><button class="btn" id="dtLb">Leaderboard</button><button class="btn primary big" id="stageGo">Play</button></div>
+        </div>
+        <button class="dt-x" id="dtClose" aria-label="Close">✕</button>
+      </div>
     </div>
   </div>
 
@@ -430,12 +780,11 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
     </div>
   </div>
 
-  <div id="lbScr" class="screen dim hidden">
-    <div class="panel" style="width:min(720px,100%)">
-      <div class="panel-head"><div><h2>Leaderboard</h2><div class="sub" style="margin:0" id="lbSub">The fastest crews on each stage. Only online crew runs count.</div></div><button class="close" data-back>✕</button></div>
-      <div class="lb-tabs lb-kind" id="lbKind"><button data-k="crew" class="on">👥 Crews</button><button data-k="solo">🚗 Solo</button></div>
+  <div id="lbScr" class="screen sub hidden">
+    <div class="titlebar"><h2>Leaderboard</h2><div class="seg lb-kind" id="lbKind"><button data-k="crew" class="on">Crews</button><button data-k="solo">Solo</button></div></div>
+    <div class="lb-wrap">
       <div class="lb-tabs" id="lbTabs"></div>
-      <div class="lb-list" id="lbList"></div>
+      <div class="lb-main"><div id="lbSub"></div><div class="lb-list" id="lbList"></div></div>
     </div>
   </div>
 
@@ -486,7 +835,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
       <div class="vs-crews hidden" id="vsCrews"></div>
       <div class="vs-ctl hidden" id="vsCtl"><button class="btn small" id="vsSwap">⇄ Swap seats in my crew</button><button class="btn small" id="vsShuffle">Shuffle crews</button></div>
       <div class="lobby-row">
-        <div class="lobby-stage"><div style="flex:1"><div class="nm" id="lobStage"></div><div class="meta" id="lobStageMeta"></div></div><button class="btn small" id="lobPick">Change</button></div>
+        <div class="lobby-stage"><img id="lobImg" alt="" draggable="false"><div style="flex:1"><div class="nm" id="lobStage"></div><div class="meta" id="lobStageMeta"></div></div><button class="btn small" id="lobPick">Change</button></div>
         <div class="voice"><span class="dot" id="voiceDot"></span><button class="btn small" id="voiceBtn">Voice chat: off</button></div>
       </div>
       <div class="mods" id="modsLobby"></div>
@@ -520,6 +869,20 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
     </div>
   </div>
 
+  <div id="modsScr" class="screen dim hidden">
+    <div class="panel" style="width:min(640px,100%)">
+      <div class="panel-head"><div><h2>Modifiers</h2><div class="sub" style="margin:0">Make any run harder. They stay on until you turn them off.</div></div><button class="close" data-back>✕</button></div>
+      <div class="mods" id="modsHome"></div>
+    </div>
+  </div>
+
+  <div id="trailerScr" class="screen dim hidden">
+    <div class="panel trailer-panel">
+      <div class="panel-head"><h2>Trailer</h2><button class="close" data-back>✕</button></div>
+      <video id="trVid" controls playsinline preload="none" poster="../trailers/turn-turn-turn.jpg"></video>
+    </div>
+  </div>
+
   <div id="fade"></div>
   <div id="loading">Loading…</div>
 </div>
@@ -541,7 +904,7 @@ kbd{display:inline-block;min-width:24px;text-align:center;padding:2px 6px;border
    One file: core (this part), the stage builder, the car and its cabin, the
    race, the crew netcode and the menus.
    ========================================================================== */
-const VERSION = '1.5.1';
+const VERSION = '1.6';
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -2468,7 +2831,7 @@ const MODS = [
 function modOn(k) { return GAME.mode === 'race' && !!(SAVE.mods && SAVE.mods[k]); }
 function modsActive() { return MODS.filter(m => SAVE.mods[m.k]); }
 function renderMods() {
-  for (const id of ['modsStage', 'modsLobby']) {
+  for (const id of ['modsStage', 'modsLobby', 'modsEvent', 'modsHorror', 'modsHome']) {
     const box = $(id); if (!box) continue; box.innerHTML = '<div class="mods-h">Modifiers</div>';
     for (const m of MODS) {
       const b = document.createElement('button'); b.className = 'mod' + (SAVE.mods[m.k] ? ' on' : '');
@@ -3658,7 +4021,7 @@ function looseStep(dt) {
 let fpsN = 0, fpsT = 0;
 function fpsFrame(now) {
   const el = $('fps'); if (!el) return;
-  el.classList.toggle('hidden', !S.fps);
+  el.classList.toggle('hidden', !S.fps || GAME.mode !== 'race');
   fpsN++; if (now - fpsT >= 500) { el.textContent = Math.round(fpsN * 1000 / (now - fpsT)) + ' FPS'; fpsN = 0; fpsT = now; }
 }
 function frame(now) {
@@ -3695,9 +4058,9 @@ function frame(now) {
     CAB.root.visible = !ext;
     render(clamp((sp - 18) / 30, 0, 1) * 0.9);
   } else {
-    attractFrame(dt);
     CAB.root.visible = false;
-    render(0);
+    if (hit('Escape') || padHit(1)) menuBack();
+    if (!OPAQUE.has(SCREEN)) GAR.frame(dt); // 1.6: the garage behind the menu
   }
   PRESSED.clear();
 }
@@ -4366,7 +4729,15 @@ function requeue(mode) { crewClose(); NET.quick = null; openQuick(); qmStart(mod
    MENUS: main menu, stages, settings, how to play, joining, the crew lobby,
    pause and results. Then boot.
    ========================================================================== */
-const SCREENS = ['menu', 'horrorScr', 'qmScr', 'stagesScr', 'settingsScr', 'helpScr', 'notesScr', 'lbScr', 'joinScr', 'lobbyScr', 'pauseScr', 'resultScr'];
+// 1.6: what each place is called and the picture on its card (img/<stage id>.jpg, rendered with the game itself)
+const BIOME_NAMES = { forest: 'Forest', dry: 'Dusty Hills', wet: 'Wetlands', autumn: 'Autumn', alpine: 'Alpine', fog: 'Fog Valley', dusk: 'Sunset', snow: 'Snow', canyon: 'Red Canyon', jungle: 'Jungle', dead: 'Dead Woods' };
+const BIOME_PIC = { forest: 'pine', dry: 'gulch', wet: 'mud', autumn: 'amber', alpine: 'switch', fog: 'fog', dusk: 'dusk', snow: 'frost', canyon: 'canyon', jungle: 'jungle' };
+const MEDAL_STARS = { gold: 3, silver: 2, bronze: 1 };
+const ICON = {"star": "<svg viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M12 1.6l3.2 6.5 7.1 1-5.2 5 1.3 7.1L12 17.9l-6.4 3.3 1.3-7.1-5.2-5 7.1-1z\"/></svg>", "clock": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.6\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"8.8\"/><path d=\"M12 7v5.4l3.4 2.1\"/></svg>", "users": "<svg viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M8.5 11.2a4.1 4.1 0 1 1 0-8.2 4.1 4.1 0 0 1 0 8.2zm8.1.9a3.3 3.3 0 1 1 0-6.6 3.3 3.3 0 0 1 0 6.6zM1 20.4c0-4.1 3.4-6.7 7.5-6.7S16 16.3 16 20.4v1H1v-1zm16.4 1v-1c0-2-.6-3.8-1.8-5.1l1-.1c3.4 0 6.4 2 6.4 5.6v.6h-5.6z\"/></svg>", "flag": "<svg viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M3.5 1.5h2.2v21H3.5z\"/><path fill=\"currentColor\" opacity=\".28\" d=\"M6.5 2.5h15v12h-15z\"/><path fill=\"currentColor\" d=\"M6.5 2.5h3.75v3h-3.75zM14 2.5h3.75v3H14zM10.25 5.5H14v3h-3.75zM17.75 5.5h3.75v3h-3.75zM6.5 8.5h3.75v3h-3.75zM14 8.5h3.75v3H14zM10.25 11.5H14v3h-3.75zM17.75 11.5h3.75v3h-3.75z\"/></svg>", "plus": "<svg viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M10 2.5h4v7.5h7.5v4H14v7.5h-4V14H2.5v-4H10z\"/></svg>", "vs": "<svg viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M1.5 5h3.4l2.4 9.6L10.6 5H14L8.8 19H5.6zM19.7 4.7c2 0 3.3 1 3.6 2.9l-3.1.6c-.2-.8-.6-1.1-1.3-1.1-.8 0-1.3.4-1.3 1 0 .5.4.9 1.8 1.6 2.4 1.1 3.4 2.3 3.4 4.3 0 2.7-2 4.4-4.9 4.4-2.6 0-4.2-1.3-4.6-3.6l3.2-.6c.2 1 .7 1.6 1.6 1.6.9 0 1.4-.5 1.4-1.2 0-.6-.4-1-1.8-1.7-2.4-1.1-3.3-2.2-3.3-4 0-2.4 1.8-4.2 4.3-4.2z\"/></svg>", "code": "<svg viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M2.8 6h18.4A1.8 1.8 0 0 1 23 7.8v8.4a1.8 1.8 0 0 1-1.8 1.8H2.8A1.8 1.8 0 0 1 1 16.2V7.8A1.8 1.8 0 0 1 2.8 6zm1.7 4v4.5H7V10H4.5zm4.4 0v4.5h2.6V10H8.9zm4.4 0v4.5h2.5V10h-2.5zm4.3 0v4.5h2.6V10h-2.6z\"/></svg>", "skull": "<svg viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M12 1.8c5.2 0 9 3.6 9 8.6 0 2.9-1.3 5-3.4 6.3V20a1.5 1.5 0 0 1-1.5 1.5h-1.3v-2.2h-1.6v2.2h-2.4v-2.2H9.2v2.2H7.9A1.5 1.5 0 0 1 6.4 20v-3.3C4.3 15.4 3 13.3 3 10.4c0-5 3.8-8.6 9-8.6zm-3.6 8a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6zm7.2 0a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6zM12 14.3l-1.3 2.4h2.6z\"/></svg>", "medal": "<svg viewBox=\"0 0 24 24\"><path fill=\"#e8453c\" d=\"M5.5 1h4.2l3 6.6H8.5zM18.5 1h-4.2l-3 6.6h4.2z\"/><circle cx=\"12\" cy=\"15\" r=\"7.6\" fill=\"currentColor\"/><circle cx=\"12\" cy=\"15\" r=\"5.1\" fill=\"none\" stroke=\"rgba(0,0,0,.22)\" stroke-width=\"1.6\"/></svg>"};
+// every full-screen page gets the same top bar: back, your medals, the leaderboard, your stars, home
+document.querySelectorAll('.screen.sub').forEach(s => s.insertAdjacentHTML('afterbegin', "<div class=\"topbar subbar\"><button class=\"sb-back\" data-back aria-label=\"Back\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M15 4 7 12l8 8\"/></svg></button><div class=\"tb-cell\" title=\"Gold medals\"><i class=\"ic g\"><svg viewBox=\"0 0 24 24\"><path fill=\"#e8453c\" d=\"M5.5 1h4.2l3 6.6H8.5zM18.5 1h-4.2l-3 6.6h4.2z\"/><circle cx=\"12\" cy=\"15\" r=\"7.6\" fill=\"currentColor\"/><circle cx=\"12\" cy=\"15\" r=\"5.1\" fill=\"none\" stroke=\"rgba(0,0,0,.22)\" stroke-width=\"1.6\"/></svg></i><b class=\"xGold\">0</b></div><div class=\"tb-cell\" title=\"Silver medals\"><i class=\"ic s\"><svg viewBox=\"0 0 24 24\"><path fill=\"#e8453c\" d=\"M5.5 1h4.2l3 6.6H8.5zM18.5 1h-4.2l-3 6.6h4.2z\"/><circle cx=\"12\" cy=\"15\" r=\"7.6\" fill=\"currentColor\"/><circle cx=\"12\" cy=\"15\" r=\"5.1\" fill=\"none\" stroke=\"rgba(0,0,0,.22)\" stroke-width=\"1.6\"/></svg></i><b class=\"xSilver\">0</b></div><div class=\"tb-cell sb-br\" title=\"Bronze medals\"><i class=\"ic b\"><svg viewBox=\"0 0 24 24\"><path fill=\"#e8453c\" d=\"M5.5 1h4.2l3 6.6H8.5zM18.5 1h-4.2l-3 6.6h4.2z\"/><circle cx=\"12\" cy=\"15\" r=\"7.6\" fill=\"currentColor\"/><circle cx=\"12\" cy=\"15\" r=\"5.1\" fill=\"none\" stroke=\"rgba(0,0,0,.22)\" stroke-width=\"1.6\"/></svg></i><b class=\"xBronze\">0</b></div><div class=\"tb-cell sb-gap\"></div><button class=\"tb-cell tb-hi sb-lb\" title=\"Leaderboard\" aria-label=\"Leaderboard\"><svg viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M7 2.5h10v2h3.5v3.2a4.3 4.3 0 0 1-4.3 4.3h-.4a5.2 5.2 0 0 1-2.8 3V17h3v3.5H8V17h3v-2a5.2 5.2 0 0 1-2.8-3h-.4a4.3 4.3 0 0 1-4.3-4.3V4.5H7v-2zm0 4H5.5v1.2c0 .9.6 1.7 1.5 2V6.5zm10 0v3.2c.9-.3 1.5-1.1 1.5-2V6.5H17z\"/></svg></button><div class=\"tb-cell tb-star\" title=\"Stars\"><i class=\"ic y\"><svg viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M12 1.6l3.2 6.5 7.1 1-5.2 5 1.3 7.1L12 17.9l-6.4 3.3 1.3-7.1-5.2-5 7.1-1z\"/></svg></i><b class=\"xStars\">0</b></div><button class=\"sb-home\" title=\"Main menu\" aria-label=\"Main menu\"><svg viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M12 2.4 1.3 11.6l1.5 1.7 1.7-1.5V21.5h6.2v-6.3h2.6v6.3h6.2v-9.7l1.7 1.5 1.5-1.7z\"/></svg></button></div>"));
+const SUB_SCREENS = new Set(['modeScr', 'mpScr', 'eventScr', 'horrorScr', 'stagesScr', 'lbScr']);
+const SCREENS = ['menu', 'modeScr', 'mpScr', 'eventScr', 'horrorScr', 'qmScr', 'stagesScr', 'settingsScr', 'helpScr', 'notesScr', 'lbScr', 'joinScr', 'lobbyScr', 'pauseScr', 'resultScr', 'modsScr', 'trailerScr'];
 let SCREEN = 'menu', BACK = {};
 const RACE_SCREENS = [null, 'pauseScr', 'settingsScr', 'resultScr', 'lbScr'];
 function showScreen(id, from) {
@@ -4374,6 +4745,9 @@ function showScreen(id, from) {
   for (const s of SCREENS) $(s).classList.toggle('hidden', s !== id);
   if (from) BACK[id] = from;
   SCREEN = id;
+  $('ui').classList.toggle('racing', GAME.mode === 'race');
+  if (id !== 'trailerScr') { const v = $('trVid'); if (v && !v.paused) v.pause(); }
+  if (id === 'menu') refreshHome(); else if (SUB_SCREENS.has(id)) refreshStats();
 }
 function showLoading(t) { const l = $('loading'); l.textContent = t || 'Loading…'; l.classList.remove('hidden'); }
 function hideLoading() { $('loading').classList.add('hidden'); }
@@ -4384,45 +4758,21 @@ document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click'
   AUDIO.ui(); showScreen(BACK[SCREEN] || (GAME.mode === 'race' ? (GAME.resultShown ? 'resultScr' : 'pauseScr') : 'menu'));
 }));
 
-/* ---------- main menu ---------- */
-$('verTxt').textContent = 'Turn! Turn! TURN! v' + VERSION;
+/* ---------- main menu (1.6: the buttons are wired up in the MENU block near the end) ---------- */
 function hasOnlineAccount() { try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); return !!(a && a.token); } catch (e) { return false; } }
-$('onlineNote').textContent = hasOnlineAccount() ? 'Playing as ' + myName() : 'Crews play online and need an Arcade account.';
-document.querySelectorAll('#menu [data-go]').forEach(b => b.addEventListener('click', () => {
-  if (SCREEN !== 'menu' || GAME.mode === 'race') return;
-  AUDIO.unlock(); AUDIO.ui();
-  const g = b.dataset.go;
-  if (g === 'solo') openStages('solo', 'menu');
-  else if (g === 'stages') openStages('browse', 'menu');
-  else if (g === 'settings') { renderSettings(); showScreen('settingsScr', 'menu'); }
-  else if (g === 'help') showScreen('helpScr', 'menu');
-  else if (g === 'lb') openBoard();
-  else if (g === 'notes') { renderNotes(); showScreen('notesScr', 'menu'); }
-  else if (g === 'join') openJoin();
-  else if (g === 'crew') makeOnlineCrew('crew');
-  else if (g === 'vsroom') makeOnlineCrew('vs');
-  else if (g === 'quick') openQuick();
-  else if (g === 'horror') openHorror();
-}));
 
 /* ---------- 1.5: horror mode ---------- */
-function openHorror() {
+function openHorror(from) {
   const b = SAVE.best.horror || {};
-  $('horBest').innerHTML = 'Your best: <b>' + (b.solo ? fmtDist(b.solo) : '–') + '</b> solo &nbsp;·&nbsp; <b>' + (b.crew ? fmtDist(b.crew) : '–') + '</b> with a crew';
-  showScreen('horrorScr', 'menu');
+  $('horBest').innerHTML = '<div><small>Your best solo</small>' + (b.solo ? fmtDist(b.solo) : '–') + '</div><div><small>Your best with a crew</small>' + (b.crew ? fmtDist(b.crew) : '–') + '</div>';
+  renderMods();
+  showScreen('horrorScr', from || 'menu');
 }
 $('horSolo').addEventListener('click', () => {
   if (!onScreen($('horSolo'))) return;
   AUDIO.unlock(); AUDIO.ui(); showLoading('Building ' + HORROR.name + '…');
   setTimeout(() => { startRace(HORROR, 'driver', false); hideLoading(); }, 40);
 });
-$('horCrew').addEventListener('click', async () => {
-  if (!onScreen($('horCrew'))) return;
-  AUDIO.unlock(); AUDIO.ui();
-  await makeOnlineCrew('crew');
-  if (NET.host && NET.lobby && !NET.lobby.vs) { NET.lobby.st = 'horror'; hostPushLobby(); }
-});
-$('horJoin').addEventListener('click', () => { if (!onScreen($('horJoin'))) return; AUDIO.unlock(); AUDIO.ui(); openJoin(); });
 { const fb = $('horFix'); const on = v => e => { e.preventDefault(); HOR.btn = v; }; fb.addEventListener('pointerdown', on(true)); fb.addEventListener('pointerup', on(false)); fb.addEventListener('pointerleave', on(false)); fb.addEventListener('pointercancel', on(false)); }
 
 /* ---------- quick match ---------- */
@@ -4452,7 +4802,7 @@ document.querySelectorAll('#qmPick [data-q]').forEach(b => b.addEventListener('c
   qmStart(b.dataset.q);
 }));
 $('qmCancel').addEventListener('click', () => { AUDIO.ui(); qmStop(); openQuick(); });
-$('qmClose').addEventListener('click', () => { if (SCREEN !== 'qmScr') return; AUDIO.ui(); qmStop(); showScreen('menu'); });
+$('qmClose').addEventListener('click', () => { if (SCREEN !== 'qmScr') return; AUDIO.ui(); qmStop(); showScreen(BACK.qmScr || 'menu'); });
 function enterLobby(status) { hideLoading(); showScreen('lobbyScr', 'menu'); lobbyStatus(status); renderLobby(); }
 
 /* ---------- leaderboard: the best crews per stage, and (1.3) the best solo drivers, kept by the arcade server ---------- */
@@ -4465,15 +4815,20 @@ function openBoard(stageId, kind) {
   LB_STAGE = stageId || LB_STAGE || SAVE.stage;
   if (kind) LB_KIND = kind;
   document.querySelectorAll('#lbKind button').forEach(b => b.classList.toggle('on', b.dataset.k === LB_KIND));
-  $('lbSub').textContent = LB_KIND === 'solo' ? 'The fastest solo drivers on each stage (you drive, the AI co-driver calls the turns).' : 'The fastest crews on each stage. Only online crew runs count.';
+  $('lbSub').textContent = LB_KIND === 'solo' ? 'The fastest solo drivers on this course (you drive, the AI co-driver calls the turns). Sign in to the arcade to be on it.' : 'The fastest crews on this course. Only online crew runs count.';
   const tabs = $('lbTabs'); tabs.innerHTML = '';
   for (const def of allStages()) {
-    const b = document.createElement('button'); b.textContent = def.name + (def.sub ? ' · ' + def.sub : ''); if (def.id === LB_STAGE) b.className = 'on';
+    const b = document.createElement('button'); if (def.id === LB_STAGE) b.className = 'on';
+    b.innerHTML = '<img alt="" draggable="false"><span><b></b><small></small></span>';
+    b.querySelector('img').src = stagePic(def);
+    b.querySelector('b').textContent = def.name + (def.sub ? ' · ' + def.sub : '');
+    const mine = (SAVE.best[def.id] || {})[LB_KIND];
+    b.querySelector('small').textContent = stageKind(def) + ' · ' + (mine ? 'You: ' + fmtTime(mine) : (def.len / 1000).toFixed(1) + ' km');
     b.onclick = () => { AUDIO.ui(); openBoard(def.id); };
     tabs.appendChild(b);
   }
-  const on = tabs.querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'center' });
   showScreen('lbScr', SCREEN === 'lbScr' ? BACK.lbScr : SCREEN);
+  const on = tabs.querySelector('.on'); if (on) { const t = on.offsetTop - tabs.offsetTop, l = on.offsetLeft - tabs.offsetLeft; if (t < tabs.scrollTop || t > tabs.scrollTop + tabs.clientHeight - on.offsetHeight) tabs.scrollTop = t - 8; if (l < tabs.scrollLeft || l > tabs.scrollLeft + tabs.clientWidth - on.offsetWidth) tabs.scrollLeft = l - 8; }
   loadBoard(LB_STAGE);
 }
 async function loadBoard(id) {
@@ -4487,10 +4842,10 @@ async function loadBoard(id) {
   } catch (e) { if (LB_STAGE === id && LB_KIND === kind && !LB_CACHE[key]) box.innerHTML = '<div class="lb-empty">Could not reach the leaderboard. Check your connection.</div>'; }
 }
 document.querySelectorAll('#lbKind button').forEach(b => b.addEventListener('click', () => { AUDIO.ui(); openBoard(LB_STAGE, b.dataset.k); }));
-function drawBoard(id, list) {
-  const box = $('lbList'), me = myName().toLowerCase(), def = stageById(id);
+function drawBoard(id, list, box = $('lbList'), kind = LB_KIND) {
+  const me = myName().toLowerCase(), def = stageById(id);
   box.innerHTML = '';
-  const solo = LB_KIND === 'solo';
+  const solo = kind === 'solo';
   if (!list.length) { box.innerHTML = solo ? '<div class="lb-empty">No solo times on this stage yet. Drive it and set the first one!</div>' : '<div class="lb-empty">No crews on this stage yet. Make a crew and set the first time!</div>'; return; }
   list.forEach((e, i) => {
     const row = document.createElement('div');
@@ -4532,6 +4887,16 @@ function showBoardResult(j) {
 
 /* ---------- patch notes (newest first; add a block for every release) ---------- */
 const PATCH_NOTES = [
+  { v: '1.6', date: '19 November 2026', items: [
+    'A brand new menu. Your car spins on a turntable in the garage, with your name and profile picture, your gold medals, runs, level and stars along the top.',
+    'Big Play and Multiplayer buttons. Both let you pick Classic or Horror.',
+    'Every course has its own card with a picture of the course, its gold time and your best time, six to a page (Season 1: The Classics, Season 2: The Marathons). Click a card to see its gold, silver and bronze times and play it.',
+    'Events: the Daily Stage, with the time left before it changes, a Play button and its own leaderboard (solo and crews).',
+    'The full leaderboard is under the trophy button at the top, with every course down the side.',
+    'Stars and levels: a bronze medal is worth 1 star, silver 2 and gold 3. Every finished run and every star earns XP towards your level.',
+    'Patch notes, How to play and Modifiers have their own buttons on the right. Watch the trailer from the card on the left.',
+    'Press Escape to go back a page. Drag the garage to spin your car.',
+  ] },
   { v: '1.5.1', date: '19 November 2026', items: [
     'Horror mode: brighter headlights that reach further down the road.',
     'Horror mode: a dim, warm light in the roof of the car, so you can see the inside of the cabin at night.',
@@ -4626,7 +4991,6 @@ function renderNotes() {
     l.appendChild(d);
   }
 }
-$('notesVer').textContent = 'v' + VERSION;
 
 /* ---------- stages ---------- */
 let STAGE_MODE = 'browse', STAGE_SEL = null;
@@ -4653,46 +5017,103 @@ function stageParMs(def) {
   let t = 0; for (let i = 1; i < P.X.length; i++) t += STEP / Math.max(4, (V[i] + V[i - 1]) / 2);
   return (PAR[def.id] = t * 1000 * (def.parX || 1));
 }
+/* 1.6: the courses, a page of six at a time (season 1: the classics, season 2: the marathons) */
+let STAGE_PAGE = 0, STAGE_PAGES = [], OPEN_DEF = null, SWIPED = false;
+function stagePages() {
+  const vs = STAGE_MODE === 'lobby' && NET.lobby && NET.lobby.vs;
+  const groups = [['Season 1: The Classics', STAGES.filter(d => !d.long)], ['Season 2: The Marathons', STAGES.filter(d => d.long)]];
+  if (STAGE_MODE === 'lobby') groups.push(['Specials', [dailyStage()].concat(vs ? [] : [HORROR])]);
+  const pages = [];
+  for (const [t, defs] of groups) for (let i = 0; i < defs.length; i += 6) pages.push({ t, defs: defs.slice(i, i + 6), all: defs });
+  return pages;
+}
 function openStages(mode, from) {
   STAGE_MODE = mode; STAGE_SEL = mode === 'lobby' ? (NET.lobby && NET.lobby.st) : SAVE.stage;
-  $('stagesTitle').textContent = mode === 'lobby' ? 'Pick the stage' : mode === 'solo' ? 'Solo run' : 'Stages';
-  $('stagesSub').textContent = mode === 'solo' ? 'You drive, the AI co-driver calls the turns. Pick a stage.' : mode === 'lobby' ? 'Your crew runs this one next.' : 'Gold, silver and bronze times are the same for solo runs and crews.';
-  renderStages(); renderMods();
+  STAGE_PAGES = stagePages();
+  STAGE_PAGE = Math.max(0, STAGE_PAGES.findIndex(p => p.defs.some(d => d.id === STAGE_SEL)));
+  closeDetail(); renderStages(); renderMods();
   showScreen('stagesScr', from);
+  layoutCourses();
 }
 function renderStages() {
+  const P = STAGE_PAGES[STAGE_PAGE] || STAGE_PAGES[0]; if (!P) return;
+  $('stagesTitle').textContent = P.t;
+  const rated = P.all.filter(d => !d.horror && !d.daily);
+  $('stagesStars').innerHTML = rated.length ? ICON.star + ' ' + rated.reduce((a, d) => a + stageStars(d), 0) + '/' + rated.length * 3 : '';
   const g = $('stageGrid'); g.innerHTML = '';
-  for (const def of (STAGE_MODE === 'lobby' && NET.lobby && NET.lobby.vs ? [] : [HORROR]).concat(allStages())) {
-    const B = BIOMES[def.biome], b = SAVE.best[def.id] || {};
-    const el = document.createElement('button'); el.className = 'stage' + (STAGE_SEL === def.id ? ' sel' : '');
-    const c1 = '#' + new THREE.Color(B.sky[0]).getHexString(), c2 = '#' + new THREE.Color(B.grass[0]).getHexString(), road = '#' + new THREE.Color(B.road).getHexString();
-    el.innerHTML = `<div class="sw" style="background:linear-gradient(160deg,${c1},${c2})"><svg viewBox="0 0 200 54" preserveAspectRatio="xMidYMid meet"><path d="${stagePreview(def)}" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="${stagePreview(def)}" fill="none" stroke="${road}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`
-      + (def.horror ? '<span class="daily-tag hor-tag">HORROR</span>' : def.daily ? '<span class="daily-tag">DAILY</span>' : def.long ? '<span class="daily-tag long-tag">LONG</span>' : '')
-      + `<div class="nm"></div><div class="meta"><span class="pips">${[1, 2, 3].map(i => `<i class="${i <= def.diff ? 'on' : ''}"></i>`).join('')}</span><span>${(def.len / 1000).toFixed(1)} km · ${['', 'Easy', 'Medium', 'Hard'][def.diff]}</span></div><div class="bi"></div>`
-      + `<div class="bests"><div><span>Solo</span> ${b.solo ? medalDot(def, b.solo) + fmtTime(b.solo) : '–'}</div><div><span>Crew</span> ${b.crew ? medalDot(def, b.crew) + fmtTime(b.crew) : '–'}</div></div>`;
-    el.querySelector('.nm').textContent = def.name + (def.sub ? ' · ' + def.sub : '');
-    el.querySelector('.bi').textContent = def.blurb;
-    if (def.horror) { el.classList.add('horror'); el.querySelector('.meta span:last-child').textContent = 'Endless · Night'; el.querySelector('.bests').innerHTML = `<div><span>Solo</span> ${b.solo ? fmtDist(b.solo) : '–'}</div><div><span>Crew</span> ${b.crew ? fmtDist(b.crew) : '–'}</div>`; }
-    el.title = 'Gold ' + fmtTime(stageParMs(def) * MEDAL.gold);
-    el.addEventListener('click', () => { AUDIO.ui(); STAGE_SEL = def.id; renderStages(); });
-    el.addEventListener('dblclick', () => stageGo());
-    g.appendChild(el);
+  P.defs.forEach((def, i) => { const c = courseCard(def); c.style.animationDelay = i * 0.035 + 's'; g.appendChild(c); });
+  const dots = $('pgDots'); dots.innerHTML = '';
+  STAGE_PAGES.forEach((p, i) => { const d = document.createElement('i'); if (i === STAGE_PAGE) d.className = 'on'; d.title = p.t; d.onclick = () => { AUDIO.ui(); setStagePage(i); }; dots.appendChild(d); });
+  $('pgPrev').disabled = STAGE_PAGE <= 0; $('pgNext').disabled = STAGE_PAGE >= STAGE_PAGES.length - 1;
+  layoutCourses();
+}
+function setStagePage(p) { p = clamp(p, 0, STAGE_PAGES.length - 1); if (p === STAGE_PAGE) return; STAGE_PAGE = p; renderStages(); }
+function courseCard(def) {
+  const el = document.createElement('button'); el.className = 'ccard' + (STAGE_SEL === def.id ? ' sel' : '') + (def.horror ? ' hor' : ''); el.dataset.id = def.id;
+  const best = bestOf(def), m = def.horror ? null : medalOf(def, best);
+  el.innerHTML = '<img alt="" draggable="false"><div class="cc-top"><b></b><small></small></div><div class="cc-corner' + (m ? ' m-' + m : def.horror ? ' dark' : '') + '">' + (def.horror ? ICON.skull : ICON.star) + '</div><div class="cc-bot"><b class="cc-name"></b><div class="cc-line"><span class="cc-gold"></span><span class="cc-best"></span></div></div>';
+  el.querySelector('img').src = stagePic(def);
+  el.querySelector('.cc-top b').textContent = BIOME_NAMES[def.biome] || '';
+  el.querySelector('.cc-top small').textContent = stageKind(def) + ' · ' + (def.horror ? 'Endless' : (def.len / 1000).toFixed(1) + ' km');
+  el.querySelector('.cc-name').textContent = def.name + (def.sub ? ' · ' + def.sub : '');
+  const gold = el.querySelector('.cc-gold'), be = el.querySelector('.cc-best');
+  if (def.horror) {
+    const b = SAVE.best.horror || {}, hb = Math.max(b.solo || 0, b.crew || 0);
+    gold.textContent = 'Night chase'; be.textContent = hb ? 'Best ' + fmtDist(hb) : 'New race!'; if (!hb) be.classList.add('new');
+  } else {
+    gold.innerHTML = '<i class="medal m-gold"></i>' + fmtTime(stageParMs(def) * MEDAL.gold);
+    be.textContent = best ? 'Best ' + fmtTime(best) : 'New race!'; if (!best) be.classList.add('new');
   }
-  const go = $('stageGo');
-  go.classList.toggle('hidden', !STAGE_SEL);
-  go.textContent = STAGE_MODE === 'lobby' ? 'Use this stage' : 'Start solo run';
+  el.title = def.blurb;
+  el.addEventListener('click', () => { if (SWIPED) return; AUDIO.ui(); openDetail(def); });
+  return el;
 }
 function medalDot(def, ms) { const m = medalOf(def, ms); return m ? `<i class="medal m-${m}"></i>` : ''; }
+function chipsHTML(list) { return list.map(t => '<span>' + t + '</span>').join(''); }
+function medalsHTML(def) { const par = stageParMs(def); return ['gold', 'silver', 'bronze'].map(m => `<div><small><i class="medal m-${m}"></i>${m}</small>${fmtTime(par * MEDAL[m])}</div>`).join(''); }
+function bestsHTML(def) { const b = SAVE.best[def.id] || {}; return `<div><small>Solo best</small>${b.solo ? medalDot(def, b.solo) + fmtTime(b.solo) : '–'}</div><div><small>Crew best</small>${b.crew ? medalDot(def, b.crew) + fmtTime(b.crew) : '–'}</div>`; }
+function openDetail(def) {
+  OPEN_DEF = def; STAGE_SEL = def.id;
+  $('dtImg').src = stagePic(def);
+  $('dtReg').textContent = (BIOME_NAMES[def.biome] || '') + ' · ' + stageKind(def);
+  $('dtName').textContent = def.name + (def.sub ? ' · ' + def.sub : '');
+  $('dtBlurb').textContent = def.blurb;
+  if (def.horror) {
+    const b = SAVE.best.horror || {};
+    $('dtFacts').innerHTML = chipsHTML(['Endless', 'Night', 'Stay above the required speed']); $('dtMedals').innerHTML = '';
+    $('dtBest').innerHTML = '<div><small>Your best solo</small>' + (b.solo ? fmtDist(b.solo) : '–') + '</div><div><small>Your best with a crew</small>' + (b.crew ? fmtDist(b.crew) : '–') + '</div>';
+  } else {
+    $('dtFacts').innerHTML = chipsHTML([(def.len / 1000).toFixed(1) + ' km', ['', 'Easy', 'Medium', 'Hard'][def.diff], def.jumps + ' jumps', def.long ? 'Big hills' : def.daily ? 'Today only' : 'Classic']);
+    $('dtMedals').innerHTML = medalsHTML(def); $('dtBest').innerHTML = bestsHTML(def);
+  }
+  $('stageGo').textContent = STAGE_MODE === 'lobby' ? 'Use this course' : 'Play';
+  $('dtLb').classList.toggle('hidden', !!def.horror);
+  renderMods(); $('modsStage').classList.toggle('hidden', STAGE_MODE === 'lobby');
+  $('stageDetail').classList.remove('hidden');
+  document.querySelectorAll('#stageGrid .ccard').forEach(c => c.classList.toggle('sel', c.dataset.id === def.id));
+}
+function closeDetail() { $('stageDetail').classList.add('hidden'); OPEN_DEF = null; }
 function stageGo() {
   if (!STAGE_SEL) return;
-  AUDIO.ui();
-  if (STAGE_MODE === 'lobby') { if (NET.host && NET.lobby) { NET.lobby.st = STAGE_SEL; hostPushLobby(); } showScreen('lobbyScr'); return; }
-  if (STAGE_SEL !== 'horror') { SAVE.stage = STAGE_SEL; save(); }
+  AUDIO.unlock(); AUDIO.ui();
+  if (STAGE_MODE === 'lobby') { if (NET.host && NET.lobby) { NET.lobby.st = STAGE_SEL; hostPushLobby(); } closeDetail(); showScreen('lobbyScr'); return; }
+  if (STAGE_SEL !== 'horror' && !/^daily-/.test(STAGE_SEL)) { SAVE.stage = STAGE_SEL; save(); }
   const def = stageById(STAGE_SEL);
+  closeDetail();
   showLoading('Building ' + def.name + '…');
   setTimeout(() => { startRace(def, 'driver', false); hideLoading(); }, 40);
 }
 $('stageGo').addEventListener('click', stageGo);
+// size the cards to fill the page: 3 by 2 (2 by 3 on a narrow screen)
+function layoutCourses() {
+  if (SCREEN !== 'stagesScr') return;
+  const w = $('cgWrap'), g = $('stageGrid'), cs = getComputedStyle(w);
+  const W = w.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), H = w.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const cols = W < 520 ? 2 : 3, rows = Math.ceil(6 / cols), gap = clamp(Math.min(W, H * 1.8) * 0.016, 8, 22), ar = 1.62;
+  const cw = Math.max(120, Math.floor(Math.min((W - gap * (cols - 1)) / cols, (H - gap * (rows - 1)) / rows * ar)));
+  g.style.gridTemplateColumns = 'repeat(' + cols + ', ' + cw + 'px)'; g.style.gridAutoRows = Math.floor(cw / ar) + 'px'; g.style.gap = gap + 'px';
+}
+addEventListener('resize', layoutCourses);
 
 /* ---------- settings ---------- */
 function renderSettings() {
@@ -4741,7 +5162,7 @@ function openJoin() {
     i.addEventListener('paste', e => { const t = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6); if (t.length) { e.preventDefault(); t.split('').forEach((ch, j) => { if (ins[j]) ins[j].value = ch; }); if (t.length === 6) joinGo(); } });
     box.appendChild(i); ins.push(i);
   }
-  showScreen('joinScr', 'menu');
+  showScreen('joinScr', SCREEN === 'joinScr' ? BACK.joinScr : SCREEN);
   setTimeout(() => ins[0].focus(), 50);
 }
 let JOINING = false;
@@ -4770,7 +5191,6 @@ async function makeCrewTries(md) {
   }
   hideLoading();
 }
-function showMenuError() { $('onlineNote').textContent = 'Could not reach the server. Online play needs an Arcade account.'; $('onlineNote').style.color = '#ff7a6a'; }
 
 /* ---------- lobby ---------- */
 function renderLobby() {
@@ -4791,7 +5211,7 @@ function renderLobby() {
   };
   seat($('seatDrv'), L.d); seat($('seatNav'), L.n);
   const def = stageById(L.st);
-  $('lobStage').textContent = def.name + (def.sub ? ' · ' + def.sub : '');
+  $('lobStage').textContent = def.name + (def.sub ? ' · ' + def.sub : ''); $('lobImg').src = stagePic(def);
   $('lobStageMeta').textContent = (def.len / 1000).toFixed(1) + ' km · ' + ['', 'Easy', 'Medium', 'Hard'][def.diff] + ' · ' + def.blurb;
   $('lobPick').classList.toggle('hidden', !NET.host);
   const full = !!(L.d && L.n);
@@ -4819,7 +5239,7 @@ function renderVsLobby(L) {
     box.appendChild(el);
   }
   const def = stageById(L.st);
-  $('lobStage').textContent = def.name + (def.sub ? ' · ' + def.sub : '');
+  $('lobStage').textContent = def.name + (def.sub ? ' · ' + def.sub : ''); $('lobImg').src = stagePic(def);
   $('lobStageMeta').textContent = (def.len / 1000).toFixed(1) + ' km · ' + ['', 'Easy', 'Medium', 'Hard'][def.diff] + ' · just for fun, not on the leaderboard';
   $('lobPick').classList.toggle('hidden', !NET.host);
   $('lobStart').classList.toggle('hidden', !NET.host); $('lobStart').disabled = n < vsMin(); $('lobStart').textContent = 'Start the race';
@@ -4966,15 +5386,339 @@ document.querySelectorAll('#touchDrv button').forEach(b => {
   b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('pointerleave', off);
 });
 
+/* ==========================================================================
+   1.6 MENU: your car on a turntable in the garage, the top bar (name, medals,
+   level, stars), the home cards (trailer, events, Play, Multiplayer), Classic
+   or Horror for Play and Multiplayer, Events (the daily stage and its board).
+   ========================================================================== */
+function stagePic(def) { return def.horror ? 'news/1.5-behind.jpg' : 'img/' + (def.daily ? BIOME_PIC[def.biome] || 'pine' : def.id) + '.jpg'; }
+function stageKind(def) { return def.horror ? 'Horror' : def.daily ? 'Daily event' : def.long ? 'Marathon' : 'Classic'; }
+function bestOf(def) { const b = SAVE.best[def.id] || {}; return b.solo && b.crew ? Math.min(b.solo, b.crew) : b.solo || b.crew || 0; }
+function stageStars(def) { const m = medalOf(def, bestOf(def)); return m ? MEDAL_STARS[m] : 0; }
+function homeStats() {
+  const st = { gold: 0, silver: 0, bronze: 0, stars: 0, max: STAGES.length * 3 };
+  for (const def of STAGES) { const m = medalOf(def, bestOf(def)); if (m) { st[m]++; st.stars += MEDAL_STARS[m]; } }
+  return st;
+}
+// XP: 60 for every finished run, 120 for every star. Level n needs 150*n*(n-1) XP.
+function xpInfo() {
+  const st = homeStats(), xp = (SAVE.runs || 0) * 60 + st.stars * 120;
+  let L = 1; while (xp >= 150 * L * (L + 1)) L++;
+  const a = 150 * (L - 1) * L, b = 150 * L * (L + 1);
+  return { L, k: (xp - a) / (b - a), st };
+}
+function dailyLeft() {
+  const d = new Date(), next = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1), s = Math.max(0, Math.floor((next - Date.now()) / 1000));
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+  return h ? h + 'h ' + String(m).padStart(2, '0') + 'm' : m + 'm ' + String(s % 60).padStart(2, '0') + 's';
+}
+function setAll(cls, v) { document.querySelectorAll('.' + cls).forEach(e => e.textContent = v); }
+function refreshStats() {
+  const { L, k, st } = xpInfo();
+  setAll('xGold', st.gold); setAll('xSilver', st.silver); setAll('xBronze', st.bronze); setAll('xStars', st.stars);
+  $('tbRuns').textContent = SAVE.runs || 0; $('tbLvl').textContent = L; $('tbXp').style.width = Math.round(k * 100) + '%';
+  return st;
+}
+let EV_DAY = '';
+function refreshHome() {
+  refreshStats();
+  $('tbName').textContent = myName();
+  $('notesNew').classList.toggle('hidden', SAVE.seenNotes === VERSION);
+  const d = dailyStage();
+  if (EV_DAY !== d.id) { EV_DAY = d.id; $('evImg').src = stagePic(d); $('evName').textContent = 'Daily Stage · ' + d.sub; }
+  $('evLeft').textContent = dailyLeft();
+  $('tbLogo').title = 'Turn! Turn! TURN! v' + VERSION;
+}
+// your Social profile picture in the circle (the letter of your name if you have none)
+function setAv(url) { if (!url || /["\\\n<>]/.test(url)) return; const el = $('tbAv'); el.style.backgroundImage = 'url("' + url + '")'; el.textContent = ''; }
+function loadAvatar() {
+  const el = $('tbAv'), n = myName(), k = n.toLowerCase();
+  el.textContent = (n[0] || '?').toUpperCase();
+  if (!window.ARCADE_NAME || !/^[a-z0-9_]{3,16}$/.test(k)) return;
+  try { const c = JSON.parse(sessionStorage.getItem('arcade-social-av') || 'null'); if (c && c.av && c.av[k]) { setAv(c.av[k]); return; } } catch (e) {}
+  if (IS_LOCAL) return;
+  fetch('https://arcade-realtime.arcade-realtime.workers.dev/clips/avatars?n=' + k, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { if (j && j.av && j.av[k]) setAv(j.av[k]); }).catch(() => {});
+}
+setInterval(() => {
+  if (SCREEN === 'menu') { if (EV_DAY !== dailyStage().id) refreshHome(); else $('evLeft').textContent = dailyLeft(); }
+  else if (SCREEN === 'eventScr') { if (EV_DAY !== dailyStage().id) { refreshHome(); openEvent(); } else tickEvent(); }
+}, 1000);
+function showMenuError() { const n = $('onlineNote'); n.textContent = 'Could not reach the server. Online play needs an Arcade account.'; clearTimeout(n._t); n._t = setTimeout(() => { n.textContent = ''; }, 7000); }
+
+/* ---------- the garage ---------- */
+const GAR = (() => {
+  const sc = new THREE.Scene(), BG = 0x0b0d10;
+  sc.background = new THREE.Color(BG); sc.fog = new THREE.Fog(BG, 20, 46);
+  const cam = new THREE.PerspectiveCamera(34, 1, 0.1, 140);
+  const mirror = new THREE.Group(); mirror.scale.y = -1; sc.add(mirror); // the shiny floor: the room upside down under a see-through floor
+  const rnd = mulberry(1606);
+  const mat = (c, o) => new THREE.MeshPhongMaterial(Object.assign({ color: c, shininess: 12, specular: 0x161616 }, o || {}));
+  const glow = c => new THREE.MeshBasicMaterial({ color: c, fog: false });
+  const add = (geo, m, x, y, z, parent = sc) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.receiveShadow = true; parent.add(o); return o; };
+  const refl = o => { const r = o.clone(); mirror.add(r); return o; };
+  const tex = (w, h, draw, rx = 1, ry = 1) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = 4; return t; };
+  const grain = (x, w, h, base, n, a) => { x.fillStyle = base; x.fillRect(0, 0, w, h); for (let i = 0; i < n; i++) { const v = 30 + rnd() * 90 | 0; x.fillStyle = `rgba(${v},${v},${v + 4},${a * (0.5 + rnd())})`; x.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 2.5, 1 + rnd() * 2.5); } };
+  // floor: polished concrete with seams
+  const floorT = tex(512, 512, (x, w, h) => { grain(x, w, h, '#3c3f44', 9000, 0.22); x.fillStyle = 'rgba(0,0,0,.4)'; x.fillRect(0, 0, w, 3); x.fillRect(0, 0, 3, h); }, 7, 7);
+  const floor = add(new THREE.PlaneGeometry(70, 70), new THREE.MeshPhongMaterial({ map: floorT, transparent: true, opacity: 0.84, shininess: 90, specular: 0x2c2c2c }), 0, 0, 0);
+  floor.rotation.x = -Math.PI / 2;
+  // walls, ceiling, an orange band along the bottom
+  const wallT = tex(512, 256, (x, w, h) => { grain(x, w, h, '#5f5c57', 7000, 0.2); x.fillStyle = 'rgba(0,0,0,.28)'; x.fillRect(0, h - 3, w, 3); x.fillRect(w - 3, 0, 3, h); }, 6, 2);
+  const wallM = mat(0xffffff, { map: wallT });
+  add(new THREE.PlaneGeometry(32, 7.2), wallM, 0, 3.6, -12);
+  for (const s of [-1, 1]) { const w = add(new THREE.PlaneGeometry(30, 7.2), wallM, s * 13, 3.6, 0); w.rotation.y = -s * Math.PI / 2; }
+  const ceil = add(new THREE.PlaneGeometry(32, 30), mat(0x24262a), 0, 6.8, 0); ceil.rotation.x = Math.PI / 2;
+  const band = lowMat({ color: 0xff7a1a, emissive: 0x3a1800 }), skirt = mat(0x1b1c1f);
+  add(new THREE.BoxGeometry(26, 0.34, 0.06), band, 0, 0.62, -11.95); add(new THREE.BoxGeometry(26, 0.3, 0.08), skirt, 0, 0.15, -11.95);
+  for (const s of [-1, 1]) { const b = add(new THREE.BoxGeometry(0.06, 0.34, 24), band, s * 12.95, 0.62, 0); add(new THREE.BoxGeometry(0.08, 0.3, 24), skirt, s * 12.95, 0.15, 0); }
+  // beams along the ceiling with strip lights under them
+  const beamM = mat(0x33353a);
+  for (const x of [-7, -2.4, 2.4, 7]) { add(new THREE.BoxGeometry(0.55, 0.5, 30), beamM, x, 6.55, 0); refl(add(new THREE.BoxGeometry(0.16, 0.05, 22), glow(0xeef4ff), x, 6.28, -1)); }
+  // pillars with hazard stripes at the bottom
+  const hazT = tex(64, 64, (x, w, h) => { x.fillStyle = '#f0b70f'; x.fillRect(0, 0, w, h); x.fillStyle = '#17181b'; for (let i = -2; i < 3; i++) { x.beginPath(); x.moveTo(i * 32, 0); x.lineTo(i * 32 + 16, 0); x.lineTo(i * 32 + 80, h); x.lineTo(i * 32 + 64, h); x.fill(); } }, 2, 1);
+  const colM = mat(0xffffff, { map: wallT }), hazM = mat(0xffffff, { map: hazT });
+  for (const [x, z] of [[-6.8, -6], [6.8, -6], [-10, 2.6], [10, 2.6]]) { const c = refl(add(new THREE.BoxGeometry(0.9, 6.8, 0.9), colM, x, 3.4, z)); c.castShadow = true; refl(add(new THREE.BoxGeometry(0.95, 0.95, 0.95), hazM, x, 0.48, z)); }
+  // the roller door at the back, warm light under it, lit windows either side
+  const doorT = tex(256, 256, (x, w, h) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#aab0b6'); g.addColorStop(1, '#868b91'); x.fillStyle = g; x.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 16) { x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(0, y, w, 3); x.fillStyle = 'rgba(255,255,255,.16)'; x.fillRect(0, y + 3, w, 2); } });
+  const DX = 6.4;
+  refl(add(new THREE.PlaneGeometry(5.6, 4.2), mat(0xffffff, { map: doorT }), DX, 2.1, -11.96));
+  const frameM = mat(0x26282c);
+  add(new THREE.BoxGeometry(6.2, 0.4, 0.3), frameM, DX, 4.4, -11.85); for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.3, 4.4, 0.3), frameM, DX + s * 2.95, 2.2, -11.85);
+  refl(add(new THREE.PlaneGeometry(5.6, 0.18), glow(0xffd9a0), DX, 0.09, -11.94));
+  const winT = tex(128, 256, (x, w, h) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#fff3da'); g.addColorStop(1, '#ffb257'); x.fillStyle = g; x.fillRect(0, 0, w, h); x.fillStyle = 'rgba(50,25,0,.6)'; x.fillRect(w / 2 - 3, 0, 6, h); x.fillRect(0, h * 0.5 - 3, w, 6); x.strokeStyle = 'rgba(50,25,0,.7)'; x.lineWidth = 8; x.strokeRect(0, 0, w, h); });
+  const winM = new THREE.MeshBasicMaterial({ map: winT, fog: false });
+  for (const s of [-1, 1]) {
+    if (s < 0) refl(add(new THREE.PlaneGeometry(2.6, 2.5), winM, -10.2, 2.9, -11.95));
+    for (const z of [-7.5, -2.5]) { const p = add(new THREE.PlaneGeometry(2.4, 2.4), winM, s * 12.94, 3.3, z); p.rotation.y = -s * Math.PI / 2; refl(p); }
+  }
+  // the name of the game in neon over the door
+  const signC = document.createElement('canvas'); signC.width = 1024; signC.height = 200;
+  const signT = new THREE.CanvasTexture(signC);
+  function drawSign() {
+    const x = signC.getContext('2d'); x.clearRect(0, 0, 1024, 200);
+    x.font = '900 italic 132px "Barlow Condensed", "Arial Narrow", "Arial Black", Arial, sans-serif'; x.textBaseline = 'middle';
+    const parts = [['TURN! ', '#ffffff'], ['TURN! ', '#3fe6d0'], ['TURN!', '#ff8a2a']];
+    const total = parts.reduce((a, p) => a + x.measureText(p[0]).width, 0), sc = Math.min(1, 960 / total);
+    x.save(); x.translate(512 - total * sc / 2, 104); x.scale(sc, 1);
+    let px = 0;
+    for (const [t, c] of parts) { x.shadowColor = c; x.shadowBlur = 26; x.fillStyle = c; x.fillText(t, px, 0); x.shadowBlur = 8; x.fillText(t, px, 0); px += x.measureText(t).width; }
+    x.restore(); signT.needsUpdate = true;
+  }
+  drawSign(); try { document.fonts && document.fonts.ready.then(drawSign); } catch (e) {}
+  add(new THREE.BoxGeometry(7.9, 1.75, 0.12), mat(0x15171a, { shininess: 40 }), -2.6, 2.8, -11.9);
+  refl(add(new THREE.PlaneGeometry(7.4, 1.44), new THREE.MeshBasicMaterial({ map: signT, transparent: true, fog: false, depthWrite: false }), -2.6, 2.8, -11.82));
+  // tyres, a tool chest, cones
+  const tyreM = mat(0x18191b, { shininess: 25 }), rimM = mat(0x9ea4aa, { shininess: 60, specular: 0x666666 });
+  const tyreG = new THREE.CylinderGeometry(0.46, 0.46, 0.3, 22), rimG = new THREE.CylinderGeometry(0.27, 0.27, 0.31, 14);
+  for (const [x, z, n] of [[-10.9, -9.8, 4], [-11.6, -8.7, 3], [-9.9, -10.8, 2], [11.2, 0.4, 3], [11.6, 1.4, 2]]) for (let i = 0; i < n; i++) { refl(add(tyreG, tyreM, x, 0.15 + i * 0.31, z)).castShadow = true; add(rimG, rimM, x, 0.15 + i * 0.31, z); }
+  const chestT = tex(128, 128, (x, w, h) => { x.fillStyle = '#c4301d'; x.fillRect(0, 0, w, h); for (let y = 10; y < h; y += 24) { x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(4, y + 18, w - 8, 3); x.fillStyle = '#d9d9d9'; x.fillRect(w / 2 - 18, y + 7, 36, 4); } });
+  const chestM = mat(0xffffff, { map: chestT, shininess: 50, specular: 0x444444 });
+  refl(add(new THREE.BoxGeometry(1.9, 1.2, 0.7), chestM, 10.3, 0.6, -9.9)).castShadow = true; refl(add(new THREE.BoxGeometry(1.9, 0.7, 0.6), chestM, 10.3, 1.55, -9.95));
+  const coneM = lowMat({ color: 0xff6a12 }), coneW = lowMat({ color: 0xf2f2f2 });
+  for (const [x, z] of [[-5.2, 4.2], [-4.4, 5.1], [5.6, -3.4]]) { refl(add(new THREE.ConeGeometry(0.24, 0.66, 14), coneM, x, 0.36, z)).castShadow = true; add(new THREE.CylinderGeometry(0.14, 0.17, 0.1, 14), coneW, x, 0.42, z); add(new THREE.BoxGeometry(0.56, 0.05, 0.56), coneM, x, 0.025, z); }
+  // the turntable and its ring of light
+  const tt = add(new THREE.CylinderGeometry(3.32, 3.4, 0.14, 80), mat(0x23272c, { shininess: 70, specular: 0x4a4a4a }), 0, 0.07, 0);
+  const discT = tex(256, 256, (x, w) => { x.fillStyle = '#2b3036'; x.fillRect(0, 0, w, w); x.strokeStyle = 'rgba(255,255,255,.07)'; for (let r = 8; r < w / 2; r += 7) { x.lineWidth = 1 + (r % 3); x.beginPath(); x.arc(w / 2, w / 2, r, 0, 7); x.stroke(); } x.strokeStyle = 'rgba(0,0,0,.45)'; x.lineWidth = 3; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; x.beginPath(); x.moveTo(w / 2 + Math.cos(a) * 30, w / 2 + Math.sin(a) * 30); x.lineTo(w / 2 + Math.cos(a) * 124, w / 2 + Math.sin(a) * 124); x.stroke(); } });
+  const disc = add(new THREE.CircleGeometry(3.14, 72), mat(0xffffff, { map: discT, shininess: 80, specular: 0x3a3a3a }), 0, 0.142, 0); disc.rotation.x = -Math.PI / 2;
+  const ringM = new THREE.MeshBasicMaterial({ color: 0xc9f7ff, fog: false });
+  const ring = add(new THREE.TorusGeometry(3.4, 0.05, 8, 180), ringM, 0, 0.12, 0); ring.rotation.x = Math.PI / 2; refl(ring);
+  const haloT = tex(256, 256, (x, w) => { const g = x.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.6, 'rgba(255,255,255,0)'); g.addColorStop(0.695, 'rgba(255,255,255,.95)'); g.addColorStop(0.76, 'rgba(255,255,255,.28)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, w, w); });
+  const haloM = new THREE.MeshBasicMaterial({ map: haloT, color: 0x56d8ff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  const halo = add(new THREE.PlaneGeometry(9.8, 9.8), haloM, 0, 0.02, 0); halo.rotation.x = -Math.PI / 2; halo.renderOrder = 2;
+  // your car: the same car you drive, a bit shinier for the showroom
+  const car = makeRivalCar(0, ''); car.tag.visible = false; car.arm.up.visible = car.arm.lo.visible = car.arm.hand.visible = false;
+  car.g.traverse(o => { if (!o.isMesh) return; o.castShadow = true; const m = o.material; if (m && m.isMeshPhongMaterial && !m.transparent) { o.material = m.clone(); o.material.shininess = 60; o.material.specular = new THREE.Color(0x454545); } });
+  const hold = new THREE.Group(); hold.position.y = 0.142 + 0.49; hold.add(car.g); sc.add(hold);
+  const holdM = new THREE.Group(); holdM.position.y = hold.position.y; holdM.add(car.g.clone(true)); mirror.add(holdM);
+  // light: a key light from above the camera (shadows), a cool rim from behind, warm lamps by the windows
+  sc.add(new THREE.AmbientLight(0xffffff, 0.2));
+  sc.add(new THREE.HemisphereLight(0xd6e6ff, 0x2c261f, 0.55));
+  const key = new THREE.SpotLight(0xffffff, 1.25, 40, 0.5, 0.6, 1); key.position.set(3, 10.5, 6); key.target.position.set(0, 0.4, 0);
+  key.castShadow = true; key.shadow.mapSize.set(1024, 1024); key.shadow.bias = -0.0005; key.shadow.camera.near = 5; key.shadow.camera.far = 26; sc.add(key, key.target);
+  const rim = new THREE.SpotLight(0xa9d2ff, 0.9, 40, 0.6, 0.8, 1); rim.position.set(-5, 7, -8); rim.target.position.set(0, 0.6, 0); sc.add(rim, rim.target);
+  for (const x of [-10.2, DX]) { const p = new THREE.PointLight(0xffa850, 0.75, 13, 1.6); p.position.set(x, 3.0, -10.6); sc.add(p); }
+  const signL = new THREE.PointLight(0xff8a3a, 0.55, 9, 1.6); signL.position.set(-2.6, 2.9, -10.6); sc.add(signL);
+  const S = { yaw: -0.75, v: 0.3, drag: false, t: 0, asp: 0, cd: 10, ch: 1.8, cl: 0.1, ca: 0.36 };
+  function frame(dt) {
+    S.t += dt;
+    if (!S.drag) { S.v += (0.3 - S.v) * Math.min(1, dt * 1.6); S.yaw += S.v * dt; }
+    hold.rotation.y = holdM.rotation.y = disc.rotation.z = S.yaw;
+    haloM.opacity = 0.56 + Math.sin(S.t * 1.8) * 0.07;
+    const asp = innerWidth / Math.max(1, innerHeight);
+    if (asp !== S.asp) { S.asp = asp; cam.aspect = asp; cam.updateProjectionMatrix(); }
+    const D = clamp(S.cd * Math.pow(Math.max(1, 1.55 / asp), 0.7), S.cd, 30), a = S.ca + Math.sin(S.t * 0.07) * 0.05, h = S.ch + Math.sin(S.t * 0.29) * 0.07;
+    cam.position.set(Math.sin(a) * D, h * D / S.cd, Math.cos(a) * D);
+    cam.lookAt(0, asp < 1 ? S.cl - 0.6 : S.cl, 0);
+    R.setRenderTarget(null); R.clear(); R.render(sc, cam);
+  }
+  return { sc, cam, frame, S, car, drawSign };
+})();
+const OPAQUE = new Set(['modeScr', 'mpScr', 'eventScr', 'horrorScr', 'stagesScr', 'lbScr']);
+// drag (or swipe) the garage to spin your car; let go and it keeps turning
+{
+  const h = $('garageHit'); let lx = 0, lt = 0;
+  h.addEventListener('pointerdown', e => { GAR.S.drag = true; lx = e.clientX; lt = performance.now(); GAR.S.v = 0; try { h.setPointerCapture(e.pointerId); } catch (er) {} h.classList.add('drag'); });
+  h.addEventListener('pointermove', e => { if (!GAR.S.drag) return; const now = performance.now(), d = (e.clientX - lx) * 0.009; lx = e.clientX; GAR.S.yaw += d; GAR.S.v = d / Math.max(0.008, (now - lt) / 1000); lt = now; });
+  const up = () => { if (!GAR.S.drag) return; GAR.S.drag = false; h.classList.remove('drag'); if (performance.now() - lt > 120) GAR.S.v = 0; GAR.S.v = clamp(GAR.S.v, -5, 5); };
+  h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+}
+// Escape (or B on a pad) goes back a page in the menus
+function menuBack() {
+  if (SCREEN === 'stagesScr' && OPEN_DEF) { AUDIO.ui(); closeDetail(); return; }
+  if (['modeScr', 'mpScr', 'eventScr', 'horrorScr', 'stagesScr', 'lbScr', 'settingsScr', 'helpScr', 'notesScr', 'modsScr', 'trailerScr', 'joinScr'].includes(SCREEN)) { AUDIO.ui(); showScreen(BACK[SCREEN] || 'menu'); }
+}
+
+/* ---------- home buttons ---------- */
+document.querySelectorAll('#menu [data-go]').forEach(b => b.addEventListener('click', () => {
+  if (SCREEN !== 'menu' || GAME.mode === 'race') return;
+  AUDIO.unlock(); AUDIO.ui();
+  const g = b.dataset.go;
+  if (g === 'play') openModes('play');
+  else if (g === 'multi') openModes('multi');
+  else if (g === 'event') openEvent();
+  else if (g === 'trailer') openTrailer();
+  else if (g === 'mods') { renderMods(); showScreen('modsScr', 'menu'); }
+  else if (g === 'settings') { renderSettings(); showScreen('settingsScr', 'menu'); }
+  else if (g === 'help') showScreen('helpScr', 'menu');
+  else if (g === 'lb') openBoard();
+  else if (g === 'notes') { renderNotes(); SAVE.seenNotes = VERSION; save(); showScreen('notesScr', 'menu'); }
+}));
+// the top bar on every page: home and the leaderboard
+document.querySelectorAll('.sb-home').forEach(b => b.addEventListener('click', () => {
+  if (!onScreen(b)) return; AUDIO.ui();
+  if (GAME.mode === 'race') { showScreen(GAME.resultShown ? 'resultScr' : 'pauseScr'); return; }
+  closeDetail();
+  if (NET.on && NET.lobby) { showScreen('lobbyScr'); return; } // still in a crew: back to its lobby
+  showScreen('menu');
+}));
+document.querySelectorAll('.sb-lb').forEach(b => b.addEventListener('click', () => { if (!onScreen(b) || SCREEN === 'lbScr') return; AUDIO.ui(); openBoard(); }));
+
+/* ---------- Play / Multiplayer: Classic or Horror ---------- */
+let MODE_KIND = 'play';
+function openModes(kind) {
+  MODE_KIND = kind;
+  const st = homeStats(), hb = SAVE.best.horror || {}, best = kind === 'multi' ? hb.crew : hb.solo;
+  $('modeTitle').textContent = kind === 'multi' ? 'Multiplayer' : 'Play';
+  $('mcClassicSub').textContent = kind === 'multi' ? 'Co-op crews and 4-6 player versus' : STAGES.length + ' courses with an AI co-driver';
+  $('mcClassicEm').innerHTML = ICON.star + ' ' + st.stars + '/' + st.max;
+  $('mcHorrorSub').textContent = kind === 'multi' ? 'Outrun it with a friend' : 'Night in the Dead Woods. Something follows you.';
+  $('mcHorrorEm').textContent = best ? 'Best ' + fmtDist(best) : 'New';
+  showScreen('modeScr', 'menu');
+}
+document.querySelectorAll('#modeScr [data-mode]').forEach(b => b.addEventListener('click', () => {
+  if (!onScreen(b)) return; AUDIO.unlock(); AUDIO.ui();
+  const m = b.dataset.mode;
+  if (MODE_KIND === 'play') { if (m === 'horror') openHorror('modeScr'); else openStages('solo', 'modeScr'); }
+  else openMp(m);
+}));
+const MP_TILES = {
+  classic: [['qcrew', 'Quick match', 'Co-op for 2. Get paired with the next player who searches.', 'users', 'Co-op'],
+    ['qvs', 'Quick versus', '4 to 6 players in crews of two race the same course. Just for fun.', 'flag', 'Versus'],
+    ['crew', 'Make a crew', 'Get a 6-digit code and send it to your partner.', 'plus'],
+    ['vsroom', 'Versus room', 'A room for 4 to 6 players. Share the code with everyone.', 'vs'],
+    ['join', 'Join with a code', 'Type the 6 digits your friend sees.', 'code']],
+  horror: [['hcrew', 'Make a crew', 'Get a code for your partner. Your crew starts on the horror road.', 'plus'],
+    ['join', 'Join with a code', 'Type the 6 digits your friend sees.', 'code']],
+};
+function openMp(m) {
+  $('mpTitle').textContent = 'Multiplayer · ' + (m === 'horror' ? 'Horror' : 'Classic');
+  const g = $('mpGrid'); g.innerHTML = ''; g.classList.toggle('hor', m === 'horror');
+  MP_TILES[m].forEach(([k, t, d, ic, tag], i) => {
+    const b = document.createElement('button'); b.className = 'mp-tile'; b.style.animationDelay = i * 0.04 + 's';
+    b.innerHTML = '<i>' + ICON[ic] + '</i><b></b><span></span>' + (tag ? '<em></em>' : '');
+    b.querySelector('b').textContent = t; b.querySelector('span').textContent = d; if (tag) b.querySelector('em').textContent = tag;
+    b.onclick = () => mpGo(k); g.appendChild(b);
+  });
+  const ok = hasOnlineAccount(), n = $('mpNote');
+  n.textContent = ok ? 'Playing online as ' + myName() + '.' : 'Online play needs an Arcade account. Sign in on the arcade home page.';
+  n.classList.toggle('warn', !ok);
+  showScreen('mpScr', 'modeScr');
+}
+async function mpGo(k) {
+  if (SCREEN !== 'mpScr' || GAME.mode === 'race' || NET.on) return;
+  AUDIO.unlock(); AUDIO.ui();
+  if (k === 'qcrew' || k === 'qvs') { openQuick(); BACK.qmScr = 'mpScr'; if (hasOnlineAccount()) qmStart(k === 'qvs' ? 'vs' : 'crew'); }
+  else if (k === 'crew') makeOnlineCrew('crew');
+  else if (k === 'vsroom') makeOnlineCrew('vs');
+  else if (k === 'join') openJoin();
+  else if (k === 'hcrew') { await makeOnlineCrew('crew'); if (NET.host && NET.lobby && !NET.lobby.vs) { NET.lobby.st = 'horror'; hostPushLobby(); } }
+}
+
+/* ---------- Events: today's daily stage, its timer, a Play button and its own leaderboard ---------- */
+let EV_KIND = 'solo';
+function tickEvent() { const t = dailyLeft(); $('evLeft').textContent = t; $('evLeft2').textContent = t; $('evEnds').textContent = 'Ends in ' + t; }
+function openEvent() {
+  const def = dailyStage();
+  $('evBig').src = stagePic(def);
+  $('evReg').textContent = (BIOME_NAMES[def.biome] || '') + ' · Daily event';
+  $('evTitle').textContent = 'Daily Stage · ' + def.sub;
+  $('evMeta').innerHTML = chipsHTML([(def.len / 1000).toFixed(1) + ' km', ['', 'Easy', 'Medium', 'Hard'][def.diff], def.jumps + ' jumps', 'Same road for everyone', 'New one every day']);
+  $('evMedals').innerHTML = medalsHTML(def); $('evBest').innerHTML = bestsHTML(def);
+  tickEvent(); renderMods();
+  document.querySelectorAll('#evKind button').forEach(b => b.classList.toggle('on', b.dataset.k === EV_KIND));
+  showScreen('eventScr', 'menu');
+  loadEvBoard();
+}
+async function loadEvBoard() {
+  const def = dailyStage(), kind = EV_KIND, key = kind + ':' + def.id, box = $('evList');
+  if (LB_CACHE[key]) drawBoard(def.id, LB_CACHE[key], box, kind); else box.innerHTML = '<div class="lb-empty">Loading…</div>';
+  try {
+    const r = await fetch(LB_API + (kind === 'solo' ? 'sboard' : 'board') + '?s=' + encodeURIComponent(def.id));
+    const j = await r.json(); if (!r.ok) throw 0;
+    LB_CACHE[key] = j.list || [];
+    if (EV_KIND === kind) drawBoard(def.id, LB_CACHE[key], box, kind);
+  } catch (e) { if (EV_KIND === kind && !LB_CACHE[key]) box.innerHTML = '<div class="lb-empty">Could not reach the leaderboard. Check your connection.</div>'; }
+}
+document.querySelectorAll('#evKind button').forEach(b => b.addEventListener('click', () => { AUDIO.ui(); EV_KIND = b.dataset.k; document.querySelectorAll('#evKind button').forEach(x => x.classList.toggle('on', x === b)); loadEvBoard(); }));
+$('evPlay').addEventListener('click', () => {
+  if (!onScreen($('evPlay'))) return;
+  AUDIO.unlock(); AUDIO.ui(); const def = dailyStage(); showLoading('Building ' + def.name + '…');
+  setTimeout(() => { startRace(def, 'driver', false); hideLoading(); }, 40);
+});
+$('evCrew').addEventListener('click', async () => {
+  if (!onScreen($('evCrew')) || NET.on) return;
+  AUDIO.unlock(); AUDIO.ui(); const id = dailyStage().id;
+  await makeOnlineCrew('crew');
+  if (NET.host && NET.lobby && !NET.lobby.vs) { NET.lobby.st = id; hostPushLobby(); }
+});
+
+/* ---------- the courses page: paging, swiping, the open course ---------- */
+$('pgPrev').addEventListener('click', () => { AUDIO.ui(); setStagePage(STAGE_PAGE - 1); });
+$('pgNext').addEventListener('click', () => { AUDIO.ui(); setStagePage(STAGE_PAGE + 1); });
+$('dtClose').addEventListener('click', () => { AUDIO.ui(); closeDetail(); });
+$('stageDetail').addEventListener('click', e => { if (e.target === $('stageDetail')) { AUDIO.ui(); closeDetail(); } });
+$('dtLb').addEventListener('click', () => { if (OPEN_DEF) { AUDIO.ui(); openBoard(OPEN_DEF.id, 'solo'); } });
+{
+  const w = $('cgWrap'); let sx = null, sy = 0;
+  w.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; SWIPED = false; });
+  w.addEventListener('pointerup', e => { if (sx === null) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = null; if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.4) { SWIPED = true; AUDIO.ui(); setStagePage(STAGE_PAGE + (dx < 0 ? 1 : -1)); setTimeout(() => { SWIPED = false; }, 50); } });
+  w.addEventListener('wheel', e => { if (SCREEN !== 'stagesScr' || OPEN_DEF || Math.abs(e.deltaX) < 30 || Math.abs(e.deltaX) < Math.abs(e.deltaY)) return; e.preventDefault(); const now = performance.now(); if (now - (w._wt || 0) < 450) return; w._wt = now; setStagePage(STAGE_PAGE + (e.deltaX > 0 ? 1 : -1)); }, { passive: false });
+}
+addEventListener('keydown', e => {
+  if (GAME.mode === 'race' || SCREEN !== 'stagesScr' || OPEN_DEF) return;
+  if (e.code === 'ArrowRight' || e.code === 'PageDown') setStagePage(STAGE_PAGE + 1);
+  else if (e.code === 'ArrowLeft' || e.code === 'PageUp') setStagePage(STAGE_PAGE - 1);
+});
+
+/* ---------- the trailer ---------- */
+function openTrailer() {
+  const v = $('trVid');
+  if (!v.getAttribute('src')) v.src = v.canPlayType('application/vnd.apple.mpegurl') ? '../trailers/turn-turn-turn/index.m3u8' : '../trailers/turn-turn-turn.mp4';
+  showScreen('trailerScr', 'menu');
+  try { v.currentTime = 0; } catch (e) {}
+  const p = v.play(); if (p && p.catch) p.catch(() => {});
+}
+
 /* ---------- boot ---------- */
 (function boot() {
   buildNavPad();
   resize();
   try { ensureStage(stageById(SAVE.stage)); } catch (e) { console.error(e); }
   hideLoading();
+  loadAvatar();
   showScreen('menu');
   requestAnimationFrame(frame);
-  if (IS_LOCAL) window.__ci = { HOR, HORROR, horCatch, MIR, GAME, NET, TAB, GLASS, CAB, startRace, stageById, buildStage, STAGES, driverFrame, navFrame, S, SAVE, render, cameraFrame, poseCabin, R, wcam, ccam, scene, cabScene, showCall, finishRace, AUDIO, packSnap, navSnap, applyFx, startWipe, stepWipe, tabDrop, tabGrab, TABLET, KEYS, PRESSED };
+  if (IS_LOCAL) window.__ci = { LB_CACHE, renderLobby, showResults, togglePause, GAR, openStages, openEvent, openModes, openMp, openDetail, closeDetail, showScreen, refreshHome, openBoard, openHorror, openTrailer, setStagePage, makeRivalCar, lightFrame, ensureStage, roadAt, BIOMES, HOR, HORROR, horCatch, MIR, GAME, NET, TAB, GLASS, CAB, startRace, stageById, buildStage, STAGES, driverFrame, navFrame, S, SAVE, render, cameraFrame, poseCabin, R, wcam, ccam, scene, cabScene, showCall, finishRace, AUDIO, packSnap, navSnap, applyFx, startWipe, stepWipe, tabDrop, tabGrab, TABLET, KEYS, PRESSED };
 })();
 </script>
 <script src="../moving.js?v=1"></script>
