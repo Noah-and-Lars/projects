@@ -336,6 +336,8 @@ body.touch #stunts .st i { font-size: 18px; }
 @media (max-height: 460px) { #stunts .st-legend { display: none; } }
 </style>
 <style id="tr-extras-css">
+/* 1.3: the taller menu puts the subtitle over signs in the scene, so give it a dark backing */
+.title-panel .sub { display: inline-block; justify-self: center; align-self: center; width: auto; padding: 3px 12px; border-radius: 999px; background: rgba(12,10,30,.88); text-shadow: 0 1px 3px rgba(0,0,0,.6); }
 /* ---------- 1.3: modes, garage, settings, ghosts, splits ---------- */
 .trx-row .btn.small { flex: 1 1 0; min-width: 0; padding: 8px 10px; font-size: clamp(13px, 2.6vmin, 16px); }
 .trx-row2 .btn.small { background: #2b2350; box-shadow: 0 4px 0 #1b1538; font-size: clamp(11px, 2.2vmin, 14px); min-height: 42px; }
