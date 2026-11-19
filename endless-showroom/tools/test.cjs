@@ -88,18 +88,31 @@ fs.mkdirSync(out, { recursive: true });
   await page.keyboard.press('KeyE'); await page.waitForTimeout(300);
   await g((id) => __game.grabForTest(id), air); // in case the aim missed
   const carried = await g(() => !!__game.P.carry);
-  // look up into the open air, tilt it, and let go
-  await page.keyboard.press('KeyT'); await page.waitForTimeout(400);
-  // turn until the aimed-at spot in the air is free, then let go
+  // turn it 45° on the upright axis, then on the side axis
+  await page.keyboard.press('KeyR'); await page.keyboard.press('Digit1'); await page.keyboard.press('KeyR'); await page.waitForTimeout(400);
+  const turned = await g(() => __game.P.carry && __game.P.carry.o);
+  console.log((turned && Math.abs(turned[3]) < 0.99 ? 'ok   ' : 'FAIL ') + 'R turns a held piece on the chosen axis (' + JSON.stringify(turned) + ')');
+  // aim into open air (nothing touching it), let go: it drops and isn't fixed
+  let rel = null;
   for (let i = 0; i < 16; i++) {
-    await g((i) => { __game.P.yaw += Math.PI / 8; __game.P.pitch = 0.55; __game.P.carryDist = 2.2; }, i);
-    await page.waitForFunction(() => true); await page.waitForTimeout(500);
+    await g(() => { __game.P.yaw += Math.PI / 8; __game.P.pitch = 0.55; __game.P.carryDist = 2.2; });
+    await page.waitForTimeout(1500);
     const pl = await g(() => __game.placement);
-    if (pl && pl.ok && pl.y > 0.5) break;
+    if (pl && !pl.sticks && pl.y > 0.5) { rel = pl; break; }
   }
-  await page.keyboard.press('KeyE'); await page.waitForTimeout(400);
-  const floated = await g((id) => { const it = __game.world.items.get(id); return { y: it.y, tl: it.tl, c: it.c }; }, air);
-  console.log((carried && floated.y > 0.5 && floated.tl === 1 && !floated.c ? 'ok   ' : 'FAIL ') + 'placed tilted in mid-air and it stays there (' + JSON.stringify(floated) + ')');
+  await page.keyboard.press('KeyE');
+  await page.waitForFunction((id) => !__game.world.items.get(id).c, air, { timeout: 30000 }).catch(() => {});
+  const fell = await g((id) => { const it = __game.world.items.get(id); return { y: it.y, a: it.a, o: !!it.o, c: it.c }; }, air);
+  console.log((carried && rel && fell.y < rel.y - 0.05 && !fell.a && fell.o && !fell.c ? 'ok   ' : 'FAIL ') + 'let go in mid-air, it drops (' + JSON.stringify({ from: rel && +rel.y.toFixed(2), ...fell }) + ')');
+  // let go while it touches something: it stays exactly there, fixed
+  await g((id) => __game.grabForTest(id), air);
+  await g(() => { __game.P.pitch = -0.6; __game.P.carryDist = 2.2; });
+  await page.waitForFunction(() => { const c = __game.P.carry, p = __game.placement; if (!c || !p) return false; const ok = window.__lastY !== undefined && Math.abs(window.__lastY - p.y) < 0.005; window.__lastY = p.y; return ok; }, null, { timeout: 30000, polling: 500 }).catch(() => {});
+  const at = await g(() => __game.placement);
+  await page.keyboard.press('KeyE');
+  await page.waitForFunction((id) => !__game.world.items.get(id).c, air, { timeout: 30000 }).catch(() => {});
+  const fixed = await g((id) => { const it = __game.world.items.get(id); return { y: it.y, a: it.a, c: it.c }; }, air);
+  console.log((at && at.sticks && fixed.a && !fixed.c && Math.abs(fixed.y - at.y) < 0.2 ? 'ok   ' : 'FAIL ') + 'let go touching something, it stays put (' + JSON.stringify(fixed) + ')');
   await page.screenshot({ path: path.join(out, '07b-midair.png') });
 
   // Shoving knocks a member of staff down at night.
@@ -141,6 +154,7 @@ fs.mkdirSync(out, { recursive: true });
   await page.waitForTimeout(300); await page.keyboard.press('KeyE'); await page.waitForTimeout(300);
   await g((t) => t && __game.grabForTest(t[0]), thrown);
   await g(() => { __game.P.yaw += Math.PI; __game.P.pitch = 0.2; __game.P.en = 100; });
+  { const t0 = await g(() => __game.clock.t); await page.waitForFunction((t0) => __game.clock.t > t0 + 1, t0, { timeout: 60000 }); } // it swings round in front
   await page.keyboard.press('KeyF');
   { const t0 = await g(() => __game.clock.t); await page.waitForFunction((t0) => __game.clock.t > t0 + 2.5, t0, { timeout: 120000 }); }
   const landed = await g((t) => { const it = t && __game.world.items.get(t[0]); return it ? { moved: +Math.hypot(it.x - t[1], it.z - t[2]).toFixed(2), c: it.c, carry: !!__game.P.carry } : null; }, thrown);

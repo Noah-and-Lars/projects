@@ -12,6 +12,8 @@ export function initInput(canvas, opts) {
   addEventListener('keydown', (e) => {
     if (input.typing) return;
     if (e.code === 'Tab') e.preventDefault();
+    // Ctrl+R turns a held piece by 15° (and Ctrl+Shift+R squares it up), not reload
+    if (input.locked && (e.ctrlKey || e.metaKey) && e.code === 'KeyR') e.preventDefault();
     if (!input.keys.has(e.code)) input.pressed.add(e.code);
     input.keys.add(e.code);
   });

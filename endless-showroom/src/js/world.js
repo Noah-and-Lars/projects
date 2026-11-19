@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import { hashInts, rng } from './rng.js';
 import { restockEpoch } from './env.js';
 import { GeoBuilder } from './geo.js';
-import { TYPES, ITEMS, STOCK, furnitureGeometry, itemGeometry, itemDims, itemMatrix, itemParts } from './furniture.js';
+import { TYPES, ITEMS, STOCK, furnitureGeometry, itemGeometry, itemDims, itemMatrix, itemParts, cleanQuat } from './furniture.js';
 import { SURF, staticMaterial, furnitureMaterial, shadowMaterial, shadowGeometry, ShadowBuilder } from './mats.js';
 
 export const CHUNK = 24, CEIL = 6.5, HALF = 12;
@@ -453,6 +453,7 @@ export class World {
     this.items = new Map();
     this.mods = new Map();
     this.grid = new Map();
+    this.held = []; this.withHeld = false; // boxes of furniture being held right now
     this.focusX = 0; this.focusZ = 0;
     this.inst = new Map(); this.itemsDirty = true;
     this.version = 0; // bumps whenever anything solid moves (staff path cache)
@@ -580,7 +581,7 @@ export class World {
 
   // ---- Items ----
   _addItem(id, s) {
-    const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: ((s.tl | 0) % 3 + 3) % 3, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, mesh: null, cells: null };
+    const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: ((s.tl | 0) % 3 + 3) % 3, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, mesh: null, cells: null };
     if (it.k === 'f' && !Object.prototype.hasOwnProperty.call(TYPES, it.t)) return null;
     if (it.k === 'i' && !Object.prototype.hasOwnProperty.call(ITEMS, it.t)) return null;
     this.items.set(id, it);
@@ -605,7 +606,7 @@ export class World {
   // Box of an item in world space.
   itemBox(it) {
     if (it.k === 'f') {
-      const [w, h, d] = itemDims(it.t, it.r, it.tl);
+      const [w, h, d] = itemDims(it.t, it.r, it.tl, it.o);
       return { x0: it.x - w / 2, x1: it.x + w / 2, z0: it.z - d / 2, z1: it.z + d / 2, y0: it.y, y1: it.y + h, item: it, climb: !!TYPES[it.t].climb };
     }
     const s = ITEMS[it.t], w = Math.max(s.w, s.d) / 2 + 0.05;
@@ -666,7 +667,7 @@ export class World {
         this.group.add(this.glow);
       }
       const a = this.glow.geometry.attributes.position;
-      lamps.forEach((it, i) => { const h = itemDims(it.t, it.r, it.tl)[1]; a.setXYZ(i, it.x, it.y + h * 0.82, it.z); });
+      lamps.forEach((it, i) => { const h = itemDims(it.t, it.r, it.tl, it.o)[1]; a.setXYZ(i, it.x, it.y + h * 0.82, it.z); });
       a.needsUpdate = true; this.glow.geometry.setDrawRange(0, lamps.length);
     }
     // soft shadows under furniture
@@ -682,7 +683,7 @@ export class World {
       const sc = new THREE.Vector3(); let k = 0;
       for (const list of groups.values()) for (const it of list) {
         if (it.k !== 'f' || TYPES[it.t].flat) continue;
-        const [dw, dh, dd] = itemDims(it.t, it.r, it.tl), grow = 1.55 + Math.min(0.5, dh * 0.2);
+        const [dw, dh, dd] = itemDims(it.t, it.r, it.tl, it.o), grow = 1.55 + Math.min(0.5, dh * 0.2);
         q.identity();
         m4.compose(pos.set(it.x, it.y + 0.005, it.z), q, sc.set(dw * grow + 0.15, 1, dd * grow + 0.15));
         this.shadowInst.setMatrixAt(k++, m4);
@@ -701,7 +702,7 @@ export class World {
         this.inst.set(key, im);
       }
       list.forEach((it, i) => {
-        if (it.k === 'f') itemMatrix(m4, it.t, it.x, it.y, it.z, it.r, it.tl);
+        if (it.k === 'f') itemMatrix(m4, it.t, it.x, it.y, it.z, it.r, it.tl, 1, it.o);
         else { q.setFromAxisAngle(up, it.r * Math.PI / 2); m4.compose(pos.set(it.x, it.y, it.z), q, one); }
         im.setMatrixAt(i, m4);
       });
@@ -742,13 +743,15 @@ export class World {
       if (it.k !== 'f' || TYPES[it.t].flat) return;
       const b = this.itemBox(it);
       if (!(b.x1 > x0 && b.x0 < x1 && b.z1 > z0 && b.z0 < z1)) return;
-      const parts = itemParts(it.t, it.r, it.tl);
+      const parts = itemParts(it.t, it.r, it.tl, it.o);
       if (!parts) { fn(b); return; }
       for (const [a, c, d, e, f, g] of parts) {
         const pb = { x0: it.x + a, x1: it.x + e, y0: it.y + c, y1: it.y + f, z0: it.z + d, z1: it.z + g, item: it, climb: b.climb };
         if (pb.x1 > x0 && pb.x0 < x1 && pb.z1 > z0 && pb.z0 < z1) fn(pb);
       }
     });
+    // furniture someone is holding: solid to players (you can ride it up)
+    if (this.withHeld) for (const pb of this.held) if (pb.x1 > x0 && pb.x0 < x1 && pb.z1 > z0 && pb.z0 < z1) fn(pb);
   }
 
   // Highest surface under a footprint that is no higher than maxY.
@@ -770,12 +773,12 @@ export class World {
   }
 
   // ---- Shared state (net.js keeps every screen's mods the same) ----
-  stateOf(it) { return { t: it.t, k: it.k, v: it.v, x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), r: it.r, tl: it.tl | 0, hp: Math.round(it.hp), g: it.g ? 1 : 0, c: it.c || 0, d: it.d }; }
+  stateOf(it) { const s = { t: it.t, k: it.k, v: it.v, x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), r: it.r, tl: it.tl | 0, hp: Math.round(it.hp), g: it.g ? 1 : 0, c: it.c || 0, d: it.d }; if (it.o) s.o = it.o; if (it.a) s.a = 1; return s; }
 
   applyState(id, s) {
     if (!s || typeof s !== 'object') return null;
     const fin = (v, lo, hi) => { v = +v; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : 0; };
-    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: fin(s.x, -1e6, 1e6), y: fin(s.y, 0, CEIL), z: fin(s.z, -1e6, 1e6), r: (s.r | 0) & 3, tl: ((s.tl | 0) % 3 + 3) % 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0 };
+    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: fin(s.x, -1e6, 1e6), y: fin(s.y, 0, CEIL), z: fin(s.z, -1e6, 1e6), r: (s.r | 0) & 3, tl: ((s.tl | 0) % 3 + 3) % 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a };
     if (st.k === 'f' ? !Object.prototype.hasOwnProperty.call(TYPES, st.t) : !Object.prototype.hasOwnProperty.call(ITEMS, st.t)) return null;
     this.mods.set(id, st);
     let it = this.items.get(id);
@@ -796,7 +799,7 @@ export class World {
       const b = queue.shift();
       const above = [];
       this.forItems(b.x0, b.z0, b.x1, b.z1, (it) => {
-        if (!this.active(it)) return;
+        if (!this.active(it) || it.a) return; // anchored pieces stay put
         const ib = this.itemBox(it);
         if (ib.x1 <= b.x0 + 0.02 || ib.x0 >= b.x1 - 0.02 || ib.z1 <= b.z0 + 0.02 || ib.z0 >= b.z1 - 0.02) return;
         if (ib.y0 >= b.y1 - 0.05 && ib.y0 > 0.001) above.push(it);

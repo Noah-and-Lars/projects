@@ -79,6 +79,9 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   check(await A.evaluate(() => !!__game.P.carry), 'Alpha picked up ' + moved);
   await A.waitForTimeout(600);
   check(await B.evaluate((id) => { const it = __game.world.items.get(id); return !!(it && it.c); }, moved), 'Bravo sees it carried');
+  await A.keyboard.press('KeyR'); await A.keyboard.press('Digit3'); await A.keyboard.press('KeyR');
+  await A.waitForTimeout(1500);
+  check(await B.evaluate(() => { const r = [...__game.remotes.values()][0]; return !!(r && r.hold && r.heldMesh && r.heldMesh.visible && Math.abs(r.hold.o[3]) < 0.99); }), 'Bravo sees the turned piece floating where Alpha aims');
   for (let i = 0; i < 16; i++) {
     await A.evaluate(() => { __game.P.yaw += Math.PI / 8; __game.P.pitch = -0.7; });
     await A.waitForTimeout(500);
@@ -86,8 +89,11 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   }
   await A.keyboard.press('KeyE');
   await A.waitForTimeout(800);
-  const posA = await A.evaluate((id) => { const it = __game.world.items.get(id); return [it.x, it.y, it.z, it.c]; }, moved);
-  const posB = await B.evaluate((id) => { const it = __game.world.items.get(id); return it ? [it.x, it.y, it.z, it.c] : null; }, moved);
+  await A.waitForFunction((id) => !__game.world.items.get(id).c, moved, { timeout: 30000 }).catch(() => {});
+  await A.waitForTimeout(800);
+  const posA = await A.evaluate((id) => { const it = __game.world.items.get(id); return [it.x, it.y, it.z, it.c, JSON.stringify(it.o)]; }, moved);
+  const posB = await B.evaluate((id) => { const it = __game.world.items.get(id); return it ? [it.x, it.y, it.z, it.c, JSON.stringify(it.o)] : null; }, moved);
+  check(posB && posA[4] === posB[4] && posA[4] !== 'null', 'placed rotation matches on both screens (' + (posB && posB[4]) + ')');
   check(posB && Math.abs(posA[0] - posB[0]) < 0.01 && Math.abs(posA[2] - posB[2]) < 0.01 && !posB[3], `placed item matches on both screens (${posA.slice(0, 3).map((v) => v.toFixed(2))})`);
 
   // Bravo (guest) picks something up: goes through the host.

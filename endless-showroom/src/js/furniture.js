@@ -277,44 +277,131 @@ export function itemGeometry(kind) {
   return g;
 }
 
-// Size of a furniture piece as placed: [x size, height, z size]. rot is a
-// quarter turn (0..3). tilt 1 lays it on its back (a pallet stands up as a
-// wall, a bookcase lies flat); tilt 2 lays it on its side.
-export function itemDims(type, rot, tilt) {
+// How a piece is turned. Old saves and the generated store use rot (a quarter
+// turn, 0..3) and tilt (1 on its back, 2 on its side); anything a player has
+// held carries o, a free rotation [x, y, z, w] (R turns it about any axis).
+const _q = new THREE.Quaternion(), _qt = new THREE.Quaternion(), _up = new THREE.Vector3(0, 1, 0), _ax = new THREE.Vector3(1, 0, 0), _az = new THREE.Vector3(0, 0, 1), _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1), _v = new THREE.Vector3(), _m3 = new THREE.Matrix4();
+export function itemQuat(rot, tilt, o, out = new THREE.Quaternion()) {
+  if (o) return out.set(o[0], o[1], o[2], o[3]).normalize();
+  out.setFromAxisAngle(_up, (rot | 0) * Math.PI / 2);
+  if (tilt === 1) out.multiply(_qt.setFromAxisAngle(_ax, -Math.PI / 2));
+  else if (tilt === 2) out.multiply(_qt.setFromAxisAngle(_az, Math.PI / 2));
+  return out;
+}
+// A valid o from anything (network, saves): four finite numbers, normalised.
+export function cleanQuat(o) {
+  if (!Array.isArray(o) || o.length !== 4) return null;
+  const v = o.map((n) => +n);
+  if (!v.every(Number.isFinite)) return null;
+  const l = Math.hypot(v[0], v[1], v[2], v[3]);
+  if (l < 0.5 || l > 2) return null;
+  return v.map((n) => +(n / l).toFixed(4));
+}
+// The rotated corners of a local box, as [minX, minY, minZ, maxX, maxY, maxZ].
+function rotBounds(q, x0, y0, z0, x1, y1, z1) {
+  const r = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < 8; i++) {
+    _v.set(i & 1 ? x1 : x0, i & 2 ? y1 : y0, i & 4 ? z1 : z0).applyQuaternion(q);
+    if (_v.x < r[0]) r[0] = _v.x; if (_v.y < r[1]) r[1] = _v.y; if (_v.z < r[2]) r[2] = _v.z;
+    if (_v.x > r[3]) r[3] = _v.x; if (_v.y > r[4]) r[4] = _v.y; if (_v.z > r[5]) r[5] = _v.z;
+  }
+  return r;
+}
+const _qo = new THREE.Quaternion();
+// Size of a piece as placed: [x size, height, z size] of the box around it.
+export function itemDims(type, rot, tilt, o) {
   const t = TYPES[type];
+  if (o) { const b = rotBounds(itemQuat(0, 0, o, _qo), -t.w / 2, 0, -t.d / 2, t.w / 2, t.h, t.d / 2); return [b[3] - b[0], b[4] - b[1], b[5] - b[2]]; }
   let sx = t.w, sy = t.h, sz = t.d;
   if (tilt === 1) { sy = t.d; sz = t.h; } else if (tilt === 2) { sx = t.h; sy = t.w; }
   if (rot & 1) { const q = sx; sx = sz; sz = q; }
   return [sx, sy, sz];
 }
 
-// The collision boxes of a hollow piece, as placed (relative to its x/z
-// centre and its base). null for solid pieces (one box, from itemDims).
-export function itemParts(type, rot, tilt) {
-  const t = TYPES[type];
-  if (!t.parts) return null;
-  return t.parts.map(([x0, y0, z0, x1, y1, z1]) => {
-    if (tilt === 1) [x0, y0, z0, x1, y1, z1] = [x0, z0 + t.d / 2, t.h / 2 - y1, x1, z1 + t.d / 2, t.h / 2 - y0];
-    else if (tilt === 2) [x0, y0, z0, x1, y1, z1] = [t.h / 2 - y1, x0 + t.w / 2, z0, t.h / 2 - y0, x1 + t.w / 2, z1];
-    for (let i = 0; i < (rot & 3); i++) { const nx0 = z0, nx1 = z1, nz0 = -x1, nz1 = -x0; x0 = nx0; x1 = nx1; z0 = nz0; z1 = nz1; }
-    return [x0, y0, z0, x1, y1, z1];
-  });
+// The collision boxes of a piece, as placed (relative to its x/z centre and its
+// base). null means one solid box (from itemDims). A piece turned to an odd
+// angle is cut into thin upright strips (and layers, if it leans) so standing,
+// climbing and staff paths still work with plain boxes: a leaning bookcase is
+// a rough staircase.
+const partsCache = new Map();
+const STRIP = 0.2;
+function isSquare(q) {
+  _m3.makeRotationFromQuaternion(q);
+  return _m3.elements.every((e, i) => (i % 4 === 3 || i >= 12) || Math.abs(e) < 1e-3 || Math.abs(Math.abs(e) - 1) < 1e-3);
 }
-export function footprint(type, rot, tilt) { const d = itemDims(type, rot, tilt); return [d[0], d[2]]; }
-
-// The model matrix for a piece standing at (x, y, z).
-const _q = new THREE.Quaternion(), _qt = new THREE.Quaternion(), _up = new THREE.Vector3(0, 1, 0), _ax = new THREE.Vector3(1, 0, 0), _az = new THREE.Vector3(0, 0, 1), _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1), _off = new THREE.Vector3();
-export function itemMatrix(m4, type, x, y, z, rot, tilt, scale = 1) {
-  _q.setFromAxisAngle(_up, rot * Math.PI / 2);
-  if (tilt && TYPES[type]) {
-    const t = TYPES[type];
-    if (tilt === 1) { _qt.setFromAxisAngle(_ax, -Math.PI / 2); _off.set(0, t.d / 2, t.h / 2); }
-    else { _qt.setFromAxisAngle(_az, Math.PI / 2); _off.set(t.h / 2, t.w / 2, 0); }
-    _off.applyQuaternion(_q);
-    _q.multiply(_qt);
-    return m4.compose(_p.set(x + _off.x * scale, y + _off.y * scale, z + _off.z * scale), _q, _one.setScalar(scale));
+function cutBox(q, off, x0, y0, z0, x1, y1, z1, upright, out) {
+  const s = 0.07, nx = Math.max(2, Math.ceil((x1 - x0) / s) + 1), ny = Math.max(2, Math.ceil((y1 - y0) / s) + 1), nz = Math.max(2, Math.ceil((z1 - z0) / s) + 1);
+  const bins = new Map();
+  for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) for (let k = 0; k < nz; k++) {
+    _v.set(x0 + (x1 - x0) * i / (nx - 1), y0 + (y1 - y0) * j / (ny - 1), z0 + (z1 - z0) * k / (nz - 1)).applyQuaternion(q).add(off);
+    const key = Math.floor(_v.x / STRIP) * 4096 + (upright ? 0 : Math.floor(_v.y / STRIP));
+    let b = bins.get(key);
+    if (!b) bins.set(key, b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity, Math.floor(_v.x / STRIP)]);
+    if (_v.x < b[0]) b[0] = _v.x; if (_v.y < b[1]) b[1] = _v.y; if (_v.z < b[2]) b[2] = _v.z;
+    if (_v.x > b[3]) b[3] = _v.x; if (_v.y > b[4]) b[4] = _v.y; if (_v.z > b[5]) b[5] = _v.z;
   }
-  return m4.compose(_p.set(x, y, z), _q, _one.setScalar(scale));
+  // join layers of one strip that cover the same ground
+  const strips = new Map();
+  for (const b of bins.values()) { let l = strips.get(b[6]); if (!l) strips.set(b[6], l = []); l.push(b); }
+  const p = 0.015;
+  for (const l of strips.values()) {
+    l.sort((a, b) => a[1] - b[1]);
+    let cur = null;
+    for (const b of l) {
+      if (cur && Math.abs(cur[2] - b[2]) < 0.06 && Math.abs(cur[5] - b[5]) < 0.06 && b[1] <= cur[4] + 0.1) {
+        cur[0] = Math.min(cur[0], b[0]); cur[3] = Math.max(cur[3], b[3]); cur[2] = Math.min(cur[2], b[2]); cur[5] = Math.max(cur[5], b[5]); cur[4] = Math.max(cur[4], b[4]);
+        continue;
+      }
+      if (cur) out.push(cur);
+      cur = b.slice(0, 6);
+    }
+    if (cur) out.push(cur);
+  }
+  for (const b of out) if (b.length === 6 && !b.done) { b[0] -= p; b[2] -= p; b[3] += p; b[5] += p; b[1] = Math.max(0, b[1] - p); b[4] += p; b.done = true; }
+}
+export function itemParts(type, rot, tilt, o) {
+  const t = TYPES[type];
+  if (!o) {
+    if (!t.parts) return null;
+    return t.parts.map(([x0, y0, z0, x1, y1, z1]) => {
+      if (tilt === 1) [x0, y0, z0, x1, y1, z1] = [x0, z0 + t.d / 2, t.h / 2 - y1, x1, z1 + t.d / 2, t.h / 2 - y0];
+      else if (tilt === 2) [x0, y0, z0, x1, y1, z1] = [t.h / 2 - y1, x0 + t.w / 2, z0, t.h / 2 - y0, x1 + t.w / 2, z1];
+      for (let i = 0; i < (rot & 3); i++) { const nx0 = z0, nx1 = z1, nz0 = -x1, nz1 = -x0; x0 = nx0; x1 = nx1; z0 = nz0; z1 = nz1; }
+      return [x0, y0, z0, x1, y1, z1];
+    });
+  }
+  const key = type + '|' + o.map((n) => n.toFixed(3)).join(',');
+  let res = partsCache.get(key);
+  if (res !== undefined) return res;
+  const q = itemQuat(0, 0, o, new THREE.Quaternion());
+  const whole = rotBounds(q, -t.w / 2, 0, -t.d / 2, t.w / 2, t.h, t.d / 2);
+  const off = new THREE.Vector3(-(whole[0] + whole[3]) / 2, -whole[1], -(whole[2] + whole[5]) / 2);
+  const local = t.parts ? t.parts.map((p) => [p[0], p[1] + 0, p[2], p[3], p[4], p[5]]) : null;
+  // parts are stored relative to the x/z centre and base, like the mesh
+  if (isSquare(q)) {
+    res = local ? local.map((p) => { const b = rotBounds(q, ...p); return [b[0] + off.x, b[1] + off.y, b[2] + off.z, b[3] + off.x, b[4] + off.y, b[5] + off.z]; }) : null;
+  } else {
+    const upright = Math.abs(_v.set(0, 1, 0).applyQuaternion(q).y) > 0.999;
+    res = [];
+    for (const p of local || [[-t.w / 2, 0, -t.d / 2, t.w / 2, t.h, t.d / 2]]) {
+      const out = []; cutBox(q, off, ...p, upright, out);
+      for (const b of out) res.push([b[0], b[1], b[2], b[3], b[4], b[5]]);
+    }
+  }
+  if (partsCache.size > 4000) partsCache.clear();
+  partsCache.set(key, res);
+  return res;
+}
+export function footprint(type, rot, tilt, o) { const d = itemDims(type, rot, tilt, o); return [d[0], d[2]]; }
+
+// The model matrix for a piece standing at (x, y, z): (x, z) is the centre of
+// the box around it and y its bottom.
+export function itemMatrix(m4, type, x, y, z, rot, tilt, scale = 1, o = null) {
+  const t = TYPES[type];
+  if (!t || (!o && !tilt)) return m4.compose(_p.set(x, y, z), _q.setFromAxisAngle(_up, (rot | 0) * Math.PI / 2), _one.setScalar(scale));
+  itemQuat(rot, tilt, o, _q);
+  const b = rotBounds(_q, -t.w / 2, 0, -t.d / 2, t.w / 2, t.h, t.d / 2);
+  return m4.compose(_p.set(x - (b[0] + b[3]) / 2 * scale, y - b[1] * scale, z - (b[2] + b[5]) / 2 * scale), _q, _one.setScalar(scale));
 }
 
 export { furnitureMaterial };

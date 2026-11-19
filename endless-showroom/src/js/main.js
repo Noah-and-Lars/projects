@@ -6,7 +6,7 @@
 // host of a room with nobody else in it.
 import * as THREE from 'three';
 import { World, CHUNK, CEIL, setLampGlow, setSkyLight } from './world.js';
-import { TYPES, ITEMS, itemDims, itemMatrix, furnitureGeometry, itemGeometry } from './furniture.js';
+import { TYPES, ITEMS, itemDims, itemMatrix, itemParts, itemQuat, cleanQuat, furnitureGeometry, itemGeometry } from './furniture.js';
 import { moveBody, bodyFits } from './physics.js';
 import { StaffSim } from './staff.js';
 import { createNet, myName, cleanName, myShirt } from './net.js';
@@ -114,15 +114,15 @@ const dust = makeDust(scene);
 // ---------------------------------------------------------------- world
 const world = new World(scene);
 let staffSim = null;
-const ghostMat = new THREE.MeshBasicMaterial({ color: 0x44ff66, transparent: true, opacity: 0.4, depthWrite: false });
-const ghost = new THREE.Mesh(new THREE.BufferGeometry(), ghostMat);
-ghost.visible = false; ghost.matrixAutoUpdate = false; scene.add(ghost);
+// The piece you're holding, floating where you aim, and its outline: green
+// when letting go would leave it fixed in place, white when it would drop.
+const heldMesh = new THREE.Mesh(new THREE.BufferGeometry(), furnitureMaterialRef);
+heldMesh.visible = false; heldMesh.matrixAutoUpdate = false; heldMesh.frustumCulled = false; scene.add(heldMesh);
+let heldMeshKey = '';
+const holdBox = new THREE.Box3Helper(new THREE.Box3(), 0xffffff);
+holdBox.visible = false; scene.add(holdBox);
 const highlight = new THREE.Box3Helper(new THREE.Box3(), 0xffd34d);
 highlight.visible = false; scene.add(highlight);
-// First-person view of what you're carrying.
-const viewHeld = new THREE.Group(); viewHeld.position.set(0.42, -0.42, -0.9); camera.add(viewHeld);
-let viewHeldKey = '';
-const heldMaterial = storeMaterial({ transparent: true, opacity: 0.9 });
 
 // ---------------------------------------------------------------- state
 const net = createNet({
@@ -306,7 +306,7 @@ function startGame(seed, waitForState, save) {
     clock.day = Math.max(1, save.day | 0); clock.t = clamp(+save.t || 30, 0, CYCLE - 1);
     world.setDay(clock.day);
   }
-  remotes.forEach((r) => scene.remove(r.model.root)); remotes.clear();
+  remotes.forEach((r) => { scene.remove(r.model.root); if (r.heldMesh) scene.remove(r.heldMesh); }); remotes.clear();
   staffViews.forEach((s) => scene.remove(s.model.root)); staffViews.clear();
   staffSim = net.isHost() ? new StaffSim(world) : null;
   Object.assign(P, { hp: 100, food: 100, en: 100, alive: true, carry: null, inv: new Array(INV).fill(null), invId: new Array(INV).fill(null), sel: 0, nights: 0, vy: 0, hurtT: 99, using: null, whistleT: 0 });
@@ -351,7 +351,7 @@ function leaveGame() {
   net.leave();
   mode = 'menu'; paused = false;
   $('hud').classList.add('hidden'); $('death').classList.add('hidden'); $('touch').classList.add('hidden');
-  ghost.visible = false; highlight.visible = false;
+  heldMesh.visible = false; holdBox.visible = false; highlight.visible = false;
   try { document.exitPointerLock(); } catch (_) {}
   show('menu'); refreshBest();
   setMusic('', 0);
@@ -370,7 +370,7 @@ function spawnAt(x, z, spread) {
 
 // ---------------------------------------------------------------- networking handlers
 function onMembers(list) {
-  for (const [id, r] of remotes) if (!list.some((m) => m.id === id)) { scene.remove(r.model.root); remotes.delete(id); toast(`${r.name} left the store.`); }
+  for (const [id, r] of remotes) if (!list.some((m) => m.id === id)) { scene.remove(r.model.root); if (r.heldMesh) scene.remove(r.heldMesh); remotes.delete(id); toast(`${r.name} left the store.`); }
   releaseOrphans(list);
   for (const m of list) if (m.id !== net.id && !remotes.has(m.id)) {
     const model = makeShopper(nameHash(m.id), (m.lk | 0) >= 0 && (m.lk | 0) < 10 && m.lk !== undefined ? m.lk | 0 : -1);
@@ -405,7 +405,11 @@ const num = (v, d = 0) => (Number.isFinite(+v) ? clamp(+v, -1e6, 1e6) : d);
 const has = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 function onPlayer(id, p) {
   const r = remotes.get(id); if (!r) return;
-  const st = { t: performance.now(), x: num(p.x), y: clamp(num(p.y), 0, CEIL), z: num(p.z), ry: num(p.ry), a: p.a ? 1 : 0, ct: has(TYPES, p.ct) ? p.ct : '', cv: p.cv | 0, n: p.n | 0, hp: clamp(num(p.hp, 100), 0, 100), sp: p.sp ? 1 : 0, cr: p.cr ? 1 : 0 };
+  const st = { t: performance.now(), x: num(p.x), y: clamp(num(p.y), 0, CEIL), z: num(p.z), ry: num(p.ry), a: p.a ? 1 : 0, ct: has(TYPES, p.ct) ? p.ct : '', cv: p.cv | 0, n: p.n | 0, hp: clamp(num(p.hp, 100), 0, 100), sp: p.sp ? 1 : 0, cr: p.cr ? 1 : 0, ho: null };
+  if (st.ct && Array.isArray(p.ho) && p.ho.length === 7) {
+    const o = cleanQuat(p.ho.slice(3)), hx = num(p.ho[0]), hz = num(p.ho[2]);
+    if (o && Math.hypot(hx - st.x, hz - st.z) < 12) st.ho = { x: hx, y: clamp(num(p.ho[1]), 0, CEIL), z: hz, o };
+  }
   r.buf.push(st); if (r.buf.length > 20) r.buf.shift();
   r.st = st; r.seen = performance.now();
 }
@@ -435,7 +439,7 @@ function onWorld(list) {
       P.carry = null;
     } else if (it.c === net.id && (!P.carry || P.carry.id !== it.id) && !flying.some((f) => f.carry.id === it.id)) {
       // the host thinks we're holding something we aren't: put it back down
-      request({ a: 'place', id: it.id, x: it.x, y: it.y, z: it.z, r: it.r, tl: it.tl });
+      request({ a: 'place', id: it.id, x: it.x, y: it.y, z: it.z, r: it.r, tl: it.tl, o: it.o, an: it.a ? 1 : 0 });
     }
   }
 }
@@ -521,7 +525,8 @@ function hostRequest(from, q) {
   } else if (q.a === 'place') {
     if (it.c !== from) { broadcastItems([it.id], echo); return; }
     const x = num(q.x, it.x), y = clamp(num(q.y), 0, CEIL), z = num(q.z, it.z);
-    world.edit(it, { x, y, z, r: (q.r | 0) & 3, tl: ((q.tl | 0) % 3 + 3) % 3, c: null });
+    const o = cleanQuat(q.o);
+    world.edit(it, o ? { x, y, z, o, a: !!q.an, c: null } : { x, y, z, r: (q.r | 0) & 3, tl: ((q.tl | 0) % 3 + 3) % 3, o: null, a: !!q.an, c: null });
     broadcastItems([it.id], echo);
   }
 }
@@ -564,7 +569,7 @@ function die(why) {
   sfx.death();
   if (P.carry) { // let go of what we carried where we stand
     const it = world.items.get(P.carry.id);
-    if (it) request({ a: 'place', id: it.id, x: P.x, y: P.y, z: P.z, r: P.carry.r, tl: P.carry.tl });
+    if (it) request({ a: 'place', id: it.id, x: P.x, y: world.supportHeight(P.x - 0.3, P.z - 0.3, P.x + 0.3, P.z + 0.3, P.y + 0.1, it), z: P.z, o: P.carry.o, an: 0 });
     P.carry = null;
   }
   P.inv = new Array(INV).fill(null); P.invId = new Array(INV).fill(null); buildHotbar();
@@ -606,7 +611,7 @@ function updatePlayer(dt) {
   if (m > 1) { fx /= m; fz /= m; }
   const moving = m > 0.1;
   // Crouch (C or Ctrl): low enough to get through gaps the staff can't.
-  const wantCrouch = !busy && P.alive && (k.has('KeyC') || k.has('ControlLeft') || k.has('ControlRight'));
+  const wantCrouch = !busy && P.alive && (k.has('KeyC') || (!P.carry && (k.has('ControlLeft') || k.has('ControlRight'))));
   if (wantCrouch && !P.crouch) { P.crouch = true; P.height = 1.0; }
   else if (!wantCrouch && P.crouch && bodyFits(world, P.x, P.y, P.z, P.radius - 0.02, 1.75)) { P.crouch = false; P.height = 1.75; }
   const wantSprint = (k.has('ShiftLeft') || k.has('ShiftRight')) && moving && fz < 0.3 && !P.crouch;
@@ -620,7 +625,9 @@ function updatePlayer(dt) {
   P.canClimb = !busy && P.alive && fz < -0.3;
   const ox = P.x, oz = P.z, wasAir = !P.onGround;
   P.landSpeed = 0;
-  if (P.alive) moveBody(world, P, dx, dz, dt);
+  world.withHeld = true;
+  if (P.alive) { moveBody(world, P, dx, dz, dt); rideHeld(); }
+  world.withHeld = false;
   P.speed = Math.hypot(P.x - ox, P.z - oz) / dt;
   if (wasAir && P.onGround && P.landSpeed > 4) { sfx.land(); feel.dip = Math.min(0.5, P.landSpeed * 0.035); }
   if (P.landSpeed > 13) hurt((P.landSpeed - 13) * 9, 'fall');
@@ -705,7 +712,7 @@ function staffInReach() {
 
 function updateInteraction(dt) {
   target = null; placement = null;
-  highlight.visible = false; ghost.visible = false;
+  highlight.visible = false; holdBox.visible = false;
   const prompt = $('prompt');
   let text = '';
   if (!P.alive || paused || invOpen) { prompt.classList.add('hidden'); return; }
@@ -743,64 +750,126 @@ function updateInteraction(dt) {
       else useSelected();
     }
   } else {
-    const t = TYPES[P.carry.t];
-    if (input.pressed.has('KeyR') || input.rclicked) P.carry.r = (P.carry.r + 1) & 3;
-    if (input.pressed.has('KeyT') && !t.flat) P.carry.tl = (P.carry.tl + 1) % 3;
-    if (input.wheel) P.carryDist = clamp(P.carryDist - input.wheel * 0.4, 1.5, 6);
-    const [w, h, d] = itemDims(P.carry.t, P.carry.r, P.carry.tl);
+    // Holding a piece: it floats where you aim, like dragging it with your
+    // hands out. R turns it about the chosen axis (1/2/3, or T to cycle);
+    // Ctrl turns it a little (15°), Shift a quarter turn, Ctrl+Shift+R squares
+    // it up. Let go touching anything and it stays put (click); let go in
+    // mid-air and it drops.
+    const c = P.carry, t = TYPES[c.t];
+    const ctrl = input.keys.has('ControlLeft') || input.keys.has('ControlRight');
+    const shift = input.keys.has('ShiftLeft') || input.keys.has('ShiftRight');
+    for (let i = 1; i <= 3; i++) if (input.pressed.has('Digit' + i)) c.axis = i - 1;
+    if (input.pressed.has('KeyT')) c.axis = (c.axis + 1) % 3;
+    if (input.pressed.has('KeyR') || input.rclicked) {
+      if (ctrl && shift && input.pressed.has('KeyR')) c.q.identity();
+      else {
+        const step = (ctrl ? 15 : shift ? 90 : 45) * Math.PI / 180;
+        c.q.premultiply(_rq.setFromAxisAngle(rotAxis(c.axis), step)).normalize();
+      }
+      c.o = cleanQuat([c.q.x, c.q.y, c.q.z, c.q.w]);
+      sfx.click();
+    }
+    if (input.wheel) P.carryDist = clamp(P.carryDist - input.wheel * 0.5, 1.5, 8);
+    const [w, h, d] = itemDims(c.t, 0, 0, c.o);
     const hit = raycast(ex, ey, ez, dx, dy, dz, P.carryDist, false);
     const hp = [ex + dx * hit.t, ey + dy * hit.t, ez + dz * hit.t];
     let px = hp[0], pz = hp[2], py;
-    if (hit.n && hit.n[1] > 0.5) py = hp[1];                         // on top of something
-    else if (hit.n && hit.n[1] < -0.5) py = hp[1] - h;               // under something
+    if (hit.n && hit.n[1] > 0.5) py = hp[1];                         // resting on top of something
+    else if (hit.n && hit.n[1] < -0.5) py = hp[1] - h;               // pressed up under something
     else if (hit.n) { px += hit.n[0] * (w / 2 + 0.01); pz += hit.n[2] * (d / 2 + 0.01); py = hp[1] - h / 2; } // against a side
     else py = hp[1] - h / 2;                                         // in mid-air
-    px = Math.round(px * 4) / 4 + (w * 4 % 2 ? 0.125 : 0); pz = Math.round(pz * 4) / 4 + (d * 4 % 2 ? 0.125 : 0);
-    if (!(hit.n && hit.n[1] > 0.5)) py = Math.round(py * 20) / 20;
     py = clamp(py, 0, CEIL - h);
-    const item = world.items.get(P.carry.id);
-    // Shift: let it drop onto whatever is below instead of leaving it floating
-    const dropIt = input.keys.has('ShiftLeft') || input.keys.has('ShiftRight');
-    if (dropIt) py = world.supportHeight(px - w / 2, pz - d / 2, px + w / 2, pz + d / 2, py + 0.01, item);
-    const box = { x0: px - w / 2, x1: px + w / 2, z0: pz - d / 2, z1: pz + d / 2, y0: py, y1: py + h };
-    const pr = P.radius + 0.02;
-    const onMe = !t.flat && box.x0 < P.x + pr && box.x1 > P.x - pr && box.z0 < P.z + pr && box.z1 > P.z - pr && box.y0 < P.y + P.height && box.y1 > P.y + 0.01;
-    const ok = (t.flat || world.fits(box, item)) && !onMe;
-    placement = { x: px, y: py, z: pz, r: P.carry.r, tl: P.carry.tl, ok };
-    ghost.geometry = furnitureGeometry(P.carry.t, P.carry.v);
-    itemMatrix(ghost.matrix, P.carry.t, px, py + 0.005, pz, P.carry.r, P.carry.tl);
-    ghostMat.color.setHex(ok ? 0x44ff66 : 0xff4444);
-    ghost.visible = true;
-    text = `Carrying ${t.name} · <b>E</b>/click place${dropIt ? ' (dropped)' : ' (Shift: drop)'} · <b>R</b> turn · <b>T</b> tilt (${['upright', 'on its back', 'on its side'][P.carry.tl | 0]}) · <b>wheel</b> distance · <b>Q</b> drop · <b>F</b> throw`;
-    if (pressedUse || clicked) {
-      if (placement && placement.ok) placeCarry(placement);
-      else sfx.deny();
-    } else if (input.pressed.has('KeyQ')) {
-      // let go in front of you, at your feet
-      const fx = P.x - Math.sin(P.yaw) * (Math.max(w, d) / 2 + 0.6), fz = P.z - Math.cos(P.yaw) * (Math.max(w, d) / 2 + 0.6);
-      const fy = world.supportHeight(fx - w / 2, fz - d / 2, fx + w / 2, fz + d / 2, P.y + 0.5, item);
-      const b2 = { x0: fx - w / 2, x1: fx + w / 2, z0: fz - d / 2, z1: fz + d / 2, y0: fy, y1: fy + h };
-      if (t.flat || world.fits(b2, item)) placeCarry({ x: fx, y: fy, z: fz, r: P.carry.r, tl: P.carry.tl });
-      else sfx.deny();
-    }
+    // the piece follows your aim with a little lag, like something heavy
+    const k = c.fresh ? 1 : 1 - Math.exp(-dt * 16);
+    c.fresh = false;
+    c.x += (px - c.x) * k; c.y += (py - c.y) * k; c.z += (pz - c.z) * k;
+    c.dq.slerp(c.q, 1 - Math.exp(-dt * 22));
+    const item = world.items.get(c.id);
+    const sticks = touches(c.t, c.o, c.x, c.y, c.z, item);
+    c.sticks = sticks;
+    placement = { x: c.x, y: c.y, z: c.z, o: c.o, ok: true, sticks };
+    holdBox.box.min.set(c.x - w / 2, c.y, c.z - d / 2); holdBox.box.max.set(c.x + w / 2, c.y + h, c.z + d / 2);
+    holdBox.material.color.setHex(sticks ? 0x44ff66 : 0xffffff);
+    holdBox.visible = true;
+    const axisName = ['X', 'Y', 'Z'][c.axis];
+    text = `Holding ${t.name} · <b>E</b>/click let go ${sticks ? '<span class="stat">(stays put)</span>' : '<span class="stat">(falls)</span>'} · <b>R</b> rotate on <b>${axisName}</b> (<b>1 2 3</b> axis · <b>Ctrl</b> 15° · <b>Shift</b> 90°) · <b>wheel</b> closer/farther · <b>F</b> throw`;
+    if (pressedUse || clicked || input.pressed.has('KeyQ')) letGo();
   }
   if (P.using) text = `Using ${ITEMS[P.using.key].name}… ${Math.max(0, P.using.t).toFixed(1)} s`;
   if (text) { prompt.innerHTML = text; prompt.classList.remove('hidden'); } else prompt.classList.add('hidden');
 }
 function pickUp(it) {
-  P.carry = { id: it.id, t: it.t, v: it.v, r: it.r, tl: it.tl | 0 };
+  const q = itemQuat(it.r, it.tl, it.o);
+  const [w, h, d] = itemDims(it.t, it.r, it.tl, it.o);
+  const [ex, ey, ez] = eye();
+  P.carryDist = clamp(Math.hypot(it.x - ex, it.y + h / 2 - ey, it.z - ez), 1.5, 8);
+  P.carry = { id: it.id, t: it.t, v: it.v, q, dq: q.clone(), o: cleanQuat([q.x, q.y, q.z, q.w]), axis: 1, x: it.x, y: it.y, z: it.z, sticks: true, fresh: false };
   sfx.pick();
   if (!net.isHost()) { world.edit(it, { c: net.id }); }
   request({ a: 'take', id: it.id });
 }
+// The axis R turns about: 1 is side to side (tips it toward you), 2 is upright
+// (spins it), 3 is front to back (rolls it). Side and front follow where you
+// face, squared to the store's grid.
+const _rq = new THREE.Quaternion(), _ra = new THREE.Vector3();
+function rotAxis(i) {
+  if (i === 1) return _ra.set(0, 1, 0);
+  const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
+  const alongX = Math.abs(fx) > Math.abs(fz); // facing mostly along x
+  if (i === 2) return alongX ? _ra.set(Math.sign(fx), 0, 0) : _ra.set(0, 0, Math.sign(fz));
+  return alongX ? _ra.set(0, 0, -Math.sign(fx)) : _ra.set(Math.sign(fz), 0, 0);
+}
+// Collision boxes of a piece at a pose, in world space.
+function poseBoxes(t, o, x, y, z, out = []) {
+  const parts = itemParts(t, 0, 0, o);
+  if (parts) for (const p of parts) out.push({ x0: x + p[0], y0: y + p[1], z0: z + p[2], x1: x + p[3], y1: y + p[4], z1: z + p[5] });
+  else { const [w, h, d] = itemDims(t, 0, 0, o); out.push({ x0: x - w / 2, y0: y, z0: z - d / 2, x1: x + w / 2, y1: y + h, z1: z + d / 2 }); }
+  return out;
+}
+// Is a piece at this pose touching or overlapping anything (the floor, a wall,
+// a pillar, the ceiling, other furniture)? Then letting go leaves it fixed.
+function touches(t, o, x, y, z, skip) {
+  if (y <= 0.03) return true;
+  const g = 0.04;
+  for (const b of poseBoxes(t, o, x, y, z)) {
+    if (b.y1 >= CEIL - 0.03) return true;
+    let hit = false;
+    world.forBoxes(b.x0 - g, b.z0 - g, b.x1 + g, b.z1 + g, (o2) => {
+      if (hit || (o2.item && o2.item === skip)) return;
+      if (o2.y1 > b.y0 - g && o2.y0 < b.y1 + g) hit = true;
+    });
+    if (hit) return true;
+  }
+  return false;
+}
+// How far a piece let go in mid-air falls before something holds it up.
+function dropHeight(t, o, x, y, z, skip) {
+  let gap = y;
+  for (const b of poseBoxes(t, o, x, y, z)) {
+    const s = world.supportHeight(b.x0, b.z0, b.x1, b.z1, b.y0 + 0.01, skip);
+    gap = Math.min(gap, b.y0 - s);
+  }
+  return Math.max(0, gap);
+}
+function letGo() {
+  const c = P.carry; if (!c) return;
+  const item = world.items.get(c.id);
+  if (touches(c.t, c.o, c.x, c.y, c.z, item)) { placeCarry({ x: c.x, y: c.y, z: c.z, o: c.o, a: 1 }); return; }
+  // nothing touching: it drops straight down
+  const land = c.y - dropHeight(c.t, c.o, c.x, c.y, c.z, item);
+  const pts = []; let y = c.y, vy = 0;
+  while (y > land) { vy -= 30 * 0.025; y = Math.max(land, y + vy * 0.025); pts.push([c.x, y, c.z]); }
+  launch(c, pts, { x: c.x, y: land, z: c.z, o: c.o, a: 0 });
+  P.carry = null;
+}
 function placeCarry(p, carry = P.carry) {
   const id = carry.id;
   const it = world.items.get(id);
-  if (it && !net.isHost()) { world.edit(it, { x: p.x, y: p.y, z: p.z, r: p.r, tl: p.tl | 0, c: null }); }
+  if (it && !net.isHost()) { world.edit(it, { x: p.x, y: p.y, z: p.z, o: p.o, a: !!p.a, c: null }); }
   if (P.carry === carry) P.carry = null;
-  sfx.place();
+  if (p.a) sfx.place(); else sfx.land();
   ach.count('placed', 'build50', 50); ach.count('placed2', 'build500', 500);
-  request({ a: 'place', id, x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3), r: p.r, tl: p.tl | 0 });
+  request({ a: 'place', id, x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3), o: p.o, an: p.a ? 1 : 0 });
 }
 function shove(id) {
   if (P.eatCd > 0) return;
@@ -845,34 +914,38 @@ function dropSelected(slot = P.sel) {
 // Without energy you can't throw far.
 const flying = [];
 function throwCarry() {
-  if (!P.carry) return;
-  const [w, h, d] = itemDims(P.carry.t, P.carry.r, P.carry.tl);
-  const item = world.items.get(P.carry.id);
+  const c = P.carry; if (!c) return;
+  const [w, h, d] = itemDims(c.t, 0, 0, c.o);
+  const item = world.items.get(c.id);
   const [dx, dy, dz] = lookDir(), power = P.en > 5 ? 9 : 3.5;
-  let x = P.x + dx * 0.9, y = P.y + 1.2, z = P.z + dz * 0.9, vx = dx * power, vy = dy * power + 2.5, vz = dz * power;
+  let x = c.x, y = c.y, z = c.z, vx = dx * power, vy = dy * power + 2.5, vz = dz * power;
   const pts = [];
   for (let i = 0; i < 200; i++) {
     const nx = x + vx * 0.025, ny = y + vy * 0.025, nz = z + vz * 0.025; vy -= 20 * 0.025;
     const b = { x0: nx - w / 2, x1: nx + w / 2, z0: nz - d / 2, z1: nz + d / 2, y0: Math.max(0, ny), y1: Math.max(0, ny) + h };
-    if (ny <= 0 || !world.fits(b, item)) break;
+    if (ny <= 0 || (i > 2 && !world.fits(b, item))) break;
     x = nx; y = ny; z = nz; pts.push([x, y, z]);
   }
-  const ly = world.supportHeight(x - w / 2, z - d / 2, x + w / 2, z + d / 2, y + 0.05, item);
-  const land = { x, y: ly, z, r: P.carry.r, tl: P.carry.tl };
-  const box = { x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, y0: ly, y1: ly + h };
-  if (!world.fits(box, item)) { land.y = Math.max(ly, y); }
-  const mesh = new THREE.Mesh(furnitureGeometry(P.carry.t, P.carry.v), furnitureMaterialRef);
-  mesh.matrixAutoUpdate = false; scene.add(mesh);
-  flying.push({ mesh, pts, i: 0, carry: P.carry, land });
+  const ly = y - dropHeight(c.t, c.o, x, y, z, item);
+  pts.push([x, ly, z]);
+  launch(c, pts, { x, y: ly, z, o: c.o, a: 0 });
   P.carry = null; P.en = Math.max(0, P.en - 3);
   sfx.shove();
+}
+// A piece moving on its own (thrown, or dropping after you let go). It stays
+// ours until it lands, so nobody grabs it in mid-air.
+function launch(c, pts, land) {
+  const mesh = new THREE.Mesh(furnitureGeometry(c.t, c.v), furnitureMaterialRef);
+  mesh.matrixAutoUpdate = false; scene.add(mesh);
+  itemMatrix(mesh.matrix, c.t, c.x, c.y, c.z, 0, 0, 1, c.o);
+  flying.push({ mesh, pts, i: 0, carry: c, land, pos: [c.x, c.y, c.z] });
 }
 function updateFlying(dt) {
   for (let k = flying.length - 1; k >= 0; k--) {
     const f = flying[k];
     f.i += dt / 0.025;
     const p = f.pts[Math.min(f.pts.length - 1, Math.floor(f.i))];
-    if (p) itemMatrix(f.mesh.matrix, f.carry.t, p[0], p[1], p[2], f.carry.r, f.carry.tl);
+    if (p) { f.pos = p; itemMatrix(f.mesh.matrix, f.carry.t, p[0], p[1], p[2], 0, 0, 1, f.carry.o); }
     if (f.i >= f.pts.length) {
       scene.remove(f.mesh);
       flying.splice(k, 1);
@@ -1060,7 +1133,7 @@ const TIPS = [
   [40, 'Look at furniture and press E to pick it up. Click or press E again to put it down, even in mid-air.'],
   [70, 'Food and first aid are in cafeterias, kitchens and snack bars. Press G to see your inventory.'],
   [110, 'At 22:00 the lights go out and the staff start hunting. They climb about a metre, so get higher than that.'],
-  [160, 'Press T while carrying to stand a piece upright. Pallets make good walls.'],
+  [160, 'While holding a piece, press 1, 2 or 3 to pick an axis and R to rotate it. Pallets stood on end make good walls.'],
   [210, 'Shelving, bookcases and bunk beds can be climbed, by you and by the staff.'],
   [260, 'Press Z to drop a waypoint at your base so you can find it again.'],
   [300, 'If a member of staff catches you, click to shove them over, then run and break their line of sight.'],
@@ -1153,6 +1226,7 @@ function drawStaff(dt, now) {
 }
 
 // ---------------------------------------------------------------- remote shoppers (drawing)
+const _hq0 = new THREE.Quaternion(), _hq1 = new THREE.Quaternion();
 function drawRemotes(dt, now) {
   for (const r of remotes.values()) {
     const b = r.buf;
@@ -1174,8 +1248,20 @@ function drawRemotes(dt, now) {
       r.tag.material.opacity = d < 20 ? 1 : d > 90 ? 0 : 0.35 + 0.65 * (1 - (d - 20) / 70) * 0.5;
       r.tag.scale.set(1.2 + d * 0.02, 0.3 + d * 0.005, 1);
     }
-    setHeld(m, s1.ct, s1.cv);
+    setHeld(m, s1.ct && !s1.ho ? s1.ct : '', s1.cv);
     animate(m, Math.min(sp, 9), dt, { carrying: !!s1.ct, crouch: !!s1.cr });
+    // what they're holding, floating where they aim
+    r.hold = null;
+    if (s1.ho && s1.a) {
+      const h0 = s0.ho && s0.ct === s1.ct ? s0.ho : s1.ho, h1 = s1.ho;
+      _hq0.set(...h0.o); _hq1.set(...h1.o); _hq0.slerp(_hq1, u);
+      r.hold = { t: s1.ct, v: s1.cv, x: lerp(h0.x, h1.x, u), y: lerp(h0.y, h1.y, u), z: lerp(h0.z, h1.z, u), o: [_hq0.x, _hq0.y, _hq0.z, _hq0.w] };
+      if (!r.heldMesh) { r.heldMesh = new THREE.Mesh(new THREE.BufferGeometry(), furnitureMaterialRef); r.heldMesh.matrixAutoUpdate = false; r.heldMesh.frustumCulled = false; scene.add(r.heldMesh); }
+      const key = s1.ct + ':' + s1.cv;
+      if (r.heldKey !== key) { r.heldKey = key; r.heldMesh.geometry = furnitureGeometry(s1.ct, s1.cv); }
+      itemMatrix(r.heldMesh.matrix, s1.ct, r.hold.x, r.hold.y, r.hold.z, 0, 0, 1, r.hold.o);
+      r.heldMesh.visible = true;
+    } else if (r.heldMesh) r.heldMesh.visible = false;
   }
 }
 
@@ -1191,6 +1277,7 @@ function frame() {
   if (input.pressed.has('Escape') && input.pad && !IS_TOUCH) { if (invOpen) toggleInventory(false); else if (paused) resume(); else pause(); }
   handleKeys();
   updateClock(dt);
+  updateHeldBoxes();
   updatePlayer(dt);
   P.eatCd -= dt;
   // chunks around us (rendered) and around everyone else (data, for the host's staff)
@@ -1236,7 +1323,8 @@ function frame() {
   // send our state
   if (now >= sendT && net.on) {
     sendT = now + 100;
-    net.send('p', { x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), ry: +P.yaw.toFixed(2), a: P.alive ? 1 : 0, ct: P.carry ? P.carry.t : '', cv: P.carry ? P.carry.v : 0, n: P.nights, hp: Math.ceil(P.hp), sp: P.sprinting ? 1 : 0, cr: P.crouch ? 1 : 0 });
+    const hold = myHold();
+    net.send('p', { x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), ry: +P.yaw.toFixed(2), a: P.alive ? 1 : 0, ct: hold ? hold.t : '', cv: hold ? hold.v : 0, ho: hold ? [hold.x, hold.y, hold.z].map((n) => +n.toFixed(2)).concat(hold.o) : 0, n: P.nights, hp: Math.ceil(P.hp), sp: P.sprinting ? 1 : 0, cr: P.crouch ? 1 : 0 });
   }
   // light and camera
   const L = lightLevel(clock.t, clock.ev, now / 1000);
@@ -1287,8 +1375,9 @@ function updateLamps(L) {
   if (lampT <= 0) {
     lampT = 0.25;
     lampList = [];
-    if (P.carry && TYPES[P.carry.t].lamp) { viewHeld.getWorldPosition(_v); lampList.push({ x: P.third ? P.x : _v.x, y: P.y + 1.5, z: P.third ? P.z : _v.z, mine: true }); }
-    for (const r of remotes.values()) if (r.st && r.st.a && r.st.ct && TYPES[r.st.ct].lamp) { const p = r.model.root.position; lampList.push({ x: p.x, y: p.y + 1.6, z: p.z }); }
+    const mine = myHold();
+    if (mine && TYPES[mine.t].lamp) lampList.push({ mine: true });
+    for (const r of remotes.values()) if (r.hold && TYPES[r.hold.t].lamp) lampList.push({ x: r.hold.x, y: r.hold.y + itemDims(r.hold.t, 0, 0, r.hold.o)[1] * 0.85, z: r.hold.z });
     for (const it of world.lampsNear(P.x, P.z, 30, 6)) lampList.push({ x: it.x, y: it.y + itemDims(it.t, it.r, it.tl)[1] + 0.08, z: it.z });
     lampList = lampList.slice(0, lampLights.length);
   }
@@ -1297,7 +1386,7 @@ function updateLamps(L) {
   lampLights.forEach((l, i) => {
     const e = lampList[i];
     if (!e || k <= 0) { l.intensity = 0; return; }
-    if (e.mine) { viewHeld.getWorldPosition(_v); l.position.set(P.third ? P.x : _v.x, P.y + 1.5, P.third ? P.z : _v.z); }
+    if (e.mine) { const h = myHold(); if (h) l.position.set(h.x, h.y + itemDims(h.t, 0, 0, h.o)[1] * 0.85, h.z); }
     else l.position.set(e.x, e.y, e.z);
     l.intensity = 9 * k;
   });
@@ -1357,10 +1446,9 @@ function placeCamera(dt) {
   feel.camY = feel.camY === undefined || Math.abs(P.y - feel.camY) > 1.2 || !P.onGround ? P.y : feel.camY + (P.y - feel.camY) * Math.min(1, dt * 14);
   const ey = feel.camY + P.eyeH + Math.sin(feel.bob * 2) * 0.045 * bobAmt - feel.dip * 0.4;
   camera.rotation.set(P.pitch + (Math.random() - 0.5) * sh * 0.12, P.yaw + (Math.random() - 0.5) * sh * 0.12, Math.sin(feel.bob) * 0.006 * bobAmt + (Math.random() - 0.5) * sh * 0.08, 'YXZ');
-  viewHeld.position.set(0.42 + Math.sin(feel.bob) * 0.015 * bobAmt, -0.42 + Math.abs(Math.cos(feel.bob)) * 0.015 * bobAmt - feel.dip * 0.2, -0.9);
   myModel.root.position.set(P.x, P.y, P.z);
   myModel.root.rotation.y = P.yaw + Math.PI;
-  setHeld(myModel, P.carry ? P.carry.t : '', P.carry ? P.carry.v : 0);
+  setHeld(myModel, '', 0);
   animate(myModel, P.speed, dt, { carrying: !!P.carry, crouch: P.crouch });
   if (P.third && P.alive) {
     const [dx, dy, dz] = lookDir();
@@ -1380,19 +1468,47 @@ function placeCamera(dt) {
     myModel.root.visible = false;
     myModel.body.rotation.x = 0;
   }
-  // first-person carried piece
-  const key = P.carry && !P.third ? P.carry.t + ':' + P.carry.v : '';
-  if (key !== viewHeldKey) {
-    viewHeldKey = key;
-    while (viewHeld.children.length) viewHeld.remove(viewHeld.children[0]);
-    if (key) {
-      const t = TYPES[P.carry.t];
-      const mesh = new THREE.Mesh(furnitureGeometry(P.carry.t, P.carry.v), heldMaterial);
-      const s = 0.38 / Math.max(t.w, t.d, t.h);
-      mesh.scale.setScalar(s); mesh.position.set(0, -t.h * s / 2, 0); mesh.rotation.y = 0.5;
-      viewHeld.add(mesh);
-    }
+  // the piece we're holding
+  if (P.carry && P.alive) {
+    const c = P.carry, key = c.t + ':' + c.v;
+    if (key !== heldMeshKey) { heldMeshKey = key; heldMesh.geometry = furnitureGeometry(c.t, c.v); }
+    itemMatrix(heldMesh.matrix, c.t, c.x, c.y, c.z, 0, 0, 1, cleanQuat([c.dq.x, c.dq.y, c.dq.z, c.dq.w]) || c.o);
+    heldMesh.visible = true;
+  } else heldMesh.visible = false;
+}
+
+// What we're holding (or what we just let go of, still in the air), for others to see.
+function myHold() {
+  if (P.carry && P.alive) return { t: P.carry.t, v: P.carry.v, x: P.carry.x, y: P.carry.y, z: P.carry.z, o: P.carry.o };
+  const f = flying[flying.length - 1];
+  if (f) return { t: f.carry.t, v: f.carry.v, x: f.pos[0], y: f.pos[1], z: f.pos[2], o: f.carry.o };
+  return null;
+}
+// Furniture being held is solid to players: hold a piece under yourself and
+// lift it, and you go up with it (that's how you get onto high shelves, or
+// float). Someone else can carry you the same way.
+const prevTops = new Map();
+function updateHeldBoxes() {
+  const out = [], tops = new Map();
+  const add = (key, h) => {
+    const list = poseBoxes(h.t, h.o, h.x, h.y, h.z), prev = prevTops.get(key);
+    list.forEach((b, i) => { b.py1 = prev && prev.length === list.length ? prev[i] : b.y1; b.held = key; out.push(b); });
+    tops.set(key, list.map((b) => b.y1));
+  };
+  if (P.carry && P.alive) add('me', P.carry);
+  for (const [id, r] of remotes) if (r.hold) add(id, r.hold);
+  prevTops.clear(); for (const [k, v] of tops) prevTops.set(k, v);
+  world.held = out;
+}
+function rideHeld() {
+  const r = P.radius * 0.8;
+  let top = -1;
+  for (const b of world.held) {
+    if (b.x1 <= P.x - r || b.x0 >= P.x + r || b.z1 <= P.z - r || b.z0 >= P.z + r) continue;
+    // it was under our feet and has come up: we go up with it
+    if (b.py1 <= P.y + 0.08 && b.y1 > P.y - 0.02 && b.y1 - P.y < 1.2 && b.y1 > top) top = b.y1;
   }
+  if (top >= 0 && top > P.y && bodyFits(world, P.x, top, P.z, P.radius - 0.02, P.height)) { P.y = top; P.vy = Math.max(0, P.vy); P.onGround = true; }
 }
 
 function handleKeys() {
@@ -1407,7 +1523,7 @@ function handleKeys() {
   if (p.has('KeyQ') && !P.carry && P.alive && !invOpen) dropSelected();
   if (p.has('KeyZ')) setWaypoint(input.keys.has('ShiftLeft') || input.keys.has('ShiftRight'));
   if (p.has('F1')) { pause(); returnTo = 'pause'; show('how'); }
-  for (let i = 0; i < HOTBAR; i++) if (p.has('Digit' + (i + 1))) { P.sel = i; buildHotbar(); }
+  if (!P.carry) for (let i = 0; i < HOTBAR; i++) if (p.has('Digit' + (i + 1))) { P.sel = i; buildHotbar(); }
   if (input.wheel && !P.carry) { P.sel = (P.sel + input.wheel + HOTBAR) % HOTBAR; buildHotbar(); }
 }
 

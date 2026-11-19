@@ -130,16 +130,25 @@ They're decided by the room's seed and the day, so every screen agrees.
 
 ## Building
 
-- **Pick up** any piece of furniture (E) and carry it. Your view shows a
-  green or red ghost where it would go.
-- **Furniture stays exactly where you put it**, even in mid-air. Nothing
-  falls. That's how you build floating floors and stairs you can take away.
-  Hold **Shift** while placing to drop the piece onto whatever is below it
-  instead.
-- **R** turns it, **T** tilts it: upright, on its back (a pallet becomes a
-  wall) or on its side, the
-  **mouse wheel** moves it nearer or further, **Q** puts it down at your feet,
-  and **F** throws it.
+- **Grab** any piece of furniture (E). It floats in front of you where you
+  aim, swinging after your view with a little lag, and everyone online sees
+  it there. It passes through things while you hold it, so you can push it
+  into a wall or into another piece.
+- **Rotate** it with **R**, about the axis you pick with **1**, **2** or
+  **3** (or **T** to cycle): 1 tips it toward you, 2 spins it upright, 3
+  rolls it side to side. A press turns it 45°; hold **Ctrl** for 15° or
+  **Shift** for 90°. **Ctrl+Shift+R** squares it back up. Any angle works, so
+  you can lean a bookcase into a ramp or stand a pallet on end as a wall.
+- **Let go** with E, a click or Q. If the piece is **touching anything** (the
+  floor, a wall, a pillar, the ceiling or other furniture) it stays exactly
+  there, fixed, with a thunk. That's how you build floating floors and
+  stairs you can take away: hold the next piece so it touches the last one.
+  Let go **in mid-air** and it drops onto whatever is below, and anything
+  that dropped falls again if you take away what holds it up. The outline is
+  green when it'll stay put and white when it'll drop.
+- The **mouse wheel** moves it closer or farther, and **F** throws it.
+- **Ride** what you hold: put a piece under your feet and raise it, and you
+  go up with it (jumping helps). Someone else can lift you the same way.
 - **Walk-in wardrobes** are hollow. Step in and block the front for a
   last-minute hiding place. Bathtubs are hollow too.
 - **Climb** shelving, bookcases, cube shelves, bunk beds and pallets by
@@ -152,12 +161,14 @@ They're decided by the room's seed and the day, so every screen agrees.
 | Action | Keyboard / mouse | Touch |
 | --- | --- | --- |
 | Move / look | WASD or arrows / mouse | left stick / drag on the right |
-| Sprint / jump / crouch | Shift / Space / C or Ctrl | Run / Jump / Crouch |
-| Pick up, take food, place | E | Grab |
-| Place, use selected item, shove | left click | Use |
-| Turn / tilt carried piece | R or right click / T | Turn / Tilt |
-| Carry nearer or further | mouse wheel | |
-| Put down / throw | Q / F | Drop / Throw |
+| Sprint / jump / crouch | Shift / Space / C (or Ctrl when not holding anything) | Run / Jump / Crouch |
+| Grab furniture, take food, let go | E | Grab |
+| Let go, use selected item, shove | left click | Use |
+| Rotate held piece (45°, Ctrl 15°, Shift 90°) | R or right click | Rotate |
+| Rotation axis while holding | 1 / 2 / 3, or T to cycle | Axis |
+| Square the held piece up | Ctrl+Shift+R | |
+| Held piece closer or farther | mouse wheel | |
+| Let go / throw | Q / F | Drop / Throw |
 | Hotbar / inventory | 1 to 8, wheel / G | tap a slot (tap again to use) / Bag |
 | Whistle | H | Whistle |
 | Waypoint / clear waypoints | Z / Shift+Z | |
@@ -166,8 +177,9 @@ They're decided by the room's seed and the day, so every screen agrees.
 | Controls / pause | F1 / Esc | II |
 
 A game controller works too: the sticks move and look, A jumps, B crouches,
-X grabs and places, Y whistles, RT uses or shoves, LT turns, RB tilts, LB
-throws, the d-pad picks hotbar slots (up drops, down sets a waypoint), Back
+X grabs and lets go, Y whistles, RT uses or shoves, LT rotates, RB changes
+the axis, LB throws, the d-pad picks hotbar slots (or moves a held piece
+closer and farther) (up drops, down sets a waypoint), Back
 opens the inventory, Start pauses, and clicking the left stick sprints.
 
 In online rooms, chat appears over the speaker's head as well as in the log.
@@ -304,7 +316,7 @@ cd tools && npm install && npm run build
 | --- | --- |
 | `main.js` | Entry point: menus, game loop, player, interaction, host logic, HUD, test hook (`window.__game`) |
 | `world.js` | Chunk generation, sections, collision boxes, items, spatial hash, instanced drawing, shared state |
-| `furniture.js` | Furniture (with hollow collision parts, tilting) and food definitions and models; what each place stocks |
+| `furniture.js` | Furniture (with hollow collision parts, free rotation cut into collision strips) and food definitions and models; what each place stocks |
 | `staff.js` | Staff AI (host only): spawning, senses, path finding over standing surfaces with climbing, attacks, shoves, sizes |
 | `physics.js` | Standing-body movement against boxes: step-up, climbing, gravity, ceilings |
 | `net.js` | Rooms, presence, host election, messages |
@@ -335,7 +347,8 @@ node tools/test-mp.cjs <screenshot-dir>
 `test.cjs` starts solo play and checks:
 
 - picking up, carrying and placing; third person; night arriving;
-- eating, placing a tilted piece in mid-air (it stays), shoving staff down,
+- eating, rotating a held piece, letting go in mid-air (it drops) and
+  touching something (it stays), shoving staff down,
   standing room inside a wardrobe, throwing, dropping food, crouching, hail
   hurting you under a skylight, and the Monday and Friday restock days;
 - that the staff can't reach you on a wardrobe, or on two stacked crates,
@@ -355,7 +368,8 @@ place of the realtime server). It checks:
 
 - joining by code, the same seed on both screens, and late joiners getting
   earlier changes;
-- carrying and placing furniture on the host and the guest;
+- carrying and placing furniture on the host and the guest, the other player
+  seeing a held piece float where you aim, and its rotation matching;
 - the host's staff, clock and hits reaching the guest;
 - chat arriving with a bubble over the speaker;
 - the guest taking over as host, with the store's changes kept and anything

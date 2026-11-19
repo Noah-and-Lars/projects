@@ -107,17 +107,18 @@
     <table class="keys">
       <tr><td>WASD / arrows</td><td>Move</td><td>Mouse</td><td>Look</td></tr>
       <tr><td>Shift</td><td>Sprint</td><td>Space</td><td>Jump</td></tr>
-      <tr><td>E</td><td>Pick up / take / place</td><td>Left click</td><td>Place · use item · shove</td></tr>
-      <tr><td>R / right click</td><td>Turn carried piece</td><td>T</td><td>Tilt carried piece upright</td></tr>
-      <tr><td>Wheel</td><td>Carry nearer / further (or pick slot)</td><td>Q</td><td>Put down at your feet (furniture or the selected item)</td></tr>
-      <tr><td>F</td><td>Throw carried piece</td><td>C / Ctrl</td><td>Crouch</td></tr>
-      <tr><td>Shift while placing</td><td>Drop it onto what's below (instead of floating)</td><td></td><td></td></tr>
+      <tr><td>E</td><td>Grab furniture / take / let go</td><td>Left click</td><td>Let go · use item · shove</td></tr>
+      <tr><td>R / right click</td><td>Rotate held piece 45° on the chosen axis</td><td>1 / 2 / 3 (or T)</td><td>Axis while holding: side to side / upright / front to back</td></tr>
+      <tr><td>Ctrl+R · Shift+R</td><td>Rotate 15° · rotate 90°</td><td>Ctrl+Shift+R</td><td>Square the piece back up</td></tr>
+      <tr><td>Wheel</td><td>Held piece closer / farther (or pick slot)</td><td>Q</td><td>Let go (or put the selected item at your feet)</td></tr>
+      <tr><td>F</td><td>Throw held piece</td><td>C (or Ctrl)</td><td>Crouch</td></tr>
+      <tr><td colspan="4">Let go of a piece while it touches anything (floor, wall, other furniture) and it stays exactly there; let go in mid-air and it drops. Hold a piece under yourself and raise it to ride it up.</td></tr>
       <tr><td>1&ndash;8</td><td>Hotbar slot</td><td>G</td><td>Inventory (16 slots)</td></tr>
       <tr><td>H</td><td>Whistle</td><td>Z / Shift+Z</td><td>Set / clear waypoints</td></tr>
       <tr><td>W into shelving</td><td>Climb</td><td>V</td><td>First / third person</td></tr>
       <tr><td>Enter</td><td>Chat</td><td>Tab</td><td>Players</td></tr>
       <tr><td>F1</td><td>Controls</td><td>Esc</td><td>Pause</td></tr>
-      <tr><td>Controller</td><td colspan="3">Sticks move and look · A jump · B crouch · X grab/place · Y whistle · RT use/shove · LT turn · RB tilt · LB throw · d-pad hotbar · Back bag · Start pause · click left stick to sprint</td></tr>
+      <tr><td>Controller</td><td colspan="3">Sticks move and look · A jump · B crouch · X grab/place · Y whistle · RT use/shove · LT rotate · RB axis · LB throw · d-pad hotbar (closer / farther while holding) · Back bag · Start pause · click left stick to sprint</td></tr>
     </table>
     <button class="back primary">Back</button>
   </div>
@@ -171,9 +172,9 @@
     <div class="tb" data-key="ShiftLeft">Run</div>
     <div class="tb" data-key="KeyE">Grab</div>
     <div class="tb" data-key="Mouse0">Use</div>
-    <div class="tb" data-key="KeyR">Turn</div>
+    <div class="tb" data-key="KeyR">Rotate</div>
     <div class="tb" data-key="KeyH">Whistle</div>
-    <div class="tb" data-key="KeyT">Tilt</div>
+    <div class="tb" data-key="KeyT">Axis</div>
     <div class="tb" data-key="KeyG">Bag</div>
     <div class="tb" data-key="KeyC">Crouch</div>
     <div class="tb" data-key="KeyF">Throw</div>
