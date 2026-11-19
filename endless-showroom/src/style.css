@@ -91,12 +91,15 @@ button.primary:hover { background: #3a7cc4; }
 .stick { position: absolute; left: 40px; bottom: 60px; width: 120px; height: 120px; border-radius: 50%; background: #ffffff18; border: 2px solid #ffffff30; opacity: 0.6; }
 .stick.on { opacity: 1; }
 .knob { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%; background: #ffffff55; }
-.tb-col { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(3, 58px); gap: 6px; }
-.tb { width: 58px; height: 46px; border-radius: 14px; background: #0007; border: 2px solid #ffffff40; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+.tb-col { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(4, 54px); gap: 6px; }
+.tb { width: 54px; height: 44px; font-size: 12px !important; border-radius: 14px; background: #0007; border: 2px solid #ffffff40; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
 .tb.on { background: #ffd34d66; }
 .tb-pause { position: absolute; top: calc(max(12px, env(safe-area-inset-top)) + 36px); right: max(12px, env(safe-area-inset-right)); width: 44px; height: 40px; }
 body.touch #help-hint, body.touch #cross { display: none; }
-body.touch #hotbar { bottom: max(10px, env(safe-area-inset-bottom)); }
+body.touch #hotbar { bottom: max(10px, env(safe-area-inset-bottom)); left: calc(50% - 100px); gap: 4px; }
+body.touch #hotbar .slot { width: 42px; height: 42px; font-size: 8px; }
+body.touch #hotbar .slot .ic { width: 24px; height: 24px; }
+body.touch #hotbar .slot .nm { display: none; }
 body.touch #announce { top: 30%; font-size: 15px; padding: 8px 16px; }
 body.touch #announce small { font-size: 12px; }
 body.touch #prompt { top: calc(50% + 22px); font-size: 13px; }

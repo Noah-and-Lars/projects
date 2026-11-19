@@ -39,8 +39,11 @@ Don't edit `index.html` by hand. It's generated from `src/`.
 | Night | 5 minutes, 22:00 to 08:00. The overhead lights cut out with a clunk, and only the emergency fittings (orange) and lamps stay lit. |
 | Week | Days run Monday to Sunday. **Food and first aid restock at the start of every Monday and Friday**, not daily. |
 
-Each weekday has its own gentle tune. Night has a low drone. The music,
-like everything else, is generated as it plays.
+Each weekday has its own gentle tune. Night has a low drone, a Crimson
+Night a pulsing beat, and a Fog Day a slow, sad theme. The music, like
+everything else, is generated as it plays. Twice a day the PA chimes and
+reads out a (not very reassuring) announcement. On your very first day, tips
+explain the basics.
 
 ### Events
 
@@ -76,6 +79,10 @@ They're decided by the room's seed and the day, so every screen agrees.
   fit through lower gaps. A crouching player fits through gaps none of them
   can.
 - **More come as the days go on**: 3 per player at first, growing to 12.
+- **The Floor Manager** walks the aisles on Crimson Nights only: one near
+  each shopper. Taller, in a dark suit with a clipboard. It's slower, but it
+  sees 60 m, hits for 22 to 28, and can't be shoved.
+- You can hear them coming: heavy footsteps, louder as they get closer.
 
 ## Survival
 
@@ -83,7 +90,7 @@ They're decided by the room's seed and the day, so every screen agrees.
 | --- | --- |
 | Health | 100. **It only comes back from food and first aid.** No regenerating. |
 | Hunger | Empties in about 15 minutes, faster while sprinting, twice as fast with no energy. At zero you lose health. |
-| Energy | Sprinting, jumping, carrying and whistling use it, and standing still slowly gets it back. With none you can't sprint, throws fall short, and you get hungry faster. |
+| Energy | Sprinting, jumping, carrying and whistling use it, and standing still slowly gets it back (lying on a bed or a sofa gets it back nearly four times as fast). With none you can't sprint, throws fall short, and you get hungry faster. |
 | Inventory | 16 slots (G). Slots 1 to 8 are the hotbar. Click to use, and right-click (or Q) to put an item down, to stock your base. |
 | First aid | +30 health, takes 2.5 seconds to use. |
 | Falling | Landing faster than 13 m/s (about a 4 m drop) hurts. |

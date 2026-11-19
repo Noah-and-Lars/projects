@@ -969,7 +969,10 @@ function drawStaff(dt, now) {
     const s1 = b[i], s0 = i > 0 ? b[i - 1] : s1;
     const span = s1.t - s0.t, u = span > 0 ? clamp((at - s0.t) / span, 0, 1) : 1;
     const m = v.model;
-    m.root.position.set(lerp(s0.x, s1.x, u), lerp(s0.y, s1.y, u), lerp(s0.z, s1.z, u));
+    // climbs and drops are steps of up to 2 m: ease the height so they read as jumps
+    const ty = lerp(s0.y, s1.y, u);
+    v.y = v.y === undefined || Math.abs(ty - v.y) > 4 ? ty : v.y + (ty - v.y) * Math.min(1, dt * 9);
+    m.root.position.set(lerp(s0.x, s1.x, u), v.y, lerp(s0.z, s1.z, u));
     m.root.rotation.y = angLerp(s0.ry, s1.ry, u);
     const hostile = !!(s1.f & 1) || isHostile(clock.t, clock.ev);
     m.eyes.visible = hostile;
@@ -1145,7 +1148,9 @@ function placeCamera(dt) {
   if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = fov; camera.updateProjectionMatrix(); }
   const sh = feel.shake * feel.shake;
   P.eyeH += ((P.crouch ? 0.85 : 1.6) - P.eyeH) * Math.min(1, dt * 12);
-  const ey = P.y + P.eyeH + Math.sin(feel.bob * 2) * 0.045 * bobAmt - feel.dip * 0.4;
+  // ease the camera over steps (but follow jumps and falls exactly)
+  feel.camY = feel.camY === undefined || Math.abs(P.y - feel.camY) > 1.2 || !P.onGround ? P.y : feel.camY + (P.y - feel.camY) * Math.min(1, dt * 14);
+  const ey = feel.camY + P.eyeH + Math.sin(feel.bob * 2) * 0.045 * bobAmt - feel.dip * 0.4;
   camera.rotation.set(P.pitch + (Math.random() - 0.5) * sh * 0.12, P.yaw + (Math.random() - 0.5) * sh * 0.12, Math.sin(feel.bob) * 0.006 * bobAmt + (Math.random() - 0.5) * sh * 0.08, 'YXZ');
   viewHeld.position.set(0.42 + Math.sin(feel.bob) * 0.015 * bobAmt, -0.42 + Math.abs(Math.cos(feel.bob)) * 0.015 * bobAmt - feel.dip * 0.2, -0.9);
   myModel.root.position.set(P.x, P.y, P.z);
