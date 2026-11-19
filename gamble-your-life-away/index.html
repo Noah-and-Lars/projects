@@ -60,12 +60,12 @@
   #top { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: 10px; }
   #money { min-width: 210px; text-align: center; padding: 8px 22px 10px; border-radius: 16px; background: linear-gradient(180deg, rgba(40, 18, 20, .92), rgba(16, 8, 10, .92)); border: 1px solid rgba(245, 192, 74, .45); box-shadow: 0 8px 30px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .08); }
   #money small { display: block; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
-  #money b { font-family: var(--display); font-weight: 400; font-size: 30px; color: var(--gold-hi); text-shadow: 0 2px 0 #000; }
+  #money b { font-family: var(--display); font-weight: 400; font-size: 30px; color: var(--gold-hi); text-shadow: 0 2px 0 #000; max-width: min(46vw, 460px); margin: 0 auto; }
   #money.debt b { color: #ff6b6b; }
   #money.up { animation: up .6s; } #money.down { animation: down .6s; }
   @keyframes up { 30% { box-shadow: 0 0 40px rgba(61, 220, 132, .7); transform: scale(1.06); } }
   @keyframes down { 30% { box-shadow: 0 0 40px rgba(208, 40, 58, .7); transform: scale(.97); } }
-  #delta { position: fixed; top: 88px; left: 50%; transform: translateX(-50%); z-index: 5; font-family: var(--display); font-size: 26px; opacity: 0; transition: opacity .3s, transform .9s; pointer-events: none; text-shadow: 0 2px 6px #000; }
+  #delta { position: fixed; top: 88px; left: 50%; transform: translateX(-50%); z-index: 5; max-width: 92vw; text-align: center; overflow-wrap: anywhere; font-family: var(--display); font-size: 26px; opacity: 0; transition: opacity .3s, transform .9s; pointer-events: none; text-shadow: 0 2px 6px #000; }
   #top { flex-wrap: nowrap; } #top[hidden] ~ #stressBox { display: none; } #stressBox { position: fixed; top: 14px; right: 14px; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-radius: 999px; background: rgba(20, 10, 12, .85); border: 1px solid var(--line); font-weight: 800; font-size: 13px; color: var(--muted); white-space: nowrap; }
   #stressBox i { display: block; width: 110px; height: 9px; border-radius: 6px; background: rgba(255, 255, 255, .1); overflow: hidden; } #stressBox i b { display: block; height: 100%; width: 0; background: var(--green); transition: width .5s, background .5s; }
   #stressBox.hi { border-color: #ff4d5e; color: #ffb3b9; animation: pulse 1s ease-in-out infinite; } @keyframes pulse { 50% { box-shadow: 0 0 22px rgba(255, 77, 94, .55); } }
@@ -101,7 +101,7 @@
   .gbtn.on { outline: 3px solid var(--gold-hi); outline-offset: 1px; }
   .gbtn:disabled { opacity: .4; cursor: default; }
   .gbtn.small { padding: 7px 10px; font-size: 14px; }
-  .gmsg { margin-top: 8px; height: 48px; line-height: 24px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-weight: 800; font-size: 18px; }
+  .gmsg { overflow-wrap: anywhere; margin-top: 8px; height: 48px; line-height: 24px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-weight: 800; font-size: 18px; }
   /* 1.0.5: buttons react on the first touch and never get eaten by text selection or double-tap zoom */
   button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   .bets { min-height: 50px; } .betv { position: relative; } .betv small { position: absolute; left: 0; top: 100%; white-space: nowrap; }
@@ -120,7 +120,7 @@
   .scratch canvas { width: 84px; height: 60px; border-radius: 8px; touch-action: none; cursor: crosshair; }
 
   /* menus */
-  #ov { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; overflow: auto; padding: 20px; box-sizing: border-box; background: radial-gradient(ellipse at center, rgba(10, 4, 6, .35), rgba(5, 2, 3, .82)); }
+  #ov { position: fixed; inset: 0; z-index: 20; display: grid; grid-template-columns: minmax(0, 1fr); /* 1.2.1: menus never grow wider than the screen */ place-items: center; overflow: auto; padding: 20px; box-sizing: border-box; background: radial-gradient(ellipse at center, rgba(10, 4, 6, .35), rgba(5, 2, 3, .82)); }
   .menu { display: none; flex-direction: column; align-items: center; gap: 12px; width: min(440px, 100%); text-align: center; animation: menuIn .4s ease-out; }
   .menu.wide { width: min(780px, 100%); }
   .menu.active { display: flex; }
@@ -142,9 +142,18 @@
   .menu p { color: var(--muted); margin: 0; line-height: 1.45; }
   .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; }
   .lbSub { margin: -4px 0 0; color: var(--muted); font-weight: 600; }
-  .lbMe { width: 100%; color: var(--gold-hi); font-weight: 800; }
-  .lbList { width: 100%; max-height: min(56vh, 520px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 6px; box-sizing: border-box; }
-  .lbRow { display: grid; grid-template-columns: 52px 1fr auto; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; text-align: left; font-weight: 700; }
+  .lbMe { width: 100%; color: var(--gold-hi); font-weight: 800; overflow-wrap: anywhere; }
+  .lbList { position: relative; contain: inline-size; width: 100%; max-height: min(56vh, 520px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 6px; box-sizing: border-box; }
+  /* 1.2.1: flex instead of a grid, so a huge amount can never squash the name to nothing or push past the edge */
+  .lbRow { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; text-align: left; font-weight: 700; }
+  .lbRow .rk { flex: 0 0 52px; } .lbRow .nm { flex: 1 1 0; min-width: 72px; } .lbRow .v { flex: 0 1 auto; min-width: 0; max-width: 60%; text-align: right; }
+  .lbRow .nm small { color: var(--muted); font-weight: 600; }
+  .lbCount { width: 100%; margin-top: -6px; color: var(--muted); font-weight: 700; font-size: 13px; }
+  /* 1.2.1: amounts too wide for their box slide along by themselves so you can read every digit */
+  .rbx { display: block; overflow: hidden; white-space: nowrap; } .rbx .mq { display: inline-block; }
+  .rbx.roll { text-align: left; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8px, #000 calc(100% - 8px), transparent); mask-image: linear-gradient(90deg, transparent, #000 8px, #000 calc(100% - 8px), transparent); }
+  .rbx.roll .mq { padding: 0 8px; animation: mq var(--t, 6s) ease-in-out infinite alternate; }
+  @keyframes mq { 0%, 14% { transform: translateX(0); } 86%, 100% { transform: translateX(var(--d, 0px)); } }
   .lbRow:nth-child(odd) { background: rgba(255, 255, 255, .04); }
   .lbRow .rk { font-family: var(--display); font-size: 18px; color: var(--muted); }
   .lbRow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -154,7 +163,7 @@
   .lbNote { padding: 18px; color: var(--muted); text-align: center; font-weight: 700; }
   .stats div { background: rgba(255, 255, 255, .05); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; text-align: left; }
   .stats small { display: block; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
-  .stats b { font-family: var(--display); font-weight: 400; font-size: 20px; }
+  .stats b { font-family: var(--display); font-weight: 400; font-size: 20px; overflow-wrap: anywhere; }
   .setrow { display: flex; align-items: center; gap: 12px; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, .06); font-weight: 700; }
   .seg { display: flex; gap: 4px; } .seg button { border: 1px solid var(--line); background: rgba(255, 255, 255, .06); color: var(--fg); border-radius: 8px; padding: 6px 12px; font-weight: 800; cursor: pointer; }
   .seg button.sel { background: var(--gold); color: #241404; }
@@ -205,14 +214,14 @@
   }
   /* 1.0.5: on anything narrower than a big screen the stress meter sits under the top bar, so it never covers the Menu button */
   @media (max-width: 1000px) { #stressBox { top: 76px; right: 10px; } }
-  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } .rbx.roll { white-space: normal; overflow-wrap: anywhere; -webkit-mask-image: none; mask-image: none; } }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <div id="top" hidden>
   <button class="tbtn" id="bList">🎰 Games</button>
-  <div id="money"><small>Your money</small><b id="moneyV">$80,000</b></div>
+  <div id="money"><small>Your money</small><b id="moneyV" class="rbx"><span class="mq">$80,000</span></b></div>
   <button class="tbtn" id="bMenu">☰ Menu</button>
 </div>
 <div id="stressBox"><span>😰 Stress</span><i><b id="stressFill"></b></i><button id="bSmoke" title="Buy a pack of cigarettes and have a smoke">🚬 $100</button></div>
@@ -242,7 +251,7 @@
     <button class="btn sec" data-go="board">🏆 Leaderboard</button>
     <button class="btn sec" data-go="how">How to play</button>
     <button class="btn sec" data-go="settings">Settings</button>
-    <button class="link" data-go="notes">v1.2 · Patch notes</button>
+    <button class="link" data-go="notes">v1.2.1 · Patch notes</button>
   </div>
 
   <div class="menu wide" id="m-list">
@@ -275,6 +284,7 @@
     <p class="lbSub">The richest anyone has ever been in the casino. Players with an Arcade account show up here.</p>
     <div class="lbMe" id="lbMe"></div>
     <div class="lbList" id="lbList"></div>
+    <div class="lbCount" id="lbCount"></div>
     <button class="btn sec" data-go="back">Back</button>
   </div>
 
@@ -298,10 +308,11 @@
   </div>
 
   <div class="menu wide" id="m-notes">
-    <div class="hero"><div class="ribbon">NEW</div><h1>v1.2<span>All-time leaderboard</span></h1><p>See who has been the richest in the casino. Every player with an Arcade account, ranked from first to last.</p>
+    <div class="hero"><div class="ribbon">NEW</div><h1>v1.2.1<span>A leaderboard you can trust</span></h1><p>Every player in the right place, and every digit of the biggest fortunes, sliding along so nothing spills off the screen.</p>
       <div class="dice"><i>7</i><i>♠</i></div>
       <span class="spark" style="right:30%;top:20%"></span><span class="spark" style="right:44%;top:58%;animation-delay:.8s"></span><span class="spark" style="right:14%;top:76%;animation-delay:1.5s"></span></div>
     <div class="feat">
+      <div><i>🔢</i><span><b>Rolling amounts</b>Amounts too long to fit slide along by themselves, on the leaderboard and on your money at the top.</span></div>
       <div><i>🏆</i><span><b>All-time leaderboard</b>Everyone ranked by the richest they’ve ever been. Open it from the main menu or the pause menu.</span></div>
       <div><i>🃏</i><span><b>Texas Hold’em</b>Casino Hold’em against the dealer, plus Three Card Poker, Red Dog and Andar Bahar.</span></div>
       <div><i>🎰</i><span><b>3 new slots</b>Blazing 7s with wild multipliers, Fruit Frenzy (5 lines) and Pharaoh’s Gold (10 lines and scatters).</span></div>
@@ -315,6 +326,16 @@
       <div><i>🎷</i><span><b>Lounge music</b>A smooth jazz loop while you lose everything.</span></div>
     </div>
     <div class="box notes">
+      <h3>v1.2.1 <span>Leaderboard fixes</span></h3>
+      <ul>
+        <li><b>The leaderboard is in the right order.</b> The richest players (40 digits and up) were cut short by the server and ranked 100 to 1,000 times lower than they really were. Their amounts are now sent in full and ranked correctly. If someone hasn’t played since, their amount shows as the least it can be, with a <b>+</b>, until they play again.</li>
+        <li><b>Rolling amounts.</b> When an amount is too long to fit, it slides along by itself so you can read every digit, instead of being cut off or pushing the board off the screen. Your money at the top does the same.</li>
+        <li>The board shows everyone on it, with a count of how many players there are, and <b>(you)</b> next to your name.</li>
+        <li>Fixed: on phones and narrow windows, big amounts made the leaderboard wider than the screen.</li>
+        <li>Fixed: money past about $1.8e308 turned into “$NaN” after going all in, and the player vanished from the leaderboard. Money now tops out at $1e300, and broken saves get their richest amount back.</li>
+        <li>Fixed: opening the leaderboard twice quickly could show the older list, and finding your spot no longer scrolls the whole menu.</li>
+        <li>Fixed: very long win and loss messages now wrap instead of running off the panel.</li>
+      </ul>
       <h3>v1.2 <span>All-time leaderboard</span></h3>
       <ul>
         <li><b>🏆 Leaderboard</b> on the main menu and the pause menu: every player ranked by the most money they’ve ever had, from first to last.</li>
@@ -438,10 +459,16 @@ const weighted = list => { let r = Math.random() * list.reduce((s, x) => s + x.w
 
 // ---------- save ----------
 const TRAILER = /[?&]trailer\b/.test(location.search); // 1.1.1: opened by the site's Play trailer button
-const START = 80000, CREDIT = 10000, VERSION = '1.2', SKEY = 'gambleLifeSave';
+const START = 80000, CREDIT = 10000, VERSION = '1.2.1', SKEY = 'gambleLifeSave';
 const save = Object.assign({ money: START, peak: START, rounds: 0, wins: 0, biggest: 0, deaths: 0, played: {}, bet: 1000, stress: 0, seenVersion: '', volume: 0.7, music: true, quality: 'high' },
   (() => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch (e) { return {}; } })());
 if (!save.rounds && save.money === 50000) save.money = START; // never played before 1.0.4: start with the new amount
+// 1.2.1: money tops out at $1e300. Past about $1.8e308 it became Infinity, and going all in then turned it into NaN
+// ("$NaN" for good, and off the leaderboard). A save that already broke gets its richest amount back.
+const MAXM = 1e300;
+function sane() { const f = (v, d) => typeof v === 'number' && !Number.isNaN(v) ? clamp(v, -MAXM, MAXM) : d;
+  save.peak = f(save.peak, START); save.money = f(save.money, Math.max(START, save.peak)); save.biggest = f(save.biggest, 0); save.bet = Math.max(100, f(save.bet, 1000)); save.peak = Math.max(save.peak, save.money); }
+sane();
 let wiped = false;
 // 1.0.5: every button press counts. If you press and release on a button but the browser drops the click
 // (the button moved a little, the frame was busy, a trackpad wobble), the game clicks it for you.
@@ -452,7 +479,7 @@ let wiped = false;
     const near = e.clientX > r.left - pad && e.clientX < r.right + pad && e.clientY > r.top - pad && e.clientY < r.bottom + pad && Math.hypot(e.clientX - px, e.clientY - py) < 60;
     setTimeout(() => { if (!got && near && b.isConnected && !b.disabled && pb === b) b.click(); pb = null; }, 350); }, true);
 })();
-function store() { if (wiped) return; try { localStorage.setItem(SKEY, JSON.stringify(save)); } catch (e) {} }
+function store() { if (wiped) return; sane(); try { localStorage.setItem(SKEY, JSON.stringify(save)); } catch (e) {} }
 
 // ---------- sound (all made in code) ----------
 const Sound = (() => {
@@ -598,7 +625,14 @@ const CAMS = { machine: [[0, 1.85, 3.0], [0, 1.6, 0]], table: [[0, 2.6, 2.7], [0
 
 // ---------- money HUD ----------
 let hudMoney = save.money;
-function hud() { $('moneyV').textContent = fmt(save.money); $('money').classList.toggle('debt', save.money < 0); refreshBet(); stressHud(); }
+// 1.2.1: put `text` in a box that slides along when it's too wide (huge amounts), instead of spilling out or being cut off
+function roll(box, text) { let s = box.firstElementChild; if (!s || !s.classList.contains('mq')) { box.textContent = ''; s = document.createElement('span'); s.className = 'mq'; box.appendChild(s); }
+  if (s.textContent !== text) s.textContent = text; fitRoll(box); }
+function fitRoll(box) { const s = box.firstElementChild; if (!s || !box.clientWidth) return; const was = box.classList.contains('roll'); box.classList.remove('roll');
+  const d = Math.ceil(s.scrollWidth - box.clientWidth); if (d > 2) { box.style.setProperty('--d', -(d + 16) + 'px'); box.style.setProperty('--t', Math.min(14, 2.5 + d / 40).toFixed(1) + 's'); box.classList.add('roll'); if (!was) { s.style.animation = 'none'; void s.offsetWidth; s.style.animation = ''; } } }
+addEventListener('resize', () => document.querySelectorAll('.rbx').forEach(fitRoll));
+if (window.ResizeObserver) new ResizeObserver(() => fitRoll($('moneyV'))).observe($('moneyV')); // the top bar starts hidden: fit it once it shows
+function hud() { roll($('moneyV'), fmt(save.money)); $('money').classList.toggle('debt', save.money < 0); refreshBet(); stressHud(); }
 function showDelta(n) { const el = $('delta'); el.textContent = (n >= 0 ? '+' : '−') + fmt(Math.abs(n)).replace('−', ''); el.style.color = n >= 0 ? 'var(--green)' : '#ff7a7a';
   el.style.transition = 'none'; el.style.opacity = 1; el.style.transform = 'translateX(-50%)'; requestAnimationFrame(() => { el.style.transition = 'opacity 1.4s ease-in, transform 1.4s'; el.style.opacity = 0; el.style.transform = 'translate(-50%,-30px)'; });
   const m = $('money'); m.classList.remove('up', 'down'); void m.offsetWidth; m.classList.add(n >= 0 ? 'up' : 'down'); }
@@ -621,7 +655,7 @@ function stake(n) { if ((save.stress || 0) >= 100) { cigPrompt(true); return fal
 // add more to a round already in play (double down)
 function stakeMore(n) { if (!canAfford(n)) return false; save.money -= n; hud(); Sound.play('chip'); return true; }
 // pay back `ret` (0 if lost). `put` is everything staked this round
-function settle(ret, put, text) { ret = Math.round(ret); save.money += ret; const net = ret - put;
+function settle(ret, put, text) { ret = Math.round(ret); save.money = clamp(save.money + ret, -MAXM, MAXM); const net = ret - put;
   if (net > 0) { save.wins++; save.biggest = Math.max(save.biggest, net); Sound.play(net >= put * 5 ? 'big' : 'win'); msg((text ? text + ' ' : '') + 'You win ' + fmt(net) + '!', 'win'); }
   else if (net === 0) { Sound.play('push'); msg((text ? text + ' ' : '') + 'Your bet comes back.', 'info'); }
   else { Sound.play('lose'); msg((text ? text + ' ' : '') + 'You lose ' + fmt(-net) + '.', 'bad'); }
@@ -1644,37 +1678,53 @@ function fillStats() { const fav = Object.entries(save.played).sort((a, b) => b[
 // save's peak, sent by account.js). /acct/top?g=gamble-your-life-away returns them all in one request; this ranks them
 // by that number. Your own row uses this device's peak when it's higher (the site sends it on its next sync). Cached
 // for 2 minutes in this tab.
+// 1.2.1: the server keeps only the first 60 characters of a stat line, so anything from $1 duodecillion (40 digits) up
+// arrived cut short ("…,000,0") and was ranked 100 to 1,000 times too low. games.js now sends those as "$5.5e+39", and
+// an old cut-short line is read as the smallest amount it can be (padded back out) with a "+" until that player syncs.
 const Board = (() => {
-  const G = 'gamble-your-life-away', KEY = 'gyl-lb1', TTL = 2 * 60e3;
+  const G = 'gamble-your-life-away', KEY = 'gyl-lb2', TTL = 2 * 60e3, CAP = 60;
   const acc = () => { try { return (window.parent !== window && window.parent.ArcadeAccount) || window.ArcadeAccount || null; } catch (e) { return window.ArcadeAccount || null; } };
   const server = () => { const A = acc(); return (A && A.server) || 'https://arcade-realtime.arcade-realtime.workers.dev'; };
   const myName = () => { try { const A = acc(); if (A && A.kind && A.kind() === 'online') return String(A.name()); } catch (e) {}
     try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); if (a && a.name && a.token) return String(a.name); } catch (e) {} return ''; };
-  const num = t => { const m = /\$\s*([\d,]+)/.exec(String(t || '')); return m ? +m[1].replace(/,/g, '') : 0; };
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function parse(t) { const s = String(t || ''), m = /\$\s*(∞|\d(?:\.\d+)?e\+?\d+|[\d,]+)/i.exec(s); if (!m) return { v: 0 };
+    const x = m[1]; if (x === '∞') return { v: Infinity }; if (/e/i.test(x)) return { v: +x };
+    const gs = x.split(','), lastGroup = gs[gs.length - 1], cut = s.length >= CAP && m.index + m[0].length === s.length && gs.length > 1 && lastGroup.length < 3;
+    if (cut) gs[gs.length - 1] = (lastGroup + '000').slice(0, 3); return { v: +gs.join(''), cut }; }
   async function load() {
-    try { const c = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (c && Date.now() - c.at < TTL) return c.rows; } catch (e) {}
+    try { const c = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (c && Date.now() - c.at < TTL) return c.rows.map(r => Object.assign(r, { v: r.v === 'inf' ? Infinity : r.v })); } catch (e) {}
     const r = await fetch(server() + '/acct/top?g=' + G, { cache: 'no-store' });
     if (!r.ok) throw new Error('http ' + r.status);
-    const j = await r.json(), rows = (j.top || []).map(x => ({ n: String(x.n), v: num(x.s) })).filter(x => x.v > 0);
-    try { sessionStorage.setItem(KEY, JSON.stringify({ at: Date.now(), rows })); } catch (e) {}
+    const j = await r.json(), seen = new Set(), rows = [];
+    for (const x of j.top || []) { const n = String(x.n || ''), k = n.toLowerCase(), p = parse(x.s); if (!n || seen.has(k) || !(p.v > 0)) continue; seen.add(k); rows.push({ n, v: p.v, cut: !!p.cut }); }
+    try { sessionStorage.setItem(KEY, JSON.stringify({ at: Date.now(), rows: rows.map(r => Object.assign({}, r, { v: r.v === Infinity ? 'inf' : r.v })) })); } catch (e) {}
     return rows;
   }
+  let ask = 0;
   async function show() {
-    const L = $('lbList'), M = $('lbMe'), me = myName();
-    L.innerHTML = '<div class="lbNote">Loading the leaderboard…</div>'; M.textContent = '';
+    const L = $('lbList'), M = $('lbMe'), C = $('lbCount'), me = myName(), my = ++ask;
+    L.innerHTML = '<div class="lbNote">Loading the leaderboard…</div>'; M.textContent = ''; C.textContent = ''; L.scrollTop = 0;
     let rows;
-    try { rows = (await load()).slice(); } catch (e) { L.innerHTML = '<div class="lbNote">Couldn’t load the leaderboard. Check your connection and try again.</div>'; return; }
-    if (me && save.rounds) { const k = me.toLowerCase(), o = rows.find(x => x.n.toLowerCase() === k), p = Math.round(save.peak); if (o) o.v = Math.max(o.v, p); else rows.push({ n: me, v: p }); }
-    rows.sort((a, b) => b.v - a.v || a.n.localeCompare(b.n));
+    try { rows = (await load()).map(x => Object.assign({}, x)); } catch (e) { if (my === ask) L.innerHTML = '<div class="lbNote">Couldn’t load the leaderboard. Check your connection and try again.</div>'; return; }
+    if (my !== ask) return; // opened again while this one was loading: the newer one draws the board
+    if (me && save.rounds) { const k = me.toLowerCase(), o = rows.find(x => x.n.toLowerCase() === k), p = Math.round(save.peak) || 0;
+      if (o) { if (p >= o.v) { o.v = p; o.cut = false; } } else if (p > 0) rows.push({ n: me, v: p }); }
+    rows.sort((a, b) => (b.v > a.v) - (b.v < a.v) || a.n.localeCompare(b.n));
     let rank = 0, last = null; rows.forEach((x, i) => { if (x.v !== last) { rank = i + 1; last = x.v; } x.r = rank; }); // the same amount shares a place
+    const isMe = x => me && x.n.toLowerCase() === me.toLowerCase(), amt = x => fmt(x.v) + (x.cut ? '+' : '');
     if (!rows.length) { L.innerHTML = '<div class="lbNote">Nobody is on the board yet. Play a round while signed in to the Arcade to be first.</div>'; }
-    else L.innerHTML = rows.map(x => `<div class="lbRow${x.r <= 3 ? ' top' + x.r : ''}${me && x.n.toLowerCase() === me.toLowerCase() ? ' me' : ''}"><span class="rk">#${x.r}</span><span class="nm">${esc(x.n)}</span><span class="v">${fmt(x.v)}</span></div>`).join('');
-    const mine = me && rows.find(x => x.n.toLowerCase() === me.toLowerCase());
-    M.textContent = mine ? `You’re #${mine.r} of ${rows.length} with ${fmt(mine.v)}.` : me ? 'Play a round to get on the board.' : 'Sign in to an Arcade account on the site to get on the board.';
-    const el = L.querySelector('.me'); if (el) el.scrollIntoView({ block: 'center' });
+    else {
+      L.innerHTML = rows.map(x => `<div class="lbRow${x.r <= 3 ? ' top' + x.r : ''}${isMe(x) ? ' me' : ''}"><span class="rk">#${x.r}</span><span class="nm">${esc(x.n)}${isMe(x) ? ' <small>(you)</small>' : ''}</span><span class="v rbx"${x.cut ? ' title="At least this much. The exact amount shows once they play again."' : ''}><span class="mq">${amt(x)}</span></span></div>`).join('');
+      const bx = [...L.querySelectorAll('.rbx')]; bx.forEach(fitRoll);
+      const rl = bx.filter(b => b.classList.contains('roll')), t = Math.max(0, ...rl.map(b => parseFloat(b.style.getPropertyValue('--t')) || 0)); rl.forEach(b => b.style.setProperty('--t', t + 's')); // every row slides in step
+      C.textContent = rows.length === 1 ? '1 player on the board.' : rows.length.toLocaleString('en-US') + ' players on the board, from first to last.';
+    }
+    const mine = rows.find(isMe);
+    M.textContent = mine ? `You’re #${mine.r} of ${rows.length} with ${amt(mine)}.` : me ? 'Play a round to get on the board.' : 'Sign in to an Arcade account on the site to get on the board.';
+    const el = L.querySelector('.me'); if (el) L.scrollTop = Math.max(0, el.offsetTop - (L.clientHeight - el.offsetHeight) / 2);
   }
-  return { show };
+  return { show, parse };
 })();
 function fillSettings() { $('vol').value = Math.round(save.volume * 100); document.querySelectorAll('#musSeg button').forEach(b => b.classList.toggle('sel', (b.dataset.v === 'on') === !!save.music)); document.querySelectorAll('#qSeg button').forEach(b => b.classList.toggle('sel', b.dataset.v === save.quality)); }
 $('vol').oninput = e => { save.volume = e.target.value / 100; Sound.setVolume(save.volume); store(); };

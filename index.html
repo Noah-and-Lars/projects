@@ -45,11 +45,11 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preload" href="fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="arcade.css?v=22">
+<link rel="stylesheet" href="arcade.css?v=24">
 <style>
   #trailerOv { position: fixed; inset: 0; z-index: 9500; background: rgba(4, 4, 6, .94); display: grid; place-items: center; padding: 18px; animation: fadeIn .2s ease; }
   #trailerOv .tr-box { position: relative; width: min(1280px, 100%); aspect-ratio: 16 / 9; max-height: calc(100vh - 36px); background: #000; border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 1px var(--line), 0 40px 120px rgba(0, 0, 0, .8); }
-  #trailerOv iframe { width: 100%; height: 100%; border: 0; display: block; }
+  #trailerOv iframe, #trailerOv video { width: 100%; height: 100%; border: 0; display: block; background: #000; }
   #trailerOv .tr-x { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .2); background: rgba(0, 0, 0, .55); color: #fff; cursor: pointer; z-index: 2; display: grid; place-items: center; }
   #trailerOv .tr-x svg { width: 16px; height: 16px; }
   #trailerOv .tr-end { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 22px; background: rgba(6, 6, 8, .82); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
@@ -219,9 +219,10 @@
   </div>
 </div>
 
-<script src="games.js?v=249"></script>
+<script src="games.js?v=264"></script>
 <script src="account.js?v=40"></script>
-<script src="console.js?v=2"></script>
+<script src="assistant.js?v=4"></script>
+<script src="console.js?v=3"></script>
 <script src="call.js?v=8"></script>
 <script src="cursors.js?v=2"></script>
 <script src="trailer.js?v=1"></script>
@@ -271,7 +272,11 @@ const badgeHtml = b => b ? `<span class="pill${b === 'UPDATED' ? ' upd' : b === 
 const FIRST = ['chess', 'havoc-bay', 'turn-turn-turn', 'krill-dive', 'storm-drop', 'cube-assault', 'gamble-your-life-away', 'throttle-ridge', 'uno', 'russian-roulette', 'free-criminal', 'space-strike', 'sproutling', 'football', 'siege', 'poly-racer', 'rocket-rivals', 'bull-run', 'cube-tower-defense', 'block-drop', 'card-royale'];
 const rank = g => { const i = FIRST.indexOf(g.id); return i < 0 ? FIRST.length + GAMES.indexOf(g) : i; };
 // 2026-11-12: game trailers. These games' opening cinematics play here (the game opened with ?trailer), not in the game
-const TRAILERS = new Set(['gamble-your-life-away', 'russian-roulette']);
+const TRAILERS = new Set(['gamble-your-life-away', 'russian-roulette', 'turn-turn-turn']);
+// 2026-11-19: some trailers are a video file instead of the game's own cinematic
+// Cloudflare Pages answers Range requests with the whole file, and Safari (Mac, iPhone, iPad) won't play an MP4 without
+// byte ranges, so browsers that play HLS natively get the same video cut into segments (trailers/<id>/index.m3u8)
+const TRAILER_VIDEOS = { 'turn-turn-turn': { src: 'trailers/turn-turn-turn.mp4', hls: 'trailers/turn-turn-turn/index.m3u8', poster: 'trailers/turn-turn-turn.jpg' } };
 // a screenshot from the game's latest update makes a better backdrop than its cover (which has the logo on it)
 const SHOT = {};
 for (const n of NEWS) if (n.game && n.imgs && n.imgs.length && !SHOT[n.game]) SHOT[n.game] = n.imgs[0];
@@ -752,20 +757,24 @@ addEventListener('keydown', e => {
 function openTrailer(g) {
   closeTrailer(); stopAuto();
   const ov = document.createElement('div'); ov.id = 'trailerOv'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', g.title + ' trailer');
-  ov.innerHTML = `<div class="tr-box"><iframe allow="autoplay; fullscreen" title="Trailer"></iframe><div class="tr-end" hidden><h2></h2><div class="tr-acts"><a class="tr-play">${I.play} Play now</a><button type="button" class="tr-again">Watch again</button></div></div><button type="button" class="tr-x" aria-label="Close">${I.close}</button></div>`;
-  const fr = ov.querySelector('iframe'), end = ov.querySelector('.tr-end');
+  const vid = TRAILER_VIDEOS[g.id];
+  ov.innerHTML = `<div class="tr-box">${vid ? '<video playsinline controls preload="auto" title="Trailer"></video>' : '<iframe allow="autoplay; fullscreen" title="Trailer"></iframe>'}<div class="tr-end" hidden><h2></h2><div class="tr-acts"><a class="tr-play">${I.play} Play now</a><button type="button" class="tr-again">Watch again</button></div></div><button type="button" class="tr-x" aria-label="Close">${I.close}</button></div>`;
+  const fr = ov.querySelector('iframe'), v = ov.querySelector('video'), end = ov.querySelector('.tr-end');
   const src = g.path + (g.path.includes('?') ? '&' : '?') + 'trailer=1';
-  fr.src = src; ov.querySelector('h2').textContent = g.title;
+  ov.querySelector('h2').textContent = g.title;
   ov.querySelector('.tr-play').href = playUrl(g);
-  ov.querySelector('.tr-again').onclick = () => { end.hidden = true; fr.src = src + '&t=' + Date.now(); };
+  if (v) { v.poster = vid.poster; v.src = vid.hls && v.canPlayType('application/vnd.apple.mpegurl') ? vid.hls : vid.src; v.onended = () => { end.hidden = false; ov.querySelector('.tr-play').focus(); }; }
+  else fr.src = src;
+  ov.querySelector('.tr-again').onclick = () => { end.hidden = true; if (v) { v.currentTime = 0; v.play().catch(() => {}); } else fr.src = src + '&t=' + Date.now(); };
   ov.querySelector('.tr-x').onclick = closeTrailer;
   ov.addEventListener('click', e => { if (e.target === ov) closeTrailer(); });
-  ov._msg = e => { if (e.origin === location.origin && e.source === fr.contentWindow && e.data && e.data.arcadeTrailer === 'done') { end.hidden = false; ov.querySelector('.tr-play').focus(); } };
+  ov._msg = e => { if (fr && e.origin === location.origin && e.source === fr.contentWindow && e.data && e.data.arcadeTrailer === 'done') { end.hidden = false; ov.querySelector('.tr-play').focus(); } };
   addEventListener('message', ov._msg);
   document.body.appendChild(ov); document.body.style.overflow = 'hidden';
-  fr.addEventListener('load', () => { try { fr.contentWindow.focus(); } catch (e) {} });
+  if (v) { v.play().catch(() => {}); v.focus(); }   // started straight from the click, so it plays with sound
+  else fr.addEventListener('load', () => { try { fr.contentWindow.focus(); } catch (e) {} });
 }
-function closeTrailer() { const ov = $('trailerOv'); if (!ov) return; removeEventListener('message', ov._msg); ov.querySelector('iframe').src = 'about:blank'; ov.remove(); document.body.style.overflow = sheet ? 'hidden' : ''; }
+function closeTrailer() { const ov = $('trailerOv'); if (!ov) return; removeEventListener('message', ov._msg); const fr = ov.querySelector('iframe'), v = ov.querySelector('video'); if (fr) fr.src = 'about:blank'; if (v) { v.pause(); v.removeAttribute('src'); v.load(); } ov.remove(); document.body.style.overflow = sheet ? 'hidden' : ''; }
 
 /* ============================== Start ============================== */
 buildShelf(); select(AUTO.length ? AUTO[0] : 0); startAuto();
@@ -775,13 +784,16 @@ if (location.hash && byId[location.hash.slice(1)]) { const id = location.hash.sl
 if (window.ArcadeAccount && ArcadeAccount.ready) ArcadeAccount.ready().then(greet);
 // 2026-11-18: the online pill opens a list of every game with how many are on it right now
 const PAGE_NAMES = { home: 'Home page', chat: 'Global chat', social: 'Social', players: 'Players', tournaments: 'Tournaments', support: 'Support' };
+// 2026-11-19: Social, Global chat and Players always show their count at the top of the list (0 too)
+const SPOTS = [['social', 'Social', 'social.html'], ['chat', 'Global chat', 'chat.html'], ['players', 'Players', 'players.html']], SPOT_KEYS = new Set(SPOTS.map(x => x[0]));
 function paintOnlinePop() {
   const pop = $('onlinePop'); if (!pop || pop.hidden) return;
   const by = (live && live.byGame) || {}, esc2 = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const games = GAMES.map(g => ({ g, n: by[g.id] || 0 })).sort((a, b) => b.n - a.n || a.g.title.localeCompare(b.g.title));
   const playing = games.reduce((t, x) => t + x.n, 0);
-  const pages = Object.keys(by).filter(k => !byId[k] && by[k] > 0).map(k => ({ k, n: by[k] })).sort((a, b) => b.n - a.n);
+  const pages = Object.keys(by).filter(k => !byId[k] && !SPOT_KEYS.has(k) && by[k] > 0).map(k => ({ k, n: by[k] })).sort((a, b) => b.n - a.n);
   pop.innerHTML = `<div class="on-h"><b>${live ? liveLabel(live.total) : 0} online</b><span>${playing} in games right now</span></div>
+    <div class="on-spots">${SPOTS.map(([k, t, href]) => { const n = by[k] || 0; return `<a class="on-spot${n ? '' : ' zero'}" href="${href}" title="${n} ${n === 1 ? 'person' : 'people'} on ${t} right now"><b>${n ? '<i class="live-dot"></i>' : ''}${n}</b><span>${t}</span></a>`; }).join('')}</div>
     <div class="on-list">${games.map(({ g, n }) => `<a class="on-row${n ? '' : ' zero'}" href="${playUrl(g)}"><img alt="" src="${esc2(g.thumb || '')}" loading="lazy"><span class="on-t">${esc2(g.title)}</span><span class="on-n">${n ? '<i class="live-dot"></i>' + n : '0'}</span></a>`).join('')}</div>
     ${pages.length ? `<div class="on-sub">Around the site</div><div class="on-list">${pages.map(({ k, n }) => `<div class="on-row page"><span class="on-t">${esc2(PAGE_NAMES[k] || k.replace(/-/g, ' '))}</span><span class="on-n">${n}</span></div>`).join('')}</div>` : ''}`;
 }
@@ -848,7 +860,7 @@ if (window.ArcadeTourney) {
 addEventListener('pageshow', e => { if (e.persisted) { renderRecent(); const g = ORDER[sel]; if (g) renderStage(g); } });
 </script>
 <script src="tos.js?v=21"></script>
-<script src="appbanner.js?v=3"></script>
+<script src="appbanner.js?v=4"></script>
 <script src="moving.js?v=1"></script>
 <script src="outage.js?v=2"></script>
 </body>

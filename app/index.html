@@ -7,6 +7,7 @@
 <title>Get the app · The Arcade</title>
 <meta name="theme-color" content="#050506">
 <link rel="icon" href="../logo.svg" type="image/svg+xml">
+<link rel="manifest" href="../manifest.webmanifest">
 <script>
 // 2026-11-13: the download page for The Arcade app (Tauri, ~/Downloads/arcade-app). Only the "Download" button on the
 // app banner (appbanner.js) links here. Inside the app itself (window.ARCADE_APP, set by the app) it goes straight home.
@@ -39,6 +40,8 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
   .warn p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
   .warn ul { margin: 10px 0 0; padding-left: 18px; font-size: 14px; color: var(--muted); display: grid; gap: 5px; }
   .warn li b { color: var(--text); font-weight: 600; }
+  .sub { margin: -6px 0 14px; color: var(--muted); font-size: 14px; }
+  .card p a { color: var(--text); }
   h2 { font: 600 11.5px/1 var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--dim); margin: 0 0 14px; scroll-margin-top: 20px; }
   .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 34px; }
   .grid.one { grid-template-columns: minmax(0, 1fr); }
@@ -63,6 +66,9 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
   .grid.one .card { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "head dl" "p dl" "meta dl"; column-gap: 28px; row-gap: 8px; align-items: center; }
   .grid.one .head { grid-area: head; } .grid.one p { grid-area: p; } .grid.one .meta { grid-area: meta; } .grid.one .dl { grid-area: dl; min-width: 220px; }
   .dl svg { width: 18px; height: 18px; fill: currentColor; }
+  .dls { display: flex; flex-direction: column; gap: 8px; grid-area: dl; min-width: 220px; }
+  .card .dls .dl.alt { background: transparent; color: var(--text); border-color: var(--line2); }
+  .card .dls .dl.alt:hover { background: var(--panel3); }
   .help { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .help div { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; min-width: 0; }
   .help h4 { margin: 0 0 8px; font-size: 15px; font-weight: 700; }
@@ -73,7 +79,7 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
   @media (max-width: 760px) {
     .grid, .help { grid-template-columns: 1fr; }
     .grid.one .card { display: flex; }
-    .grid.one .dl { min-width: 0; }
+    .grid.one .dl, .dls { min-width: 0; }
     .hero { gap: 16px; } .hero img { width: 60px; height: 60px; border-radius: 14px; }
   }
 </style>
@@ -88,7 +94,7 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
     <img src="../icon-512.png" alt="">
     <div>
       <h1>The Arcade app</h1>
-      <p>Every game, your account and your progress in their own app on your Mac, PC, Android phone or Android TV. It updates by itself and only takes a few MB.</p>
+      <p>Every game, your account and your progress in their own app on your Mac, PC, Chromebook, Android phone or Android TV. It updates by itself and only takes a few MB.</p>
     </div>
   </section>
 
@@ -98,8 +104,9 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
       <b>Your device will show a warning the first time. That's normal.</b>
       <p>The app isn't from an app store or signed with a paid Apple or Microsoft certificate yet, so your device asks before opening it. It's safe: just allow it once.</p>
       <ul>
-        <li><b>Windows:</b> when SmartScreen says “Windows protected your PC”, click <b>More info</b>, then <b>Run anyway</b>.</li>
+        <li><b>Windows:</b> when SmartScreen says “Windows protected your PC”, click <b>More info</b>, then <b>Run anyway</b>. On Windows 7 it may say “unknown publisher”: click <b>Run</b>.</li>
         <li><b>Mac:</b> if it says Apple “could not verify” the app, click <b>Done</b>, then open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b> (on macOS 14 or older you can also right-click the app and choose <b>Open</b>). If you downloaded the app before 18 November and it said it was “damaged”, download it again: that copy was broken and this one is fixed.</li>
+        <li><b>Chromebook:</b> the .apk needs ADB debugging turned on (see “On a Chromebook” below). Installing from Chrome needs nothing.</li>
         <li><b>Android:</b> when it asks, allow your browser (or the Downloader app on a TV) to <b>install unknown apps</b>, then tap <b>Install</b>.</li>
       </ul>
     </div>
@@ -110,8 +117,8 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
     <div class="card rec" id="mac">
       <span class="tag">ONE DOWNLOAD FOR EVERY MAC</span>
       <div class="head"><span class="os"><svg viewBox="0 0 24 24"><path d="M16.4 12.6c0-2.5 2-3.7 2.1-3.8-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.8.9s-2-.9-3.3-.9c-1.7 0-3.3 1-4.1 2.5-1.8 3.1-.5 7.6 1.3 10.1.8 1.2 1.8 2.6 3.1 2.5 1.3-.1 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.4-.9-2.4-4.1zM14 5.2c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg></span><div><h3>Mac</h3><small>Apple chip (M1 to M4) and Intel</small></div></div>
-      <p>Works on every Mac, with an Apple chip (M1, M2, M3, M4…) or an Intel processor. The 3D games run best on macOS 12 Monterey or newer.</p>
-      <div class="meta">macOS 10.15 or later · .dmg · 4.8 MB · Apple chip + Intel</div>
+      <p>Works on every Mac, with an Apple chip (M1, M2, M3, M4…) or an Intel processor. The 3D games run best on macOS 12 Monterey or newer. On macOS 10.13 High Sierra and 10.14 Mojave the app opens too, but a few pages may look a bit off. Older Mac? See <a href="#legacy">Legacy</a> at the bottom.</p>
+      <div class="meta">macOS 10.13 or later · .dmg · 4.7 MB · Apple chip + Intel</div>
       <a class="dl" href="TheArcade-mac.dmg" download><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>Download for Mac</a>
     </div>
   </div>
@@ -120,7 +127,7 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
   <div class="grid">
     <div class="card" id="win-x64">
       <div class="head"><span class="os"><svg viewBox="0 0 24 24"><path d="M3 5.5l7.5-1v7H3zM11.5 4.3L21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zM11.5 12.5H21V21l-9.5-1.3z"/></svg></span><div><h3>Windows (64-bit)</h3><small>Most Windows PCs and laptops</small></div></div>
-      <p>For PCs with an Intel or AMD processor, which is almost every Windows computer. Pick this one if you're not sure.</p>
+      <p>For PCs with an Intel or AMD processor, which is almost every Windows computer. Pick this one if you're not sure. Windows 7 or 8? See <a href="#legacy">Legacy</a> at the bottom.</p>
       <div class="meta">Windows 10 or 11 · installer .exe · 1.4 MB</div>
       <a class="dl" href="TheArcade-windows-x64-setup.exe" download><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>Download for Windows</a>
     </div>
@@ -148,12 +155,47 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
     </div>
   </div>
 
+  <h2 id="chromebook">Chromebook</h2>
+  <div class="grid">
+    <div class="card" id="cb-app">
+      <div class="head"><span class="os"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 0 1 6.93 4H12a4 4 0 0 0-3.86 2.96L5.7 6.74A7.98 7.98 0 0 1 12 4zM4 12c0-1.3.31-2.53.86-3.62l3.46 6A4 4 0 0 0 12 16c.23 0 .45-.02.67-.06l-2.43 4.2A8 8 0 0 1 4 12zm8 2a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm1.03 5.93l3.46-5.99A3.98 3.98 0 0 0 16 10h4.6A8 8 0 0 1 13.03 19.93z"/></svg></span><div><h3>Chromebook app</h3><small>Chromebooks with Google Play</small></div></div>
+      <p>Made for Chromebooks: opens in its own window with the computer layout, keyboard and mouse controls, and mouse lock for the 3D games. F11 for full screen.</p>
+      <div class="meta">ChromeOS 53 or later (Android 6.0+) · .apk · 0.2 MB</div>
+      <a class="dl" href="TheArcade-chromebook.apk" download><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>Download for Chromebook</a>
+    </div>
+    <div class="card" id="cb-web">
+      <div class="head"><span class="os"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 0 1 6.93 4H12a4 4 0 0 0-3.86 2.96L5.7 6.74A7.98 7.98 0 0 1 12 4zM4 12c0-1.3.31-2.53.86-3.62l3.46 6A4 4 0 0 0 12 16c.23 0 .45-.02.67-.06l-2.43 4.2A8 8 0 0 1 4 12zm8 2a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm1.03 5.93l3.46-5.99A3.98 3.98 0 0 0 16 10h4.6A8 8 0 0 1 13.03 19.93z"/></svg></span><div><h3>Install from Chrome</h3><small>Any Chromebook, school ones too</small></div></div>
+      <p>No Play Store or developer mode needed: Chrome adds The Arcade to your shelf and launcher as its own app window. Works on every Chromebook that can open the site.</p>
+      <div class="meta">Any ChromeOS · no download · installs in a second</div>
+      <a class="dl" id="cb-install" href="#cb-how"><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>Install The Arcade</a>
+    </div>
+  </div>
+
+  <!-- 2026-11-18: Legacy (the owner's request): the apps for older computers, at the bottom so the current apps come first -->
+  <h2 id="legacy">Legacy</h2>
+  <p class="sub">For older computers that can’t run the apps above. They bring their own browser engine, so they’re bigger downloads. Same games, same account.</p>
+  <div class="grid one">
+    <div class="card" id="win-old">
+      <div class="head"><span class="os"><svg viewBox="0 0 24 24"><path d="M3 5.5l7.5-1v7H3zM11.5 4.3L21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zM11.5 12.5H21V21l-9.5-1.3z"/></svg></span><div><h3>Windows 7, 8 and 8.1</h3><small>Older PCs that can’t run the app above</small></div></div>
+      <p>A separate version for Windows 7, 8 and 8.1, which the main Windows app doesn’t support. It’s bigger because it brings its own browser engine. Not sure which one? Start → right-click Computer → Properties says “64-bit” or “32-bit”.</p>
+      <div class="meta">Windows 7, 8 or 8.1 · installer .exe · 64-bit 61 MB · 32-bit 57 MB</div>
+      <div class="dls"><a class="dl" id="win-old-64" href="https://github.com/Noah-and-Lars/projects/releases/download/legacy-win7-1.0.0/TheArcade-windows7-x64-setup.exe"><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>Download 64-bit</a><a class="dl alt" id="win-old-32" href="https://github.com/Noah-and-Lars/projects/releases/download/legacy-win7-1.0.0/TheArcade-windows7-ia32-setup.exe"><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>Download 32-bit</a></div>
+    </div>
+    <div class="card" id="mac-old">
+      <div class="head"><span class="os"><svg viewBox="0 0 24 24"><path d="M16.4 12.6c0-2.5 2-3.7 2.1-3.8-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.8.9s-2-.9-3.3-.9c-1.7 0-3.3 1-4.1 2.5-1.8 3.1-.5 7.6 1.3 10.1.8 1.2 1.8 2.6 3.1 2.5 1.3-.1 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.4-.9-2.4-4.1zM14 5.2c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg></span><div><h3>macOS 10.9 to 10.12</h3><small>Mavericks, Yosemite, El Capitan and Sierra</small></div></div>
+      <p>A separate version for older Macs that can’t run the Mac app above (it needs macOS 10.13 or newer). Pick the button for your macOS: Apple menu → About This Mac shows the version. On 10.9 and 10.10 the first visit to each game takes a few extra seconds while the app gets it ready for the older Mac, then it’s quick.</p>
+      <div class="meta">macOS 10.9 to 10.12 · Intel Macs · .dmg · 10.11–10.12 79 MB · 10.10 76 MB · 10.9 50 MB</div>
+      <div class="dls"><a class="dl" id="mac-old-1011" href="https://github.com/Noah-and-Lars/projects/releases/download/legacy-mac-1.0.0/TheArcade-mac-10.11-10.12.dmg"><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>macOS 10.11 or 10.12</a><a class="dl alt" id="mac-old-1010" href="https://github.com/Noah-and-Lars/projects/releases/download/legacy-mac-1.0.0/TheArcade-mac-10.10.dmg"><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>macOS 10.10 Yosemite</a><a class="dl alt" id="mac-old-109" href="https://github.com/Noah-and-Lars/projects/releases/download/legacy-mac-1.0.0/TheArcade-mac-10.9.dmg"><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>macOS 10.9 Mavericks</a></div>
+    </div>
+  </div>
+
   <h2>After downloading</h2>
   <div class="help">
-    <div><h4>On a Mac</h4><ol><li>Open the <b>.dmg</b> file.</li><li>Drag <b>The Arcade</b> into <b>Applications</b>.</li><li>Open it from Applications or Launchpad. If macOS warns you, use <b>Open Anyway</b> (see above).</li><li>Log in with your Arcade account and all your progress is there.</li></ol></div>
+    <div><h4>On a Mac</h4><ol><li>Open the <b>.dmg</b> file.</li><li>Drag <b>The Arcade</b> into <b>Applications</b>.</li><li>Open it from Applications or Launchpad. If macOS warns you, use <b>Open Anyway</b> (see above). On macOS 10.9 to 10.12: right-click the app, choose <b>Open</b>, then <b>Open</b> again.</li><li>Log in with your Arcade account and all your progress is there.</li></ol></div>
     <div><h4>On Windows</h4><ol><li>Run the <b>setup .exe</b>.</li><li>If SmartScreen appears, click <b>More info → Run anyway</b>.</li><li>Follow the installer. The Arcade goes in your Start menu.</li><li>Log in with your Arcade account and all your progress is there.</li></ol></div>
     <div><h4>On an Android phone</h4><ol><li>Tap the downloaded <b>.apk</b> (or open it from Downloads).</li><li>Allow your browser to <b>install unknown apps</b> when asked.</li><li>Tap <b>Install</b>, then open The Arcade.</li><li>Log in with your Arcade account and all your progress is there.</li></ol></div>
     <div><h4>On Android TV</h4><ol><li>Install the free <b>Downloader</b> app from the TV's Play Store.</li><li>In Settings, allow Downloader to <b>install unknown apps</b>.</li><li>Open Downloader and type <b>thearcade.pages.dev/app/TheArcade-android.apk</b>.</li><li>Install it: The Arcade appears on your TV's home screen.</li></ol></div>
+    <div id="cb-how"><h4>On a Chromebook</h4><ol><li><b>Install from Chrome:</b> click <b>Install The Arcade</b> above, or the install icon at the right of the address bar, or <b>⋮ → Cast, save and share → Install page as app</b>.</li><li><b>Chromebook app (.apk):</b> Chromebooks only install .apk files with <b>ADB debugging</b> on: Settings → Advanced → Developers → <b>Linux development environment</b> → <b>Develop Android apps</b> → <b>Enable ADB debugging</b>. Then open the downloaded file from the Files app (or run <b>adb install TheArcade-chromebook.apk</b> in Linux).</li><li>On a school or work Chromebook use <b>Install from Chrome</b>: they don't allow .apk files.</li><li>Log in with your Arcade account and all your progress is there.</li></ol></div>
   </div>
 </main>
 <div class="foot">The app opens thearcade.pages.dev in its own window, so new games and updates arrive there straight away.</div>
@@ -161,17 +203,43 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
 // mark the download that fits this computer ("Your computer") or Android device ("Your device")
 (function () {
   var ua = navigator.userAgent || '', id = '';
-  if (/Android/i.test(ua)) id = /Android TV|GoogleTV|BRAVIA|AFT[A-Z]|SHIELD|\bTV\b|Large Screen/i.test(ua) ? 'and-tv' : 'and-phone';
+  if (/\bCrOS\b/.test(ua)) id = 'cb-app'; // 2026-11-18: Chromebooks (their Chrome says CrOS)
+  else if (/Android/i.test(ua)) id = /Android TV|GoogleTV|BRAVIA|AFT[A-Z]|SHIELD|\bTV\b|Large Screen/i.test(ua) ? 'and-tv' : 'and-phone';
+  else if (/Windows NT 6\.[123]\b/.test(ua)) { // 2026-11-18: Windows 7 (6.1), 8 (6.2) and 8.1 (6.3) get the legacy app
+    id = 'win-old';
+    if (!/Win64|WOW64|x64/i.test(ua)) { var a64 = document.getElementById('win-old-64'), a32 = document.getElementById('win-old-32'); if (a64 && a32) { a64.classList.add('alt'); a32.classList.remove('alt'); a32.parentNode.insertBefore(a32, a64); } }
+  }
   else if (/Windows/.test(ua)) id = /ARM64|aarch64/i.test(ua) ? 'win-arm' : 'win-x64';
   else if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) id = ''; // no app for iPhone and iPad (an iPad says Macintosh)
   else if (/Macintosh|Mac OS X/.test(ua)) {
     id = 'mac'; // 2026-11-18: one universal app for Apple chip and Intel Macs
+    var mv = /Mac OS X 10[._](\d+)/.exec(ua); // 2026-11-18: macOS 10.9 to 10.12 get the legacy app (browsers report the real version there)
+    if (mv && +mv[1] >= 9 && +mv[1] <= 12) {
+      id = 'mac-old';
+      var pick = +mv[1] >= 11 ? 'mac-old-1011' : 'mac-old-' + (+mv[1] === 10 ? '1010' : '109');
+      ['mac-old-1011', 'mac-old-1010', 'mac-old-109'].forEach(function (k) { var a = document.getElementById(k); if (a) a.classList.toggle('alt', k !== pick); });
+      var first = document.getElementById(pick); if (first && first.parentNode) first.parentNode.insertBefore(first, first.parentNode.firstChild);
+    }
   }
   var el = id && document.getElementById(id);
   if (!el) return;
   el.classList.add('you');
-  var t = document.createElement('span'); t.className = 'tag you-tag'; t.textContent = /^and-/.test(id) ? 'YOUR DEVICE' : 'YOUR COMPUTER';
-  if (/^and-/.test(id) && !location.hash) el.scrollIntoView({ block: 'center' }); el.appendChild(t);
+  var t = document.createElement('span'); t.className = 'tag you-tag'; t.textContent = /^(and|cb)-/.test(id) ? (id === 'cb-app' ? 'YOUR CHROMEBOOK' : 'YOUR DEVICE') : 'YOUR COMPUTER';
+  if ((/^(and|cb)-/.test(id) || /-old$/.test(id)) && !location.hash) el.scrollIntoView({ block: 'center' }); el.appendChild(t);
+})();
+</script>
+<script>
+// 2026-11-18: "Install The Arcade" on the Chromebook card installs the site as an app (works on any Chromebook, school ones
+// too). Chrome only offers it through beforeinstallprompt; without it the button shows the manual steps (#cb-how).
+(function () {
+  var ev = null, b = document.getElementById('cb-install');
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); ev = e; });
+  window.addEventListener('appinstalled', function () { if (b) b.lastChild.textContent = 'Installed: open it from your launcher'; });
+  if (b) b.addEventListener('click', function (e) {
+    if (!ev) return; // follows the link to the steps
+    e.preventDefault(); ev.prompt(); ev = null;
+  });
+  if ('serviceWorker' in navigator && /thearcade\.pages\.dev$/.test(location.hostname)) { try { navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {}); } catch (e) {} }
 })();
 </script>
 <script src="../cursors.js?v=2"></script>

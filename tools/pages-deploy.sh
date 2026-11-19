@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT="$(mktemp -d)"
-tar --exclude=.git --exclude=.github --exclude=realtime-worker --exclude=tools --exclude=test --exclude=node_modules \
+tar --exclude=.git --exclude=.github --exclude=.wrangler --exclude=.DS_Store --exclude=realtime-worker --exclude=tools --exclude=test --exclude=node_modules \
   --exclude=CLAUDE.md -cf - . | tar -xf - -C "$OUT"
 # GitHub serves the site under /projects/; Cloudflare serves it at the root
 perl -pi -e 's#"/projects/#"/#g' "$OUT/404.html"
