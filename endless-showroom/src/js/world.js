@@ -462,7 +462,7 @@ export class World {
     for (const ch of this.chunks.values()) this._dropVisual(ch);
     for (const im of this.inst.values()) { this.group.remove(im); im.dispose(); }
     if (this.shadowInst) { this.group.remove(this.shadowInst); this.shadowInst.dispose(); this.shadowInst = null; }
-    this.inst.clear(); this.itemsDirty = true;
+    this.inst.clear(); this.itemsDirty = true; this._lastFocus = null;
     this.chunks.clear(); this.items.clear(); this.mods.clear(); this.grid.clear();
     this.seed = seed >>> 0;
     this.day = 1; this.epoch = 1;
@@ -490,7 +490,12 @@ export class World {
       if (!render && ch.mesh) this._dropVisual(ch);
     }
     for (const [k, ch] of this.chunks) if (!want.has(k)) this._unload(ch);
-    this.itemsDirty = true;
+    // Loading and changes mark the items dirty themselves; walking only
+    // matters once we've moved far enough to change which ones are drawn.
+    if (!this._lastFocus || Math.hypot(this.focusX - this._lastFocus[0], this.focusZ - this._lastFocus[1]) > 6) {
+      this._lastFocus = [this.focusX, this.focusZ];
+      this.itemsDirty = true;
+    }
   }
 
   _load(cx, cz) {

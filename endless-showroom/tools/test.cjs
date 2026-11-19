@@ -159,7 +159,8 @@ fs.mkdirSync(out, { recursive: true });
   const back = await g((id) => { const it = __game.world.items.get(id); return it ? { active: __game.world.active(it), d: +Math.hypot(it.x - __game.P.x, it.z - __game.P.z).toFixed(2), slot: __game.P.inv[0] } : null; }, dropped);
   console.log((back && back.active && back.d < 1.5 && !back.slot ? 'ok   ' : 'FAIL ') + 'dropped food lands at your feet (' + JSON.stringify(back) + ')');
 
-  // Crouching makes you short enough for low gaps.
+  // Crouching makes you short enough for low gaps (on open floor, so there's room to stand again).
+  await g(() => { const P = __game.P; __game.spawnAt(P.x, P.z, 8); });
   await page.keyboard.down('KeyC'); await page.waitForTimeout(600);
   const crouchH = await g(() => __game.P.height);
   await page.keyboard.up('KeyC'); await page.waitForTimeout(600);
@@ -217,6 +218,15 @@ fs.mkdirSync(out, { recursive: true });
     let best = null, bd = 1e9;
     for (const it of w.items.values()) { if (it.t !== 'wardrobe' || !w.active(it) || it.y > 0.01) continue; const d = Math.hypot(it.x - P.x, it.z - P.z); if (d < bd) { bd = d; best = it; } }
     if (!best) return null;
+    // move it to open floor, so nothing next to it can act as a step
+    __game.spawnAt(P.x, P.z, 10);
+    let spot = null;
+    for (let k = 0; k < 60 && !spot; k++) {
+      const x = P.x + (Math.random() - 0.5) * 30, z = P.z + (Math.random() - 0.5) * 30;
+      if (w.fits({ x0: x - 2.5, x1: x + 2.5, z0: z - 2.5, z1: z + 2.5, y0: 0.05, y1: 3 })) spot = [x, z];
+    }
+    if (!spot) return null;
+    const st = w.stateOf(best); st.x = spot[0]; st.z = spot[1]; st.y = 0; st.tl = 0; w.applyState(best.id, st);
     P.x = best.x; P.z = best.z; P.y = 2.1; P.vy = 0;
     const s = [...__game.staff.staff.values()][0];
     if (s) { s.x = best.x + 1.0; s.z = best.z; s.y = 0; }

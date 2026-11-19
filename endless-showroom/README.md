@@ -74,8 +74,10 @@ They're decided by the room's seed and the day, so every screen agrees.
   beds and pallets. Their paths go over and around anything you build, so a
   staircase of furniture leads them right up to you. Build high, then take
   your last step away.
-- **They punch** when they're within 1.2 m and roughly level with you: 7 to
-  13 damage a punch, about once a second, at night.
+- **They punch** when they're within 1.2 m of you and your feet are less
+  than 1.6 m above theirs: 7 to 13 damage a punch, about once a second, at
+  night. So a wardrobe on open floor is safe, but not one with a dresser
+  next to it that they can stand on.
 - **Shove** one (click when it's in front of you) to knock it down for about
   2.5 seconds. That's your chance to run.
 - **They come in four heights and four builds.** Smaller ones are faster and
@@ -342,3 +344,5 @@ place of the realtime server). It checks:
 - Staff don't pile on top of each other, and there are no special staff.
 - Furniture snaps to quarter turns (no diagonal ramps).
 - Touch controls have only been checked in an emulated iPhone.
+- If frames run slow for a few seconds, the game draws at a lower resolution
+  until they're quick again.
