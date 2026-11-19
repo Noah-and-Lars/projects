@@ -23,7 +23,9 @@ other games it needs an online Arcade account.
   8 players each).
 - **Create Private Room**: makes a 4-letter code to give to friends.
 - **Join**: type a friend's code.
-- **Play Solo**: your own store, no connection needed.
+- **New Solo Store**: your own store, no connection needed. It's saved
+  every 20 seconds and when you leave, and **Continue Solo** picks it up again
+  (the day, every piece you moved, your stats, inventory and waypoints).
 
 Everyone starts somewhere random in the store. Whistle (H) to find each
 other, and read the aisle signs (`AISLE E3 · S2`) to say where you are. Pick a
@@ -59,6 +61,7 @@ They're decided by the room's seed and the day, so every screen agrees.
 ## The staff
 
 - **By day** they wander slowly and ignore you.
+- **At closing time** they give you about 5 seconds after the lights go out.
 - **At night** they wander until they **see you** (line of sight, up to
   32 m) or **hear you** (sprinting within 14 m, or a whistle within 45 m).
   Then they chase at just under sprinting speed, saying things like
@@ -123,7 +126,8 @@ They're decided by the room's seed and the day, so every screen agrees.
   green or red ghost where it would go.
 - **Furniture stays exactly where you put it**, even in mid-air. Nothing
   falls. That's how you build floating floors and stairs you can take away.
-- **R** turns it, **T** tilts it upright (a pallet becomes a wall), the
+- **R** turns it, **T** tilts it: upright, on its back (a pallet becomes a
+  wall) or on its side, the
   **mouse wheel** moves it nearer or further, **Q** puts it down at your feet,
   and **F** throws it.
 - **Walk-in wardrobes** are hollow. Step in and block the front for a
@@ -151,6 +155,13 @@ They're decided by the room's seed and the day, so every screen agrees.
 | Chat (online) / players | Enter / hold Tab | |
 | Controls / pause | F1 / Esc | II |
 
+A game controller works too: the sticks move and look, A jumps, B crouches,
+X grabs and places, Y whistles, RT uses or shoves, LT turns, RB tilts, LB
+throws, the d-pad picks hotbar slots (up drops, down sets a waypoint), Back
+opens the inventory, Start pauses, and clicking the left stick sprints.
+
+In online rooms, chat appears over the speaker's head as well as in the log.
+
 ## The store
 
 The floor is split into 24 m chunks, each generated from the room's seed.
@@ -159,13 +170,13 @@ four 12 m plots:
 
 | Section | What's there |
 | --- | --- |
-| Showroom | Room displays with three walls and a coloured back wall: living rooms, bedrooms (walk-in wardrobes, table lamps), kitchens (a little food), workspaces, kids' rooms (apples), bathrooms (bathtubs) |
+| Showroom | Room displays with three walls and a coloured back wall: living rooms (TVs), bedrooms (walk-in wardrobes, table lamps), kitchens (a little food), workspaces, kids' rooms (apples, beanbags), bathrooms (bathtubs). Some plots are kids' play areas with climbable slides. |
 | Warehouse | 4.4 m climbable pallet racks, and lots of loose pallets, crates and boxes |
 | Furniture | Rows of one kind of furniture (lamps and bunk beds included) |
 | Market Hall | Low tables of lamps, plants and boxes, the odd snack, and sometimes a snack bar (ice cream, fizzy drinks, crisps) |
 | Cafeteria | Rare (4%) and worth finding: long counters piled with food, seating, sometimes a first aid kit |
 | Garden Centre | Grass, planters, a tree, patio sets, all under open skylights |
-| Stock Room | Crates, boxes and lockers |
+| Stock Room | Crates, boxes and lockers, and sometimes an office floor of desks and filing cabinets |
 
 Any plot can instead be a **first aid station** (a kiosk with four kits, 2.5%)
 or an **abandoned fort** (a ring of upturned pallets round a lamp, a platform,

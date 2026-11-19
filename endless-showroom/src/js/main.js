@@ -24,7 +24,7 @@ const darkEl = $('dark');
 const IS_TOUCH = matchMedia('(pointer: coarse)').matches && 'ontouchstart' in window;
 
 // ---------------------------------------------------------------- settings
-const settings = { sens: 1, vol: 0.7, music: 0.5, fov: 75, low: IS_TOUCH, voice: true };
+const settings = { sens: 1, vol: 0.7, music: 0.5, fov: 75, low: IS_TOUCH, voice: true, invert: false };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('es-settings') || '{}')); } catch (_) {}
 const saveSettings = () => { try { localStorage.setItem('es-settings', JSON.stringify(settings)); } catch (_) {} };
 const stats = { best: 0, days: 0 };
@@ -247,7 +247,7 @@ $('p-settings').onclick = () => { returnTo = 'pause'; openSettings(); };
 $('p-leave').onclick = leaveGame;
 
 function openSettings() {
-  $('s-sens').value = settings.sens; $('s-vol').value = settings.vol; $('s-music').value = settings.music; $('s-fov').value = settings.fov; $('s-low').checked = settings.low; $('s-voice').checked = settings.voice;
+  $('s-sens').value = settings.sens; $('s-vol').value = settings.vol; $('s-music').value = settings.music; $('s-fov').value = settings.fov; $('s-low').checked = settings.low; $('s-voice').checked = settings.voice; $('s-invert').checked = settings.invert;
   show('settings');
 }
 $('s-sens').oninput = (e) => { settings.sens = +e.target.value; saveSettings(); };
@@ -257,6 +257,7 @@ $('s-low').onchange = (e) => { settings.low = e.target.checked; setLowQuality(se
 setVolume(settings.vol);
 setMusicVolume(settings.music);
 $('s-voice').onchange = (e) => { settings.voice = e.target.checked; saveSettings(); };
+$('s-invert').onchange = (e) => { settings.invert = e.target.checked; saveSettings(); };
 $('s-music').oninput = (e) => { settings.music = +e.target.value; setMusicVolume(settings.music); saveSettings(); };
 
 initInput(canvas, {
@@ -464,7 +465,8 @@ function request(q) {
   if (net.isHost()) hostRequest(net.id, q);
   else net.send('q', q);
 }
-const staffEnv = () => ({ hostile: isHostile(clock.t, clock.ev), event: clock.ev });
+// The staff give you a few seconds after the lights go out before they start.
+const staffEnv = () => ({ hostile: isHostile(clock.t, clock.ev) && !(isNight(clock.t) && clock.t < DAY_LEN + 5), event: clock.ev });
 // A shove, on the host: knock the member of staff down (or, in fog, it hurts you).
 function onPushRequest(from, p) {
   if (!staffSim) return;
@@ -522,7 +524,7 @@ function updatePlayer(dt) {
   const busy = paused || chatOpen || invOpen;
   if (!paused && !chatOpen && !invOpen) {
     P.yaw -= input.lookDX * 0.0022 * settings.sens;
-    P.pitch = clamp(P.pitch - input.lookDY * 0.0022 * settings.sens, -1.5, 1.5);
+    P.pitch = clamp(P.pitch - input.lookDY * 0.0022 * settings.sens * (settings.invert ? -1 : 1), -1.5, 1.5);
   }
   let fx = 0, fz = 0;
   if (!busy && P.alive) {
