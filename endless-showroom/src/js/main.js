@@ -10,7 +10,7 @@ import { TYPES, ITEMS, itemDims, itemMatrix, furnitureGeometry, itemGeometry } f
 import { moveBody, bodyFits } from './physics.js';
 import { StaffSim } from './staff.js';
 import { createNet, myName, cleanName, myShirt } from './net.js';
-import { input, initInput, initTouch, lockPointer, endFrame } from './input.js';
+import { input, initInput, initTouch, lockPointer, endFrame, pollGamepad } from './input.js';
 import { makeShopper, makeStaff, animate, setHeld, nameTag, nameHash, SHIRT_COLORS } from './models.js';
 import { initAudio, sfx, setAmbience, setVolume, setMusic, setMusicVolume } from './audio.js';
 import { DAY_LEN, CYCLE, EVENTS, POWERCUT, HAIL, hailing, dayEvent, cascade, eventAt, nightEvent, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
@@ -1095,12 +1095,15 @@ function drawRemotes(dt, now) {
 }
 
 // ---------------------------------------------------------------- frame
+let frameDt = 1 / 60;
 let last = performance.now(), sendT = 0, staffSendT = 0, clockSendT = 0, chunkT = 0;
 function frame() {
   requestAnimationFrame(frame);
   const now = performance.now();
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; frameDt = dt;
   if (mode !== 'play') { renderMenuBackdrop(dt); endFrame(); return; }
+  pollGamepad(dt);
+  if (input.pressed.has('Escape') && input.pad && !IS_TOUCH) { if (invOpen) toggleInventory(false); else if (paused) resume(); else pause(); }
   handleKeys();
   updateClock(dt);
   updatePlayer(dt);
@@ -1310,10 +1313,10 @@ function updateMarks() {
   const host = $('marks');
   const list = [];
   for (const w of waypoints) list.push({ x: w.x, y: w.y, z: w.z, cls: w.death ? 'wp death' : 'wp', label: w.name });
-  revealT = Math.max(0, revealT - 1 / 60);
+  revealT = Math.max(0, revealT - frameDt);
   if (revealT > 0) for (const v of staffViews.values()) { const p = v.model.root.position; if (Math.hypot(p.x - P.x, p.z - P.z) < 45) list.push({ x: p.x, y: p.y + 2.3, z: p.z, cls: 'staff', label: '' }); }
   for (const r of remotes.values()) {
-    r.revealT = Math.max(0, (r.revealT || 0) - 1 / 60);
+    r.revealT = Math.max(0, (r.revealT || 0) - frameDt);
     if (r.st && r.st.a && (revealT > 0 || r.revealT > 0)) { const p = r.model.root.position; list.push({ x: p.x, y: p.y + 2.5, z: p.z, cls: 'mate', label: r.name }); }
   }
   while (markPool.length < list.length) { const d = document.createElement('div'); host.append(d); markPool.push(d); }

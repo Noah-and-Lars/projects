@@ -83,6 +83,30 @@ export function initTouch(root) {
   root.addEventListener('touchend', onEnd); root.addEventListener('touchcancel', onEnd);
 }
 
+// Game controllers (standard mapping). Sticks move and look; buttons press
+// the same keys the keyboard does.
+const PAD_KEYS = { 0: 'Space', 1: 'KeyC', 2: 'KeyE', 3: 'KeyH', 4: 'KeyF', 5: 'KeyT', 6: 'KeyR', 7: 'Mouse0', 8: 'KeyG', 9: 'Escape', 10: 'ShiftLeft', 11: 'KeyV', 12: 'KeyQ', 13: 'KeyZ' };
+const padHeld = new Set();
+export function pollGamepad(dt) {
+  let pads = [];
+  try { pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : []; } catch (_) { return; }
+  const g = pads[0];
+  if (!g) { if (input.pad) { input.pad = false; input.move.x = input.move.y = 0; for (const k of padHeld) input.keys.delete(k); padHeld.clear(); } return; }
+  input.pad = true;
+  const dz = (v) => (Math.abs(v) < 0.15 ? 0 : v);
+  input.move.x = dz(g.axes[0] || 0); input.move.y = dz(g.axes[1] || 0);
+  input.lookDX += dz(g.axes[2] || 0) * 900 * dt; input.lookDY += dz(g.axes[3] || 0) * 700 * dt;
+  g.buttons.forEach((b, i) => {
+    const k = PAD_KEYS[i]; if (!k) return;
+    const down = b.pressed || b.value > 0.5;
+    if (down && !padHeld.has(k)) { padHeld.add(k); input.keys.add(k); input.pressed.add(k); if (k === 'Mouse0') input.clicked = true; }
+    else if (!down && padHeld.has(k)) { padHeld.delete(k); input.keys.delete(k); }
+  });
+  // d-pad left / right: hotbar
+  if (g.buttons[14] && g.buttons[14].pressed && !padHeld.has('pl')) { padHeld.add('pl'); input.wheel -= 1; } else if (g.buttons[14] && !g.buttons[14].pressed) padHeld.delete('pl');
+  if (g.buttons[15] && g.buttons[15].pressed && !padHeld.has('pr')) { padHeld.add('pr'); input.wheel += 1; } else if (g.buttons[15] && !g.buttons[15].pressed) padHeld.delete('pr');
+}
+
 export function endFrame() {
   input.pressed.clear(); input.lookDX = 0; input.lookDY = 0; input.wheel = 0; input.clicked = false; input.rclicked = false;
 }
