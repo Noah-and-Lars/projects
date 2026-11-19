@@ -4890,6 +4890,7 @@ function showBoardResult(j) {
 const PATCH_NOTES = [
   { v: '1.6.1', date: '19 November 2026', items: [
     'Menu music! A song now plays in the menus and on the results screen, and fades out when a stage starts.',
+    'There are two songs. The menus pick one at random, then switch to the other when it ends.',
     'A new Menu music slider in Settings turns it up, down or off.',
   ] },
   { v: '1.6', date: '19 November 2026', items: [
@@ -5716,8 +5717,17 @@ function openTrailer() {
 }
 
 /* ---------- 1.6.1: menu music (plays in the menus and on the results, fades out for a stage) ---------- */
+/* two songs, a random one first, then a different one each time a song ends */
 const MUSIC = (() => {
-  const a = new Audio('menu.mp3'); a.loop = true; a.preload = 'auto'; a.volume = 0;
+  const SONGS = ['menu.mp3', 'menu2.mp3'];
+  let song = Math.floor(Math.random() * SONGS.length);
+  const a = new Audio(SONGS[song]); a.preload = 'auto'; a.volume = 0;
+  const next = () => {
+    let n = song; if (SONGS.length > 1) while (n === song) n = Math.floor(Math.random() * SONGS.length);
+    song = n; a.src = SONGS[song];
+    if (started && want() > 0) { const p = a.play(); if (p && p.catch) p.catch(() => {}); }
+  };
+  a.addEventListener('ended', next);
   let cur = 0, timer = 0, started = false;
   const want = () => {
     if (document.hidden || !(S.music > 0) || SCREEN === 'trailerScr') return 0;
@@ -5729,10 +5739,11 @@ const MUSIC = (() => {
     cur += Math.sign(w - cur) * Math.min(Math.abs(w - cur), 0.04);
     try { a.volume = clamp(cur, 0, 1); } catch (e) {}
     if (cur <= 0.001 && w === 0) { if (!a.paused) a.pause(); clearInterval(timer); timer = 0; return; }
-    if (a.paused && started) { const p = a.play(); if (p && p.catch) p.catch(() => {}); }
+    if (a.ended) next();
+    else if (a.paused && started) { const p = a.play(); if (p && p.catch) p.catch(() => {}); }
   };
   const M = {
-    el: a,
+    el: a, get song() { return SONGS[song]; },
     sync() { if (!timer) timer = setInterval(tick, 50); },
   };
   // browsers only let sound start after a click or key press
