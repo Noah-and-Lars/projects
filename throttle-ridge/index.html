@@ -477,6 +477,20 @@ body.touch #stunts .st i { font-size: 18px; }
   .trx-brow .trx-input { min-height: 38px; } .trx-garage { max-height: 58vh; }
 }
 @media (max-width: 600px) { .trx-champ { grid-template-columns: 1fr; } .trx-chal { grid-template-columns: 1fr; } .trx-gear { grid-template-columns: 1fr; } }
+#trx-replay { position: fixed; left: calc(10px + var(--sal)); right: calc(10px + var(--sar)); bottom: calc(10px + var(--sab)); z-index: 15; background: rgba(20, 14, 40, 0.86); border-radius: 16px; padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+.trx-rp-top { display: flex; align-items: center; gap: 12px; font-weight: 800; }
+.trx-rp-top b { font-family: var(--display); font-style: italic; color: var(--hot); letter-spacing: 0.06em; }
+#trx-rp-time { font-variant-numeric: tabular-nums; color: var(--sun); }
+.trx-rp-clip { font-size: 12px; color: var(--muted); flex: 1; }
+.trx-recdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #ff4d5a; margin-right: 6px; animation: trxblink 1s steps(2) infinite; }
+@keyframes trxblink { 50% { opacity: 0.25; } }
+.trx-rp-top .btn.small { min-height: 36px; padding: 4px 14px; font-size: 14px; }
+#trx-rp-seek { width: 100%; accent-color: var(--hot); height: 26px; touch-action: none; }
+.trx-rp-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.trx-rp-row .btn.small { min-height: 40px; padding: 4px 12px; font-size: 13px; }
+.trx-rp-row .seg button { min-height: 36px; padding: 4px 9px; font-size: 11px; }
+@media (max-height: 460px) { #trx-replay { padding: 6px 8px; gap: 4px; } .trx-rp-row .btn.small { min-height: 36px; padding: 3px 9px; font-size: 12px; } .trx-rp-row .seg button { min-height: 32px; padding: 3px 7px; font-size: 10px; } #trx-rp-seek { height: 20px; } }
+@media (max-height: 460px) { #scr-menu .logo { font-size: clamp(34px, 12vmin, 70px); } #scr-menu .col { gap: 6px; } #scr-menu .btn { min-height: 40px; } #scr-menu .trx-row2 .btn.small { min-height: 36px; } }
 </style><!-- /tr-extras-css -->
 </head>
 <body>
@@ -6048,7 +6062,7 @@ void main() {
         var pp = r.race.player.chassis.getPosition(), pa = r.race.player.chassis.getAngle();
         L.head.position.set(pp.x + Math.cos(pa) * 1.6, pp.y + 0.6 + Math.sin(pa) * 1.6, X.LANES[0] + 0.6);
       }
-      drawRain(dt, r && r.rain && (game.state === 'race' || game.state === 'paused' || game.state === 'results') ? r : null);
+      drawRain(dt, r && r.rain && (game.state === 'race' || game.state === 'paused' || game.state === 'results' || game.state === 'replay') ? r : null);
     }
   });
   function addTrackLights(view, race, r) {
@@ -6712,6 +6726,206 @@ void main() {
   };
   window.__trxDebug.buildCode = buildCode; window.__trxDebug.parseCode = parseCode; window.__trxDebug.buildDef = buildDef; window.__trxDebug.bld = function (b) { if (b) bld = b; return bld; };
   window.__trxDebug.openBuilder = openBuilder; window.__trxDebug.openChamp = openChamp; window.__trxDebug.openGarage = openGarage; window.__trxDebug.openChallenges = openChallenges;
+
+  // ================================================================ 715: replay editor
+  // Every offline race is recorded (30 frames a second, every rider). From the results screen, REPLAY plays it back
+  // with camera angles, slow motion and a clip you can mark and save.
+  var SEGS = ['torso', 'thigh', 'shin', 'upper', 'fore'];
+  HOOKS.push({
+    race: function (race, r) { r.tape = r.online ? null : { f: [], step: 0, endAt: null }; },
+    post: function (race, r) {
+      var tp = r.tape;
+      if (!tp || race.state !== 'racing' || r.replay) return;
+      if (++tp.step % 2) return;
+      if (r.finished && tp.endAt == null) tp.endAt = race.time + 3;
+      if ((tp.endAt != null && race.time > tp.endAt) || tp.f.length > 30 * 300) return;
+      var fr = { t: race.time, b: [], rg: [] };
+      for (var i = 0; i < race.bikes.length; i++) {
+        var b = race.bikes[i], c = b.chassis.getPosition(), rr = b.rear.getPosition(), f = b.front.getPosition(), tk = b.trick || {};
+        fr.b.push(new Float32Array([c.x, c.y, b.chassis.getAngle(), rr.x, rr.y, b.rear.getAngle(), f.x, f.y, b.front.getAngle(), b.leanVisual, tk.id | 0, tk.w || 0, (b.crashed ? 1 : 0) | (b.remote && b.remote.gone ? 2 : 0) | (b.grounded ? 4 : 0), tk.phase || 0]));
+        var rg = null;
+        if (b.ragdoll) {
+          rg = new Float32Array(SEGS.length * 4 + 2);
+          SEGS.forEach(function (s, k) { var sg = b.ragdoll.seg[s], p = sg.body.getPosition(); rg[k * 4] = p.x; rg[k * 4 + 1] = p.y; rg[k * 4 + 2] = sg.body.getAngle(); rg[k * 4 + 3] = sg.len; });
+          var hp = b.ragdoll.head.getPosition(); rg[20] = hp.x; rg[21] = hp.y;
+        }
+        fr.rg.push(rg);
+      }
+      tp.f.push(fr);
+    }
+  });
+  EXTRAS.push(function (r) { return r.tape && r.tape.f.length > 60 ? '<p class="trx-line"><button class="btn small" data-act="replay">&#9654; REPLAY</button></p>' : ''; });
+  ACTIONS.replay = function () { if (run && run.tape) openReplay(run); };
+  var fakeBody = function (x, y, a) { return { getPosition: function () { return { x: x, y: y }; }, getAngle: function () { return a; } }; };
+  var RP = null;
+  var bar = document.createElement('div');
+  bar.id = 'trx-replay'; bar.className = 'hidden';
+  bar.innerHTML = '<div class="trx-rp-top"><b>REPLAY</b><span id="trx-rp-time">0:00.00</span><span class="trx-rp-clip" id="trx-rp-clipinfo"></span><button class="btn small" id="btn-rp-exit">DONE</button></div>' +
+    '<input type="range" id="trx-rp-seek" min="0" max="1000" value="0" aria-label="Replay position">' +
+    '<div class="trx-rp-row"><button class="btn small" id="btn-rp-play" aria-label="Play or pause">&#10074;&#10074;</button>' +
+    '<div class="seg" id="trx-rp-speed" aria-label="Speed"><button data-s="0.25">&frac14;&times;</button><button data-s="0.5">&frac12;&times;</button><button data-s="1" class="on">1&times;</button></div>' +
+    '<div class="seg" id="trx-rp-cam" aria-label="Camera"><button data-c="follow" class="on">FOLLOW</button><button data-c="close">CLOSE</button><button data-c="side">TRACKSIDE</button><button data-c="wide">WIDE</button><button data-c="low">LOW</button></div>' +
+    '<button class="btn small" id="btn-rp-rider">RIDER: YOU</button>' +
+    '<button class="btn small" id="btn-rp-in">MARK IN</button><button class="btn small" id="btn-rp-out">MARK OUT</button><button class="btn small primary" id="btn-rp-save">SAVE CLIP</button></div>';
+  document.body.appendChild(bar);
+  function openReplay(r) {
+    var tp = r.tape;
+    RP = { r: r, f: tp.f, t: tp.f[0].t, t0: tp.f[0].t, t1: tp.f[tp.f.length - 1].t, play: true, speed: 1, cam: 'follow', focus: 0, inT: null, outT: null, rec: null, spin: [] };
+    r.replay = true;
+    game.state = 'replay';
+    window.__trxScale = 1;
+    hideMine(); ui.show(null);
+    r.race.events.length = 0;
+    r.race.bikes.forEach(function (b) { b.rearContact = false; b.input.throttle = 0; if (b.ragdoll) b.ragdoll.bodies.forEach(function (x) { x.setActive(false); }); });
+    $('trx-rp-seek').value = 0;
+    paintRP();
+    bar.classList.remove('hidden');
+  }
+  function closeReplay() {
+    if (!RP) return;
+    stopClip(true);
+    var r = RP.r;
+    seekRP(RP.t1);
+    r.replay = false;
+    r.race.bikes.forEach(function (b) { if (b.ragdoll) b.ragdoll.bodies.forEach(function (x) { x.setActive(true); }); });
+    RP = null;
+    bar.classList.add('hidden');
+    game.state = 'results';
+    ui.show('results');
+  }
+  function frameAt(t) {
+    var f = RP.f, lo = 0, hi = f.length - 1;
+    while (hi - lo > 1) { var m = (lo + hi) >> 1; if (f[m].t <= t) lo = m; else hi = m; }
+    var A = f[lo], Bq = f[hi], k = Bq.t > A.t ? clamp((t - A.t) / (Bq.t - A.t), 0, 1) : 0;
+    return { A: A, B: Bq, k: k };
+  }
+  function seekRP(t) {
+    var race = RP.r.race, fa = frameAt(t), A = fa.A, Bq = fa.B, k = fa.k;
+    var L = function (a, b) { return a + (b - a) * k; }, LA = function (a, b) { return a + wrap(b - a) * k; };
+    race.bikes.forEach(function (b, i) {
+      var a = A.b[i], c = Bq.b[i] || a;
+      if (!a) return;
+      var px = b.chassis.getPosition().x;
+      b.chassis.setTransform({ x: L(a[0], c[0]), y: L(a[1], c[1]) }, LA(a[2], c[2]));
+      b.rear.setTransform({ x: L(a[3], c[3]), y: L(a[4], c[4]) }, LA(a[5], c[5]));
+      b.front.setTransform({ x: L(a[6], c[6]), y: L(a[7], c[7]) }, LA(a[8], c[8]));
+      b.leanVisual = L(a[9], c[9]);
+      var tk = b.trick || (b.trick = {});
+      tk.id = a[10] | 0; tk.w = L(a[11], c[11]); tk.phase = L(a[13], c[13]);
+      b.crashed = !!(a[12] & 1); b.crashTimer = 1;
+      b.grounded = !!(a[12] & 4);
+      if (b.remote && b.remote.id === 'out') b.remote.gone = !!(a[12] & 2);
+      var rg = A.rg[i];
+      if (rg) {
+        var seg = {};
+        SEGS.forEach(function (s, q) { seg[s] = { body: fakeBody(rg[q * 4], rg[q * 4 + 1], rg[q * 4 + 2]), len: rg[q * 4 + 3] }; });
+        b.ragdoll = { seg: seg, head: fakeBody(rg[20], rg[21], 0), bodies: [], joints: [], fake: true };
+      } else if (b.ragdoll && b.ragdoll.fake) b.ragdoll = null;
+      // Wheels spin with the distance covered.
+      var md = RP.r.view && RP.r.view.models && RP.r.view.models[i];
+      if (md) { var dx = b.chassis.getPosition().x - px; md.rs -= dx / 0.36; md.fs -= dx / 0.36; md.rw = md.fw = RP.play ? -dx / 0.36 * 60 * RP.speed : 0; }
+    });
+    race.events.length = 0;
+    RP.r.view.afterStep(); RP.r.view.afterStep();
+    RP.t = t;
+  }
+  HOOKS.push({
+    frame: function (dt, r) {
+      if (!RP) return;
+      if (game.state !== 'replay' || game.race !== RP.r.race) { RP = null; bar.classList.add('hidden'); return; }
+      if (RP.play) {
+        var t = RP.t + dt * RP.speed;
+        var end = RP.rec ? RP.outT : RP.t1;
+        if (t >= end) { t = end; if (RP.rec) stopClip(); else RP.play = false; }
+        seekRP(t);
+      }
+      paintRP();
+      if (r && r.ghosts) r.ghosts.forEach(function (g) { g.bike.root.visible = g.rider.group.visible = g.tag.visible = false; });
+    },
+    camera: function (cam, r) {
+      if (!RP) return;
+      var b = r.race.bikes[RP.focus] || r.race.player, p = b.chassis.getPosition(), v = b.chassis.getLinearVelocity(), z = X.LANES[RP.focus] || X.LANES[0];
+      var tr = r.race.track, look = { x: p.x + 1.2, y: p.y + 0.5, z: z };
+      if (RP.cam === 'follow') cam.position.set(p.x + 2.5, p.y + 3.2, z + 17);
+      else if (RP.cam === 'close') cam.position.set(p.x + 3.2, p.y + 1.4, z + 6.2);
+      else if (RP.cam === 'wide') cam.position.set(p.x + 4, p.y + 9, z + 34);
+      else if (RP.cam === 'low') { cam.position.set(p.x + 4.5, tr.heightAt(p.x + 4.5) + 0.35, z + 4.2); look.y = p.y + 0.8; }
+      else {
+        // Trackside: fixed cameras every 30 m; the one ahead of the rider is live.
+        var cx = Math.floor((p.x + 12) / 30) * 30 + 18;
+        cam.position.set(cx, tr.heightAt(cx) + 2.2, z + 9 + Math.abs(cx - p.x) * 0.15);
+      }
+      cam.lookAt(look.x, look.y, look.z);
+    }
+  });
+  function paintRP() {
+    if (!RP) return;
+    $('trx-rp-time').textContent = fmt(Math.max(0, RP.t - RP.t0));
+    var seek = $('trx-rp-seek');
+    if (document.activeElement !== seek) seek.value = Math.round((RP.t - RP.t0) / Math.max(0.01, RP.t1 - RP.t0) * 1000);
+    $('btn-rp-play').innerHTML = RP.play ? '&#10074;&#10074;' : '&#9654;';
+    var ci = RP.inT != null || RP.outT != null ? 'CLIP ' + (RP.inT != null ? fmt(RP.inT - RP.t0).slice(0, -1) : 'start') + ' &rarr; ' + (RP.outT != null ? fmt(RP.outT - RP.t0).slice(0, -1) : 'end') : '';
+    if (RP.rec) ci = '<i class="trx-recdot"></i>RECORDING';
+    $('trx-rp-clipinfo').innerHTML = ci;
+    var b = RP.r.race.bikes[RP.focus];
+    $('btn-rp-rider').textContent = 'RIDER: ' + (RP.focus === 0 ? 'YOU' : (b.name || 'RIDER').toUpperCase());
+  }
+  $('btn-rp-exit').addEventListener('click', function () { X.audio.click(); closeReplay(); });
+  $('btn-rp-play').addEventListener('click', function () { X.audio.click(); if (!RP) return; if (!RP.play && RP.t >= RP.t1 - 0.01) seekRP(RP.t0); RP.play = !RP.play; paintRP(); });
+  $('trx-rp-seek').addEventListener('input', function (e) { if (!RP || RP.rec) return; seekRP(RP.t0 + (RP.t1 - RP.t0) * e.target.value / 1000); paintRP(); });
+  $('trx-rp-seek').addEventListener('keydown', function (e) { e.stopPropagation(); });
+  $('trx-rp-speed').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { X.audio.click(); RP.speed = +b.dataset.s; $('trx-rp-speed').querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); }); }); });
+  $('trx-rp-cam').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { X.audio.click(); RP.cam = b.dataset.c; $('trx-rp-cam').querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b); }); }); });
+  $('btn-rp-rider').addEventListener('click', function () {
+    X.audio.click();
+    var bikes = RP.r.race.bikes;
+    for (var k = 1; k <= bikes.length; k++) { var n = (RP.focus + k) % bikes.length; if (!(bikes[n].remote && bikes[n].remote.id === 'out' && bikes[n].remote.gone)) { RP.focus = n; break; } }
+    paintRP();
+  });
+  $('btn-rp-in').addEventListener('click', function () { X.audio.click(); RP.inT = RP.t; if (RP.outT != null && RP.outT <= RP.inT) RP.outT = null; paintRP(); });
+  $('btn-rp-out').addEventListener('click', function () { X.audio.click(); RP.outT = RP.t; if (RP.inT != null && RP.inT >= RP.outT) RP.inT = null; paintRP(); });
+  // Save: plays the marked part at the chosen speed and records the picture. Inside the arcade the 🎬 Clip recorder
+  // takes it (so it can be posted to Social or saved); on its own the page records it and downloads the file.
+  $('btn-rp-save').addEventListener('click', function () {
+    X.audio.click();
+    if (!RP || RP.rec) return;
+    var a = RP.inT != null ? RP.inT : RP.t0, b = RP.outT != null ? RP.outT : RP.t1;
+    if (b - a < 0.5) { a = RP.t0; b = RP.t1; }
+    if (b - a > 55) a = b - 55;
+    RP.outT = b; seekRP(a); RP.play = true;
+    var host = null;
+    try { host = window.parent !== window && window.parent.ArcadeClips; } catch (e) { host = null; }
+    if (host && host.start) {
+      try { host.start(); RP.rec = { host: host }; } catch (e) { host = null; }
+    }
+    if (!RP.rec) {
+      var cv = $('game');
+      if (!cv.captureStream || !window.MediaRecorder) { ui.toast('This browser can’t record clips', 1600); RP.play = false; return; }
+      var types = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm'], type = types.filter(function (t) { return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t); })[0];
+      var chunks = [], mr;
+      try { mr = new MediaRecorder(cv.captureStream(30), type ? { mimeType: type, videoBitsPerSecond: 5e6 } : undefined); } catch (e) { ui.toast('This browser can’t record clips', 1600); return; }
+      mr.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+      mr.onstop = function () {
+        var blob = new Blob(chunks, { type: (mr.mimeType || type || 'video/webm').split(';')[0] });
+        if (!blob.size) return;
+        var url = URL.createObjectURL(blob), link = document.createElement('a');
+        link.href = url; link.download = 'throttle-ridge-' + (RP && RP.r ? RP.r.id : 'clip') + '.' + (blob.type.indexOf('mp4') >= 0 ? 'mp4' : 'webm');
+        document.body.appendChild(link); link.click(); link.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+        ui.toast('Clip saved', 1400);
+      };
+      mr.start(250);
+      RP.rec = { mr: mr };
+    }
+    paintRP();
+  });
+  function stopClip(silent) {
+    if (!RP || !RP.rec) return;
+    var rec = RP.rec; RP.rec = null; RP.play = false;
+    try { if (rec.host) rec.host.stop(); else rec.mr.stop(); } catch (e) {}
+    paintRP();
+  }
+  window.__trxDebug.openReplay = function () { openReplay(run); }; window.__trxDebug.RP = function () { return RP; };
 })();
 </script><!-- /tr-extras -->
 <script>
