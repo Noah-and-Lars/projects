@@ -78,10 +78,6 @@
 .tk-row { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; cursor: pointer; font-size: 14px; }
 .tk-row input[type=checkbox] { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); flex: none; }
 .tk-row small { display: block; color: var(--muted); }
-.tk-pin { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
-.tk-pin[hidden], #parBody[hidden] { display: none; }
-.tk-pin input { height: 38px; width: 140px; padding: 0 10px; border-radius: 10px; border: 1px solid #ffffff2a; background: #16161a; color: var(--text); font: 600 16px var(--mono); letter-spacing: .2em; }
-.tk-pin input::placeholder { letter-spacing: 0; font-weight: 400; font-size: 13px; }
 .tk-msg { min-height: 1.4em; font-size: 13.5px; color: #ffb224; }
 .tk-gift .btn[disabled] { cursor: not-allowed; opacity: .55; }
 #tkTour { position: fixed; inset: 0; z-index: 2147482000; display: grid; place-items: center; background: #000b; padding: 16px; }
@@ -113,11 +109,6 @@
     <h1>🎟️ Tickets</h1>
     <p class="tk-lead">Tickets are The Arcade’s play currency. Earn them by playing, spend them on looks.</p>
     <div class="tk-money" role="note"><span class="ic" aria-hidden="true">🛡️</span><span><b>No real money, ever.</b>You can’t buy tickets, sell them or swap them for real money or anything outside The Arcade. Nobody will ever ask you to pay for them. They only unlock fun looks here.</span></div>
-
-    <div id="tkOff" class="tk-card" hidden>
-      <h2>Tickets are turned off on this device</h2>
-      <p>A parent has hidden tickets and predictions here. They can turn them back on in “For parents” below.</p>
-    </div>
 
     <div id="tkMain">
       <section class="tk-card" aria-labelledby="balH">
@@ -174,17 +165,6 @@
       </section>
     </div>
 
-    <section class="tk-card" aria-labelledby="parH">
-      <h2 id="parH">For parents</h2>
-      <p>Hide tickets and predictions completely on this device. A PIN stops the settings being changed without you. (Clearing this browser’s data removes the PIN too.)</p>
-      <div id="parLock" class="tk-pin" hidden><label for="parPin">PIN</label><input id="parPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8"><button type="button" class="btn ghost" id="parUnlock">Unlock</button></div>
-      <div id="parBody">
-        <label class="tk-row"><input type="checkbox" id="parT"><span>Hide tickets<small>No tickets anywhere: no earning, no shop, no looks. Predictions are hidden too.</small></span></label>
-        <label class="tk-row"><input type="checkbox" id="parP"><span>Hide predictions<small>Tickets stay; predictions are hidden everywhere.</small></span></label>
-        <div class="tk-pin"><label for="parNew">PIN</label><input id="parNew" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="4-8 numbers"><button type="button" class="btn ghost" id="parSet">Set PIN</button><button type="button" class="btn ghost" id="parClear" hidden>Remove PIN</button><button type="button" class="btn ghost" id="parLockBtn" hidden>Lock</button></div>
-      </div>
-      <p class="tk-msg" id="parMsg" role="status"></p>
-    </section>
   </div>
 </main>
 
@@ -209,12 +189,11 @@ ArcadeOnline.start('tickets');
 (() => {
   const T = window.ArcadeTickets, $ = id => document.getElementById(id);
   const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
-  let kind = 'trail', unlocked = !ArcadeParental.hasPin();
+  let kind = 'trail';
   const when = t => { const d = new Date(t), s = (Date.now() - t) / 1000; return s < 86400 ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString([], { day: 'numeric', month: 'short' }); };
 
   function paint() {
-    const off = ArcadeParental.ticketsHidden(), st = T.state(), td = T.today();
-    $('tkOff').hidden = !off; $('tkMain').hidden = off;
+    const st = T.state(), td = T.today();
     document.querySelectorAll('.capN').forEach(e => e.textContent = T.DAILY_CAP);
     $('tkBal').textContent = st.b;
     const A = window.ArcadeAccount, k = A && A.kind ? A.kind() : '';
@@ -225,11 +204,6 @@ ArcadeOnline.start('tickets');
     $('tourDone').hidden = !st.done.tour;
     shop(st); hist(st);
     $('npBox').checked = !!st.np;
-    // parents
-    const p = T.parent();
-    $('parLock').hidden = unlocked || !p.pin; $('parBody').hidden = !unlocked && p.pin;
-    $('parT').checked = p.tickets; $('parP').checked = p.predictions || p.tickets; $('parP').disabled = p.tickets;
-    $('parSet').textContent = p.pin ? 'Change PIN' : 'Set PIN'; $('parClear').hidden = !p.pin; $('parLockBtn').hidden = !p.pin;
   }
   const TRAIL_ART = { sparkle: ['✦ ✦ ✦', '#fff3b0'], bubbles: ['○ ○ ○', '#8fdcff'], stars: ['★ ★ ★', '#ffb224'], rainbow: ['● ● ●', ''] };
   function art(it) {
@@ -267,18 +241,6 @@ ArcadeOnline.start('tickets');
   }
   document.querySelectorAll('.tk-tabs button').forEach(b => b.onclick = () => { kind = b.dataset.k; $('shopMsg').textContent = ''; paint(); });
   $('npBox').onchange = e => T.setNoPredict(e.target.checked);
-
-  // parents
-  const msg = t => { $('parMsg').textContent = t || ''; };
-  const pin = () => $('parPin').value;
-  $('parUnlock').onclick = () => T.checkPin(pin()).then(ok => { if (ok) { unlocked = true; msg(''); paint(); } else msg('That PIN isn’t right.'); });
-  $('parPin').onkeydown = e => { if (e.key === 'Enter') $('parUnlock').click(); };
-  const change = ch => T.setParent(pin(), ch).then(r => { msg(r.error || 'Saved.'); paint(); });
-  $('parT').onchange = e => change({ t: e.target.checked });
-  $('parP').onchange = e => change({ p: e.target.checked });
-  $('parSet').onclick = () => { const v = $('parNew').value; if (!/^\d{4,8}$/.test(v)) return msg('Use 4 to 8 numbers for the PIN.'); T.setParent(pin(), { pin: v }).then(r => { if (!r.error) { $('parPin').value = v; $('parNew').value = ''; } msg(r.error || 'PIN set. You’ll need it to change these settings.'); paint(); }); };
-  $('parClear').onclick = () => change({ pin: '' });
-  $('parLockBtn').onclick = () => { unlocked = false; $('parPin').value = ''; msg('Locked.'); paint(); };
 
   // the tickets tour: three short cards, +5 tickets once for finishing
   const STEPS = [

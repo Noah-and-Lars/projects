@@ -13,13 +13,12 @@
      prediction-free mode). account.js GROUPS has it as its own group 'tickets' (score = earned ever), so it rides the
      account's cloud save sync and follows the account to other devices. It is still a browser save, so it is easy to
      edit: that is why tickets only buy looks and can't be gifted until the server keeps the balance.
-   - Parent switch ('arcade-parent', device only: in account.js NEVER): a PIN (SHA-256, salted) guards two switches,
-     hide tickets and hide predictions. window.ArcadeParental tells other code; html gets .arcade-no-tickets /
-     .arcade-no-predictions and 'arcade:parental' fires when they change. Hiding tickets also hides predictions.
-     Prediction-free mode (the player's own switch, `np`, no PIN) hides predictions but keeps tickets. */
+   - Prediction-free mode (the player's own switch, `np`) hides predictions but keeps tickets. window.ArcadeParental
+     tells other code (ticketsHidden() is always false now: the PIN parent switch was removed, 2026-11-19); html gets
+     .arcade-no-predictions and 'arcade:parental' fires when it changes. */
 (function () {
   if (window.ArcadeTickets) return;
-  var K = 'arcade-tickets', K_PAR = 'arcade-parent';
+  var K = 'arcade-tickets';
   var DAILY_CAP = 20, BONUS = 5, BONUS_SECS = 120, STEP = 240, HIST = 100;
   var HELP = { tour: [5, 'Finished the tickets tour'] }; // 'tutorial:<id>': 3 each, see bonus()
   var ls = {
@@ -64,36 +63,12 @@
   function earn(o, n, why) { o.b += n; o.e += n; log(o, n, why); }
   var subs = [];
   function fire() { applyLooks(); subs.forEach(function (f) { try { f(); } catch (e) {} }); }
-  addEventListener('storage', function (e) { if (e.key === K || e.key === K_PAR) { applyParental(); fire(); } });
+  addEventListener('storage', function (e) { if (e.key === K) { applyParental(); fire(); } });
 
-  /* ---------- parent switch (this device only) ---------- */
-  function parent() { var p = ls.json(K_PAR) || {}; return { h: p.h || '', s: p.s || '', t: p.t ? 1 : 0, p: p.p ? 1 : 0 }; }
-  function hashPin(pin, salt) {
-    var txt = 'arcade-parent|' + salt + '|' + pin;
-    if (window.crypto && crypto.subtle && window.TextEncoder) return crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt)).then(function (b) { return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); });
-    var h = 0x811c9dc5; for (var i = 0; i < txt.length; i++) h = Math.imul(h ^ txt.charCodeAt(i), 16777619); return Promise.resolve('f' + (h >>> 0).toString(16));
-  }
-  function checkPin(pin) { var p = parent(); if (!p.h) return Promise.resolve(true); return hashPin(String(pin || ''), p.s).then(function (h) { return h === p.h; }); }
-  // change the parent settings: needs the PIN if one is set. ch: { t, p, pin (new PIN, '' to remove) }
-  function setParent(pin, ch) {
-    return checkPin(pin).then(function (ok) {
-      if (!ok) return { error: 'That PIN isn’t right.' };
-      var p = parent(), next = function () { ls.put(K_PAR, p); applyParental(); fire(); return { ok: true }; };
-      if ('t' in ch) p.t = ch.t ? 1 : 0;
-      if ('p' in ch) p.p = ch.p ? 1 : 0;
-      if ('pin' in ch) {
-        if (!ch.pin) { p.h = ''; p.s = ''; return next(); }
-        if (!/^\d{4,8}$/.test(ch.pin)) return { error: 'Use 4 to 8 numbers for the PIN.' };
-        p.s = Math.random().toString(36).slice(2, 12);
-        return hashPin(ch.pin, p.s).then(function (h) { p.h = h; return next(); });
-      }
-      return next();
-    });
-  }
+  /* ---------- prediction-free mode ---------- */
   var Parental = {
-    ticketsHidden: function () { return !!parent().t; },
-    predictionsHidden: function () { var p = parent(); return !!(p.t || p.p || read().np); },
-    hasPin: function () { return !!parent().h; },
+    ticketsHidden: function () { return false; },
+    predictionsHidden: function () { return !!read().np; },
   };
   var lastPar = '';
   function applyParental() {
@@ -225,7 +200,6 @@
     owns: function (id) { return !!read().own[id]; }, using: function (k) { return read().use[k] || ''; },
     buy: buy, use: use, bonus: bonus,
     noPredict: function () { return !!read().np; }, setNoPredict: setNoPredict,
-    parent: function () { var p = parent(); return { tickets: !!p.t, predictions: !!p.p, pin: !!p.h }; }, setParent: setParent, checkPin: checkPin,
     onChange: function (f) { subs.push(f); },
     // gifts need the server to hold the balance (see tickets.html); there is no client-only version on purpose
     canGift: function () { return false; },
