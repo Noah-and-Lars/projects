@@ -183,6 +183,9 @@ or an **abandoned fort** (a ring of upturned pallets round a lamp, a platform,
 and maybe some food left behind, 1.5%). About a third of chunk edges have
 full-height walls with doorways. The chunks around the centre have none.
 
+There are 35 kinds of furniture and 18 kinds of food, drink and first aid.
+By day, some of the staff carry boxes of stock about.
+
 ## Look
 
 Everything is generated in code. There are no image or model files.
