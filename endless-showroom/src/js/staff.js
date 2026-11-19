@@ -229,6 +229,9 @@ export class StaffSim {
       for (const s of this.staff.values()) { if (extra <= 0) break; let n = Infinity; for (const p of alive) n = Math.min(n, Math.hypot(s.x - p.x, s.z - p.z)); if (n > 24) { this.staff.delete(s.id); extra--; } }
     }
 
+    // At most a few path searches per update, so a crowd re-planning at once
+    // can't stall a frame; the rest wait a frame and follow their old path.
+    let budget = 1;
     for (const s of this.staff.values()) {
       s.cd -= dt; s.anim = Math.max(0, s.anim - dt);
       const climb = night ? P.climb : 0.36;
@@ -269,7 +272,7 @@ export class StaffSim {
 
       const goTo = (gx, gy, gz, spd) => {
         s.pathT -= dt;
-        if (s.pathT <= 0 || !s.goalPt || Math.hypot(s.goalPt[0] - gx, s.goalPt[2] - gz) > 1.2) {
+        if ((s.pathT <= 0 || !s.goalPt || Math.hypot(s.goalPt[0] - gx, s.goalPt[2] - gz) > 1.2) && budget-- > 0) {
           s.pathT = 0.45 + Math.random() * 0.3;
           s.goalPt = [gx, gy, gz];
           const r = this.path(s.x, s.y, s.z, gx, gy, gz, climb, s.look.size);
@@ -303,7 +306,7 @@ export class StaffSim {
         s.mode = 'wander';
         if (s.waitT > 0) s.waitT -= dt;
         else {
-          if (!s.goal) {
+          if (!s.goal && budget-- > 0) {
             const a = Math.random() * 6.28, d = 3 + Math.random() * 9;
             s.goal = [s.x + Math.cos(a) * d, 0, s.z + Math.sin(a) * d];
             s.path = this.path(s.x, s.y, s.z, s.goal[0], 0, s.goal[2], 0.36, s.look.size).pts;
@@ -312,7 +315,7 @@ export class StaffSim {
             const [wx, wz] = s.path[0];
             const dx = wx - s.x, dz = wz - s.z, d = Math.hypot(dx, dz);
             if (d < 0.3) s.path.shift(); else { mx = dx / d; mz = dz / d; speed = (night ? 1.7 : 1.25) * s.look.speedScale; }
-          } else { s.goal = null; s.waitT = 2 + Math.random() * 5; }
+          } else if (s.goal) { s.goal = null; s.waitT = 2 + Math.random() * 5; }
         }
       }
       // keep apart from other staff
