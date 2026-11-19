@@ -71,6 +71,8 @@ They're decided by the room's seed and the day, so every screen agrees.
   Then they chase at just under sprinting speed, saying things like
   *"Closing time. Closing time."* in a flat voice (spoken by the browser if
   it can, always subtitled).
+- **When one spots you, it calls out**: staff within 16 m that aren't busy
+  come to look where you were seen.
 - **Break their line of sight** and they lose you after 5 seconds. They go
   and look where they last saw you, then give up.
 - **They climb** about 1.15 m at a time (Crimson Night: 2.2 m). They also
@@ -190,6 +192,10 @@ Some furniture, market and warehouse plots have a **mezzanine**: a deck 3 m
 up on four posts, with railings and a staircase. It's a ready-made high
 point, if you can keep the stairs clear.
 
+Very rarely you'll find a **lost shopper** sitting on a bench by a lamp.
+Talk to them (E) for advice. The first time, they'll share a bowl of stew
+and some water.
+
 Any plot can instead be a **first aid station** (a kiosk with four kits, 2.5%)
 or an **abandoned fort** (a ring of upturned pallets round a lamp, a platform,
 and maybe some food left behind, 1.5%). About a third of chunk edges have
@@ -200,7 +206,7 @@ By day, some of the staff carry boxes of stock about.
 
 ## Achievements
 
-18 achievements are saved on your device, with a toast when one unlocks and
+19 achievements are saved on your device, with a toast when one unlocks and
 a list on the menu. Some examples: survive your first night, 7 or 30 nights
 in a row, a Crimson Night, a Fog Day, or a Hailstorm without being hit; place
 50 or 500 pieces; shove 20 staff; find a cafeteria or an abandoned fort; hide

@@ -19,6 +19,7 @@ export const ACH = [
   { id: 'high', name: 'Top Shelf', desc: 'Stand as high as the top of a warehouse rack (4.3 m).' },
   { id: 'far', name: 'Lost in the Aisles', desc: 'Walk 1 km from where you started.' },
   { id: 'whistle', name: 'Over Here!', desc: 'Whistle 10 times.' },
+  { id: 'friend', name: 'A Friendly Face', desc: 'Talk to a lost shopper.' },
 ];
 
 let state = { got: {}, n: {} };

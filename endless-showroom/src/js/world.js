@@ -83,6 +83,7 @@ class ChunkGen {
     this.r = rng(hashInts(world.seed, cx, cz, 1));
     this.section = sectionOf(world.seed, cx, cz);
     this.skylights = [];
+    this.npcs = [];
     if (this.section === 'garden') this.skylights.push({ x0: this.ox + 2, z0: this.oz + 2, x1: this.ox + CHUNK - 2, z1: this.oz + CHUNK - 2 });
   }
   // Static solid, in chunk-local coordinates.
@@ -139,6 +140,7 @@ class ChunkGen {
       const roll = r();
       if (roll < 0.025 && this.section !== 'food') this.q_firstaid(f);
       else if (roll < 0.04 && this.section !== 'food') this.q_fort(f);
+      else if (roll < 0.046 && this.section !== 'food') this.q_lost(f);
       else if (roll < 0.08 && this.section === 'showroom') this.q_play(f);
       else if (roll < 0.14 && this.section === 'storage') this.q_office(f);
       else if (roll < 0.06 && (this.section === 'display' || this.section === 'market' || this.section === 'warehouse')) this.q_mezzanine(f);
@@ -369,6 +371,14 @@ class ChunkGen {
     if (r.chance(0.4)) this.fd(f, STOCK.any, 7.2, 6.0, top);
   }
 
+  // A lost shopper, sitting on a bench by a lamp with their bag.
+  q_lost(f) {
+    const { r } = this;
+    this.ff(f, 'bench', 4.8, 4.8, 0); this.ff(f, 'floorLamp', 6.1, 4.6, 0); this.ff(f, 'box', 3.6, 4.6, r.int(4));
+    const [x, z] = f.pt(4.8, 4.8);
+    this.npcs.push({ id: `${this.cx},${this.cz}:npc${this.npcs.length}`, x: x + this.ox, z: z + this.oz, y: 0.45, ry: (f.k * Math.PI) / 2 });
+  }
+
   // A first aid station: a white kiosk with four kits on it.
   q_firstaid(f) {
     this.fs(f, 3.2, 0.3, 6.4, 1.0, 0, 1.0, 0xf2f2f2);
@@ -501,7 +511,7 @@ export class World {
   _load(cx, cz) {
     const gen = new ChunkGen(this, cx, cz).run();
     this.version++;
-    const ch = { cx, cz, key: World.key(cx, cz), gen, boxes: gen.boxes, skylights: gen.skylights, itemIds: [], mesh: null, sign: null };
+    const ch = { cx, cz, key: World.key(cx, cz), gen, boxes: gen.boxes, skylights: gen.skylights, npcs: gen.npcs, itemIds: [], mesh: null, sign: null };
     gen.items.forEach((spec, i) => {
       const id = ch.key + ':' + i;
       ch.itemIds.push(id);

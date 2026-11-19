@@ -261,7 +261,15 @@ export class StaffSim {
           const seen = d < (p.crouch ? sight * 0.6 : sight) && this.canSee(s.x, s.y + 1.6 * s.look.heightScale, s.z, p.x, p.y + (p.crouch ? 0.8 : 1.5), p.z);
           if ((seen || heard || (s.target && s.target.id === p.id && d < 3)) && d < td) { td = d; tgt = p; }
         }
-        if (tgt) { s.target = tgt; s.lastSeen = 0; s.lastPos = [tgt.x, tgt.y, tgt.z]; s.mode = 'chase'; }
+        if (tgt) {
+          const fresh = s.mode !== 'chase';
+          s.target = tgt; s.lastSeen = 0; s.lastPos = [tgt.x, tgt.y, tgt.z]; s.mode = 'chase';
+          // calling out: staff nearby who aren't busy come to look
+          if (fresh) for (const o of this.staff.values()) {
+            if (o === s || o.mode === 'chase' || o.stunT > 0 || Math.hypot(o.x - s.x, o.z - s.z) > 16) continue;
+            o.lastPos = [tgt.x, tgt.y, tgt.z]; o.mode = 'search'; o.pathT = 0;
+          }
+        }
         else if (!s.lastPos) for (const n of this.noises) if (Math.hypot(n.x - s.x, n.z - s.z) < n.r) { s.lastPos = [n.x, 0, n.z]; s.mode = 'search'; s.pathT = 0; break; }
       }
       if (!night) { s.target = null; s.lastPos = null; s.mode = 'wander'; }
