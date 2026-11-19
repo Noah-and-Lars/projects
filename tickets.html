@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 2026-11-15: Apple Watch. The meta stops watchOS shrinking the page as if it were a 320px phone; the script marks
+     a watch (html.watch, window.ARCADE_WATCH: tiny screen, or ?watch=1 to test) so watch.css loads and the extras skip -->
+<meta name="disabled-adaptations" content="watch">
+<script>(function () { try { var a = Math.min(screen.width, screen.height), b = Math.max(screen.width, screen.height), w = window.innerWidth || 0, h = window.innerHeight || 0, t = navigator.maxTouchPoints > 0 || 'ontouchstart' in window; if (/Watch|watchOS/i.test(navigator.userAgent || '') || /[?&]watch=1/.test(location.search) || (a > 0 && a <= 340 && b <= 420) || (t && w > 0 && w <= 340 && h > 0 && h <= 420)) { window.ARCADE_WATCH = 1; document.documentElement.classList.add('watch', 'mob', 'mob-phone'); } } catch (e) {} })();</script>
+<script>
+// 2026-11-07: phones and tablets get their own layout (html.mob, see the end of arcade.css). It goes by the device,
+// not the window width, so desktops stay exactly as they were. ?mob=phone, ?mob=tab or ?mob=off forces one (tests).
+(function () {
+  var u = navigator.userAgent || '', c = document.documentElement.classList, f = '';
+  try { f = (/[?&]mob=(phone|tab|off)/.exec(location.search) || [])[1] || sessionStorage.getItem('arcade-mob') || ''; if (f) sessionStorage.setItem('arcade-mob', f); } catch (e) {}
+  var ipad = /iPad/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var phone = /iPhone|iPod|Windows Phone|BlackBerry|webOS|Android.+Mobile|Mobile.+Firefox/.test(u);
+  var tab = !phone && (ipad || /Android|Tablet|Silk|Kindle|PlayBook/.test(u));
+  if (f) { phone = f === 'phone'; tab = f === 'tab'; }
+  if (phone || tab) { c.add('mob'); c.add(phone ? 'mob-phone' : 'mob-tab'); }
+  var vh = function () { document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px'); };
+  vh(); window.addEventListener('resize', vh);
+  // older browsers (iOS before 14) don't have replaceChildren, which the home page uses to list the games
+  if (window.Element && !Element.prototype.replaceChildren) Element.prototype.replaceChildren = function () { while (this.firstChild) this.removeChild(this.firstChild); for (var i = 0; i < arguments.length; i++) { var n = arguments[i]; this.appendChild(typeof n === 'string' ? document.createTextNode(n) : n); } };
+})();
+</script>
+<title>Tickets · The Arcade</title>
+<meta name="description" content="Tickets are The Arcade’s play currency: earn them by playing, spend them on looks. No real money, ever.">
+<meta name="theme-color" content="#050506">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="The Arcade">
+<link rel="stylesheet" href="arcade.css?v=24">
+<style>
+.tk { max-width: 860px; margin: 28px auto 0; }
+.tk h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -.01em; }
+.tk-lead { margin: 0 0 18px; color: var(--muted); font-size: 15px; }
+.tk-money { display: flex; gap: 14px; align-items: center; padding: 14px 18px; border-radius: 14px; background: #3ddc9714; border: 1px solid #3ddc9744; color: #c8f5df; font-size: 14.5px; line-height: 1.45; }
+.tk-money b { color: #fff; font-size: 16px; display: block; }
+.tk-money .ic { flex: none; font-size: 26px; }
+.tk-card { margin-top: 18px; padding: 18px 20px; border-radius: 18px; background: #121215; border: 1px solid #ffffff14; }
+.tk-card[hidden], #tkMain[hidden] { display: none; }
+.tk-card h2 { margin: 0 0 10px; font-size: 19px; }
+.tk-card p { margin: 0 0 8px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.tk-bal { display: flex; flex-wrap: wrap; gap: 18px 36px; align-items: flex-end; }
+.tk-big { font: 800 52px/1 var(--font); font-stretch: 115%; letter-spacing: -.03em; }
+.tk-big small { font-size: 16px; font-weight: 600; color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+.tk-today { flex: 1; min-width: 220px; }
+.tk-bar { height: 10px; border-radius: 999px; background: #ffffff12; overflow: hidden; margin: 6px 0; }
+.tk-bar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width .4s; }
+.tk-sub { color: var(--muted); font-size: 13px; }
+.tk-ways { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tk-ways li { display: flex; gap: 12px; align-items: baseline; padding: 10px 12px; border-radius: 12px; background: #ffffff08; font-size: 14px; }
+.tk-ways li b { flex: none; min-width: 52px; color: #ffd27a; }
+.tk-ways li span { flex: 1; }
+.tk-ways li.off { opacity: .6; }
+.tk-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.tk-tabs button { height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid #ffffff1f; background: transparent; color: var(--text); font: 600 13.5px var(--font); cursor: pointer; }
+.tk-tabs button[aria-selected=true] { background: var(--text); color: #08080a; }
+.tk-shop { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.tk-it { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 14px; background: #ffffff08; border: 1px solid #ffffff10; }
+.tk-it.on { border-color: var(--accent); }
+.tk-it .art { height: 54px; border-radius: 10px; display: grid; place-items: center; background: #0b0b0d; font-size: 28px; position: relative; overflow: hidden; }
+.tk-it .art .sw { width: 70%; height: 16px; border-radius: 999px; }
+.tk-it b { font-size: 14.5px; }
+.tk-it small { color: var(--muted); font-size: 12.5px; min-height: 2.4em; }
+.tk-it .btn { height: 34px; font-size: 13px; }
+.tk-hist { list-style: none; margin: 0; padding: 0; max-height: 360px; overflow: auto; }
+.tk-hist li { display: flex; gap: 12px; padding: 8px 2px; border-bottom: 1px solid #ffffff0d; font-size: 14px; }
+.tk-hist li b { flex: none; width: 52px; text-align: right; font-family: var(--mono); }
+.tk-hist li b.plus { color: #3ddc97; } .tk-hist li b.minus { color: #ff8a6b; }
+.tk-hist li span { flex: 1; } .tk-hist li time { color: var(--dim); font-size: 12.5px; white-space: nowrap; }
+.tk-row { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; cursor: pointer; font-size: 14px; }
+.tk-row input[type=checkbox] { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); flex: none; }
+.tk-row small { display: block; color: var(--muted); }
+.tk-pin { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+.tk-pin[hidden], #parBody[hidden] { display: none; }
+.tk-pin input { height: 38px; width: 140px; padding: 0 10px; border-radius: 10px; border: 1px solid #ffffff2a; background: #16161a; color: var(--text); font: 600 16px var(--mono); letter-spacing: .2em; }
+.tk-pin input::placeholder { letter-spacing: 0; font-weight: 400; font-size: 13px; }
+.tk-msg { min-height: 1.4em; font-size: 13.5px; color: #ffb224; }
+.tk-gift .btn[disabled] { cursor: not-allowed; opacity: .55; }
+#tkTour { position: fixed; inset: 0; z-index: 2147482000; display: grid; place-items: center; background: #000b; padding: 16px; }
+#tkTour[hidden] { display: none; }
+#tkTour .box { width: min(440px, 100%); padding: 22px; border-radius: 18px; background: #141418; border: 1px solid #ffffff1f; }
+#tkTour h2 { margin: 0 0 8px; } #tkTour p { color: var(--muted); line-height: 1.5; }
+#tkTour .acts { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
+#tkTour .dots { margin-right: auto; color: var(--dim); font-size: 12.5px; }
+.mob .tk { margin-top: 18px; } .mob .tk h1 { font-size: 26px; } .mob .tk-big { font-size: 42px; }
+@media (max-width: 520px) { .wrap { padding: 0 16px; } .tk-card { padding: 16px; } .tk-shop { grid-template-columns: 1fr 1fr; } }
+</style>
+<script>if (window.ARCADE_WATCH) document.write('<link rel="stylesheet" href="watch.css?v=2">');</script>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="index.html"><img class="logo" src="logo.svg" alt="">The Arcade</a>
+  <nav class="tabs" aria-label="Sections">
+    <a class="tab" href="index.html">Games</a>
+    <a class="tab" href="chat.html"><span class="wide">Global chat</span><span class="narrow">Chat</span></a>
+    <a class="tab" href="players.html">Players <b id="plN" class="tab-n" hidden></b></a>
+    <a class="tab" href="social.html">Social</a>
+    <a class="tab" href="support.html">Support</a>
+    <a class="tab" href="app/">Software</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <div class="tk">
+    <h1>🎟️ Tickets</h1>
+    <p class="tk-lead">Tickets are The Arcade’s play currency. Earn them by playing, spend them on looks.</p>
+    <div class="tk-money" role="note"><span class="ic" aria-hidden="true">🛡️</span><span><b>No real money, ever.</b>You can’t buy tickets, sell them or swap them for real money or anything outside The Arcade. Nobody will ever ask you to pay for them. They only unlock fun looks here.</span></div>
+
+    <div id="tkOff" class="tk-card" hidden>
+      <h2>Tickets are turned off on this device</h2>
+      <p>A parent has hidden tickets and predictions here. They can turn them back on in “For parents” below.</p>
+    </div>
+
+    <div id="tkMain">
+      <section class="tk-card" aria-labelledby="balH">
+        <h2 id="balH" class="sr">Your tickets</h2>
+        <div class="tk-bal">
+          <div><div class="tk-big"><span id="tkBal">0</span><small>tickets</small></div><div class="tk-sub" id="tkSync"></div></div>
+          <div class="tk-today">
+            <div><b>Today</b> <span class="tk-sub" id="tkTodayTxt"></span></div>
+            <div class="tk-bar" role="progressbar" aria-label="Tickets earned today" aria-valuemin="0" id="tkBarWrap"><i id="tkBar" style="width:0"></i></div>
+            <div class="tk-sub">Up to <span class="capN">20</span> a day from playing, so there’s never a need to grind. After that, play on just for fun.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="tk-card" aria-labelledby="earnH">
+        <h2 id="earnH">Earn tickets</h2>
+        <ul class="tk-ways">
+          <li><b>+5</b><span>Play any game for 2 minutes, once a day.</span></li>
+          <li><b>+1</b><span>Every 4 minutes you play after that (the game has to be on screen).</span></li>
+          <li><b>+5</b><span>Help out: take the <button type="button" class="btn ghost" id="tourBtn" style="height:28px;padding:0 10px;font-size:13px">tickets tour</button> <span id="tourDone" class="tk-sub" hidden>(done)</span></span></li>
+          <li><b>+3</b><span>Help out: finish a game’s tutorial (in games that have one). Once per game.</span></li>
+          <li class="off"><b>Soon</b><span>Help out: send a bug report the team confirms. The team needs a way to check reports on the server first, so this isn’t on yet.</span></li>
+        </ul>
+      </section>
+
+      <section class="tk-card" aria-labelledby="shopH">
+        <h2 id="shopH">Spend tickets</h2>
+        <p>Your looks follow your account to your other devices. For now only you see them.</p>
+        <div class="tk-tabs" role="tablist" aria-label="Shop">
+          <button type="button" role="tab" data-k="trail" aria-selected="true">Cursor trails</button>
+          <button type="button" role="tab" data-k="theme" aria-selected="false">Themes</button>
+          <button type="button" role="tab" data-k="sticker" aria-selected="false">Stickers</button>
+        </div>
+        <p class="tk-sub" id="shopNote"></p>
+        <div class="tk-shop" id="tkShop" role="tabpanel"></div>
+        <p class="tk-msg" id="shopMsg" role="status"></p>
+      </section>
+
+      <section class="tk-card tk-gift" aria-labelledby="giftH">
+        <h2 id="giftH">Gift tickets to a friend</h2>
+        <p>Not yet. Your tickets are kept in your browser and synced with your account. That’s fine for unlocking your own looks, but a gift needs the arcade’s server to keep everyone’s balance, so nobody can fake one. When it does, you’ll be able to send friends a few tickets a day.</p>
+        <button type="button" class="btn ghost" disabled aria-disabled="true">Send a gift (coming later)</button>
+      </section>
+
+      <section class="tk-card" aria-labelledby="histH">
+        <h2 id="histH">History</h2>
+        <p>Where your tickets came from and where they went (the newest 100).</p>
+        <ul class="tk-hist" id="tkHist"></ul>
+      </section>
+
+      <section class="tk-card" aria-labelledby="modeH">
+        <h2 id="modeH">Your settings</h2>
+        <label class="tk-row"><input type="checkbox" id="npBox"><span>Prediction-free mode<small>Hide predictions (guessing results with tickets) everywhere on The Arcade. You still earn and spend tickets as usual.</small></span></label>
+      </section>
+    </div>
+
+    <section class="tk-card" aria-labelledby="parH">
+      <h2 id="parH">For parents</h2>
+      <p>Hide tickets and predictions completely on this device. A PIN stops the settings being changed without you. (Clearing this browser’s data removes the PIN too.)</p>
+      <div id="parLock" class="tk-pin" hidden><label for="parPin">PIN</label><input id="parPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8"><button type="button" class="btn ghost" id="parUnlock">Unlock</button></div>
+      <div id="parBody">
+        <label class="tk-row"><input type="checkbox" id="parT"><span>Hide tickets<small>No tickets anywhere: no earning, no shop, no looks. Predictions are hidden too.</small></span></label>
+        <label class="tk-row"><input type="checkbox" id="parP"><span>Hide predictions<small>Tickets stay; predictions are hidden everywhere.</small></span></label>
+        <div class="tk-pin"><label for="parNew">PIN</label><input id="parNew" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="4-8 numbers"><button type="button" class="btn ghost" id="parSet">Set PIN</button><button type="button" class="btn ghost" id="parClear" hidden>Remove PIN</button><button type="button" class="btn ghost" id="parLockBtn" hidden>Lock</button></div>
+      </div>
+      <p class="tk-msg" id="parMsg" role="status"></p>
+    </section>
+  </div>
+</main>
+
+<div id="tkTour" hidden role="dialog" aria-modal="true" aria-labelledby="tourH">
+  <div class="box"><h2 id="tourH"></h2><p id="tourP"></p><div class="acts"><span class="dots" id="tourDots"></span><button type="button" class="btn ghost" id="tourX">Close</button><button type="button" class="btn accent" id="tourNext">Next</button></div></div>
+</div>
+
+<footer class="foot">
+  <p>The Arcade</p>
+</footer>
+
+<script src="games.js?v=263"></script>
+<script src="tickets.js?v=1"></script>
+<script src="notify.js?v=1"></script>
+<script src="account.js?v=41"></script>
+<script src="assistant.js?v=4"></script>
+<script src="console.js?v=3"></script>
+<script src="call.js?v=8"></script>
+<script>
+// Tickets (2026-11-19): the page for tickets.js. Everything here reads and writes through window.ArcadeTickets.
+ArcadeOnline.start('tickets');
+(() => {
+  const T = window.ArcadeTickets, $ = id => document.getElementById(id);
+  const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; };
+  let kind = 'trail', unlocked = !ArcadeParental.hasPin();
+  const when = t => { const d = new Date(t), s = (Date.now() - t) / 1000; return s < 86400 ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString([], { day: 'numeric', month: 'short' }); };
+
+  function paint() {
+    const off = ArcadeParental.ticketsHidden(), st = T.state(), td = T.today();
+    $('tkOff').hidden = !off; $('tkMain').hidden = off;
+    document.querySelectorAll('.capN').forEach(e => e.textContent = T.DAILY_CAP);
+    $('tkBal').textContent = st.b;
+    const A = window.ArcadeAccount, k = A && A.kind ? A.kind() : '';
+    $('tkSync').textContent = k === 'online' ? 'Synced with your account' : 'On this device only. Make an online account to keep them everywhere.';
+    $('tkTodayTxt').textContent = td.earned + ' of ' + td.cap + ' earned' + (td.secs ? ' · ' + Math.round(td.secs / 60) + ' min played' : '');
+    $('tkBar').style.width = Math.min(100, td.earned / td.cap * 100) + '%';
+    $('tkBarWrap').setAttribute('aria-valuemax', td.cap); $('tkBarWrap').setAttribute('aria-valuenow', td.earned);
+    $('tourDone').hidden = !st.done.tour;
+    shop(st); hist(st);
+    $('npBox').checked = !!st.np;
+    // parents
+    const p = T.parent();
+    $('parLock').hidden = unlocked || !p.pin; $('parBody').hidden = !unlocked && p.pin;
+    $('parT').checked = p.tickets; $('parP').checked = p.predictions || p.tickets; $('parP').disabled = p.tickets;
+    $('parSet').textContent = p.pin ? 'Change PIN' : 'Set PIN'; $('parClear').hidden = !p.pin; $('parLockBtn').hidden = !p.pin;
+  }
+  const TRAIL_ART = { sparkle: ['✦ ✦ ✦', '#fff3b0'], bubbles: ['○ ○ ○', '#8fdcff'], stars: ['★ ★ ★', '#ffb224'], rainbow: ['● ● ●', ''] };
+  function art(it) {
+    const a = el('div', 'art');
+    if (it.k === 'sticker') a.textContent = it.e;
+    else if (it.k === 'theme') { const s = el('span', 'sw'); s.style.background = it.c[0]; a.appendChild(s); }
+    else { const t = TRAIL_ART[it.id.split(':')[1]] || ['', '']; a.textContent = t[0]; a.style.color = t[1]; }
+    if (it.id === 'trail:rainbow') a.style.cssText = 'background:#0b0b0d linear-gradient(90deg,#ff5a2c,#ffb224,#3ddc97,#4cc3ff,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent';
+    a.setAttribute('aria-hidden', 'true');
+    return a;
+  }
+  function shop(st) {
+    $('shopNote').textContent = kind === 'trail' ? 'Trails show when you use a mouse or trackpad.' : kind === 'theme' ? 'Changes The Arcade’s highlight colour.' : 'Wear one on your account button.';
+    document.querySelectorAll('.tk-tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.k === kind ? 'true' : 'false'));
+    const box = $('tkShop'); box.replaceChildren();
+    const using = st.use[kind] || '';
+    if (Object.keys(st.own).some(id => id.startsWith(kind + ':'))) {
+      const c = el('div', 'tk-it' + (!using ? ' on' : '')); c.appendChild(el('div', 'art', '—')); c.appendChild(el('b', '', 'None')); c.appendChild(el('small', '', kind === 'theme' ? 'The usual orange.' : 'Nothing extra.'));
+      const b = el('button', 'btn ghost', using ? 'Use' : 'Using'); b.type = 'button'; b.disabled = !using; b.onclick = () => { T.use(kind, ''); paint(); }; c.appendChild(b); box.appendChild(c);
+    }
+    T.ITEMS.filter(it => it.k === kind).forEach(it => {
+      const own = !!st.own[it.id], on = using === it.id, c = el('div', 'tk-it' + (on ? ' on' : ''));
+      c.appendChild(art(it)); c.appendChild(el('b', '', it.n)); c.appendChild(el('small', '', it.d || (own ? 'Yours' : '')));
+      const b = el('button', 'btn ' + (own ? 'ghost' : 'accent'), own ? (on ? 'Using' : 'Use') : '🎟️ ' + it.p); b.type = 'button';
+      b.disabled = on || (!own && st.b < it.p);
+      b.setAttribute('aria-label', own ? (on ? 'Using ' + it.n : 'Use ' + it.n) : 'Buy ' + it.n + ' for ' + it.p + ' tickets');
+      b.onclick = () => { if (own) T.use(kind, it.id); else { const r = T.buy(it.id); $('shopMsg').textContent = r.error || 'You got ' + it.n + '!'; } paint(); };
+      c.appendChild(b); box.appendChild(c);
+    });
+  }
+  function hist(st) {
+    const ul = $('tkHist'); ul.replaceChildren();
+    if (!st.h.length) { ul.appendChild(el('li', '', 'Nothing yet. Play any game for 2 minutes to get your first tickets.')); return; }
+    st.h.forEach(h => { const li = el('li'), b = el('b', h.n >= 0 ? 'plus' : 'minus', (h.n >= 0 ? '+' : '') + h.n), t = el('time', '', when(h.t)); t.dateTime = new Date(h.t).toISOString(); li.append(b, el('span', '', h.w), t); ul.appendChild(li); });
+  }
+  document.querySelectorAll('.tk-tabs button').forEach(b => b.onclick = () => { kind = b.dataset.k; $('shopMsg').textContent = ''; paint(); });
+  $('npBox').onchange = e => T.setNoPredict(e.target.checked);
+
+  // parents
+  const msg = t => { $('parMsg').textContent = t || ''; };
+  const pin = () => $('parPin').value;
+  $('parUnlock').onclick = () => T.checkPin(pin()).then(ok => { if (ok) { unlocked = true; msg(''); paint(); } else msg('That PIN isn’t right.'); });
+  $('parPin').onkeydown = e => { if (e.key === 'Enter') $('parUnlock').click(); };
+  const change = ch => T.setParent(pin(), ch).then(r => { msg(r.error || 'Saved.'); paint(); });
+  $('parT').onchange = e => change({ t: e.target.checked });
+  $('parP').onchange = e => change({ p: e.target.checked });
+  $('parSet').onclick = () => { const v = $('parNew').value; if (!/^\d{4,8}$/.test(v)) return msg('Use 4 to 8 numbers for the PIN.'); T.setParent(pin(), { pin: v }).then(r => { if (!r.error) { $('parPin').value = v; $('parNew').value = ''; } msg(r.error || 'PIN set. You’ll need it to change these settings.'); paint(); }); };
+  $('parClear').onclick = () => change({ pin: '' });
+  $('parLockBtn').onclick = () => { unlocked = false; $('parPin').value = ''; msg('Locked.'); paint(); };
+
+  // the tickets tour: three short cards, +5 tickets once for finishing
+  const STEPS = [
+    ['What are tickets?', 'Tickets are The Arcade’s play currency. They’re free, and they only unlock fun looks here. No real money, ever.'],
+    ['How do I get them?', 'Play any game. The first 2 minutes each day give 5 tickets, then 1 every 4 minutes, up to ' + T.DAILY_CAP + ' a day. That’s it: no grinding needed.'],
+    ['What can I get?', 'Cursor trails, colour themes and stickers. Your tickets and looks follow your account. Finish the tour for 5 tickets!'],
+  ];
+  let step = 0, before = null;
+  const tour = () => { $('tourH').textContent = STEPS[step][0]; $('tourP').textContent = STEPS[step][1]; $('tourDots').textContent = (step + 1) + ' of ' + STEPS.length; $('tourNext').textContent = step === STEPS.length - 1 ? (T.state().done.tour ? 'Done' : 'Finish (+5)') : 'Next'; };
+  const closeTour = () => { $('tkTour').hidden = true; try { before && before.focus(); } catch (e) {} };
+  $('tourBtn').onclick = () => { before = document.activeElement; step = 0; tour(); $('tkTour').hidden = false; $('tourNext').focus(); };
+  $('tourX').onclick = closeTour;
+  $('tkTour').onkeydown = e => { if (e.key === 'Escape') closeTour(); };
+  $('tourNext').onclick = () => { if (step < STEPS.length - 1) { step++; tour(); return; } const got = T.bonus('tour'); closeTour(); if (got) $('shopMsg').textContent = '+' + got + ' tickets for finishing the tour!'; paint(); };
+
+  T.onChange(paint);
+  addEventListener('arcade:parental', paint);
+  if (window.ArcadeAccount && ArcadeAccount.onPulled) ArcadeAccount.onPulled(paint);
+  paint();
+})();
+</script>
+<script src="tos.js?v=21"></script>
+<script src="moving.js?v=1"></script>
+</body>
+</html>

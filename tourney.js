@@ -68,6 +68,7 @@
       Object.keys(seen).forEach(function (k) { if (now - seen[k] < 120000) present[k] = 1; });
       ui.presence({ host: !!present[String(T.host).toLowerCase()] || me().host, watching: Object.keys(present).length, present: present });
       var k = T.v + '|' + myName(); if (k !== lastV) { lastV = k; ui.state(T, me()); }
+      try { dispatchEvent(new CustomEvent('arcade:tourney', { detail: { T: T, me: me() } })); } catch (e) {} // 2026-11-19: notify.js (match ready alerts)
     }
     function load() { return get('?id=' + encodeURIComponent(id)).then(function (j) { if (j && j.error === 'not_found') ui.error('This tournament doesn’t exist any more.'); else take(j); }).catch(function () { ui.error('Can’t connect right now.'); }); }
     every(3000, load);

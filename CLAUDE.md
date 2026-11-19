@@ -134,6 +134,18 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
   rather than just answered, facts, jokes) plus the site and its games; never the name of anyone who made, runs or plays on
   the site, no personal details, no links, plain text (assistant.js `plainMd` drops markdown that slips through). Bump `assistant.js?v=N` in those 7 pages when it changes. Its classes are
   prefixed `ai-` (arcade.css has a global `.msg` rule from the chat).
+- `notify.js` and `tickets.js` (2026-11-19; loaded by account.js's add-on list, so every page with an account button has
+  them; bump their `?v=` there). notify.js: the bell (`#ntfBtn`, rail/top bar, before the assistant) and `#ntfPanel`
+  (every alert in one list, settings per type, quiet hours, daily digest, snooze 1 h, followed games, browser alerts,
+  "(3) The Arcade" in the tab title). account.js `toast()` asks `ArcadeNotify.intercept()` first; tourney.js fires
+  'arcade:tourney' {T, me} so a ready match is a high-priority alert with a chime; other code uses `ArcadeNotify.push()`.
+  Its keys start `arcade-ntf-` (device only, in NEVER); `arcade-follow-games` syncs. tickets.js + `tickets.html`: Tickets,
+  the play currency (no real money, ever): earned on play.html (+5 after 2 min a day, then 1 per 4 min, cap 20 a day),
+  one-off helping bonuses (`ArcadeTickets.bonus('tour' | 'tutorial:<id>')`), spent on own cursor trails, colour themes
+  and stickers (only the player sees them). Saved in `arcade-tickets`, its own sync group 'tickets' in account.js. It is
+  a browser save, so gifts stay disabled until the server keeps balances. Parent switch (`arcade-parent`, PIN, device
+  only): `window.ArcadeParental`, html `.arcade-no-tickets` / `.arcade-no-predictions` (hide `[data-tickets]` /
+  `[data-predictions]`). sw.js opens the page on a notification click.
 - `console.js` (2026-11-11, loaded by every site page after account.js): the console version. It detects PlayStation, Xbox,
   Nintendo and smart-TV browsers from the user agent (`?console=on|off|playstation|xbox|tv` overrides, remembered in
   `arcade-console`), adds `html.console` (bigger text and cards, a yellow focus ring), a banner "You're on the console

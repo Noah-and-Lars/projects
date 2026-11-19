@@ -14,7 +14,7 @@
   'use strict';
   // 2026-11-15: Social profile pictures (avatars.js) and voice notes/replies (voice.js) on every page that has an account button
   (function () { try { var me = document.currentScript && document.currentScript.src, base = me ? me.replace(/account\.js(\?.*)?$/, '') : '';
-    [['ArcadeAvatars', 'avatars.js?v=1'], ['ArcadeVoice', 'voice.js?v=5']].forEach(function (x) { if (window[x[0]] || document.querySelector('script[src*="' + x[1].split('?')[0] + '"]')) return; var sc = document.createElement('script'); sc.src = base + x[1]; sc.async = false; document.head.appendChild(sc); }); } catch (e) {} })();
+    [['ArcadeAvatars', 'avatars.js?v=1'], ['ArcadeVoice', 'voice.js?v=5'], ['ArcadeTickets', 'tickets.js?v=1'], ['ArcadeNotify', 'notify.js?v=1']].forEach(function (x) { if (window[x[0]] || document.querySelector('script[src*="' + x[1].split('?')[0] + '"]')) return; var sc = document.createElement('script'); sc.src = base + x[1]; sc.async = false; document.head.appendChild(sc); }); } catch (e) {} })();
   var API = 'https://arcade-realtime.arcade-realtime.workers.dev/acct/';
   try { if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && localStorage.getItem('arcade-acct-api')) API = localStorage.getItem('arcade-acct-api'); } catch (e) {} // tests only: a local copy of the server
   var K_ACCT = 'arcade-acct', K_LOCAL = 'arcade-local', K_SYNC = 'arcade-acct-sync';
@@ -53,10 +53,11 @@
     ['2048', /^2048-/],
     ['poly-racer', /^polyracer/],
     ['blockcraft', /^blockcraft-(?!.*-backup-1x$)/],
-    ['arcade', /^arcade-(played|playtime|popup-closed|tos-agreed|chat-muted)$/]
+    ['arcade', /^arcade-(played|playtime|popup-closed|tos-agreed|chat-muted)$/],
+    ['tickets', /^arcade-tickets$/] // 2026-11-19: tickets.js, the play currency
   ];
   // this device's own things, never copied: the account itself, ids, the chat log, anti-cheat bookkeeping, old backups
-  var NEVER = /^(arcade-(acct|local|online-id|chat-id|chat-log|chat-cleared|chat-name)|caLedger$|caReset1$|sb-)|-backup-1x$/;
+  var NEVER = /^(arcade-(acct|local|online-id|chat-id|chat-log|chat-cleared|chat-name|ntf-|parent)|caLedger$|caReset1$|sb-)|-backup-1x$/;
   function groupOf(k) {
     if (!k || NEVER.test(k)) return null;
     for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i][1].test(k)) return GROUPS[i][0];
@@ -99,6 +100,7 @@
         case 'card-royale': { var cr = J('cardroyale.save'), cn = 0; for (var ck in (cr.cards || {})) cn += 10 + N(cr.cards[ck].lv) * 5; return N(cr.kl) * 1000 + N(cr.xp) + N(cr.tr) + cn + N(cr.wins) + N(cr.losses); }
         case 'arcade': { var pt = J('arcade-playtime'), ps = 0; for (var pg in pt) ps += N(pt[pg]); return ps; } // the copy with more play time
         case 'turn-turn-turn': { var tt = J('turnturnturn.save'); return N(tt.runs) * 10 + Object.keys(tt.best || {}).length * 100; }
+        case 'tickets': { var tk = J('arcade-tickets'); return N(tk.e) + N(tk.s) * 0.01; } // the copy that earned more
         case 'block-drop': return N(d['blockdrop-best']);
         case '2048': return N(d['2048-best']);
         case 'poly-racer': { var q = J('polyracer'); return Object.keys(q.best || {}).length * 1000 + JSON.stringify(q).length * 0.001; }
@@ -373,6 +375,7 @@
   }
   // a pop-up in the top right; other players' text only ever goes in with textContent
   function toast(who, text, href) {
+    if (window.ArcadeNotify && ArcadeNotify.intercept(who, text, href) === false) return; // 2026-11-19: notify.js lists it; settings may keep it quiet
     css();
     var box = $('acctToasts');
     if (!box) { box = document.createElement('div'); box.id = 'acctToasts'; document.body.appendChild(box); }
