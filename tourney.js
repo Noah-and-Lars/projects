@@ -10,7 +10,7 @@
 (function () {
   if (window.ArcadeTourney || window.ARCADE_WATCH) return;
   var ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  var GAMES = { chess: 'auto', checkers: 'auto', 'card-royale': 'report', 'rocket-rivals': 'report' };
+  var GAMES = { chess: 'auto', checkers: 'auto', 'card-royale': 'auto', 'rocket-rivals': 'report' }; // Card Royale 1.2: auto too
   var ls = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }, del: function (k) { try { localStorage.removeItem(k); } catch (e) {} } };
   var rid = function (n) { var s = ''; for (var i = 0; i < n; i++) s += ALPH[Math.floor(Math.random() * ALPH.length)]; return s; };
   var A = function () { return window.ArcadeAccount; };
