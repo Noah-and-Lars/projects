@@ -388,6 +388,95 @@ body.touch #stunts .st i { font-size: 18px; }
 .trx-photo img { display: block; width: 100%; height: auto; max-height: 26vh; object-fit: cover; }
 .trx-photo figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 8px; background: rgba(20,14,40,0.75); font-size: 12px; font-weight: 700; text-align: left; }
 .trx-photo figcaption b { color: var(--sun); margin-right: 6px; font-family: var(--display); font-style: italic; }
+
+#trx-res { max-height: 34vh; overflow-y: auto; }
+#scr-results .panel { overflow-y: auto; }
+@media (max-height: 460px) { #trx-res { max-height: 30vh; gap: 4px; } .trx-times, .trx-rivals { font-size: 11px; } .trx-photo img { max-height: 22vh; } .trx-line { font-size: 12px; } }
+.trx-tabs { align-self: center; }
+.trx-garage { max-height: 62vh; text-align: left; }
+.trx-gear { display: grid; grid-template-columns: minmax(150px, 0.8fr) 2fr; gap: 14px; align-items: start; }
+.trx-gear-prev { display: flex; flex-direction: column; align-items: center; gap: 8px; background: #231b44; border-radius: 16px; padding: 10px; }
+.trx-rider { width: 100%; max-width: 200px; height: auto; }
+.trx-num { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; color: var(--muted); }
+.trx-num b { font-family: var(--display); font-style: italic; font-size: 22px; color: var(--text); min-width: 32px; text-align: center; }
+.trx-num .btn.small { min-height: 40px; min-width: 40px; padding: 4px 10px; }
+.trx-gear-parts { display: flex; flex-direction: column; gap: 8px; }
+.trx-part b { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+.trx-swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
+.trx-swatches button { width: 30px; height: 30px; border-radius: 9px; border: 2px solid rgba(255,255,255,0.25); padding: 0; }
+.trx-swatches button.on { border-color: var(--sun); box-shadow: 0 0 0 2px var(--sun); transform: scale(1.08); }
+.trx-ups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+.trx-up { background: #231b44; border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.trx-up b { font-family: var(--display); font-style: italic; color: var(--sun); font-size: 17px; }
+.trx-up small { color: var(--muted); font-size: 12px; min-height: 2.4em; }
+.trx-up .btn.small { min-height: 42px; font-size: 15px; }
+.trx-pips { display: flex; gap: 4px; } .trx-pips i { flex: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.15); } .trx-pips i.on { background: var(--hot); }
+.trx-max { font-weight: 900; color: #5cff8a; text-align: center; padding: 10px 0; }
+.trx-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; margin-top: 12px; }
+.trx-stats > div { display: grid; grid-template-columns: 80px 1fr 70px; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; color: var(--muted); }
+.trx-stats b { color: var(--text); text-align: right; }
+.trx-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.1); overflow: hidden; } .trx-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffd23f, #ff4d2e); }
+#trx-taunt { position: fixed; left: calc(14px + var(--sal)); top: calc(46% + var(--sat)); z-index: 11; max-width: min(380px, 60vw); background: rgba(255,255,255,0.95); color: #1a1430; border-radius: 14px 14px 14px 4px; padding: 8px 12px; font-weight: 700; font-size: 14px; box-shadow: 0 6px 18px rgba(0,0,0,0.3); pointer-events: none; animation: trxpop 0.25s ease-out; }
+#trx-taunt i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+#trx-taunt b { font-family: var(--display); font-style: italic; margin-right: 4px; }
+@keyframes trxpop { from { transform: scale(0.8); opacity: 0; } to { transform: none; opacity: 1; } }
+.trx-rivals { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: 12px; color: var(--muted); font-weight: 700; }
+.trx-rivals i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
+.trx-rivals b { color: var(--text); }
+.trx-times { display: flex; flex-wrap: wrap; gap: 4px 10px; justify-content: center; font-size: 12px; color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+.trx-times small { width: 100%; font-size: 10px; letter-spacing: 0.1em; }
+.trx-times .me { color: var(--sun); }
+.trx-chal { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-height: 66vh; text-align: left; }
+.trx-chal-row { background: #231b44; border-radius: 14px; padding: 8px 10px; }
+.trx-chal-row.locked { opacity: 0.5; }
+.trx-chal-name { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.trx-chal-name b { font-size: 13px; color: var(--sun); } .trx-chal-name small { color: var(--muted); font-weight: 800; font-size: 11px; }
+.trx-chal-name .btn.small { min-height: 34px; padding: 4px 10px; font-size: 12px; }
+.trx-chal ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+.trx-chal li { display: flex; gap: 6px; align-items: flex-start; } .trx-chal li i { flex-shrink: 0; width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid rgba(255,255,255,0.3); font-style: normal; font-size: 11px; line-height: 13px; text-align: center; }
+.trx-chal li.done { color: var(--text); } .trx-chal li.done i { background: #35c24a; border-color: #35c24a; color: #fff; }
+.trx-champ { display: grid; grid-template-columns: 1fr 1.3fr; gap: 12px; text-align: left; max-height: 58vh; overflow: auto; }
+.trx-standings, .trx-rounds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.trx-standings li { display: flex; align-items: center; gap: 8px; background: #231b44; border-radius: 12px; padding: 8px 12px; font-weight: 800; }
+.trx-standings li.me { box-shadow: inset 0 0 0 2px var(--hot); }
+.trx-standings b { font-family: var(--display); font-style: italic; color: var(--sun); width: 18px; }
+.trx-standings i { width: 12px; height: 12px; border-radius: 50%; }
+.trx-standings em { margin-left: auto; font-style: normal; color: var(--sun); }
+.trx-rounds { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.trx-rounds li { background: #231b44; border-radius: 10px; padding: 5px 8px; font-size: 12px; display: flex; gap: 6px; align-items: center; color: var(--muted); }
+.trx-rounds li b { color: var(--text); } .trx-rounds li span { margin-left: auto; font-weight: 800; color: var(--sun); }
+.trx-rounds li.next { box-shadow: inset 0 0 0 2px var(--sun); color: var(--text); } .trx-rounds li.done span { color: #5cff8a; }
+.trx-podium { display: flex; align-items: flex-end; justify-content: center; gap: 10px; padding-top: 10px; }
+.trx-step { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 30%; max-width: 150px; }
+.trx-step b { font-size: 13px; text-align: center; } .trx-step small { color: var(--muted); font-weight: 800; }
+.trx-step .trx-block { width: 100%; border-radius: 10px 10px 0 0; background: linear-gradient(#4a3d7a, #2a2150); display: grid; place-items: center; font-family: var(--display); font-style: italic; font-size: 34px; color: var(--sun); }
+.trx-step.p1 .trx-block { height: 110px; background: linear-gradient(#ffd23f, #c98a00); color: #1a1430; }
+.trx-step.p2 .trx-block { height: 80px; background: linear-gradient(#e6ebf2, #8a96a6); color: #1a1430; }
+.trx-step.p3 .trx-block { height: 60px; background: linear-gradient(#e8a060, #8f4f1c); color: #1a1430; }
+.trx-step.me b { color: var(--hot); }
+.trx-helmet { width: 54px; height: 46px; border-radius: 50% 50% 40% 40%; background: var(--c); position: relative; box-shadow: inset -6px -6px 0 rgba(0,0,0,0.15); animation: trxbob 1.2s ease-in-out infinite; }
+.trx-helmet::before { content: ""; position: absolute; left: 22px; top: 2px; width: 10px; height: 40px; background: var(--c2); border-radius: 5px; }
+.trx-helmet::after { content: ""; position: absolute; right: -4px; top: 18px; width: 26px; height: 14px; background: #1c2a3a; border-radius: 6px; }
+@keyframes trxbob { 50% { transform: translateY(-5px); } }
+#trx-confetti { z-index: 21; }
+.trx-grid-wrap { max-height: 46vh; }
+.trx-grid { display: grid; grid-template-columns: 74px repeat(12, minmax(30px, 1fr)); gap: 3px; min-width: 520px; }
+.trx-gl { font-size: 11px; font-weight: 800; color: var(--muted); text-align: right; padding-right: 6px; align-self: center; }
+.trx-gh { font-size: 10px; font-weight: 800; color: var(--muted); text-align: center; }
+.trx-cell { height: 30px; border: 0; border-radius: 6px; background: #231b44; color: #1a1430; font-weight: 900; font-size: 12px; padding: 0; }
+.trx-cell:hover { background: #3a2f63; }
+.trx-cell.on { background: var(--sun); } .trx-cell.on.s2 { background: var(--hot); color: #fff; } .trx-cell.on.s0 { background: #ffe89a; }
+.trx-brow { flex-wrap: nowrap; } .trx-brow .trx-input { flex: 1; min-width: 0; min-height: 44px; font-size: 14px; }
+.trx-brow .btn.small { flex-shrink: 0; }
+.trx-saved { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: var(--muted); }
+.trx-saved span { display: inline-flex; gap: 2px; } .trx-saved .btn.small { min-height: 34px; padding: 4px 10px; font-size: 12px; } .trx-saved .trx-del { padding: 4px 8px; background: #2b2350; }
+@media (max-width: 900px) { .trx-chal { grid-template-columns: repeat(2, minmax(0, 1fr)); } .trx-ups { grid-template-columns: 1fr; } .trx-gear { grid-template-columns: 1fr 2fr; } .trx-brow { flex-wrap: wrap; } }
+@media (max-height: 460px) {
+  .trx-grid-wrap { max-height: 40vh; } .trx-cell { height: 24px; } .trx-step .trx-block { font-size: 24px; } .trx-step.p1 .trx-block { height: 70px; } .trx-step.p2 .trx-block { height: 52px; } .trx-step.p3 .trx-block { height: 40px; }
+  .trx-champ { max-height: 52vh; } .trx-up small { display: none; } .trx-rider { max-width: 120px; } .trx-swatches button { width: 26px; height: 26px; }
+  .trx-brow .trx-input { min-height: 38px; } .trx-garage { max-height: 58vh; }
+}
+@media (max-width: 600px) { .trx-champ { grid-template-columns: 1fr; } .trx-chal { grid-template-columns: 1fr; } .trx-gear { grid-template-columns: 1fr; } }
 </style><!-- /tr-extras-css -->
 </head>
 <body>
@@ -5005,6 +5094,7 @@ void main() {
     run.view = view;
     HOOKS.forEach(function (h) { if (h.view) h.view(view, race, run); });
     infoEl.classList.add('hidden'); splitEl.classList.add('hidden');
+    $('hud-pos').classList.toggle('hidden', !!MODES[run.mode].solo);
   }
   function live(race) { return run && run.race === race && !game.attract; }
   function pre(race) {
@@ -5039,10 +5129,12 @@ void main() {
     post: function (race, r) {
       for (var i = 0; i < race.events.length; i++) {
         var e = race.events[i];
-        if (e.type === 'finish' && e.bike === 0 && !r.finished) {
+        if (e.type === 'finish' && e.bike === 0) {
+          if (MODES[r.mode].own) game.finishTimer = -1;
+          if (r.finished) continue;
           r.finished = true; r.finishTime = race.player.finishTime;
           onPlayerFinish(r);
-          if (MODES[r.mode].own) { game.finishTimer = -1; r.finishAt = performance.now() + 1500; }
+          if (MODES[r.mode].own) r.finishAt = performance.now() + 1500;
         }
       }
     },
@@ -5070,7 +5162,7 @@ void main() {
   var resCells = [].slice.call(document.querySelectorAll('#scr-results .results > div'));
   var RES_LABELS = resCells.map(function (d) { return d.querySelector('small').textContent; });
   var resX = document.createElement('div');
-  resX.id = 'trx-res';
+  resX.id = 'trx-res'; resX.className = 'scroll';
   $('res-note').after(resX);
   var BTN_TEXT = { 'btn-res-menu': 'TRACKS', 'btn-res-retry': 'RETRY', 'btn-res-next': 'NEXT TRACK' };
   function resetResults() {
@@ -5841,7 +5933,7 @@ void main() {
       var bikes = race.bikes;
       for (var i = 0; i < bikes.length; i++) {
         var A = bikes[i];
-        if (A.crashed || !A.rearContact || A.input.throttle < 0.5) continue;
+        if (A.crashed || !A.rearContact || A.input.throttle < 0.5 || (A.remote && A.remote.gone)) continue;
         var av = A.chassis.getLinearVelocity(); if (av.x < 5) continue;
         var ap = A.rear.getPosition();
         for (var j = 0; j < bikes.length; j++) {
@@ -6057,6 +6149,569 @@ void main() {
     var txt = margin == null ? 'Photo finish with ' + esc(b.name) : margin > 0 ? 'You beat ' + esc(b.name) + ' by ' + margin.toFixed(2) + ' s' : esc(b.name) + ' beat you by ' + (-margin).toFixed(2) + ' s';
     return '<figure class="trx-photo"><img alt="Photo finish" src="' + r.photo + '"><figcaption><b>PHOTO FINISH</b> ' + txt + '</figcaption></figure>';
   });
+
+  // ================================================================ 710: elimination
+  function knockOut(race, b) {
+    b.ai = null;
+    b.remote = { id: 'out', buf: [], gone: true };
+    [b.chassis, b.rear, b.front].forEach(function (body) { body.setActive(false); });
+    if (b.ragdoll) b.ragdoll.bodies.forEach(function (body) { body.setActive(false); });
+  }
+  var isOut = function (b) { return !!(b.remote && b.remote.gone && b.remote.id === 'out'); };
+  HOOKS.push({
+    race: function (race, r) {
+      if (r.mode !== 'elim') return;
+      var tr = race.track, n = race.bikes.length - 1, gates = [];
+      for (var i = 1; i <= n; i++) gates.push(tr.startX + (tr.finishX - tr.startX) * i / (n + 1));
+      r.elim = { gates: gates, k: 0, out: [], label: '' };
+    },
+    view: function (view, race, r) {
+      if (!r.elim) return;
+      var tr = race.track, red = new T3.MeshBasicMaterial({ color: 0xff2a2a, toneMapped: false }), white = new T3.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+      r.elim.gates.forEach(function (x) {
+        var y = tr.heightAt(x), a = Math.atan(tr.slopeAround(x, 1));
+        var line = new T3.Mesh(new T3.PlaneGeometry(0.35, 10.6), red);
+        line.rotation.x = -Math.PI / 2; line.position.set(x, y + 0.07, 0); line.rotateOnWorldAxis(new T3.Vector3(0, 0, 1), a);
+        var post = new T3.Mesh(new T3.CylinderGeometry(0.1, 0.1, 4.2, 8), white); post.position.set(x, y + 2.1, -6.2);
+        var flag = new T3.Mesh(new T3.BoxGeometry(1.4, 0.8, 0.05), red); flag.position.set(x + 0.7, y + 3.7, -6.2);
+        view.scene.add(line, post, flag);
+      });
+    },
+    post: function (race, r) {
+      var el = r.elim;
+      if (!el || race.state !== 'racing') return;
+      var alive = race.bikes.filter(function (b) { return !isOut(b); });
+      el.label = (el.k < el.gates.length ? 'RED GATE ' + (el.k + 1) + '/' + el.gates.length + ' &middot; ' : 'LAST ONE STANDING &middot; ') + alive.length + ' LEFT';
+      if (el.k >= el.gates.length || el.playerOut) return;
+      var g = el.gates[el.k], behind = alive.filter(function (b) { return b.chassis.getPosition().x < g && !b.finished; });
+      if (behind.length !== 1 || alive.length < 2) return;
+      var loser = behind[0];
+      el.k++;
+      if (loser.id === 0) {
+        el.playerOut = alive.length; el.outGate = el.k;
+        pop('ELIMINATED!', 0, true);
+        r.finishAt = performance.now() + 1400; r.finished = true;
+        game.finishTimer = -1;
+      } else {
+        el.out.push(loser.id);
+        knockOut(race, loser);
+        ui.toast(loser.name + ' is out!', 1300);
+        X.audio.trick(200);
+      }
+    }
+  });
+  var origHud = ui.hud;
+  ui.hud = function (race, pos) {
+    if (run && run.elim && run.race === race) pos = 1 + race.bikes.filter(function (b) { return b !== race.player && !isOut(b) && (b.finished || b.chassis.getPosition().x > race.player.chassis.getPosition().x); }).length;
+    return origHud.call(ui, race, pos);
+  };
+  OWN.elim = function (r) {
+    var el = r.elim, p = r.race.player, pos = el.playerOut || 1;
+    var c = r.coins += addCoins(pos === 1 ? 90 : (5 - pos) * 12);
+    if (!el.playerOut) saveBest(r);
+    showResults({
+      title: pos === 1 ? 'Last one standing!' : 'Eliminated',
+      cells: [['PLACE', ord(pos)], ['OUT AT', el.playerOut ? 'Gate ' + el.outGate : 'Never'], ['TIME', el.playerOut ? '&ndash;' : fmt(r.finishTime)], ['STUNTS', fmtPts(p.score || 0)]],
+      table: null,
+      note: pos === 1 ? 'You survived every red gate.' : 'You were last to reach red gate ' + el.outGate + '.',
+      buttons: { menu: true, retry: true, next: r.ti + 1 < TRACKS.length ? true : false, nextDisabled: r.ti + 1 >= data().unlocked }
+    });
+  };
+  // A real finish on one of the 25 tracks still counts as a best time (but doesn't unlock anything).
+  function saveBest(r) {
+    if (r.custom || r.ti < 0) return;
+    var d = data(), b = d.best[r.id];
+    if (!b || r.finishTime < b) { d.best[r.id] = r.finishTime; X.save(); r.newBest = true; }
+  }
+
+  // ================================================================ 703: stunt challenges
+  function bigJumpX(def, tr) {
+    var hs = [];
+    def.features.forEach(function (f) { if (f[0] === 'table' || f[0] === 'double' || f[0] === 'triple' || f[0] === 'stepup' || f[0] === 'drop') hs.push(f[0] === 'drop' ? f[1] * 0.6 : f[1] + (f[0] === 'triple' ? 0.6 : 0)); });
+    var best = 0;
+    for (var i = 1; i < hs.length; i++) if (hs[i] > hs[best]) best = i;
+    return tr.lips[best];
+  }
+  function challengesFor(i) {
+    var def = TRACKS[i], id = def.id, list = [];
+    list.push({ k: 'flip', text: 'Land a 360 (backflip or frontflip) over the big jump' });
+    list.push({ k: 'score', n: 1500 + def.diff * 500, text: 'Score ' + fmtPts(1500 + def.diff * 500) + ' stunt points in one run' });
+    var kind = ['clean', 'wheelie', 'combo', 'win', 'fast'][i % 5];
+    if (kind === 'clean') list.push({ k: 'clean', text: 'Finish without crashing' });
+    else if (kind === 'wheelie') list.push({ k: 'wheelie', text: 'Hold a wheelie for 3 seconds' });
+    else if (kind === 'combo') list.push({ k: 'combo', text: 'Land a Superman + No-Hander in one jump' });
+    else if (kind === 'win') list.push({ k: 'win', text: 'Win the race on HARD' });
+    else list.push({ k: 'fast', t: Math.round(medalTimes(id).gold * 1.15), text: 'Finish in under ' + fmt(Math.round(medalTimes(id).gold * 1.15)).slice(0, -3) });
+    return list;
+  }
+  challengeStars = function (id) { var m = S.chal[id] | 0, n = 0; for (var k = 0; k < 3; k++) if (m & (1 << k)) n++; return n; };
+  challengeTotal = function () { var n = 0; TRACKS.forEach(function (d) { n += challengeStars(d.id); }); return n; };
+  function completeChallenge(r, k) {
+    if (r.custom || r.ti < 0 || r.online && false) return;
+    var bit = 1 << k, m = S.chal[r.id] | 0;
+    if (m & bit) return;
+    S.chal[r.id] = m | bit; save();
+    r.coins += addCoins(100);
+    (r.chalDone = r.chalDone || []).push(r.chal[k].text);
+    setTimeout(function () { ui.toast('Challenge done! ' + r.chal[k].text, 2200); }, 900);
+  }
+  HOOKS.push({
+    race: function (race, r) {
+      r.chal = null;
+      if (r.custom || r.ti < 0) return;
+      r.chal = challengesFor(r.ti);
+      r.bigX = bigJumpX(r.def, race.track);
+    },
+    view: function (view, race, r) {
+      if (!r.chal) return;
+      var open = r.chal.filter(function (c, k) { return !((S.chal[r.id] | 0) & (1 << k)); });
+      if (open.length && (r.mode === 'race' || r.mode === 'trick')) { r.chalHint = performance.now() + 7000; }
+    },
+    post: function (race, r) {
+      if (!r.chal || race.state !== 'racing') return;
+      var p = race.player;
+      r.chal.forEach(function (c, k) {
+        if (c.k === 'score' && (p.score || 0) >= c.n) completeChallenge(r, k);
+        if (c.k === 'wheelie' && p.trick && p.trick.id === 5 && p.trick.held >= 3) completeChallenge(r, k);
+      });
+    },
+    frame: function (dt, r, now) {
+      if (r && r.chalHint && game.state === 'race' && r.mode === 'race') {
+        if (now < r.chalHint) {
+          var open = r.chal.filter(function (c, k) { return !((S.chal[r.id] | 0) & (1 << k)); });
+          setInfo(open.length ? '<small>CHALLENGE</small> ' + esc(open[Math.floor((r.chalHint - now) / 3500) % open.length].text) : '');
+        } else { r.chalHint = 0; setInfo(''); }
+      }
+    }
+  });
+  FLIP_LISTENERS.push(function (r, pd) {
+    if (!r.chal) return;
+    r.chal.forEach(function (c, k) { if (c.k === 'flip' && r.bigX != null && Math.abs(pd.x - r.bigX) < 4) completeChallenge(r, k); });
+  });
+  TRICK_LISTENERS.push(function (r, name) {
+    if (!r.chal) return;
+    r.chal.forEach(function (c, k) { if (c.k === 'combo' && /Superman/.test(name) && /No-Hander/.test(name)) completeChallenge(r, k); });
+  });
+  FINISHERS.push(function (r) {
+    if (!r.chal) return;
+    r.chal.forEach(function (c, k) {
+      if (c.k === 'clean' && !r.crashes) completeChallenge(r, k);
+      if (c.k === 'fast' && r.finishTime <= c.t) completeChallenge(r, k);
+      if (c.k === 'win' && MODES[r.mode].rivals && !r.online && data().skill === 'hard' && X.placeOf(r.race, r.race.player) === 1) completeChallenge(r, k);
+    });
+  });
+  EXTRAS.push(function (r) { return r.chalDone ? '<p class="trx-line">&#9733; Challenge done: ' + r.chalDone.map(esc).join(', ') + '</p>' : ''; });
+  addScreen('scr-chal', '<div class="row between"><button class="btn small" data-xback>&#8592; BACK</button><h2>Stunt challenges</h2><span class="trx-coins" id="trx-chal-count"></span></div><div class="trx-chal scroll" id="trx-chal-list"></div>', true);
+  function openChallenges() {
+    var box = $('trx-chal-list'), d = data();
+    box.innerHTML = '';
+    TRACKS.forEach(function (def, i) {
+      var locked = i >= d.unlocked, row = document.createElement('div');
+      row.className = 'trx-chal-row' + (locked ? ' locked' : '');
+      row.innerHTML = '<div class="trx-chal-name"><b>' + (i + 1) + '. ' + esc(def.name) + '</b>' + (locked ? '<small>Locked</small>' : '<button class="btn small" data-ride="' + i + '">RIDE</button>') + '</div><ul>' +
+        challengesFor(i).map(function (c, k) { var done = (S.chal[def.id] | 0) & (1 << k); return '<li class="' + (done ? 'done' : '') + '"><i>' + (done ? '&#10003;' : '') + '</i>' + esc(c.text) + '</li>'; }).join('') + '</ul>';
+      box.appendChild(row);
+    });
+    box.querySelectorAll('[data-ride]').forEach(function (b) { b.addEventListener('click', function () { X.audio.click(); M.mode = 'race'; M.custom = null; hideMine(); G.startRace(+b.dataset.ride); }); });
+    $('trx-chal-count').innerHTML = '&#9733; ' + challengeTotal() + '/75';
+    openScreen('scr-chal');
+  }
+  MODE_START.chal = openChallenges;
+
+  // ================================================================ 692: freestyle arena
+  var ARENA = {
+    id: 'arena', theme: 'stadium', name: 'Freestyle Arena', tagline: 'Two minutes of big air', sky: ['#03061a', '#1d2a5c'], ground: '#35663a', diff: 3,
+    features: [['flat', 30], ['table', 3.4, 10, 18, 11], ['flat', 14], ['double', 3.2, 10, 11, 11], ['flat', 14], ['stepup', 3.4, 9, 9, 2.6], ['flat', 12], ['drop', 2.6, 13], ['flat', 14],
+      ['table', 3.8, 10, 20, 12], ['flat', 14], ['triple', 3.4, 10, 20, 12], ['flat', 14], ['table', 3, 9, 16, 10], ['flat', 16], ['roller', 1.4, 12], ['roller', 1.4, 12], ['flat', 12], ['table', 4, 10, 22, 12], ['flat', 24]]
+  };
+  MODE_START.free = function () { startCustom({ mode: 'free', def: ARENA, label: 'FREESTYLE ARENA · 2 MINUTES · ' + X.BIKES[data().bike || 'stock'].name }); };
+  HOOKS.push({
+    pre: function (race, r) {
+      if (r.mode !== 'free' || race.state !== 'racing') return;
+      var p = race.player, tr = race.track;
+      if (!p.crashed && p.grounded && p.chassis.getPosition().x > tr.finishX - 14) {
+        p.checkpoint = tr.startX; p.bestX = tr.startX;
+        X.respawn(race, p);
+        r.laps = (r.laps || 0) + 1;
+        ui.toast('Back to the start!', 900);
+      }
+    },
+    post: function (race, r) {
+      if (r.mode !== 'free' || race.state !== 'racing' || r.finished) return;
+      if (race.time >= FREE_TIME) { r.finished = true; r.finishTime = race.time; game.finishTimer = -1; r.finishAt = performance.now() + 300; ui.countdown('TIME!'); X.audio.finish(); }
+    }
+  });
+  OWN.free = function (r) {
+    var p = r.race.player, sc = Math.round(p.score || 0), prev = S.free || 0, nb = sc > prev;
+    if (nb) { S.free = sc; save(); }
+    r.coins += addCoins(sc / 50);
+    showResults({
+      title: nb ? 'New arena record!' : 'Time!',
+      cells: [['SCORE', fmtPts(sc)], ['BEST', fmtPts(Math.max(sc, prev))], ['TRICKS', String(r.tricks)], ['FLIPS', String(r.flips || 0)]],
+      note: 'Top combo ×' + r.maxCombo.toFixed(1).replace('.0', '') + (r.crashes ? ' · ' + r.crashes + (r.crashes === 1 ? ' crash' : ' crashes') : ' · no crashes'),
+      buttons: { menu: 'MODES', retry: true, next: false }
+    });
+  };
+  INTERCEPT['btn-res-menu'] = function () {
+    if (!run) return false;
+    if (run.mode === 'free') { game.state = 'menu'; X.attract(); openModes(); ui.showHUD(false); return true; }
+    if (run.mode === 'build') { game.state = 'menu'; X.attract(); openBuilder(); return true; }
+    if (run.mode === 'champ') { game.state = 'menu'; X.attract(); openChamp(); return true; }
+    return false;
+  };
+
+  // ================================================================ 696 / 697: garage (gear and upgrades)
+  var BASE0 = Object.assign({}, X.RIDERS[0]);
+  var PALETTE = [0xe8331c, 0xff8a00, 0xffd23f, 0x35c24a, 0x14b8a6, 0x1f6fe0, 0x6b2bd9, 0xff2fa0, 0xffffff, 0x9aa3ad, 0x2b2b33, 0x8b5a2b];
+  var GEAR_PARTS = [['helmet', 'Helmet'], ['helmet2', 'Helmet stripe'], ['jersey', 'Shirt'], ['jersey2', 'Shirt stripes'], ['pants', 'Pants'], ['color', 'Bike plastics']];
+  function gear() { return Object.assign({ helmet: BASE0.helmet, helmet2: BASE0.helmet2, jersey: BASE0.jersey, jersey2: BASE0.jersey2, pants: BASE0.pants, color: BASE0.color, num: BASE0.num }, S.gear || {}); }
+  function applyGear() {
+    var g = gear(), R = X.RIDERS[0];
+    Object.assign(R, BASE0, { helmet: g.helmet, helmet2: g.helmet2, jersey: g.jersey, jersey2: g.jersey2, pants: g.pants, color: g.color, accent: g.color === 0xffffff ? 0xe8331c : 0xffffff, num: clamp(g.num | 0, 1, 99) });
+  }
+  applyGear();
+  var UPS = [['eng', 'Engine', 'More power and top speed'], ['sus', 'Suspension', 'Keep more speed on rough landings'], ['tyre', 'Tyres', 'More grip, also in the rain']];
+  var UP_COST = [150, 300, 500, 800, 1200];
+  HOOKS.push({
+    race: function (race, r) {
+      applyGear();
+      if (r.online) return;
+      var p = race.player, L = S.up, sp = p.spec;
+      p.spec = Object.assign({}, sp, { topSpeed: sp.topSpeed * (1 + 0.02 * L.eng), driveTorque: sp.driveTorque * (1 + 0.035 * L.eng) });
+      if (L.sus) { [p.rearJoint, p.frontJoint].forEach(function (j) { if (j.setSpringDampingRatio) j.setSpringDampingRatio(B.suspensionDamp + 0.03 * L.sus); }); }
+      if (L.tyre) [p.rear, p.front].forEach(function (wb) { for (var f = wb.getFixtureList(); f; f = f.getNext()) f.setFriction(f.getFriction() + 0.09 * L.tyre); });
+    },
+    post: function (race, r) {
+      if (r.online || !S.up.sus) return;
+      for (var i = 0; i < race.events.length; i++) {
+        var e = race.events[i];
+        if (e.type === 'land' && e.bike === 0 && e.quality < 0.95 && !race.player.crashed) {
+          var k = 1 + 0.03 * S.up.sus * (1 - e.quality);
+          [race.player.chassis, race.player.rear, race.player.front].forEach(function (b) { var v = b.getLinearVelocity(); b.setLinearVelocity({ x: v.x * k, y: v.y }); });
+        }
+      }
+    }
+  });
+  addScreen('scr-garage', '<div class="row between"><button class="btn small" data-xback>&#8592; BACK</button><h2>Garage</h2><span class="trx-coins" data-coins></span></div>' +
+    '<div class="seg trx-tabs" role="tablist"><button data-tab="gear" class="on">RIDER GEAR</button><button data-tab="up">UPGRADES</button></div>' +
+    '<div class="trx-garage scroll" id="trx-garage"></div>', true);
+  var garageTab = 'gear';
+  $('scr-garage').querySelectorAll('[data-tab]').forEach(function (b) { b.addEventListener('click', function () { X.audio.click(); garageTab = b.dataset.tab; renderGarage(); }); });
+  function hex(c) { return '#' + c.toString(16).padStart(6, '0'); }
+  function riderSVG(g) {
+    return '<svg viewBox="0 0 120 120" class="trx-rider" aria-label="Your rider">' +
+      '<circle cx="34" cy="96" r="15" fill="#1a1a1a"/><circle cx="34" cy="96" r="7" fill="#9aa3ad"/><circle cx="94" cy="96" r="15" fill="#1a1a1a"/><circle cx="94" cy="96" r="7" fill="#9aa3ad"/>' +
+      '<path d="M30 84 L52 74 L80 74 L96 82 L88 88 L58 86 Z" fill="' + hex(g.color) + '"/><path d="M78 72 L92 60 L98 64 L86 76 Z" fill="' + hex(g.color) + '"/>' +
+      '<rect x="40" y="70" width="22" height="13" rx="3" fill="#fff"/><text x="51" y="80.5" font-size="10" font-weight="900" text-anchor="middle" fill="' + hex(g.color === 0xffffff ? 0xe8331c : g.color) + '" font-family="Arial">' + clamp(g.num | 0, 1, 99) + '</text>' +
+      '<path d="M54 72 L66 60 L76 64 L70 76 Z" fill="' + hex(g.pants) + '"/><path d="M66 60 L72 76 L80 78" stroke="' + hex(g.pants) + '" stroke-width="7" fill="none" stroke-linecap="round"/>' +
+      '<path d="M58 62 L68 34 L82 38 L74 64 Z" fill="' + hex(g.jersey) + '"/><path d="M62 52 L78 56" stroke="' + hex(g.jersey2) + '" stroke-width="4"/><path d="M76 40 L90 56" stroke="' + hex(g.jersey) + '" stroke-width="6" stroke-linecap="round"/>' +
+      '<circle cx="78" cy="26" r="12" fill="' + hex(g.helmet) + '"/><path d="M68 20 Q78 12 89 21" stroke="' + hex(g.helmet2) + '" stroke-width="4" fill="none"/><path d="M84 28 L96 30 L90 34 Z" fill="' + hex(g.helmet2) + '"/><rect x="82" y="22" width="9" height="6" rx="2" fill="#1c2a3a"/>' +
+      '</svg>';
+  }
+  function stats() {
+    var b = X.BIKES[data().bike || 'stock'], L = S.up;
+    var top = b.topSpeed * (1 + 0.02 * L.eng), acc = b.driveTorque * (1 + 0.035 * L.eng);
+    return [['Top speed', Math.round(top * 3.6) + ' km/h', top / 34], ['Power', Math.round(acc * 10) / 10 + '', acc / 22], ['Landings', '+' + (L.sus * 3) + '%', 0.4 + L.sus * 0.12], ['Grip', (1.6 + 0.09 * L.tyre).toFixed(2), 0.45 + L.tyre * 0.11]];
+  }
+  function renderGarage() {
+    $('scr-garage').querySelectorAll('[data-tab]').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === garageTab); });
+    var box = $('trx-garage'), g = gear();
+    if (garageTab === 'gear') {
+      box.innerHTML = '<div class="trx-gear"><div class="trx-gear-prev">' + riderSVG(g) + '<label class="trx-num">Number <button class="btn small" data-num="-1" aria-label="Lower number">&minus;</button><b>' + clamp(g.num | 0, 1, 99) + '</b><button class="btn small" data-num="1" aria-label="Higher number">+</button></label></div><div class="trx-gear-parts">' +
+        GEAR_PARTS.map(function (pt) { return '<div class="trx-part"><b>' + pt[1] + '</b><div class="trx-swatches">' + PALETTE.map(function (c) { return '<button style="background:' + hex(c) + '" data-part="' + pt[0] + '" data-c="' + c + '" class="' + (g[pt[0]] === c ? 'on' : '') + '" aria-label="' + pt[1] + ' colour"></button>'; }).join('') + '</div></div>'; }).join('') +
+        '<button class="btn small" id="btn-gear-reset">RESET</button></div></div>';
+      box.querySelectorAll('[data-part]').forEach(function (b) { b.addEventListener('click', function () { X.audio.click(); var s = gear(); s[b.dataset.part] = +b.dataset.c; S.gear = s; save(); applyGear(); renderGarage(); }); });
+      box.querySelectorAll('[data-num]').forEach(function (b) { b.addEventListener('click', function () { X.audio.click(); var s = gear(); s.num = ((clamp(s.num | 0, 1, 99) - 1 + (+b.dataset.num) + 99) % 99) + 1; S.gear = s; save(); applyGear(); renderGarage(); }); });
+      $('btn-gear-reset').addEventListener('click', function () { X.audio.click(); S.gear = null; save(); applyGear(); renderGarage(); });
+    } else {
+      box.innerHTML = '<p class="sub2">Earn coins by racing, winning medals and finishing challenges. Upgrades work offline; online races stay fair on stock bikes.</p><div class="trx-ups">' +
+        UPS.map(function (u) {
+          var lv = S.up[u[0]], cost = UP_COST[lv];
+          return '<div class="trx-up"><b>' + u[1] + '</b><small>' + u[2] + '</small><div class="trx-pips">' + [0, 1, 2, 3, 4].map(function (k) { return '<i class="' + (k < lv ? 'on' : '') + '"></i>'; }).join('') + '</div>' +
+            (lv >= 5 ? '<span class="trx-max">MAXED</span>' : '<button class="btn small" data-up="' + u[0] + '"' + (S.coins < cost ? ' disabled' : '') + '><i class="trx-coin"></i>' + cost + '</button>') + '</div>';
+        }).join('') + '</div><div class="trx-stats">' + stats().map(function (s) { return '<div><span>' + s[0] + '</span><div class="trx-bar"><i style="width:' + Math.round(clamp(s[2], 0.05, 1) * 100) + '%"></i></div><b>' + s[1] + '</b></div>'; }).join('') + '</div>';
+      box.querySelectorAll('[data-up]').forEach(function (b) { b.addEventListener('click', function () { var k = b.dataset.up, cost = UP_COST[S.up[k]]; if (S.coins < cost) return; X.audio.trick(300); S.coins -= cost; S.up[k]++; save(); refreshCoins(); renderGarage(); }); });
+    }
+    refreshCoins();
+  }
+  function openGarage() { renderGarage(); openScreen('scr-garage'); }
+  EXTRAS.push(function (r) { return r.coins > 0 ? '<p class="trx-line"><i class="trx-coin"></i>+' + r.coins + ' coins (' + fmtPts(S.coins) + ' in the garage)</p>' : ''; });
+
+  // ================================================================ 712: rival riders
+  var RIVALS = {
+    Bolt: { mood: 'the show-off', ai: { trick: 0.65, late: 0.12 }, taunt: { won: 'Did you see my Superman last time? Again!', lost: 'Lucky landings last time. Watch this.', none: 'Let’s put on a show!' }, after: { won: 'Style AND speed. Write that down.', lost: 'Okay, okay. Nice riding.' } },
+    Viper: { mood: 'the calculating one', ai: { noise: 0.6, slip: 0.6, throttle: 1.03 }, taunt: { won: 'I’ve done the maths. You’re still behind.', lost: 'You won’t catch me sleeping twice.', none: 'Clean lines win races.' }, after: { won: 'Exactly as planned.', lost: 'Hmm. I’ll study your lines.' } },
+    Blaze: { mood: 'the hothead', ai: { throttle: 1.05, slip: 1.6, late: 1.6 }, taunt: { won: 'Too slow again? HA!', lost: 'You beat me last time. Not happening again!', none: 'Full throttle, no brakes!' }, after: { won: 'Eat my roost!', lost: 'RAAAH! Rematch. Now.' } }
+  };
+  function rec(name) { return S.rivals[name] || (S.rivals[name] = { beat: 0, lost: 0, last: '' }); }
+  var taunt = document.createElement('div'); taunt.id = 'trx-taunt'; taunt.className = 'hidden'; document.body.appendChild(taunt);
+  var tauntT = 0;
+  function say(name, color, text, ms) {
+    taunt.innerHTML = '<i style="background:' + hex(color) + '"></i><b>' + esc(name) + '</b> ' + esc(text);
+    taunt.classList.remove('hidden');
+    clearTimeout(tauntT); tauntT = setTimeout(function () { taunt.classList.add('hidden'); }, ms || 3600);
+  }
+  HOOKS.push({
+    race: function (race, r) {
+      if (r.online) return;
+      race.bikes.forEach(function (b) {
+        var pr = RIVALS[b.name];
+        if (!pr || !b.ai) return;
+        var s = b.ai.skill;
+        if (pr.ai.trick) s.trick = Math.max(s.trick, pr.ai.trick);
+        if (pr.ai.late) s.late *= pr.ai.late;
+        if (pr.ai.noise) s.noise *= pr.ai.noise;
+        if (pr.ai.slip) s.slip *= pr.ai.slip;
+        if (pr.ai.throttle) s.throttle = Math.min(1, s.throttle * pr.ai.throttle);
+      });
+      if (!MODES[r.mode].rivals || race.bikes.length < 2) return;
+      // The rival with the most to say talks during the countdown.
+      var names = race.bikes.slice(1).map(function (b) { return b.name; }).filter(function (n) { return RIVALS[n]; });
+      names.sort(function (a, b) { var A = rec(a), Bb = rec(b); return (Bb.beat + Bb.lost) - (A.beat + A.lost) || Math.random() - 0.5; });
+      var n = names[Math.floor(Math.random() * Math.min(2, names.length))];
+      if (!n) return;
+      var rc = rec(n), pr2 = RIVALS[n], line = rc.last === 'won' ? pr2.taunt.won : rc.last === 'lost' ? pr2.taunt.lost : pr2.taunt.none;
+      if (rc.beat >= 3 && rc.last === 'won') line = 'That’s ' + rc.beat + ' wins over you. ' + line;
+      var color = X.RIDERS[race.bikes.filter(function (b) { return b.name === n; })[0].id].color;
+      setTimeout(function () { if (run && run.race === race && game.state === 'race') say(n, color, line); }, 700);
+    }
+  });
+  FINISHERS.push(function (r) {
+    if (r.online || !MODES[r.mode].rivals) return;
+    var race = r.race, me = race.player, notes = [];
+    race.bikes.forEach(function (b) {
+      if (b === me || !RIVALS[b.name] || isOut(b)) return;
+      var rc = rec(b.name), beatMe = b.finished && b.finishTime < me.finishTime;
+      if (beatMe) { rc.beat++; rc.last = 'won'; } else { rc.lost++; rc.last = 'lost'; }
+      notes.push({ name: b.name, id: b.id, won: beatMe, rc: { beat: rc.beat, lost: rc.lost } });
+    });
+    save();
+    r.rivalNotes = notes;
+    var pick = notes.filter(function (n) { return n.won; })[0] || notes[0];
+    if (pick) setTimeout(function () { say(pick.name, X.RIDERS[pick.id].color, RIVALS[pick.name].after[pick.won ? 'won' : 'lost'], 3000); }, 400);
+  });
+  EXTRAS.push(function (r) {
+    if (!r.rivalNotes || !r.rivalNotes.length) return '';
+    return '<div class="trx-rivals">' + r.rivalNotes.map(function (n) {
+      return '<span title="' + esc(n.name + ', ' + RIVALS[n.name].mood) + '"><i style="background:' + hex(X.RIDERS[n.id].color) + '"></i><b>' + esc(n.name) + '</b> ' + (n.won ? 'beat you' : 'lost') + ' &middot; you ' + n.rc.lost + '&ndash;' + n.rc.beat + '</span>';
+    }).join('') + '</div>';
+  });
+
+  // ================================================================ 698: championship
+  var CHAMP_TRACKS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], CHAMP_PTS = [25, 18, 15, 12];
+  function newChamp() { S.champ = { round: 0, pts: [0, 0, 0, 0], res: [], skill: data().skill }; save(); }
+  function champNames() { return X.RIDERS.map(function (r, i) { return i === 0 ? myName() + ' (you)' : r.name; }); }
+  function standings() {
+    var c = S.champ, names = champNames();
+    return [0, 1, 2, 3].map(function (i) { return { id: i, name: names[i], pts: c.pts[i] }; }).sort(function (a, b) { return b.pts - a.pts || a.id - b.id; });
+  }
+  addScreen('scr-champ', '<div class="row between"><button class="btn small" data-xback>&#8592; BACK</button><h2>Championship</h2><span class="trx-coins" id="trx-champ-round"></span></div><div class="trx-champ" id="trx-champ"></div><div class="row"><button class="btn small" id="btn-champ-new">NEW CHAMPIONSHIP</button><button class="btn primary" id="btn-champ-go">START ROUND 1</button></div>', true);
+  function openChamp() {
+    if (!S.champ) newChamp();
+    var c = S.champ, box = $('trx-champ');
+    if (c.round >= 10) { openPodium(); return; }
+    box.innerHTML = '<ol class="trx-standings">' + standings().map(function (s, k) { return '<li class="' + (s.id === 0 ? 'me' : '') + '"><b>' + (k + 1) + '</b><i style="background:' + hex(X.RIDERS[s.id].color) + '"></i><span>' + esc(s.name) + '</span><em>' + s.pts + ' pts</em></li>'; }).join('') + '</ol>' +
+      '<ol class="trx-rounds">' + CHAMP_TRACKS.map(function (t, k) { var res = c.res[k]; return '<li class="' + (k === c.round ? 'next' : res ? 'done' : '') + '"><b>R' + (k + 1) + '</b> ' + esc(TRACKS[t].name) + '<span>' + (res ? ord(res.pos) + ' +' + res.pts : k === c.round ? 'NEXT' : '') + '</span></li>'; }).join('') + '</ol>';
+    $('trx-champ-round').textContent = 'ROUND ' + (c.round + 1) + '/10';
+    $('btn-champ-go').textContent = 'START ROUND ' + (c.round + 1);
+    $('btn-champ-new').classList.toggle('hidden', c.round === 0);
+    openScreen('scr-champ');
+  }
+  $('btn-champ-go').addEventListener('click', function () { X.audio.click(); startRound(); });
+  $('btn-champ-new').addEventListener('click', function () { X.audio.click(); newChamp(); openChamp(); });
+  function startRound() { M.mode = 'champ'; M.custom = null; hideMine(); startTrack(CHAMP_TRACKS[S.champ.round], true); }
+  MODE_START.champ = openChamp;
+  HOOKS.push({ view: function (view, race, r) { if (r.mode === 'champ') setTimeout(function () { $('btn-restart').classList.add('hidden'); }, 0); } });
+  window.addEventListener('keydown', function (e) { if (e.code === 'KeyR' && run && run.mode === 'champ' && game.state === 'results') e.stopImmediatePropagation(); }, true);
+  OWN.champ = function (r) {
+    var race = r.race, c = S.champ || (newChamp(), S.champ);
+    var order = race.bikes.slice().sort(function (a, b) { return (a.finished ? a.finishTime : 1e9 - a.chassis.getPosition().x) - (b.finished ? b.finishTime : 1e9 - b.chassis.getPosition().x); });
+    order.forEach(function (b, k) { c.pts[b.id] += CHAMP_PTS[k] || 0; });
+    var pos = order.indexOf(race.player) + 1;
+    c.res[c.round] = { pos: pos, pts: CHAMP_PTS[pos - 1], t: Math.round(r.finishTime * 100) / 100 };
+    c.round++;
+    save();
+    saveBest(r);
+    r.coins += addCoins((5 - pos) * 20);
+    var st = standings(), mine = st.findIndex(function (s) { return s.id === 0; }) + 1, last = c.round >= 10;
+    showResults({
+      title: last ? 'Final round done!' : 'Round ' + c.round + ' of 10',
+      cells: [['POSITION', ord(pos)], ['TIME', fmt(r.finishTime)], ['POINTS', '+' + CHAMP_PTS[pos - 1]], ['STANDING', ord(mine)]],
+      table: race,
+      note: st.map(function (s) { return s.name.replace(' (you)', '') + ' ' + s.pts; }).join(' · '),
+      buttons: { menu: 'STANDINGS', retry: false, next: last ? 'SEE PODIUM' : 'NEXT ROUND' }
+    });
+  };
+  INTERCEPT['btn-res-next'] = function () {
+    if (!run) return false;
+    if (run.mode === 'champ') { if (S.champ && S.champ.round >= 10) { game.state = 'menu'; X.attract(); openPodium(); } else startRound(); return true; }
+    return false;
+  };
+  addScreen('scr-podium', '<h2 id="trx-pod-title">Champion!</h2><div class="trx-podium" id="trx-podium"></div><p class="sub2" id="trx-pod-note"></p><div class="row"><button class="btn" data-xback>MENU</button><button class="btn primary" id="btn-pod-again">NEW CHAMPIONSHIP</button></div><canvas id="trx-confetti" class="trx-overlay"></canvas>');
+  $('btn-pod-again').addEventListener('click', function () { X.audio.click(); stopConfetti(); newChamp(); openChamp(); });
+  $('scr-podium').querySelector('[data-xback]').addEventListener('click', stopConfetti);
+  function openPodium() {
+    var st = standings(), mine = st.findIndex(function (s) { return s.id === 0; }) + 1, c = S.champ;
+    if (!c.paid) {
+      c.paid = true;
+      if (mine === 1) S.champWins++;
+      addCoins([0, 400, 250, 150, 60][mine]);
+      save();
+    }
+    var steps = [st[1], st[0], st[2]];
+    $('trx-podium').innerHTML = steps.map(function (s, k) {
+      var place = [2, 1, 3][k];
+      return '<div class="trx-step p' + place + (s.id === 0 ? ' me' : '') + '"><div class="trx-helmet" style="--c:' + hex(X.RIDERS[s.id].helmet) + ';--c2:' + hex(X.RIDERS[s.id].helmet2) + '"></div><b>' + esc(s.name) + '</b><small>' + s.pts + ' pts</small><div class="trx-block">' + place + '</div></div>';
+    }).join('');
+    $('trx-pod-title').textContent = mine === 1 ? 'Champion!' : mine <= 3 ? 'On the podium!' : 'Season over';
+    $('trx-pod-note').textContent = mine === 1 ? 'You won the Ridge Cup. Titles won: ' + S.champWins + '.' : 'You finished ' + ord(mine) + ' in the Ridge Cup. ' + st[0].name + ' takes the title.';
+    openScreen('scr-podium');
+    X.audio.finish();
+    startConfetti();
+  }
+  var confT = 0;
+  function startConfetti() {
+    var cv = $('trx-confetti'), g = cv.getContext('2d'), bits = [], t0 = performance.now();
+    cv.width = innerWidth; cv.height = innerHeight;
+    for (var i = 0; i < 140; i++) bits.push({ x: Math.random() * cv.width, y: -Math.random() * cv.height, v: 60 + Math.random() * 120, s: 4 + Math.random() * 6, a: Math.random() * 6, c: ['#ff4d2e', '#ffd23f', '#2e8bff', '#35c24a', '#ff2fa0', '#fff'][i % 6] });
+    cancelAnimationFrame(confT);
+    var last = t0;
+    (function loop(now) {
+      var dt = Math.min(0.05, (now - last) / 1000); last = now;
+      g.clearRect(0, 0, cv.width, cv.height);
+      bits.forEach(function (b) { b.y += b.v * dt; b.x += Math.sin(now / 400 + b.a) * 30 * dt; b.a += dt * 4; if (b.y > cv.height + 10 && now - t0 < 6000) { b.y = -10; } g.save(); g.translate(b.x, b.y); g.rotate(b.a); g.fillStyle = b.c; g.fillRect(-b.s / 2, -b.s / 4, b.s, b.s / 2); g.restore(); });
+      if (now - t0 < 9000) confT = requestAnimationFrame(loop); else g.clearRect(0, 0, cv.width, cv.height);
+    })(t0);
+  }
+  function stopConfetti() { cancelAnimationFrame(confT); var cv = $('trx-confetti'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); }
+
+  // ================================================================ 702: your best times per track and bike
+  FINISHERS.push(function (r) {
+    if (r.custom || r.ti < 0 || r.mode === 'trick' || r.mode === 'free') return;
+    if (r.mode === 'elim' && r.elim && r.elim.playerOut) return;
+    var key = r.id + ':' + (r.online ? (data().bike || 'stock') : data().bike || 'stock');
+    var list = S.times[key] || (S.times[key] = []);
+    var entry = { t: Math.round(r.finishTime * 100) / 100, d: new Date().toISOString().slice(0, 10), m: r.mode };
+    list.push(entry); list.sort(function (a, b) { return a.t - b.t; }); list.length = Math.min(list.length, 5);
+    r.boardRank = list.indexOf(entry) + 1;
+    save();
+  });
+  EXTRAS.push(function (r) {
+    if (r.custom || !r.boardRank) return '';
+    var key = r.id + ':' + (data().bike || 'stock'), list = S.times[key] || [];
+    return '<div class="trx-times"><small>YOUR TOP TIMES &middot; ' + esc(X.BIKES[data().bike || 'stock'].name) + '</small>' + list.map(function (e, k) { return '<span class="' + (k + 1 === r.boardRank ? 'me' : '') + '">' + (k + 1) + '. ' + fmt(e.t) + '</span>'; }).join('') + '</div>';
+  });
+
+  // ================================================================ 693: track builder
+  var PIECES = [
+    ['roller', 'Rollers', function (s) { return [['roller', 1 + 0.2 * s, 11], ['roller', 1 + 0.2 * s, 11]]; }],
+    ['whoops', 'Whoops', function (s) { return [['whoops', 6 + 3 * s, 0.62, 3.8]]; }],
+    ['berm', 'Berm', function (s) { return [['up', 1.4 + 0.5 * s, 12], ['flat', 4], ['down', 1.4 + 0.5 * s, 12]]; }],
+    ['table', 'Table top', function (s) { return [['table', 2.4 + 0.45 * s, 8 + s, 12 + 2 * s, 9 + s]]; }],
+    ['double', 'Double', function (s) { return [['double', 2.6 + 0.3 * s, 8 + s, Math.round((9 + s * 1.2) * 10) / 10, 10 + s]]; }],
+    ['triple', 'Triple', function (s) { return [['triple', 3 + 0.3 * s, 9 + s, 18 + 2 * s, 11 + s]]; }],
+    ['stepup', 'Step-up', function (s) { return [['stepup', 3 + 0.2 * s, 8, 8, 2.2 + 0.4 * s]]; }],
+    ['drop', 'Drop', function (s) { return [['drop', 2.2 + 0.4 * s, 12 + 2 * s]]; }]
+  ];
+  var COLS = 12, THEMES = [['grassland', 'MEADOW'], ['desert', 'DESERT'], ['snow', 'SNOW'], ['beach', 'BEACH'], ['stadium', 'ARENA'], ['volcano', 'VOLCANO']];
+  var B36 = '0123456789abcdefghijklmnopqrstuvwxyz';
+  var bld = { slots: new Array(COLS).fill(null), theme: 'grassland', name: 'My track' };
+  function buildCode(b) {
+    var s = b.slots.map(function (x) { return x ? B36[1 + x.p * 3 + x.s] : '0'; }).join('');
+    return 'TRB1.' + THEMES.findIndex(function (t) { return t[0] === b.theme; }) + '.' + s + '.' + String(b.name || 'My track').replace(/[^A-Za-z0-9 '-]/g, '').trim().slice(0, 20).replace(/ /g, '_');
+  }
+  function parseCode(code) {
+    var p = String(code || '').trim().split('.');
+    if (p.length !== 4 || p[0] !== 'TRB1' || !THEMES[+p[1]] || !/^[0-9a-z]{1,16}$/.test(p[2])) return null;
+    var slots = p[2].split('').map(function (ch) { var v = B36.indexOf(ch); if (v <= 0) return null; v--; var pi = Math.floor(v / 3); return pi < PIECES.length ? { p: pi, s: v % 3 } : null; });
+    while (slots.length < COLS) slots.push(null);
+    return { slots: slots.slice(0, COLS), theme: THEMES[+p[1]][0], name: (p[3] || 'Track').replace(/_/g, ' ').slice(0, 20) || 'Track' };
+  }
+  function buildDef(b) {
+    var feats = [['flat', 30]];
+    b.slots.forEach(function (x) { if (!x) { feats.push(['flat', 12]); return; } PIECES[x.p][2](x.s).forEach(function (f) { feats.push(f); }); feats.push(['flat', 14]); });
+    feats.push(['flat', 20]);
+    var like = TRACKS.filter(function (d) { return d.theme === b.theme; })[0] || TRACKS[0];
+    var code = buildCode(b);
+    return { id: 'custom-' + code.split('.')[2], theme: b.theme, name: b.name, tagline: 'Your track', sky: like.sky, ground: like.ground, features: feats, diff: 3 };
+  }
+  addScreen('scr-build', '<div class="row between"><button class="btn small" data-xback>&#8592; BACK</button><h2>Track builder</h2><div class="seg" id="trx-bthemes"></div></div>' +
+    '<div class="trx-grid-wrap scroll"><div class="trx-grid" id="trx-grid"></div></div>' +
+    '<div class="row trx-brow"><input class="trx-input" id="trx-bname" maxlength="20" aria-label="Track name" placeholder="Track name"><button class="btn small" id="btn-b-clear">CLEAR</button><button class="btn small" id="btn-b-save">SAVE</button><button class="btn small" id="btn-b-share">SHARE CODE</button><button class="btn primary" id="btn-b-ride">RIDE IT</button></div>' +
+    '<div class="row trx-brow"><input class="trx-input" id="trx-bcode" aria-label="Track code" placeholder="Paste a track code (TRB1...)" spellcheck="false"><button class="btn small" id="btn-b-load">LOAD</button></div>' +
+    '<div class="trx-saved" id="trx-bsaved"></div><p class="msg" id="trx-bmsg"></p>', true);
+  function renderBuilder() {
+    var th = $('trx-bthemes');
+    th.innerHTML = THEMES.map(function (t) { return '<button data-th="' + t[0] + '" class="' + (bld.theme === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('');
+    th.querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { X.audio.click(); bld.theme = b.dataset.th; renderBuilder(); }); });
+    var g = $('trx-grid'), h = '<div class="trx-gl"></div>';
+    for (var c = 0; c < COLS; c++) h += '<div class="trx-gh">' + (c + 1) + '</div>';
+    PIECES.forEach(function (pc, pi) {
+      h += '<div class="trx-gl">' + pc[1] + '</div>';
+      for (var c2 = 0; c2 < COLS; c2++) {
+        var x = bld.slots[c2], on = x && x.p === pi;
+        h += '<button class="trx-cell' + (on ? ' on s' + x.s : '') + '" data-c="' + c2 + '" data-p="' + pi + '" aria-label="' + pc[1] + ' in slot ' + (c2 + 1) + (on ? ', size ' + ['small', 'medium', 'big'][x.s] : '') + '">' + (on ? ['S', 'M', 'L'][x.s] : '') + '</button>';
+      }
+    });
+    g.innerHTML = h;
+    g.querySelectorAll('.trx-cell').forEach(function (b) {
+      b.addEventListener('click', function () {
+        X.audio.click();
+        var c = +b.dataset.c, p = +b.dataset.p, x = bld.slots[c];
+        bld.slots[c] = !x || x.p !== p ? { p: p, s: 1 } : x.s === 1 ? { p: p, s: 2 } : x.s === 2 ? { p: p, s: 0 } : null;
+        renderBuilder();
+      });
+    });
+    $('trx-bname').value = bld.name;
+    var sv = $('trx-bsaved');
+    sv.innerHTML = S.builds.length ? '<small>SAVED</small>' + S.builds.map(function (code, k) { var t = parseCode(code); return t ? '<span><button class="btn small" data-load="' + k + '">' + esc(t.name) + '</button><button class="btn small trx-del" data-del="' + k + '" aria-label="Delete ' + esc(t.name) + '">&#10005;</button></span>' : ''; }).join('') : '';
+    sv.querySelectorAll('[data-load]').forEach(function (b) { b.addEventListener('click', function () { X.audio.click(); var t = parseCode(S.builds[+b.dataset.load]); if (t) { bld = t; renderBuilder(); msg('Loaded ' + t.name + '.'); } }); });
+    sv.querySelectorAll('[data-del]').forEach(function (b) { b.addEventListener('click', function () { X.audio.click(); S.builds.splice(+b.dataset.del, 1); save(); renderBuilder(); }); });
+  }
+  var msg = function (t) { $('trx-bmsg').textContent = t || ''; };
+  function openBuilder() { renderBuilder(); msg(''); openScreen('scr-build'); }
+  MODE_START.build = openBuilder;
+  ['trx-bname', 'trx-bcode'].forEach(function (id) { $(id).addEventListener('keydown', function (e) { e.stopPropagation(); }); });
+  $('trx-bname').addEventListener('input', function () { bld.name = $('trx-bname').value.replace(/[^A-Za-z0-9 '-]/g, '').slice(0, 20); });
+  $('btn-b-clear').addEventListener('click', function () { X.audio.click(); bld.slots = new Array(COLS).fill(null); renderBuilder(); msg(''); });
+  $('btn-b-save').addEventListener('click', function () {
+    X.audio.click();
+    var code = buildCode(bld);
+    S.builds = S.builds.filter(function (c) { var t = parseCode(c); return t && t.name !== bld.name; });
+    S.builds.unshift(code); S.builds.length = Math.min(S.builds.length, 8); save();
+    renderBuilder(); msg('Saved ' + bld.name + '.');
+  });
+  $('btn-b-share').addEventListener('click', function () {
+    var code = buildCode(bld), b = $('btn-b-share');
+    X.audio.click();
+    $('trx-bcode').value = code;
+    try { navigator.clipboard.writeText(code).then(function () { msg('Code copied. Send it to a friend: ' + code); }, function () { $('trx-bcode').select(); msg('Copy the code from the box: ' + code); }); }
+    catch (e) { $('trx-bcode').select(); msg('Copy the code from the box: ' + code); }
+  });
+  $('btn-b-load').addEventListener('click', function () {
+    X.audio.click();
+    var t = parseCode($('trx-bcode').value);
+    if (!t) { msg('That code doesn’t look right. Track codes start with TRB1.'); return; }
+    bld = t; renderBuilder(); msg('Loaded ' + t.name + '. Press RIDE IT.');
+  });
+  $('btn-b-ride').addEventListener('click', function () {
+    X.audio.click();
+    if (!bld.slots.some(Boolean)) { msg('Put at least one piece on the grid first.'); return; }
+    var def = buildDef(bld);
+    startCustom({ mode: 'build', def: def, code: buildCode(bld), name: bld.name, label: def.name.toUpperCase() + ' · YOUR TRACK · ' + X.BIKES[data().bike || 'stock'].name });
+  });
+  OWN.build = function (r) {
+    var code = r.custom.code, bb = S.buildBest || (S.buildBest = {}), prev = bb[code], nb = !prev || r.finishTime < prev;
+    if (nb) { bb[code] = Math.round(r.finishTime * 100) / 100; var keys = Object.keys(bb); if (keys.length > 30) delete bb[keys[0]]; save(); }
+    showResults({
+      title: nb ? 'New best on your track!' : 'Finished!',
+      cells: [['TIME', fmt(r.finishTime)], ['BEST', fmt(Math.min(r.finishTime, prev || 1e9))], ['STUNTS', fmtPts(r.race.player.score || 0)], ['CRASHES', String(r.crashes)]],
+      note: esc(r.custom.name) + ' · code ' + code,
+      buttons: { menu: 'BUILDER', retry: true, next: false }
+    });
+  };
+  window.__trxDebug.buildCode = buildCode; window.__trxDebug.parseCode = parseCode; window.__trxDebug.buildDef = buildDef; window.__trxDebug.bld = function (b) { if (b) bld = b; return bld; };
+  window.__trxDebug.openBuilder = openBuilder; window.__trxDebug.openChamp = openChamp; window.__trxDebug.openGarage = openGarage; window.__trxDebug.openChallenges = openChallenges;
 })();
 </script><!-- /tr-extras -->
 <script>
