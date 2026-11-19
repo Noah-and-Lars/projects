@@ -399,7 +399,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 /* ============================================================
    CARD ROYALE: data (cards, arenas, chests, progression)
    ============================================================ */
-const GAME_VER = '1.1';
+const GAME_VER = '1.2';
 const W = 18, H = 32, RIVER_Y0 = 15, RIVER_Y1 = 17, MID = 16;
 const BRIDGES = [3.5, 14.5], BRIDGE_HW = 1.15;
 const TICK = 0.05;
@@ -408,114 +408,116 @@ const RAR_ORDER = { C: 0, R: 1, E: 2, L: 3 };
 
 // tgt: 'g' ground only, 'ag' air + ground, 'b' buildings only.  spd in tiles/s, rng/sight/r in tiles, hs = seconds per hit.
 // art: how it's drawn (see 30-art.js)
+// 1.2 balance (from 4,000 bot-vs-bot battles, see BALANCE in extras.js): Zap Cart, Quake Knight, Iron Titan, Mimic and Dragon Whelp
+// nerfed; Boar Rider, Mortar, Frost Pylon and Healing Shrine buffed.
 const CARDS = [
   // ---------- commons ----------
-  { id: 'knight', name: 'Knight', rar: 'C', cost: 3, type: 'troop', arena: 0, hp: 690, dmg: 79, hs: 1.2, rng: 0.9, spd: 1, tgt: 'g', r: 0.5, mass: 6,
-    desc: 'A tough melee fighter. The Knight soaks up damage and still hits hard.', art: { shape: 'human', body: '#8d99a6', skin: '#f2c08f', helm: 'knight', w: 'sword', beard: '#c48a3c' } },
-  { id: 'archers', name: 'Archers', rar: 'C', cost: 3, type: 'troop', arena: 0, count: 2, spread: 0.7, hp: 125, dmg: 44, hs: 0.9, rng: 5, spd: 1, tgt: 'ag', r: 0.4, mass: 3,
+  { id: 'knight', name: 'Iron Guard', rar: 'C', cost: 3, type: 'troop', arena: 0, hp: 690, dmg: 79, hs: 1.2, rng: 0.9, spd: 1, tgt: 'g', r: 0.5, mass: 6,
+    desc: 'A tough melee fighter. The Iron Guard soaks up damage and still hits hard.', art: { shape: 'human', body: '#8d99a6', skin: '#f2c08f', helm: 'knight', w: 'sword', beard: '#c48a3c' } },
+  { id: 'archers', name: 'Bow Twins', rar: 'C', cost: 3, type: 'troop', arena: 0, count: 2, spread: 0.7, hp: 125, dmg: 44, hs: 0.9, rng: 5, spd: 1, tgt: 'ag', r: 0.4, mass: 3,
     proj: { k: 'arrow', spd: 12 }, desc: 'A pair of sharpshooters who hit air and ground from a safe distance.', art: { shape: 'human', body: '#4caf50', skin: '#f7c9a0', hair: '#e8569c', helm: 'hood', w: 'bow', fem: 1 } },
-  { id: 'goblins', name: 'Goblins', rar: 'C', cost: 2, type: 'troop', arena: 0, count: 3, spread: 0.7, hp: 80, dmg: 50, hs: 1.1, rng: 0.6, spd: 2, tgt: 'g', r: 0.35, mass: 2,
-    desc: 'Three fast, sneaky Goblins with daggers. Cheap and quick to punish.', art: { shape: 'goblin', body: '#7b4a26', skin: '#7fc650', w: 'dagger' } },
-  { id: 'spear_goblins', name: 'Spear Goblins', rar: 'C', cost: 2, type: 'troop', arena: 1, count: 3, spread: 0.7, hp: 52, dmg: 24, hs: 1.7, rng: 5, spd: 2, tgt: 'ag', r: 0.35, mass: 2,
-    proj: { k: 'spear', spd: 11 }, desc: 'Three goblins that throw spears at air and ground from range.', art: { shape: 'goblin', body: '#a0522d', skin: '#7fc650', w: 'spear', helm: 'leaf' } },
-  { id: 'skeletons', name: 'Skeletons', rar: 'C', cost: 1, type: 'troop', arena: 0, count: 3, spread: 0.6, hp: 32, dmg: 32, hs: 1, rng: 0.6, spd: 1.5, tgt: 'g', r: 0.3, mass: 1,
-    desc: 'Three fragile but fast skeletons. Great for distracting big troops.', art: { shape: 'skel', w: 'sword' } },
-  { id: 'minions', name: 'Minions', rar: 'C', cost: 3, type: 'troop', arena: 0, count: 3, spread: 0.7, hp: 90, dmg: 40, hs: 1, rng: 2, spd: 1.5, tgt: 'ag', r: 0.4, air: 1, mass: 2,
-    proj: { k: 'spit', spd: 10 }, desc: 'Three flying blue creatures. Fast and hard to hit for ground troops.', art: { shape: 'minion', body: '#3f6fd8' } },
-  { id: 'barbarians', name: 'Barbarians', rar: 'C', cost: 5, type: 'troop', arena: 0, count: 5, spread: 1, hp: 300, dmg: 75, hs: 1.4, rng: 0.8, spd: 1, tgt: 'g', r: 0.45, mass: 5,
-    desc: 'Five burly Barbarians with swords. A wall of muscle that chews through tanks.', art: { shape: 'human', body: '#a0663a', skin: '#f2b880', hair: '#f6c544', helm: 'none', w: 'sword', beard: '#f6c544', stache: 1 } },
-  { id: 'bomber', name: 'Bomber', rar: 'C', cost: 2, type: 'troop', arena: 0, hp: 150, dmg: 100, hs: 1.8, rng: 4.5, spd: 1, tgt: 'g', splash: 1.5, r: 0.4, mass: 3,
+  { id: 'goblins', name: 'Scamps', rar: 'C', cost: 2, type: 'troop', arena: 0, count: 3, spread: 0.7, hp: 80, dmg: 50, hs: 1.1, rng: 0.6, spd: 2, tgt: 'g', r: 0.35, mass: 2,
+    desc: 'Three fast, sneaky Scamps with daggers. Cheap and quick to punish.', art: { shape: 'goblin', body: '#7b4a26', skin: '#7fc650', w: 'dagger' } },
+  { id: 'spear_goblins', name: 'Spear Scamps', rar: 'C', cost: 2, type: 'troop', arena: 1, count: 3, spread: 0.7, hp: 52, dmg: 24, hs: 1.7, rng: 5, spd: 2, tgt: 'ag', r: 0.35, mass: 2,
+    proj: { k: 'spear', spd: 11 }, desc: 'Three scamps that throw spears at air and ground from range.', art: { shape: 'goblin', body: '#a0522d', skin: '#7fc650', w: 'spear', helm: 'leaf' } },
+  { id: 'skeletons', name: 'Rattlers', rar: 'C', cost: 1, type: 'troop', arena: 0, count: 3, spread: 0.6, hp: 32, dmg: 32, hs: 1, rng: 0.6, spd: 1.5, tgt: 'g', r: 0.3, mass: 1,
+    desc: 'Three fragile but fast rattling skeletons. Great for distracting big troops.', art: { shape: 'skel', w: 'sword' } },
+  { id: 'minions', name: 'Imps', rar: 'C', cost: 3, type: 'troop', arena: 0, count: 3, spread: 0.7, hp: 90, dmg: 40, hs: 1, rng: 2, spd: 1.5, tgt: 'ag', r: 0.4, air: 1, mass: 2,
+    proj: { k: 'spit', spd: 10 }, desc: 'Three flying blue imps. Fast and hard to hit for ground troops.', art: { shape: 'minion', body: '#3f6fd8' } },
+  { id: 'barbarians', name: 'Raiders', rar: 'C', cost: 5, type: 'troop', arena: 0, count: 5, spread: 1, hp: 300, dmg: 75, hs: 1.4, rng: 0.8, spd: 1, tgt: 'g', r: 0.45, mass: 5,
+    desc: 'Five burly Raiders with swords. A wall of muscle that chews through tanks.', art: { shape: 'human', body: '#a0663a', skin: '#f2b880', hair: '#f6c544', helm: 'none', w: 'sword', beard: '#f6c544', stache: 1 } },
+  { id: 'bomber', name: 'Bomb Tosser', rar: 'C', cost: 2, type: 'troop', arena: 0, hp: 150, dmg: 100, hs: 1.8, rng: 4.5, spd: 1, tgt: 'g', splash: 1.5, r: 0.4, mass: 3,
     proj: { k: 'bomb', spd: 7 }, desc: 'A skeleton that lobs bombs. Wrecks groups of ground troops.', art: { shape: 'skel', w: 'bomb', helm: 'band' } },
   { id: 'cannon', name: 'Cannon', rar: 'C', cost: 3, type: 'building', arena: 0, hp: 450, dmg: 70, hs: 0.9, rng: 5.5, sight: 5.5, tgt: 'g', r: 0.9, life: 30,
     proj: { k: 'ball', spd: 11 }, desc: 'A defensive building that blasts ground troops. Pulls tanks away from your towers.', art: { shape: 'cannon' } },
-  { id: 'arrows', name: 'Arrows', rar: 'C', cost: 3, type: 'spell', arena: 0, sp: { r: 4, dmg: 120, tower: 0.35, fly: 7 },
+  { id: 'arrows', name: 'Arrow Volley', rar: 'C', cost: 3, type: 'spell', arena: 0, sp: { r: 4, dmg: 120, tower: 0.35, fly: 7 },
     desc: 'A rain of arrows over a big area. Wipes out swarms.', art: { shape: 'arrows' } },
-  { id: 'zap', name: 'Zap', rar: 'C', cost: 2, type: 'spell', arena: 1, sp: { r: 2.5, dmg: 90, tower: 0.35, stun: 0.5 },
+  { id: 'zap', name: 'Spark', rar: 'C', cost: 2, type: 'spell', arena: 1, sp: { r: 2.5, dmg: 90, tower: 0.35, stun: 0.5 },
     desc: 'An instant jolt that damages and briefly stuns everything in the area.', art: { shape: 'zap' } },
-  { id: 'fire_spirit', name: 'Fire Spirit', rar: 'C', cost: 1, type: 'troop', arena: 0, hp: 90, dmg: 85, hs: 0.3, rng: 2, spd: 2, tgt: 'ag', kamikaze: 1, splash: 2.3, r: 0.35, mass: 1,
+  { id: 'fire_spirit', name: 'Ember Sprite', rar: 'C', cost: 1, type: 'troop', arena: 0, hp: 90, dmg: 85, hs: 0.3, rng: 2, spd: 2, tgt: 'ag', kamikaze: 1, splash: 2.3, r: 0.35, mass: 1,
     desc: 'Jumps on enemies and bursts into flames, damaging everything around.', art: { shape: 'spirit', body: '#ff7a1a', glow: '#ffd23a' } },
-  { id: 'ice_spirit', name: 'Ice Spirit', rar: 'C', cost: 1, type: 'troop', arena: 2, hp: 90, dmg: 45, hs: 0.3, rng: 2, spd: 2, tgt: 'ag', kamikaze: 1, splash: 1.5, freezeHit: 1.2, r: 0.35, mass: 1,
+  { id: 'ice_spirit', name: 'Frost Sprite', rar: 'C', cost: 1, type: 'troop', arena: 2, hp: 90, dmg: 45, hs: 0.3, rng: 2, spd: 2, tgt: 'ag', kamikaze: 1, splash: 1.5, freezeHit: 1.2, r: 0.35, mass: 1,
     desc: 'Leaps onto enemies and freezes them solid for a moment.', art: { shape: 'spirit', body: '#8fe3ff', glow: '#e6fbff' } },
   { id: 'bats', name: 'Bats', rar: 'C', cost: 2, type: 'troop', arena: 2, count: 5, spread: 0.8, hp: 32, dmg: 32, hs: 1.1, rng: 1.2, spd: 2, tgt: 'ag', air: 1, r: 0.3, mass: 1,
     desc: 'A swarm of five fast flying bats. Cheap, annoying and deadly in numbers.', art: { shape: 'bat', body: '#5b3f8c' } },
-  { id: 'royal_giant', name: 'Royal Giant', rar: 'C', cost: 6, type: 'troop', arena: 4, hp: 1700, dmg: 120, hs: 1.7, rng: 5, spd: 0.75, tgt: 'b', r: 0.75, mass: 18,
+  { id: 'royal_giant', name: 'Cannon Giant', rar: 'C', cost: 6, type: 'troop', arena: 4, hp: 1700, dmg: 120, hs: 1.7, rng: 5, spd: 0.75, tgt: 'b', r: 0.75, mass: 18,
     proj: { k: 'ball', spd: 12 }, desc: 'A giant with a hand cannon. Out-ranges buildings and pounds towers from afar.', art: { shape: 'giant', body: '#3a6fd0', skin: '#f2b880', hair: '#7a4a1e', w: 'handcannon', helm: 'crown' } },
-  { id: 'mortar', name: 'Mortar', rar: 'C', cost: 4, type: 'building', arena: 3, hp: 600, dmg: 105, hs: 5, rng: 11.5, minRng: 3.5, sight: 11.5, tgt: 'g', splash: 2, r: 0.9, life: 30,
+  { id: 'mortar', name: 'Mortar', rar: 'C', cost: 4, type: 'building', arena: 3, hp: 600, dmg: 105, hs: 4.5, rng: 11.5, minRng: 3.5, sight: 11.5, tgt: 'g', splash: 2, r: 0.9, life: 30,
     proj: { k: 'mortar', spd: 5, lob: 1 }, desc: 'A long-range building that lobs shells. Can even reach towers from your side.', art: { shape: 'mortar' } },
 
   // ---------- rares ----------
-  { id: 'giant', name: 'Giant', rar: 'R', cost: 5, type: 'troop', arena: 0, hp: 2000, dmg: 126, hs: 1.5, rng: 1.2, spd: 0.75, tgt: 'b', r: 0.75, mass: 18,
+  { id: 'giant', name: 'Hill Giant', rar: 'R', cost: 5, type: 'troop', arena: 0, hp: 2000, dmg: 126, hs: 1.5, rng: 1.2, spd: 0.75, tgt: 'b', r: 0.75, mass: 18,
     desc: 'A slow, huge tank who only attacks buildings. Protect him and he crushes towers.', art: { shape: 'giant', body: '#9a6a3a', skin: '#f2b880', hair: '#e0882e', w: 'fist' } },
-  { id: 'musketeer', name: 'Musketeer', rar: 'R', cost: 4, type: 'troop', arena: 0, hp: 340, dmg: 100, hs: 1, rng: 6, spd: 1, tgt: 'ag', r: 0.45, mass: 4,
+  { id: 'musketeer', name: 'Rifle Ranger', rar: 'R', cost: 4, type: 'troop', arena: 0, hp: 340, dmg: 100, hs: 1, rng: 6, spd: 1, tgt: 'ag', r: 0.45, mass: 4,
     proj: { k: 'bullet', spd: 16 }, desc: 'A long-range sharpshooter in a fancy hat. Shoots air and ground.', art: { shape: 'human', body: '#5a5f9e', skin: '#f2c08f', hair: '#3a2a1e', helm: 'musket', w: 'musket', fem: 1 } },
   { id: 'mini_titan', name: 'Mini Titan', rar: 'R', cost: 4, type: 'troop', arena: 0, hp: 600, dmg: 325, hs: 1.6, rng: 0.9, spd: 1.5, tgt: 'g', r: 0.5, mass: 6,
     desc: 'A small armored machine with a massive sword. Shreds tanks in a few swings.', art: { shape: 'robot', body: '#3d4f7a', w: 'bigsword' } },
-  { id: 'valkyrie', name: 'Valkyrie', rar: 'R', cost: 4, type: 'troop', arena: 1, hp: 950, dmg: 126, hs: 1.5, rng: 0.9, spd: 1, tgt: 'g', splash: 1.4, splashSelf: 1, r: 0.5, mass: 7,
+  { id: 'valkyrie', name: 'Axe Maiden', rar: 'R', cost: 4, type: 'troop', arena: 1, hp: 950, dmg: 126, hs: 1.5, rng: 0.9, spd: 1, tgt: 'g', splash: 1.4, splashSelf: 1, r: 0.5, mass: 7,
     desc: 'Spins her axe and hits everything around her. A swarm destroyer.', art: { shape: 'human', body: '#c25a2a', skin: '#f2c08f', hair: '#ff6a1a', helm: 'none', w: 'axe', fem: 1, braids: 1 } },
-  { id: 'boar_rider', name: 'Boar Rider', rar: 'R', cost: 4, type: 'troop', arena: 5, hp: 800, dmg: 160, hs: 1.6, rng: 0.8, spd: 2, tgt: 'b', jumpRiver: 1, r: 0.6, mass: 8,
+  { id: 'boar_rider', name: 'Boar Rider', rar: 'R', cost: 4, type: 'troop', arena: 5, hp: 880, dmg: 160, hs: 1.6, rng: 0.8, spd: 2, tgt: 'b', jumpRiver: 1, r: 0.6, mass: 8,
     desc: 'Rides a boar straight at buildings and leaps over the river.', art: { shape: 'boar', body: '#7a4a2a', skin: '#f2b880', hair: '#2a1a10', w: 'hammer' } },
-  { id: 'fireball', name: 'Fireball', rar: 'R', cost: 4, type: 'spell', arena: 0, sp: { r: 2.5, dmg: 325, tower: 0.35, fly: 10, knock: 1 },
+  { id: 'fireball', name: 'Fire Orb', rar: 'R', cost: 4, type: 'spell', arena: 0, sp: { r: 2.5, dmg: 325, tower: 0.35, fly: 10, knock: 1 },
     desc: 'A blazing ball of fire. Deals heavy area damage and knocks back light troops.', art: { shape: 'fireball' } },
-  { id: 'rocket', name: 'Rocket', rar: 'R', cost: 6, type: 'spell', arena: 3, sp: { r: 2, dmg: 700, tower: 0.35, fly: 6, knock: 1 },
+  { id: 'rocket', name: 'Sky Rocket', rar: 'R', cost: 6, type: 'spell', arena: 3, sp: { r: 2, dmg: 700, tower: 0.35, fly: 6, knock: 1 },
     desc: 'A slow but massive rocket. Finish off a tower or wipe a big group.', art: { shape: 'rocket' } },
-  { id: 'wizard', name: 'Wizard', rar: 'R', cost: 5, type: 'troop', arena: 2, hp: 340, dmg: 130, hs: 1.4, rng: 5.5, spd: 1, tgt: 'ag', splash: 1.5, r: 0.45, mass: 4,
+  { id: 'wizard', name: 'Flame Mage', rar: 'R', cost: 5, type: 'troop', arena: 2, hp: 340, dmg: 130, hs: 1.4, rng: 5.5, spd: 1, tgt: 'ag', splash: 1.5, r: 0.45, mass: 4,
     proj: { k: 'fire', spd: 10 }, desc: 'Hurls fireballs that hit an area. Melts groups of air and ground troops.', art: { shape: 'human', body: '#3a5fc0', skin: '#f2c08f', hair: '#2a1a10', helm: 'none', w: 'fireHand', beard: '#2a1a10', cape: 1 } },
-  { id: 'battle_ram', name: 'Battle Ram', rar: 'R', cost: 4, type: 'troop', arena: 4, hp: 450, dmg: 140, hs: 0.5, rng: 0.6, spd: 1.5, tgt: 'b', ramCharge: 1, r: 0.6, mass: 8,
-    deathSpawn: { c: 'barbarians', n: 2 }, desc: 'Two Barbarians charge a log into a building, then keep fighting.', art: { shape: 'ram' } },
-  { id: 'elixir_collector', name: 'Elixir Collector', rar: 'R', cost: 6, type: 'building', arena: 3, hp: 640, r: 0.9, life: 70, elixirGen: 8.5, tgt: 'none',
-    desc: 'Pumps out extra Elixir over time. Protect it to get ahead.', art: { shape: 'collector' } },
-  { id: 'tombstone', name: 'Tombstone', rar: 'R', cost: 3, type: 'building', arena: 2, hp: 420, r: 0.8, life: 40, tgt: 'none',
-    spawn: { c: 'skeletons', every: 3.1, n: 1, first: 1 }, deathSpawn: { c: 'skeletons', n: 4 }, desc: 'Keeps raising Skeletons. When it breaks, four more pop out.', art: { shape: 'tomb' } },
-  { id: 'goblin_hut', name: 'Goblin Hut', rar: 'R', cost: 5, type: 'building', arena: 1, hp: 700, r: 1, life: 40, tgt: 'none',
-    spawn: { c: 'spear_goblins', every: 4.5, n: 1, first: 0.5 }, desc: 'A hut that keeps sending out Spear Goblins.', art: { shape: 'hut' } },
-  { id: 'inferno_tower', name: 'Inferno Tower', rar: 'R', cost: 5, type: 'building', arena: 4, hp: 900, dmg: 25, hs: 0.4, rng: 6, sight: 6, tgt: 'ag', ramp: 1, r: 0.9, life: 30,
+  { id: 'battle_ram', name: 'Ram Crew', rar: 'R', cost: 4, type: 'troop', arena: 4, hp: 450, dmg: 140, hs: 0.5, rng: 0.6, spd: 1.5, tgt: 'b', ramCharge: 1, r: 0.6, mass: 8,
+    deathSpawn: { c: 'barbarians', n: 2 }, desc: 'Two Raiders charge a log into a building, then keep fighting.', art: { shape: 'ram' } },
+  { id: 'elixir_collector', name: 'Mana Well', rar: 'R', cost: 6, type: 'building', arena: 3, hp: 640, r: 0.9, life: 70, elixirGen: 8.5, tgt: 'none',
+    desc: 'Pumps out extra Mana over time. Protect it to get ahead.', art: { shape: 'collector' } },
+  { id: 'tombstone', name: 'Crypt', rar: 'R', cost: 3, type: 'building', arena: 2, hp: 420, r: 0.8, life: 40, tgt: 'none',
+    spawn: { c: 'skeletons', every: 3.1, n: 1, first: 1 }, deathSpawn: { c: 'skeletons', n: 4 }, desc: 'Keeps raising Rattlers. When it breaks, four more pop out.', art: { shape: 'tomb' } },
+  { id: 'goblin_hut', name: 'Scamp Hut', rar: 'R', cost: 5, type: 'building', arena: 1, hp: 700, r: 1, life: 40, tgt: 'none',
+    spawn: { c: 'spear_goblins', every: 4.5, n: 1, first: 0.5 }, desc: 'A hut that keeps sending out Spear Scamps.', art: { shape: 'hut' } },
+  { id: 'inferno_tower', name: 'Blaze Tower', rar: 'R', cost: 5, type: 'building', arena: 4, hp: 900, dmg: 25, hs: 0.4, rng: 6, sight: 6, tgt: 'ag', ramp: 1, r: 0.9, life: 30,
     desc: 'Locks on with a beam that gets hotter and hotter. Melts even the biggest tanks.', art: { shape: 'inferno' } },
-  { id: 'mega_minion', name: 'Mega Minion', rar: 'R', cost: 3, type: 'troop', arena: 3, hp: 395, dmg: 147, hs: 1.6, rng: 1.6, spd: 1, tgt: 'ag', air: 1, r: 0.5, mass: 5,
+  { id: 'mega_minion', name: 'Big Imp', rar: 'R', cost: 3, type: 'troop', arena: 3, hp: 395, dmg: 147, hs: 1.6, rng: 1.6, spd: 1, tgt: 'ag', air: 1, r: 0.5, mass: 5,
     proj: { k: 'spit', spd: 10 }, desc: 'A heavy armored flyer that hits hard. Great support for any push.', art: { shape: 'minion', body: '#2c4aa8', helm: 'armor' } },
-  { id: 'ice_golem', name: 'Ice Golem', rar: 'R', cost: 2, type: 'troop', arena: 5, hp: 700, dmg: 40, hs: 2.5, rng: 0.8, spd: 0.75, tgt: 'b', r: 0.6, mass: 10,
+  { id: 'ice_golem', name: 'Frost Golem', rar: 'R', cost: 2, type: 'troop', arena: 5, hp: 700, dmg: 40, hs: 2.5, rng: 0.8, spd: 0.75, tgt: 'b', r: 0.6, mass: 10,
     deathDmg: { dmg: 40, r: 2, slow: 1 }, desc: 'A cheap, sturdy tank. Shatters when destroyed, slowing nearby enemies.', art: { shape: 'golem', body: '#aee6ff', rock: '#6fb7e6' } },
 
   // ---------- epics ----------
-  { id: 'prince', name: 'Prince', rar: 'E', cost: 5, type: 'troop', arena: 0, hp: 1100, dmg: 245, hs: 1.4, rng: 1.4, spd: 1, tgt: 'g', charge: 1, r: 0.6, mass: 9,
+  { id: 'prince', name: 'Lancer', rar: 'E', cost: 5, type: 'troop', arena: 0, hp: 1100, dmg: 245, hs: 1.4, rng: 1.4, spd: 1, tgt: 'g', charge: 1, r: 0.6, mass: 9,
     desc: 'Charges after a short run and deals double damage with his first lance hit.', art: { shape: 'horse', body: '#e8c34a', skin: '#f2c08f', helm: 'prince', w: 'lance' } },
-  { id: 'baby_dragon', name: 'Baby Dragon', rar: 'E', cost: 4, type: 'troop', arena: 0, hp: 800, dmg: 100, hs: 1.5, rng: 3.5, spd: 1.5, tgt: 'ag', splash: 1.5, air: 1, r: 0.6, mass: 7,
+  { id: 'baby_dragon', name: 'Dragon Whelp', rar: 'E', cost: 4, type: 'troop', arena: 0, hp: 740, dmg: 100, hs: 1.5, rng: 3.5, spd: 1.5, tgt: 'ag', splash: 1.5, air: 1, r: 0.6, mass: 7,
     proj: { k: 'fire', spd: 9 }, desc: 'A flying dragon that breathes splash fire. Tanky and adorable.', art: { shape: 'dragon', body: '#5cc84a', belly: '#f4d36a' } },
-  { id: 'skeleton_army', name: 'Skeleton Army', rar: 'E', cost: 3, type: 'troop', arena: 1, count: 15, spread: 1.7, tok: 'skeletons',
-    desc: 'Fifteen Skeletons at once. Swarms any single target, but hates splash.', art: { shape: 'skel', w: 'sword', many: 1 } },
-  { id: 'witch', name: 'Witch', rar: 'E', cost: 5, type: 'troop', arena: 1, hp: 520, dmg: 69, hs: 1.1, rng: 5, spd: 1, tgt: 'ag', splash: 1, r: 0.45, mass: 4,
-    proj: { k: 'magic', spd: 10 }, spawn: { c: 'skeletons', every: 7, n: 3, first: 1 }, desc: 'Summons Skeletons over and over while blasting enemies with magic.', art: { shape: 'human', body: '#7a3fa8', skin: '#f2c08f', hair: '#e8e8f0', helm: 'none', w: 'skullstaff', fem: 1 } },
-  { id: 'balloon', name: 'Balloon', rar: 'E', cost: 5, type: 'troop', arena: 2, hp: 1050, dmg: 600, hs: 3, rng: 0.2, spd: 1, tgt: 'b', air: 1, r: 0.6, mass: 8,
+  { id: 'skeleton_army', name: 'Bone Horde', rar: 'E', cost: 3, type: 'troop', arena: 1, count: 15, spread: 1.7, tok: 'skeletons',
+    desc: 'Fifteen Rattlers at once. Swarms any single target, but hates splash.', art: { shape: 'skel', w: 'sword', many: 1 } },
+  { id: 'witch', name: 'Grave Witch', rar: 'E', cost: 5, type: 'troop', arena: 1, hp: 520, dmg: 69, hs: 1.1, rng: 5, spd: 1, tgt: 'ag', splash: 1, r: 0.45, mass: 4,
+    proj: { k: 'magic', spd: 10 }, spawn: { c: 'skeletons', every: 7, n: 3, first: 1 }, desc: 'Summons Rattlers over and over while blasting enemies with magic.', art: { shape: 'human', body: '#7a3fa8', skin: '#f2c08f', hair: '#e8e8f0', helm: 'none', w: 'skullstaff', fem: 1 } },
+  { id: 'balloon', name: 'Bomb Blimp', rar: 'E', cost: 5, type: 'troop', arena: 2, hp: 1050, dmg: 600, hs: 3, rng: 0.2, spd: 1, tgt: 'b', air: 1, r: 0.6, mass: 8,
     deathDmg: { dmg: 160, r: 2 }, desc: 'A flying bomb-dropper aimed at buildings. If it reaches a tower, it hurts.', art: { shape: 'balloon' } },
-  { id: 'iron_titan', name: 'Iron Titan', rar: 'E', cost: 7, type: 'troop', arena: 4, hp: 2600, dmg: 600, hs: 1.8, rng: 1.2, spd: 0.75, tgt: 'g', r: 0.75, mass: 16,
+  { id: 'iron_titan', name: 'Iron Titan', rar: 'E', cost: 7, type: 'troop', arena: 4, hp: 2450, dmg: 600, hs: 1.8, rng: 1.2, spd: 0.75, tgt: 'g', r: 0.75, mass: 16,
     desc: 'A slow, heavily armored warrior. Each swing deletes almost anything.', art: { shape: 'robot', body: '#2a2f52', w: 'bigsword', big: 1 } },
-  { id: 'golem', name: 'Golem', rar: 'E', cost: 8, type: 'troop', arena: 3, hp: 3500, dmg: 200, hs: 2.5, rng: 1, spd: 0.75, tgt: 'b', r: 0.85, mass: 22,
-    deathSpawn: { c: 'golemite', n: 2 }, deathDmg: { dmg: 140, r: 2 }, desc: 'A massive rock tank. Breaks into two Golemites when destroyed.', art: { shape: 'golem', body: '#8a8f98', rock: '#5e636b' } },
-  { id: 'lightning', name: 'Lightning', rar: 'E', cost: 6, type: 'spell', arena: 4, sp: { r: 3.5, dmg: 660, tower: 0.35, bolts: 3, stun: 0.5 },
+  { id: 'golem', name: 'Rock Golem', rar: 'E', cost: 8, type: 'troop', arena: 3, hp: 3500, dmg: 200, hs: 2.5, rng: 1, spd: 0.75, tgt: 'b', r: 0.85, mass: 22,
+    deathSpawn: { c: 'golemite', n: 2 }, deathDmg: { dmg: 140, r: 2 }, desc: 'A massive rock tank. Breaks into two Golem Shards when destroyed.', art: { shape: 'golem', body: '#8a8f98', rock: '#5e636b' } },
+  { id: 'lightning', name: 'Thunderbolt', rar: 'E', cost: 6, type: 'spell', arena: 4, sp: { r: 3.5, dmg: 660, tower: 0.35, bolts: 3, stun: 0.5 },
     desc: 'Strikes the three toughest enemies in the area with lightning.', art: { shape: 'lightning' } },
-  { id: 'freeze', name: 'Freeze', rar: 'E', cost: 4, type: 'spell', arena: 5, sp: { r: 3, dmg: 70, tower: 0.35, freeze: 4 },
+  { id: 'freeze', name: 'Frostbite', rar: 'E', cost: 4, type: 'spell', arena: 5, sp: { r: 3, dmg: 70, tower: 0.35, freeze: 4 },
     desc: 'Freezes troops and buildings in place. Nothing can move or attack.', art: { shape: 'freeze' } },
-  { id: 'poison', name: 'Poison', rar: 'E', cost: 4, type: 'spell', arena: 5, sp: { r: 3.5, dot: 55, dur: 8, tower: 0.35 },
+  { id: 'poison', name: 'Toxic Cloud', rar: 'E', cost: 4, type: 'spell', arena: 5, sp: { r: 3.5, dot: 55, dur: 8, tower: 0.35 },
     desc: 'Covers an area in deadly poison, damaging and slowing everything inside.', art: { shape: 'poison' } },
-  { id: 'goblin_barrel', name: 'Goblin Barrel', rar: 'E', cost: 3, type: 'spell', arena: 1, sp: { r: 1, fly: 8, spawn: 'goblins', n: 3 },
-    desc: 'Throws a barrel of three Goblins anywhere in the arena, even onto towers.', art: { shape: 'barrel' } },
+  { id: 'goblin_barrel', name: 'Scamp Barrel', rar: 'E', cost: 3, type: 'spell', arena: 1, sp: { r: 1, fly: 8, spawn: 'goblins', n: 3 },
+    desc: 'Throws a barrel of three Scamps anywhere in the arena, even onto towers.', art: { shape: 'barrel' } },
 
   // ---------- legendaries ----------
-  { id: 'ice_wizard', name: 'Ice Wizard', rar: 'L', cost: 3, type: 'troop', arena: 5, hp: 600, dmg: 70, hs: 1.7, rng: 5.5, spd: 1, tgt: 'ag', splash: 1.2, slowHit: 1, r: 0.45, mass: 4,
+  { id: 'ice_wizard', name: 'Frost Mage', rar: 'L', cost: 3, type: 'troop', arena: 5, hp: 600, dmg: 70, hs: 1.7, rng: 5.5, spd: 1, tgt: 'ag', splash: 1.2, slowHit: 1, r: 0.45, mass: 4,
     proj: { k: 'ice', spd: 10 }, desc: 'His icy blasts slow down everything they hit.', art: { shape: 'human', body: '#5fb6e6', skin: '#cfe9ff', hair: '#ffffff', helm: 'none', w: 'iceHand', beard: '#ffffff', cape: 1 } },
-  { id: 'princess', name: 'Princess', rar: 'L', cost: 3, type: 'troop', arena: 6, hp: 216, dmg: 140, hs: 3, rng: 9, spd: 1, tgt: 'ag', splash: 2, r: 0.4, mass: 3,
+  { id: 'princess', name: 'Fire Archer', rar: 'L', cost: 3, type: 'troop', arena: 6, hp: 216, dmg: 140, hs: 3, rng: 9, spd: 1, tgt: 'ag', splash: 2, r: 0.4, mass: 3,
     proj: { k: 'firearrow', spd: 10 }, desc: 'Fires flaming arrows from an incredible range.', art: { shape: 'human', body: '#e46aa8', skin: '#f7c9a0', hair: '#ffd34a', helm: 'tiara', w: 'bow', fem: 1 } },
-  { id: 'miner', name: 'Miner', rar: 'L', cost: 3, type: 'troop', arena: 6, hp: 1000, dmg: 160, hs: 1.3, rng: 0.8, spd: 1.5, tgt: 'g', anywhere: 1, towerPct: 0.3, r: 0.5, mass: 6,
+  { id: 'miner', name: 'Tunneler', rar: 'L', cost: 3, type: 'troop', arena: 6, hp: 1000, dmg: 160, hs: 1.3, rng: 0.8, spd: 1.5, tgt: 'g', anywhere: 1, towerPct: 0.3, r: 0.5, mass: 6,
     desc: 'Tunnels under the arena and pops up anywhere, even next to a tower.', art: { shape: 'human', body: '#8a6a3a', skin: '#f2b880', hair: '#2a1a10', helm: 'miner', w: 'pick', beard: '#3a2a1e' } },
-  { id: 'zap_cart', name: 'Zap Cart', rar: 'L', cost: 6, type: 'troop', arena: 7, hp: 1200, dmg: 1100, hs: 4, first: 4, rng: 5, spd: 0.75, tgt: 'g', splash: 1.8, charged: 1, r: 0.7, mass: 12,
+  { id: 'zap_cart', name: 'Zap Cart', rar: 'L', cost: 6, type: 'troop', arena: 7, hp: 1100, dmg: 860, hs: 4, first: 4, rng: 5, spd: 0.75, tgt: 'g', splash: 1.8, charged: 1, r: 0.7, mass: 12,
     proj: { k: 'bolt', spd: 14 }, desc: 'Slowly charges up, then blasts a huge electric shot. Reset it with stuns.', art: { shape: 'cart' } },
   { id: 'lava_beast', name: 'Lava Beast', rar: 'L', cost: 7, type: 'troop', arena: 7, hp: 3150, dmg: 45, hs: 1.3, rng: 2, spd: 0.75, tgt: 'b', air: 1, r: 0.85, mass: 20,
     proj: { k: 'lava', spd: 9 }, deathSpawn: { c: 'lava_pup', n: 6 }, desc: 'A flying tank that bursts into six Lava Pups when it pops.', art: { shape: 'hound', body: '#c4502a', crust: '#5a2a1a' } },
-  { id: 'the_log', name: 'The Log', rar: 'L', cost: 2, type: 'spell', arena: 6, sp: { log: 1, dmg: 240, tower: 0.35, len: 10, w: 1.95, spd: 6, knock: 1 },
+  { id: 'the_log', name: 'Rolling Log', rar: 'L', cost: 2, type: 'spell', arena: 6, sp: { log: 1, dmg: 240, tower: 0.35, len: 10, w: 1.95, spd: 6, knock: 1 },
     desc: 'A spiked log that rolls forward, flattening ground troops and pushing them back.', art: { shape: 'log' } },
-  { id: 'mega_knight', name: 'Mega Knight', rar: 'L', cost: 7, type: 'troop', arena: 8, hp: 3300, dmg: 222, hs: 1.7, rng: 1, spd: 1, tgt: 'g', splash: 1.3, splashSelf: 1, spawnDmg: { dmg: 444, r: 2.2 }, jump: 1, r: 0.75, mass: 18,
+  { id: 'mega_knight', name: 'Quake Knight', rar: 'L', cost: 7, type: 'troop', arena: 8, hp: 2900, dmg: 222, hs: 1.7, rng: 1, spd: 1, tgt: 'g', splash: 1.3, splashSelf: 1, spawnDmg: { dmg: 380, r: 2.2 }, jump: 1, r: 0.75, mass: 18,
     desc: 'Lands with a huge smash, then jumps onto enemies to crush them.', art: { shape: 'robot', body: '#3a3a44', w: 'spikes', big: 1, horns: 1 } },
-  { id: 'elixir_golem', name: 'Elixir Golem', rar: 'L', cost: 3, type: 'troop', arena: 3, hp: 1100, dmg: 120, hs: 1.3, rng: 1, spd: 1, tgt: 'b', r: 0.7, mass: 12,
-    deathSpawn: { c: 'elixir_golemite', n: 2 }, giveElixir: 1, desc: 'A cheap tank made of Elixir. It splits as it breaks, but every piece gives your opponent Elixir.', art: { shape: 'blob', body: '#d84fe0', size: 1 } },
+  { id: 'elixir_golem', name: 'Mana Golem', rar: 'L', cost: 3, type: 'troop', arena: 3, hp: 1100, dmg: 120, hs: 1.3, rng: 1, spd: 1, tgt: 'b', r: 0.7, mass: 12,
+    deathSpawn: { c: 'elixir_golemite', n: 2 }, giveElixir: 1, desc: 'A cheap tank made of Mana. It splits as it breaks, but every piece gives your opponent Mana.', art: { shape: 'blob', body: '#d84fe0', size: 1 } },
 
   /* ---------- 1.1: 25 new cards (always add new cards at the end: a card's place in this list is its id online) ---------- */
   // troops
@@ -534,17 +536,17 @@ const CARDS = [
   { id: 'siege_cart', name: 'Siege Cart', rar: 'E', cost: 5, type: 'troop', arena: 5, hp: 950, dmg: 170, hs: 3, rng: 6, spd: 0.75, tgt: 'b', splash: 1.5, r: 0.7, mass: 12,
     proj: { k: 'boulder', spd: 6, lob: 1 }, desc: 'A rolling catapult that only goes for buildings, hurling boulders from far away.', art: { shape: 'catapult' } },
   { id: 'ember_queen', name: 'Ember Queen', rar: 'L', cost: 5, type: 'troop', arena: 8, hp: 700, dmg: 120, hs: 1.5, rng: 5, spd: 1, tgt: 'ag', splash: 1, r: 0.45, mass: 5,
-    proj: { k: 'fire', spd: 10 }, spawn: { c: 'fire_spirit', every: 6, n: 1, first: 2 }, desc: 'Hurls fire and calls a Fire Spirit to her side every few seconds.', art: { shape: 'human', body: '#c8302a', skin: '#f7c9a0', hair: '#ff8a2a', helm: 'tiara', w: 'fireHand', fem: 1, cape: 1 } },
+    proj: { k: 'fire', spd: 10 }, spawn: { c: 'fire_spirit', every: 6, n: 1, first: 2 }, desc: 'Hurls fire and calls an Ember Sprite to her side every few seconds.', art: { shape: 'human', body: '#c8302a', skin: '#f7c9a0', hair: '#ff8a2a', helm: 'tiara', w: 'fireHand', fem: 1, cape: 1 } },
   { id: 'gryphon', name: 'Gryphon', rar: 'E', cost: 4, type: 'troop', arena: 7, hp: 720, dmg: 130, hs: 1.4, rng: 1, spd: 1.5, tgt: 'ag', air: 1, r: 0.6, mass: 7,
     desc: 'Half eagle, half lion. A sturdy flyer that dives on air and ground troops with its claws.', art: { shape: 'gryphon', body: '#c8963a', wing: '#8a5a2a', head: '#f4f0e6' } },
-  { id: 'mimic', name: 'Mimic', rar: 'L', cost: 4, type: 'troop', arena: 9, hp: 1150, dmg: 200, hs: 1.4, rng: 0.9, spd: 1, tgt: 'g', charge: 1, r: 0.6, mass: 9,
+  { id: 'mimic', name: 'Mimic', rar: 'L', cost: 4, type: 'troop', arena: 9, hp: 1060, dmg: 200, hs: 1.4, rng: 0.9, spd: 1, tgt: 'g', charge: 1, r: 0.6, mass: 9,
     desc: 'It looks like a treasure chest. It is not. After a short run its first bite does double damage.', art: { shape: 'mimic' } },
   // buildings (towers)
   { id: 'arrow_tower', name: 'Arrow Tower', rar: 'C', cost: 4, type: 'building', arena: 0, hp: 650, dmg: 52, hs: 0.8, rng: 6.5, sight: 6.5, tgt: 'ag', r: 0.9, life: 35,
     proj: { k: 'tarrow', spd: 13 }, desc: 'A wooden watchtower with an archer on top. Shoots air and ground troops.', art: { shape: 'atower', barH: 2.5 } },
   { id: 'barricade', name: 'Barricade', rar: 'C', cost: 2, type: 'building', arena: 1, hp: 1000, r: 0.9, life: 25, tgt: 'none',
     desc: 'A wall of sharpened stakes. It doesn’t attack, but troops stop to break it down.', art: { shape: 'barricade' } },
-  { id: 'frost_pylon', name: 'Frost Pylon', rar: 'R', cost: 4, type: 'building', arena: 2, hp: 700, dmg: 48, hs: 1.1, rng: 5.5, sight: 5.5, tgt: 'ag', slowHit: 1, r: 0.85, life: 30,
+  { id: 'frost_pylon', name: 'Frost Pylon', rar: 'R', cost: 4, type: 'building', arena: 2, hp: 700, dmg: 54, hs: 1.1, rng: 5.5, sight: 5.5, tgt: 'ag', slowHit: 1, r: 0.85, life: 30,
     proj: { k: 'ice', spd: 11 }, desc: 'A floating ice crystal. Its shots slow down air and ground troops.', art: { shape: 'pylon', barH: 2 } },
   { id: 'ballista', name: 'Ballista', rar: 'R', cost: 5, type: 'building', arena: 3, hp: 760, dmg: 230, hs: 2.2, rng: 8.5, sight: 8.5, tgt: 'g', r: 0.9, life: 35,
     proj: { k: 'bolt2', spd: 18 }, desc: 'A giant crossbow. Slow, heavy bolts that hit ground troops from very far away.', art: { shape: 'ballista' } },
@@ -552,7 +554,7 @@ const CARDS = [
     spawn: { c: 'wolf', every: 6, n: 1, first: 1 }, desc: 'A cave in the rocks. A wolf runs out of it every few seconds.', art: { shape: 'den' } },
   { id: 'thunder_totem', name: 'Thunder Totem', rar: 'E', cost: 5, type: 'building', arena: 5, hp: 820, dmg: 95, hs: 1.3, rng: 5, sight: 5, tgt: 'ag', splash: 1, stunHit: 0.3, r: 0.85, life: 30,
     proj: { k: 'bolt', spd: 16 }, desc: 'A carved totem with a storm on top. Its lightning hits an area and stuns.', art: { shape: 'totem', barH: 2.2 } },
-  { id: 'healing_shrine', name: 'Healing Shrine', rar: 'E', cost: 4, type: 'building', arena: 6, hp: 650, r: 0.9, life: 30, tgt: 'none', heal: { r: 3.5, amt: 55, every: 1 },
+  { id: 'healing_shrine', name: 'Healing Shrine', rar: 'E', cost: 4, type: 'building', arena: 6, hp: 650, r: 0.9, life: 30, tgt: 'none', heal: { r: 3.5, amt: 65, every: 1 },
     desc: 'An old stone shrine. Heals your troops and buildings around it every second.', art: { shape: 'shrine', barH: 1.9 } },
   { id: 'barracks', name: 'Barracks', rar: 'E', cost: 6, type: 'building', arena: 8, hp: 1050, r: 1.05, life: 40, tgt: 'none',
     spawn: { c: 'squire', every: 7, n: 2, first: 1 }, desc: 'A soldiers’ house. Sends out two Squires every few seconds.', art: { shape: 'barracks', barH: 1.9 } },
@@ -575,10 +577,10 @@ const CARDS = [
 
 // troops that only appear from other cards
 const TOKENS = [
-  { id: 'golemite', name: 'Golemite', rar: 'E', hp: 700, dmg: 40, hs: 2.5, rng: 1, spd: 0.75, tgt: 'b', r: 0.55, mass: 10, deathDmg: { dmg: 40, r: 1.5 }, art: { shape: 'golem', body: '#8a8f98', rock: '#5e636b', small: 1 } },
+  { id: 'golemite', name: 'Golem Shard', rar: 'E', hp: 700, dmg: 40, hs: 2.5, rng: 1, spd: 0.75, tgt: 'b', r: 0.55, mass: 10, deathDmg: { dmg: 40, r: 1.5 }, art: { shape: 'golem', body: '#8a8f98', rock: '#5e636b', small: 1 } },
   { id: 'lava_pup', name: 'Lava Pup', rar: 'L', hp: 180, dmg: 75, hs: 1.7, rng: 1.6, spd: 1, tgt: 'ag', air: 1, r: 0.35, mass: 2, proj: { k: 'lava', spd: 9 }, art: { shape: 'hound', body: '#e0603a', crust: '#5a2a1a', small: 1 } },
-  { id: 'elixir_golemite', name: 'Elixir Golemite', rar: 'L', hp: 550, dmg: 60, hs: 1.3, rng: 1, spd: 1.25, tgt: 'b', r: 0.5, mass: 6, deathSpawn: { c: 'elixir_blob', n: 2 }, giveElixir: 0.5, art: { shape: 'blob', body: '#d84fe0', size: 0.7 } },
-  { id: 'elixir_blob', name: 'Elixir Blob', rar: 'L', hp: 270, dmg: 30, hs: 1.3, rng: 1, spd: 1.5, tgt: 'b', r: 0.35, mass: 3, giveElixir: 0.5, art: { shape: 'blob', body: '#d84fe0', size: 0.45 } },
+  { id: 'elixir_golemite', name: 'Mana Shard', rar: 'L', hp: 550, dmg: 60, hs: 1.3, rng: 1, spd: 1.25, tgt: 'b', r: 0.5, mass: 6, deathSpawn: { c: 'elixir_blob', n: 2 }, giveElixir: 0.5, art: { shape: 'blob', body: '#d84fe0', size: 0.7 } },
+  { id: 'elixir_blob', name: 'Mana Blob', rar: 'L', hp: 270, dmg: 30, hs: 1.3, rng: 1, spd: 1.5, tgt: 'b', r: 0.35, mass: 3, giveElixir: 0.5, art: { shape: 'blob', body: '#d84fe0', size: 0.45 } },
   // 1.1 (add new tokens at the end too)
   { id: 'wolf', name: 'Wolf', rar: 'R', hp: 260, dmg: 64, hs: 1, rng: 0.7, spd: 2, tgt: 'g', r: 0.4, mass: 3, art: { shape: 'wolf', body: '#8a8f9a', belly: '#dde1e6' } },
   { id: 'hornet', name: 'Hornet', rar: 'R', hp: 60, dmg: 30, hs: 0.9, rng: 0.8, spd: 2.2, tgt: 'ag', air: 1, r: 0.3, mass: 1, art: { shape: 'hornet' } }
@@ -596,28 +598,29 @@ const STARTER = ['knight', 'archers', 'goblins', 'minions', 'bomber', 'arrows', 
 
 const ARENAS = [
   { n: 'Training Grounds', tr: 0, c1: '#7fb24a', c2: '#c9a76a' },
-  { n: 'Goblin Stadium', tr: 300, c1: '#6fae3e', c2: '#b88a4a' },
-  { n: 'Bone Pit', tr: 600, c1: '#8a9a5a', c2: '#a89a8a' },
-  { n: 'Barbarian Bowl', tr: 1000, c1: '#9aa84a', c2: '#c48a4a' },
-  { n: 'Spell Valley', tr: 1300, c1: '#7aa85a', c2: '#9a7ac8' },
-  { n: "Builder's Yard", tr: 1600, c1: '#8aa04a', c2: '#c8a050' },
-  { n: 'Royal Arena', tr: 2000, c1: '#7ab04a', c2: '#e0c060' },
-  { n: 'Frozen Peak', tr: 2300, c1: '#a8c8d8', c2: '#e8f4ff' },
-  { n: 'Jungle Arena', tr: 2600, c1: '#4a9a3a', c2: '#7a5a2a' },
-  { n: 'Legendary Arena', tr: 3000, c1: '#6a7ad8', c2: '#c8a0ff' }
+  { n: 'Scamp Stadium', tr: 300, c1: '#6fae3e', c2: '#b88a4a' },
+  { n: 'Rattle Hollow', tr: 600, c1: '#8a9a5a', c2: '#a89a8a' },
+  { n: 'Sunbaked Bowl', tr: 1000, c1: '#9aa84a', c2: '#c48a4a' },
+  { n: 'Mystic Glade', tr: 1300, c1: '#7aa85a', c2: '#9a7ac8' },
+  { n: 'Tinker Yard', tr: 1600, c1: '#8aa04a', c2: '#c8a050' },
+  { n: 'Castle Court', tr: 2000, c1: '#7ab04a', c2: '#e0c060' },
+  { n: 'Frostspire', tr: 2300, c1: '#a8c8d8', c2: '#e8f4ff' },
+  { n: 'Vinewood', tr: 2600, c1: '#4a9a3a', c2: '#7a5a2a' },
+  { n: 'Ember Throne', tr: 3000, c1: '#6a7ad8', c2: '#c8a0ff' },
+  { n: 'Starfall Summit', tr: 4000, c1: '#3a2a78', c2: '#ffd86a', legend: 1 } // 1.2: the Legend arena: a night sky, a river of stars, golden bridges
 ];
 function arenaOf(tr) { let a = 0; for (let i = 0; i < ARENAS.length; i++) if (tr >= ARENAS[i].tr) a = i; return a; }
 
 // chests: unlock time (seconds), cards and gold scale with the arena they were won in
 const CHESTS = {
   free: { n: 'Free Chest', time: 0, cards: a => 4 + a, gold: a => [15 + a * 4, 35 + a * 6], gems: 0, rare: 0.2, epic: 0.03, leg: 0.004, col: '#9ad04a' },
-  silver: { n: 'Silver Chest', time: 300, cards: a => 6 + a * 2, gold: a => [20 + a * 6, 40 + a * 10], gems: 0, rare: 0.5, epic: 0.06, leg: 0.006, col: '#b8c8d8' },
-  gold: { n: 'Gold Chest', time: 1200, cards: a => 20 + a * 5, gold: a => [100 + a * 25, 180 + a * 40], gems: [2, 6], rare: 3, epic: 0.3, leg: 0.03, col: '#f6c234' },
-  crown: { n: 'Crown Chest', time: 0, cards: a => 22 + a * 5, gold: a => [120 + a * 30, 200 + a * 40], gems: [4, 10], rare: 3, epic: 0.4, leg: 0.04, col: '#3fa0e8' },
-  giant: { n: 'Giant Chest', time: 3600, cards: a => 70 + a * 14, gold: a => [400 + a * 60, 600 + a * 90], gems: 0, rare: 9, epic: 0.6, leg: 0.06, col: '#e88a34' },
-  magic: { n: 'Magical Chest', time: 3600, cards: a => 30 + a * 6, gold: a => [250 + a * 40, 400 + a * 60], gems: [4, 12], rare: 7, epic: 2, leg: 0.25, col: '#b45ae0' },
-  smagic: { n: 'Super Magical Chest', time: 10800, cards: a => 140 + a * 25, gold: a => [1200 + a * 200, 1800 + a * 250], gems: [20, 40], rare: 30, epic: 8, leg: 1, col: '#ff5acb' },
-  legend: { n: 'Legendary Chest', time: 0, cards: a => 1, gold: a => [0, 0], gems: 0, rare: 0, epic: 0, leg: 1, onlyLeg: 1, col: '#ffd84a' }
+  silver: { n: 'Iron Chest', time: 300, cards: a => 6 + a * 2, gold: a => [20 + a * 6, 40 + a * 10], gems: 0, rare: 0.5, epic: 0.06, leg: 0.006, col: '#b8c8d8' },
+  gold: { n: 'Treasure Chest', time: 1200, cards: a => 20 + a * 5, gold: a => [100 + a * 25, 180 + a * 40], gems: [2, 6], rare: 3, epic: 0.3, leg: 0.03, col: '#f6c234' },
+  crown: { n: 'Victory Chest', time: 0, cards: a => 22 + a * 5, gold: a => [120 + a * 30, 200 + a * 40], gems: [4, 10], rare: 3, epic: 0.4, leg: 0.04, col: '#3fa0e8' },
+  giant: { n: 'Mammoth Chest', time: 3600, cards: a => 70 + a * 14, gold: a => [400 + a * 60, 600 + a * 90], gems: 0, rare: 9, epic: 0.6, leg: 0.06, col: '#e88a34' },
+  magic: { n: 'Enchanted Chest', time: 3600, cards: a => 30 + a * 6, gold: a => [250 + a * 40, 400 + a * 60], gems: [4, 12], rare: 7, epic: 2, leg: 0.25, col: '#b45ae0' },
+  smagic: { n: 'Mythic Chest', time: 10800, cards: a => 140 + a * 25, gold: a => [1200 + a * 200, 1800 + a * 250], gems: [20, 40], rare: 30, epic: 8, leg: 1, col: '#ff5acb' },
+  legend: { n: 'Star Chest', time: 0, cards: a => 1, gold: a => [0, 0], gems: 0, rare: 0, epic: 0, leg: 1, onlyLeg: 1, col: '#ffd84a' }
 };
 // what you win: mostly silver, sometimes better (CR-style cycle)
 const CHEST_CYCLE = ['silver', 'silver', 'gold', 'silver', 'silver', 'silver', 'gold', 'silver', 'silver', 'magic', 'silver', 'gold', 'silver', 'silver', 'giant', 'silver', 'gold', 'silver', 'silver', 'silver', 'gold', 'silver', 'magic', 'silver', 'silver', 'gold', 'silver', 'silver', 'silver', 'smagic'];
@@ -647,7 +650,11 @@ const DEAL_PRICE = { C: [10, 5], R: [100, 3], E: [1000, 1], L: [10000, 1] }; // 
 
 const EMOTES = [
   { k: 'gl', t: 'Good luck!' }, { k: 'wp', t: 'Well played!' }, { k: 'wow', t: 'Wow!' }, { k: 'ty', t: 'Thanks!' },
-  { k: 'oops', t: 'Oops' }, { k: 'laugh', f: '😂' }, { k: 'cry', f: '😭' }, { k: 'angry', f: '😡' }, { k: 'thumb', f: '👍' }, { k: 'cool', f: '😎' }
+  { k: 'oops', t: 'Oops' }, { k: 'laugh', f: '😂' }, { k: 'cry', f: '😭' }, { k: 'angry', f: '😡' }, { k: 'thumb', f: '👍' }, { k: 'cool', f: '😎' },
+  // 1.2: collectable emotes (EMOTE_INFO in extras.js says how each is earned)
+  { k: 'clap', f: '👏' }, { k: 'fire', f: '🔥' }, { k: 'think', f: '🤔' }, { k: 'sleep', f: '😴' }, { k: 'party', f: '🥳' }, { k: 'shock', f: '😱' },
+  { k: 'crown', f: '👑' }, { k: 'heart', f: '💖' }, { k: 'muscle', f: '💪' }, { k: 'ghost', f: '👻' }, { k: 'dragon', f: '🐉' }, { k: 'star', f: '🌟' },
+  { k: 'shield', f: '🛡️' }, { k: 'sword', f: '⚔️' }, { k: 'gg', t: 'Good game!' }, { k: 'close', t: 'So close!' }
 ];
 /* ---- 20-sim.js ---- */
 /* ============================================================
@@ -659,20 +666,31 @@ function shuffle(a, rng) { for (let i = a.length - 1; i > 0; i--) { const j = Ma
 const hyp = Math.hypot;
 const TOWER_IX = { princess: 200, king: 201 };
 
-function newBattle(p0, p1, seed) {
-  const B = { t: 0, clock: 180, ot: false, x2: false, x3: false, phase: 'play', elx: [5, 5], ents: [], map: new Map(), nid: 1, ev: [], rng: mkRng(seed || 1), P: [], result: null, tb: null };
+// 1.2: opts.rules { elx: Mana speed multiplier, start: starting Mana }, opts.mates [partner of side 0, partner of side 1] for 2v2
+// (each partner has its own hand and Mana: B.P2 / B.elx2, played as seat 1). B.k counts ticks, so a replay can play cards back on time.
+function newBattle(p0, p1, seed, opts) {
+  opts = opts || {};
+  const R = opts.rules || {}, st = R.start != null ? R.start : 5;
+  const B = { t: 0, k: 0, clock: 180, ot: false, x2: false, x3: false, phase: 'play', elx: [st, st], ents: [], map: new Map(), nid: 1, ev: [], rng: mkRng(seed || 1), P: [], result: null, tb: null, rules: R, P2: null, elx2: null };
+  const mates = opts.mates || null;
   [p0, p1].forEach((p, s) => {
     const order = shuffle(p.deck.slice(), B.rng);
     B.P.push({ name: p.name, kl: p.kl || 1, lv: p.lv || {}, hand: order.slice(0, 4), queue: order.slice(4), crowns: 0, played: 0 });
-    addTowers(B, s, p.kl || 1);
+    const m = mates && mates[s], kl = m ? Math.round(((p.kl || 1) + (m.kl || 1)) / 2) : p.kl || 1;
+    addTowers(B, s, kl, mates ? 1.25 : 1);
   });
+  if (mates) {
+    B.P2 = mates.map(m => { const order = shuffle(m.deck.slice(), B.rng); return { name: m.name, kl: m.kl || 1, lv: m.lv || {}, hand: order.slice(0, 4), queue: order.slice(4), played: 0 }; });
+    B.elx2 = [st, st];
+  }
   return B;
 }
-function addTowers(B, side, kl) {
+function addTowers(B, side, kl, hpMul) {
   const T = towerStats(kl), m = (x, y) => side ? [W - x, H - y] : [x, y];
   const mk = (tw, x, y, lane) => {
     const [px, py] = m(x, y), king = tw === 'king';
-    const e = { id: B.nid++, k: 't', tw, lane, side, x: px, y: py, r: king ? 1.9 : 1.45, hp: king ? T.khp : T.php, mhp: king ? T.khp : T.php,
+    const hp = Math.round((king ? T.khp : T.php) * (hpMul || 1)); // 1.2: 2v2 towers are a quarter tougher
+    const e = { id: B.nid++, k: 't', tw, lane, side, x: px, y: py, r: king ? 1.9 : 1.45, hp, mhp: hp,
       dmg: king ? T.kdmg : T.pdmg, hs: king ? 1 : 0.8, rng: king ? 7 : 7.5, tgt: 'ag', active: !king, cd: 0, target: 0, lv: kl, frz: 0, stun: 0, slowT: 0, px: px, py: py };
     B.ents.push(e); B.map.set(e.id, e);
   };
@@ -709,8 +727,10 @@ function canDeploy(B, side, cid, x, y) {
   if (ok && d.type === 'building') { if (B.ents.some(e => (e.k === 't' || e.k === 'b') && e.hp > 0 && hyp(e.x - x, e.y - y) < e.r + d.r * 0.8)) return false; }
   return ok;
 }
-function play(B, side, cid, x, y) {
+function play(B, side, cid, x, y, seat) {
   if (B.phase === 'end' || B.phase === 'tb') return false;
+  x = Math.round(x * 100) / 100; y = Math.round(y * 100) / 100; // 1.2: positions to 1/100 of a tile, so replays play back exactly
+  if (seat === 1 && B.P2 && !B._seat) return withSeat(B, side, () => play(B, side, cid, x, y)); // 1.2: the 2v2 partner's hand and Mana
   const P = B.P[side], d = DEF[cid], hi = P.hand.indexOf(cid);
   if (!d || hi < 0 || B.elx[side] < d.cost - 1e-6 || !canDeploy(B, side, cid, x, y)) return false;
   B.elx[side] -= d.cost; P.played++;
@@ -723,8 +743,14 @@ function play(B, side, cid, x, y) {
     if (d.anywhere) { const k = towersOf(B, side).find(t => t.tw === 'king'); dep = DEPLOY_T + (k ? hyp(k.x - x, k.y - y) / 7 : 1); }
     for (const p of pts) { const e = addEnt(B, uc.id, side, x + p[0], y + (side ? -p[1] : p[1]), lv, dep); if (d.anywhere) e.tunnel = 1; if (uc.id !== d.id) e.from = d.id; }
   }
-  emit(B, { e: 'play', s: side, c: cid, x, y });
+  emit(B, { e: 'play', s: side, c: cid, x, y, k: B.k, q: B._seat ? 1 : 0 }); // 1.2: k = the tick (replays), q = the seat (2v2)
   return true;
+}
+// 1.2: runs f with seat 1's hand and Mana swapped into seat 0's place (so play() and the bot work unchanged)
+function withSeat(B, side, f) {
+  const a = B.P[side], b = B.P2[side], ea = B.elx[side];
+  b.crowns = a.crowns; B.P[side] = b; B.elx[side] = B.elx2[side]; B._seat = 1;
+  try { return f(); } finally { B._seat = 0; a.crowns = b.crowns; B.elx2[side] = B.elx[side]; B.elx[side] = ea; B.P[side] = a; }
 }
 function deployed(B, e, d) {
   e.tunnel = 0;
@@ -1037,19 +1063,21 @@ function collide(B) {
 
 /* ---------- the clock ---------- */
 function elixirRate(B) {
-  if (B.ot) return B.clock <= 60 ? 3 / 2.8 : 2 / 2.8;
-  return B.clock <= 60 ? 2 / 2.8 : 1 / 2.8;
+  const m = (B.rules && B.rules.elx) || 1; // 1.2: challenges can speed up Mana (Triple Mana)
+  if (B.ot) return m * (B.clock <= 60 ? 3 / 2.8 : 2 / 2.8);
+  return m * (B.clock <= 60 ? 2 / 2.8 : 1 / 2.8);
 }
 function step(B) {
   if (B.phase === 'end') return;
   const dt = TICK;
-  B.t += dt;
+  B.t += dt; B.k++;
   for (const e of B.ents) { e.px = e.x; e.py = e.y; }
   if (B.phase === 'tb') { tiebreak(B, dt); return; }
   if (B.t < 0.001) return;
   B.clock -= dt;
   const rate = elixirRate(B);
   for (let s = 0; s < 2; s++) B.elx[s] = Math.min(10, B.elx[s] + rate * dt);
+  if (B.elx2) for (let s = 0; s < 2; s++) B.elx2[s] = Math.min(10, B.elx2[s] + rate * dt);
   if (!B.ot && !B.x2 && B.clock <= 60) { B.x2 = true; emit(B, { e: 'x2' }); }
   if (B.ot && !B.x3 && B.clock <= 60) { B.x3 = true; emit(B, { e: 'x3' }); }
   if (B.clock <= 0) {
@@ -1112,7 +1140,8 @@ function snapshot(B) {
     E.push([e.id, ix, e.side, Math.round(e.x * 20), Math.round(e.y * 20), Math.ceil(e.hp), Math.ceil(e.mhp), f, e.target || 0, e.lv || 1, h, e.k === 't' ? e.lane : 0]);
   }
   return { t: +B.t.toFixed(2), c: +B.clock.toFixed(2), ot: B.ot ? 1 : 0, ph: B.phase, x: [+B.elx[0].toFixed(3), +B.elx[1].toFixed(3)], cr: [B.P[0].crowns, B.P[1].crowns],
-    h: [B.P[0].hand.slice(), B.P[1].hand.slice()], n: [B.P[0].queue[0], B.P[1].queue[0]], E };
+    h: [B.P[0].hand.slice(), B.P[1].hand.slice()], n: [B.P[0].queue[0], B.P[1].queue[0]], E,
+    ...(B.P2 ? { h2: [B.P2[0].hand.slice(), B.P2[1].hand.slice()], n2: [B.P2[0].queue[0], B.P2[1].queue[0]], x2: [+B.elx2[0].toFixed(3), +B.elx2[1].toFixed(3)] } : {}), ...(B.rules && B.rules.elx ? { em: B.rules.elx } : {}) };
 }
 
 /* ============================================================
@@ -1123,6 +1152,7 @@ function cardValue(c) { const d = DEF[c]; if (!d) return 1; const parent = d.tok
 function mkBot(side, level, slow) { return { side, next: 1.2, lvl: level || 1, slow: Math.max(0, slow || 0), lastTank: -99, plan: null }; }
 function botThink(B, bot) {
   if (B.phase !== 'play') return;
+  if (bot.seat && B.P2 && !B._seat) return withSeat(B, bot.side, () => botThink(B, bot)); // 1.2: a 2v2 partner bot
   if (B.t < bot.next) return;
   bot.next = B.t + 0.45 + B.rng() * 0.5 + (bot.slow || 0) * (0.6 + B.rng() * 0.8);
   const s = bot.side, opp = 1 - s, P = B.P[s], elx = B.elx[s], my = s === 0 ? (y => y >= MID) : (y => y < MID);
@@ -1194,7 +1224,7 @@ function botThink(B, bot) {
     return false;
   }
 
-  // 2) attack when Elixir is high (or about to leak)
+  // 2) attack when Mana is high (or about to leak)
   const target = towersOf(B, opp).filter(t => t.hp > 0 && t.tw === 'princess').sort((a, b) => a.hp - b.hp)[0] || towersOf(B, opp).find(t => t.tw === 'king');
   if (!target) return false;
   const lane = target.tw === 'king' ? (B.rng() < 0.5 ? 0 : 1) : (s === 0 ? laneOf(target.x) : laneOf(target.x));
@@ -1225,7 +1255,7 @@ function botThink(B, bot) {
     if (ok) return true;
   }
   if (leak && afford.length) {
-    // don't sit on a healing spell forever: about to waste Elixir, so mend the most damaged tower
+    // don't sit on a healing spell forever: about to waste Mana, so mend the most damaged tower
     if (heal) { const t = myTowers.slice().sort((a, b) => a.hp / a.mhp - b.hp / b.mhp)[0]; if (t && (t.hp < t.mhp * 0.85 || afford.every(x => x.type === 'spell'))) return tryPlay(heal, t.x, t.y); }
     const d = afford.filter(x => x.type !== 'spell').sort((a, b) => a.cost - b.cost)[0]; if (d) return tryPlay(d, 9 + (B.rng() - 0.5) * 6, s === 0 ? 29.5 : 2.5);
   }
@@ -1863,23 +1893,37 @@ function softShadow(g, x, y, rx, ry, a) {
    Same view as before: the platform on top, the stone front below it. The still parts are painted
    once into a cached layer per tower type, team and size; the figures, flags and cannon move on top. */
 const TOWER_CACHE = {};
+// 1.2: tower skins. TOWER_SKIN[team] (0 = your towers, 1 = the other side's) picks a palette for the stone parts.
+const SKIN_PAL = {
+  stone:  { n: 'Classic Stone', wall: '#a3998c', c1: '#8a8073', c2: '#958b7e', rim: '#d2c8bb', mTop: '#e2d9cc', mBot: '#aaa093', floor: '#a87443', floor2: '#b07a45', moss: 'rgba(90,145,50,.75)' },
+  sand:   { n: 'Desert Sandstone', wall: '#d8b47a', c1: '#b88f58', c2: '#c69e64', rim: '#f0d8a8', mTop: '#fae6bc', mBot: '#d2b07a', floor: '#c07a3a', floor2: '#cc8846', moss: 'rgba(200,150,80,.55)' },
+  frost:  { n: 'Frost Fort', wall: '#9cc6e0', c1: '#7aa8c8', c2: '#88b4d2', rim: '#e2f2fc', mTop: '#ffffff', mBot: '#b8d8ec', floor: '#6a9ac0', floor2: '#7aa8cc', moss: 'rgba(255,255,255,.8)' },
+  forest: { n: 'Mossy Keep', wall: '#8a9a72', c1: '#6e7e58', c2: '#7a8a62', rim: '#bcc8a0', mTop: '#d4dcb8', mBot: '#98a67e', floor: '#7a5a34', floor2: '#86663c', moss: 'rgba(60,140,40,.9)' },
+  dusk:   { n: 'Obsidian Spire', wall: '#4e4a5e', c1: '#3a3648', c2: '#444052', rim: '#7a7490', mTop: '#9a94b2', mBot: '#5e5872', floor: '#3a2e4a', floor2: '#463858', moss: 'rgba(170,110,255,.55)' },
+  marble: { n: 'Royal Marble', wall: '#e6e2dc', c1: '#c8b070', c2: '#d6c084', rim: '#fff8e8', mTop: '#ffffff', mBot: '#e8d8a8', floor: '#b88a3a', floor2: '#c8983e', moss: 'rgba(255,215,90,.6)' },
+  candy:  { n: 'Candy Castle', wall: '#f2a8c8', c1: '#e080aa', c2: '#ea92b8', rim: '#fff0f6', mTop: '#ffffff', mBot: '#f8c8dc', floor: '#9a5ab8', floor2: '#a868c4', moss: 'rgba(120,220,255,.7)' },
+};
+const TOWER_SKIN = ['stone', 'stone'];
+let TSK = SKIN_PAL.stone;
 function towerGeo(tw, s) {
   const king = tw === 'king', w = (king ? 3.9 : 3.0) * s, h = (king ? 1.7 : 1.9) * s, top = -h - w * 0.35;
   return { king, w, h, top, L: -w / 2, R: w / 2, rimH: w * 0.55, bottom: top + h + w * 0.4 };
 }
 function towerLayer(tw, team, s, part) {
-  const dpr = (typeof DPR !== 'undefined' && DPR) || 1, key = tw + team + part + s.toFixed(2) + dpr;
+  const sk = SKIN_PAL[TOWER_SKIN[team]] ? TOWER_SKIN[team] : 'stone', dpr = (typeof DPR !== 'undefined' && DPR) || 1, key = tw + team + part + s.toFixed(2) + dpr + sk;
   if (TOWER_CACHE[key]) return TOWER_CACHE[key];
   const G = towerGeo(tw, s), ox = G.w / 2 + s * 1.2, oy = -G.top + s * 1.0;
   const c = document.createElement('canvas'); c.width = Math.ceil((G.w + s * 3.4) * dpr); c.height = Math.ceil((oy + G.bottom + s * 2) * dpr);
   const g = c.getContext('2d'); g.scale(dpr, dpr); g.translate(ox, oy);
   const rnd = mkRng(tw === 'king' ? 11 : 5);
+  TSK = SKIN_PAL[sk];
   if (part === 'dead') paintRubble(g, G, s, rnd); else paintTower(g, G, s, team, rnd);
+  TSK = SKIN_PAL.stone;
   return (TOWER_CACHE[key] = { c, ox, oy, w: c.width / dpr, h: c.height / dpr });
 }
 function merlon(g, x, y, m, s) {
-  rr(g, x - m / 2, y, m, m * 0.5, s * 0.05, '#aaa093', INK, s * 0.035);
-  rr(g, x - m / 2, y - m * 0.42, m, m * 0.55, s * 0.06, '#e2d9cc', INK, s * 0.035);
+  rr(g, x - m / 2, y, m, m * 0.5, s * 0.05, TSK.mBot, INK, s * 0.035);
+  rr(g, x - m / 2, y - m * 0.42, m, m * 0.55, s * 0.06, TSK.mTop, INK, s * 0.035);
   line(g, x - m / 2 + s * 0.07, y - m * 0.33, x + m / 2 - s * 0.09, y - m * 0.33, 'rgba(255,255,255,.6)', s * 0.03);
 }
 function stoneWall(g, x0, y0, w, h, rows, base, s, rnd, ink) {
@@ -1901,7 +1945,7 @@ function stoneWall(g, x0, y0, w, h, rows, base, s, rnd, ink) {
   }
   let gr = g.createLinearGradient(x0, 0, x0 + w, 0); gr.addColorStop(0, 'rgba(255,255,255,.12)'); gr.addColorStop(0.5, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.25)'); g.fillStyle = gr; g.fillRect(x0, y0, w, h);
   gr = g.createLinearGradient(0, y0, 0, y0 + h); gr.addColorStop(0.55, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.32)'); g.fillStyle = gr; g.fillRect(x0, y0, w, h);
-  for (let i = 0; i < 5; i++) ell(g, x0 + rnd() * w, y0 + h - s * 0.05, s * (0.12 + rnd() * 0.16), s * 0.08, 'rgba(90,145,50,.75)');
+  for (let i = 0; i < 5; i++) ell(g, x0 + rnd() * w, y0 + h - s * 0.05, s * (0.12 + rnd() * 0.16), s * 0.08, TSK.moss);
   g.restore();
 }
 function paintTower(g, G, s, team, rnd) {
@@ -1913,8 +1957,8 @@ function paintTower(g, G, s, team, rnd) {
   softShadow(g, s * 0.25, bottom - s * 0.05, w * 0.6, s * 0.42, 0.45);
   // the front wall, with darker corner stones
   const wy = top + w * 0.2;
-  stoneWall(g, L, wy, w, bottom - wy, 4, '#a3998c', s, rnd);
-  for (const cx of [L, R - s * 0.42]) { g.save(); rr(g, L, wy, w, bottom - wy, s * 0.12); g.clip(); for (let k = 0; k < 4; k++) { const yy = wy + rimH + k * (bottom - wy - rimH) / 4; rr(g, cx + (k % 2 ? s * 0.06 : 0), yy + s * 0.04, s * 0.36, (bottom - wy - rimH) / 4 - s * 0.08, s * 0.05, k % 2 ? '#8a8073' : '#958b7e', 'rgba(30,25,20,.4)', s * 0.02); } g.restore(); }
+  stoneWall(g, L, wy, w, bottom - wy, 4, TSK.wall, s, rnd);
+  for (const cx of [L, R - s * 0.42]) { g.save(); rr(g, L, wy, w, bottom - wy, s * 0.12); g.clip(); for (let k = 0; k < 4; k++) { const yy = wy + rimH + k * (bottom - wy - rimH) / 4; rr(g, cx + (k % 2 ? s * 0.06 : 0), yy + s * 0.04, s * 0.36, (bottom - wy - rimH) / 4 - s * 0.08, s * 0.05, k % 2 ? TSK.c1 : TSK.c2, 'rgba(30,25,20,.4)', s * 0.02); } g.restore(); }
   const face0 = top + rimH, faceH = bottom - face0;
   // banners, arrow slits, the king's door and crest
   const banner = (cx, bw, bh) => {
@@ -1938,14 +1982,14 @@ function paintTower(g, G, s, team, rnd) {
     slit(L + w * 0.22, face0 + faceH * 0.3); slit(R - w * 0.22, face0 + faceH * 0.3);
   }
   // the stone rim of the platform
-  rr(g, L - s * 0.05, top, w + s * 0.1, rimH, s * 0.16, '#d2c8bb', INK, s * 0.05);
+  rr(g, L - s * 0.05, top, w + s * 0.1, rimH, s * 0.16, TSK.rim, INK, s * 0.05);
   for (let k = 1; k < 6; k++) { line(g, L + w * k / 6, top + s * 0.02, L + w * k / 6, top + s * 0.16, 'rgba(90,80,70,.35)', s * 0.025); line(g, L + w * k / 6, top + rimH - s * 0.16, L + w * k / 6, top + rimH - s * 0.02, 'rgba(90,80,70,.35)', s * 0.025); }
   let gr = g.createLinearGradient(L, top, R, top + rimH); gr.addColorStop(0, 'rgba(255,255,255,.32)'); gr.addColorStop(1, 'rgba(0,0,0,.14)'); rr(g, L - s * 0.02, top + s * 0.02, w + s * 0.04, rimH - s * 0.04, s * 0.15, gr);
   // the floor inside
   const fx = L + s * 0.2, fy = top + s * 0.18, fw = w - s * 0.4, fh = rimH - s * 0.36;
   g.save(); rr(g, fx, fy, fw, fh, s * 0.1); g.clip();
   if (king) { const ts = s * 0.48; for (let yy = 0; yy * ts < fh; yy++) for (let xx = 0; xx * ts < fw; xx++) { g.fillStyle = (xx + yy) % 2 ? T.d : shade(T.m, -0.1); g.fillRect(fx + xx * ts, fy + yy * ts, ts + 0.5, ts + 0.5); } }
-  else { g.fillStyle = '#a87443'; g.fillRect(fx, fy, fw, fh); for (let xx = 0; xx * s * 0.38 < fw; xx++) { g.fillStyle = shade('#b07a45', (rnd() - 0.5) * 0.22); g.fillRect(fx + xx * s * 0.38 + s * 0.02, fy, s * 0.34, fh); circ(g, fx + xx * s * 0.38 + s * 0.19, fy + fh * 0.3, s * 0.025, '#5a3a1e'); circ(g, fx + xx * s * 0.38 + s * 0.19, fy + fh * 0.8, s * 0.025, '#5a3a1e'); } }
+  else { g.fillStyle = TSK.floor; g.fillRect(fx, fy, fw, fh); for (let xx = 0; xx * s * 0.38 < fw; xx++) { g.fillStyle = shade(TSK.floor2, (rnd() - 0.5) * 0.22); g.fillRect(fx + xx * s * 0.38 + s * 0.02, fy, s * 0.34, fh); circ(g, fx + xx * s * 0.38 + s * 0.19, fy + fh * 0.3, s * 0.025, '#5a3a1e'); circ(g, fx + xx * s * 0.38 + s * 0.19, fy + fh * 0.8, s * 0.025, '#5a3a1e'); } }
   gr = g.createLinearGradient(0, fy, 0, fy + s * 0.4); gr.addColorStop(0, 'rgba(0,0,0,.42)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(fx, fy, fw, s * 0.4);
   gr = g.createLinearGradient(fx, 0, fx + s * 0.35, 0); gr.addColorStop(0, 'rgba(0,0,0,.3)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(fx, fy, s * 0.35, fh);
   g.restore();
@@ -1998,9 +2042,10 @@ const THEMES = {
   magic:  { f: ['#93cf98', '#86c38c'], f2: ['#90cc95', '#83c089'], path: '#dccbec', pathD: '#a88ac4', out: ['#5d8f80', '#4c7d6e'], blob: ['rgba(40,30,80,.28)', 'rgba(220,180,255,.2)'], liq: 'water', lc: ['#3a4ab8', '#5a7ae0', '#b0c0ff'], bank: '#6a5a8a', leaf: ['#5a2c8c', '#7a42b8', '#a878e0'], trunk: '#5a3a5a', rock: '#a8a0c0', wood: '#9a6aa0', tufts: 1, flowers: 1 },
   snow:   { f: ['#eaf5fc', '#dbebf6'], f2: ['#e6f2fa', '#d6e7f3'], path: '#bcd4e8', pathD: '#8eaecc', out: ['#f4faff', '#dbe9f5'], blob: ['rgba(120,160,200,.18)', 'rgba(255,255,255,.5)'], liq: 'ice', lc: ['#5a9ed0', '#8cc8ec', '#e2f6ff'], bank: '#9ab8d4', leaf: ['#1f5a4c', '#2e7a64', '#f4fbff'], trunk: '#6a4a36', rock: '#c8d6e4', wood: '#9a7a5a', pines: 1 },
   jungle: { f: ['#72bb4c', '#65ad42'], f2: ['#6fb84a', '#62aa40'], path: '#cfaa6c', pathD: '#9a7646', out: ['#3c8c36', '#2d7529'], blob: ['rgba(15,60,15,.35)', 'rgba(120,200,90,.2)'], liq: 'water', lc: ['#1a7a8a', '#2a9aa8', '#7ad0d4'], bank: '#7a5a34', leaf: ['#1a6326', '#2a8432', '#4caa44'], trunk: '#6a4426', rock: '#8a9a7a', wood: '#8a5a30', tufts: 1, flowers: 1 },
+  legend: { f: ['#5b4f9e', '#53478f'], f2: ['#584c9a', '#4f438b'], path: '#e8c870', pathD: '#a8842e', out: ['#1a1440', '#0c0a24'], blob: ['rgba(255,255,255,.04)', 'rgba(160,120,255,.10)'], liq: 'stars', lc: ['#0a0820', '#241a5a', '#8a7aff'], bank: '#c8a040', leaf: ['#3a2a8a', '#5a46c8', '#a898ff'], trunk: '#e8c870', rock: '#8a80c0', wood: '#d8b048', stars: 1, gold: 1, pines: 1 },
   lava:   { f: ['#918d88', '#827e79'], f2: ['#8d8984', '#7e7a75'], tiles: 1, path: '#6e6a66', pathD: '#4e4a46', out: ['#4a3a34', '#33261f'], blob: ['rgba(10,5,5,.35)', 'rgba(255,110,40,.10)'], liq: 'lava', lc: ['#a8200a', '#ff5a14', '#ffd24a'], bank: '#3a2e2a', leaf: null, trunk: '#3a2a22', rock: '#6a5e58', wood: '#5a4a44', embers: 1 }
 };
-const ARENA_THEME = ['grass', 'grass', 'bone', 'dry', 'magic', 'dry', 'grass', 'snow', 'jungle', 'lava'];
+const ARENA_THEME = ['grass', 'grass', 'bone', 'dry', 'magic', 'dry', 'grass', 'snow', 'jungle', 'lava', 'legend'];
 function themeOf(a) { return THEMES[ARENA_THEME[Math.max(0, Math.min(ARENA_THEME.length - 1, a | 0))]] || THEMES.grass; }
 let CUR_THEME = THEMES.grass;
 // a chunky square bush: the blocky trees around the arena
@@ -2046,6 +2091,11 @@ function drawArenaBG(g, T, ox, oy, cw, ch, arena) {
   for (let i = 0; i < 300; i++) { const x = rnd() * cw, y = rnd() * ch; ell(g, x, y, T * (0.2 + rnd() * 0.6), T * (0.15 + rnd() * 0.35), P.blob[i % 2]); }
   if (P.embers) for (let i = 0; i < 40; i++) { const x = rnd() * cw, y = rnd() * ch, l = T * (0.4 + rnd() * 1.2), a = rnd() * 3; line(g, x, y, x + Math.cos(a) * l, y + Math.sin(a) * l, 'rgba(255,' + (90 + rnd() * 80 | 0) + ',30,.55)', Math.max(1, T * 0.06)); }
   if (P.flowers) for (let i = 0; i < 50; i++) { const x = rnd() * cw, y = rnd() * ch; circ(g, x, y, T * 0.07, ['#ffe27a', '#ffffff', '#ff9ab8'][i % 3]); }
+  if (P.stars) { // 1.2: a night sky around the Legend arena: stars, a few bright ones with crosses, and a soft glow
+    for (let i = 0; i < 260; i++) { const x = rnd() * cw, y = rnd() * ch, r = T * (0.02 + rnd() * 0.05); circ(g, x, y, r, 'rgba(255,255,255,' + (0.35 + rnd() * 0.6).toFixed(2) + ')'); }
+    for (let i = 0; i < 14; i++) { const x = rnd() * cw, y = rnd() * ch, l = T * (0.25 + rnd() * 0.3); line(g, x - l, y, x + l, y, 'rgba(255,240,200,.7)', Math.max(1, T * 0.03)); line(g, x, y - l, x, y + l, 'rgba(255,240,200,.7)', Math.max(1, T * 0.03)); circ(g, x, y, T * 0.07, '#fff8d8'); }
+    const ag = g.createRadialGradient(cw * 0.5, ch * 0.5, 0, cw * 0.5, ch * 0.5, cw * 0.9); ag.addColorStop(0, 'rgba(140,100,255,.18)'); ag.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = ag; g.fillRect(0, 0, cw, ch);
+  }
   // the field sits a little above the ground: a dark lip and a shadow around it
   softShadow(g, X(W / 2) + T * 0.3, Y(H / 2) + T * 0.4, T * (W / 2 + 1.2), T * (H / 2 + 1.2), 0.35);
   rr(g, X(-0.3), Y(-0.3), T * (W + 0.6), T * (H + 0.6), T * 0.3, shade(P.out[1], -0.3), INK, T * 0.06);
@@ -2076,15 +2126,16 @@ function drawArenaBG(g, T, ox, oy, cw, ch, arena) {
   gr = g.createLinearGradient(0, r0, 0, r1); gr.addColorStop(0, P.lc[0]); gr.addColorStop(0.3, P.lc[1]); gr.addColorStop(0.55, shade(P.lc[1], 0.08)); gr.addColorStop(1, P.lc[0]);
   g.fillStyle = gr; g.fillRect(0, r0, cw, r1 - r0);
   g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(0, r0, cw, T * 0.22);
-  if (P.liq === 'lava') { for (let i = 0; i < 26; i++) { const x = rnd() * cw, y = r0 + T * (0.3 + rnd() * 1.4); ell(g, x, y, T * (0.3 + rnd() * 0.5), T * 0.12, 'rgba(255,220,90,.45)'); } const gl = g.createLinearGradient(0, r0 - T, 0, r0); gl.addColorStop(0, 'rgba(255,120,30,0)'); gl.addColorStop(1, 'rgba(255,120,30,.35)'); g.fillStyle = gl; g.fillRect(0, r0 - T, cw, T); }
+  if (P.liq === 'stars') { for (let i = 0; i < 60; i++) circ(g, rnd() * cw, r0 + T * (0.2 + rnd() * 1.6), T * (0.02 + rnd() * 0.05), 'rgba(255,255,255,' + (0.4 + rnd() * 0.6).toFixed(2) + ')'); const gl = g.createLinearGradient(0, r0 - T, 0, r0); gl.addColorStop(0, 'rgba(140,110,255,0)'); gl.addColorStop(1, 'rgba(160,130,255,.35)'); g.fillStyle = gl; g.fillRect(0, r0 - T, cw, T); }
+  else if (P.liq === 'lava') { for (let i = 0; i < 26; i++) { const x = rnd() * cw, y = r0 + T * (0.3 + rnd() * 1.4); ell(g, x, y, T * (0.3 + rnd() * 0.5), T * 0.12, 'rgba(255,220,90,.45)'); } const gl = g.createLinearGradient(0, r0 - T, 0, r0); gl.addColorStop(0, 'rgba(255,120,30,0)'); gl.addColorStop(1, 'rgba(255,120,30,.35)'); g.fillStyle = gl; g.fillRect(0, r0 - T, cw, T); }
   else if (P.liq === 'ice') { for (let i = 0; i < 18; i++) { const x = rnd() * cw, y = r0 + T * (0.3 + rnd() * 1.4); line(g, x, y, x + T * (0.4 + rnd()), y + T * (rnd() - 0.5) * 0.6, 'rgba(255,255,255,.55)', Math.max(1, T * 0.04)); } }
   else for (let i = 0; i < 7; i++) { const lx = X(1 + rnd() * (W - 2)), ly = Y(MID - 0.5 + rnd()); if (BRIDGES.some(b => Math.abs((lx - ox) / T - b) < BRIDGE_HW + 0.5)) continue; ell(g, lx, ly, T * 0.26, T * 0.17, '#4f9a3a', 'rgba(20,60,20,.6)', 1); poly(g, [[lx, ly], [lx + T * 0.26, ly - T * 0.05], [lx + T * 0.26, ly + T * 0.05]], P.lc[1]); if (i % 2) circ(g, lx - T * 0.05, ly - T * 0.04, T * 0.07, '#ffb6d0'); }
   // bridges: planks (stone slabs over lava), rails, and their shadow on the river
-  const stone = P.liq === 'lava';
+  const stone = P.liq === 'lava', gold = !!P.gold;
   for (const b of BRIDGES) {
     const bx0 = X(b - BRIDGE_HW), bw = T * BRIDGE_HW * 2, by0 = Y(RIVER_Y0 - 0.45), bh = T * (RIVER_Y1 - RIVER_Y0 + 0.9);
     g.fillStyle = 'rgba(0,20,50,.35)'; g.fillRect(bx0 + T * 0.35, r0, bw, r1 - r0);
-    rr(g, bx0, by0, bw, bh, T * 0.1, stone ? '#4a4440' : shade(P.wood, -0.35), INK, T * 0.06);
+    rr(g, bx0, by0, bw, bh, T * 0.1, gold ? '#8a6a20' : stone ? '#4a4440' : shade(P.wood, -0.35), INK, T * 0.06);
     for (let i = 0; i < 8; i++) { const py = by0 + T * 0.08 + i * (bh - T * 0.16) / 8; rr(g, bx0 + T * 0.18, py, bw - T * 0.36, (bh - T * 0.16) / 8 - T * 0.05, T * 0.04, shade(stone ? '#8a847e' : P.wood, (rnd() - 0.5) * 0.2)); line(g, bx0 + T * 0.22, py + T * 0.04, bx0 + bw - T * 0.22, py + T * 0.04, 'rgba(255,255,255,.2)', 1); if (!stone) { circ(g, bx0 + T * 0.3, py + T * 0.12, T * 0.03, '#3a2a1e'); circ(g, bx0 + bw - T * 0.3, py + T * 0.12, T * 0.03, '#3a2a1e'); } }
     for (const sx of [bx0, bx0 + bw]) { rr(g, sx - T * 0.1, by0 - T * 0.1, T * 0.2, bh + T * 0.2, T * 0.08, stone ? '#3a3430' : shade(P.wood, -0.45), INK, T * 0.04); for (let k = 0; k < 3; k++) rr(g, sx - T * 0.14, by0 + k * bh / 2 - T * 0.12, T * 0.28, T * 0.28, T * 0.06, stone ? '#5a524c' : shade(P.wood, -0.55), INK, T * 0.03); }
   }
@@ -2115,6 +2166,7 @@ function drawWater(g, T, ox, oy, t) {
   for (let i = 0; i < n; i++) {
     const x = ox + (((i * 2.37 + t * (0.35 + (i % 3) * 0.12)) % span) + x0) * T, y = r0 + T * (0.4 + (i * 0.37 % 1.3)), a = 0.18 + 0.15 * Math.sin(t * 2 + i);
     if (P.liq === 'lava') { const p = (t * 0.6 + i * 0.37) % 1; circ(g, x, y, T * (0.06 + p * 0.14), 'rgba(255,' + (200 - p * 80 | 0) + ',60,' + (0.7 * (1 - p)).toFixed(2) + ')'); continue; }
+    if (P.liq === 'stars') { const tw = 0.5 + 0.5 * Math.sin(t * 3 + i * 1.7), r = T * (0.04 + 0.05 * tw); circ(g, x, y, r * 2.2, 'rgba(170,140,255,' + (0.12 * tw).toFixed(2) + ')'); circ(g, x, y, r, 'rgba(255,250,220,' + (0.5 + 0.5 * tw).toFixed(2) + ')'); continue; }
     g.strokeStyle = 'rgba(230,248,255,' + a.toFixed(2) + ')'; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + T * 0.25, y - T * 0.08, x + T * 0.5, y); g.stroke();
   }
   g.restore();
@@ -2252,11 +2304,18 @@ function startBattle(o) {
   // o: {mode, side, seed, me, opp, arena, onEnd, net}
   BT = { mode: o.mode, side: o.side, me: o.me, opp: o.opp, arena: o.arena || 0, onEnd: o.onEnd, fx: [], anim: new Map(), beams: [], texts: [], bubbles: [],
     sel: -1, drag: null, ghost: null, pend: null, snaps: [], evq: [], predElx: 5, lastNow: performance.now(), acc: 0, started: false, ended: false, shake: 0,
-    lastSnapSend: 0, netEv: [], seq: 0, introUntil: performance.now() + 2600, muted: false, chatTimes: [], botMem: null, view: [] };
+    lastSnapSend: 0, netEv: [], seq: 0, introUntil: performance.now() + 2600, muted: false, chatTimes: [], botMem: null, view: [],
+    seat: o.seat || 0, kind: o.kind || '', mate: o.mate || null, opp2: o.opp2 || null, watch: !!o.watch, rules: o.rules || null };
   if (o.mode !== 'guest') {
     const p0 = o.side === 0 ? o.me : o.opp, p1 = o.side === 0 ? o.opp : o.me;
-    BT.B = newBattle(p0, p1, o.seed);
-    if (o.mode === 'bot') BT.bot = mkBot(1 - o.side, o.botLvl, o.botSlow);
+    // 1.2: 2v2 (o.mate = your partner, o.opp2 = the other side's second player)
+    const mates = o.mate ? (o.side === 0 ? [o.mate, o.opp2] : [o.opp2, o.mate]) : null;
+    BT.B = newBattle(p0, p1, o.seed, { rules: o.rules, mates });
+    BT.bots = [];
+    if (o.mode === 'bot' && !o.feed) BT.bots.push(mkBot(1 - o.side, o.botLvl, o.botSlow));
+    if (mates && !o.feed) { if (o.mate.bot) BT.bots.push(Object.assign(mkBot(o.side, o.botLvl, o.botSlow), { seat: 1 })); if (o.opp2.bot) BT.bots.push(Object.assign(mkBot(1 - o.side, o.botLvl, o.botSlow), { seat: 1, next: 2.4 })); }
+    if (o.mode === 'host' && o.vsBots) BT.bots.push(mkBot(1 - o.side, o.botLvl, o.botSlow));
+    BT.bot = BT.bots[0] || null; BT.feed = o.feed || null;
   }
   $('#menu').classList.add('hide'); $('#battle').classList.remove('hide');
   MUSIC.play('battle');
@@ -2266,6 +2325,7 @@ function startBattle(o) {
   showVS(o);
   clearInterval(BT._iv); BT._iv = setInterval(simPump, 25);
   requestAnimationFrame(frame);
+  if (window.CRX) try { CRX.start(o); } catch (e) { console.error(e); }
 }
 function showVS(o) {
   const v = el('div', 'vs o');
@@ -2278,6 +2338,7 @@ function showVS(o) {
 function leaveBattle() {
   if (!BT) return;
   clearInterval(BT._iv); BT = null;
+  if (window.CRX) try { CRX.leave(); } catch (e) {}
   $('#battle').classList.add('hide'); $('#menu').classList.remove('hide');
   MUSIC.play('menu');
   document.querySelectorAll('#battle .vs,#battle .result').forEach(e => e.remove());
@@ -2290,11 +2351,12 @@ function simPump() {
   let dt = (now - BT.lastNow) / 1000; BT.lastNow = now;
   if (BT.mode === 'guest') { guestPump(now, dt); return; }
   if (now < BT.introUntil) { if (BT.mode === 'host') hostSend(now, true); return; }
-  BT.acc += Math.min(dt, 2.5);
+  BT.acc += Math.min(dt, 2.5) * (BT.speed || 1);
   let n = 0;
-  while (BT.acc >= TICK && n < 60) {
+  while (BT.acc >= TICK && n < 60 * (BT.speed || 1)) {
     BT.acc -= TICK; n++;
-    if (BT.bot) botThink(BT.B, BT.bot);
+    if (BT.feed) BT.feed(BT.B); // 1.2: a replay plays its recorded cards
+    for (const b of BT.bots || []) botThink(BT.B, b);
     step(BT.B);
     const evs = BT.B.ev.splice(0);
     for (const ev of evs) { onEvent(ev); if (BT.mode === 'host' && ev.e !== 'hit') BT.netEv.push(ev); }
@@ -2317,7 +2379,7 @@ function guestSnap(s) {
   BT.snaps.push({ at: now, s }); if (BT.snaps.length > 12) BT.snaps.shift();
   BT.latest = s; BT.latestAt = now;
   if (s.ev) for (const ev of s.ev) BT.evq.push({ t: s.t, ev });
-  const e = s.x[BT.side];
+  const e = (BT.seat && s.x2 ? s.x2 : s.x)[BT.side];
   if (!BT.started) { BT.predElx = e; BT.started = true; }
   const pendCost = BT.pend ? DEF[BT.pend.cid].cost : 0;
   if (BT.pend && (s.h[BT.side].indexOf(BT.pend.cid) < 0 || now > BT.pend.until)) { BT.pend = null; }
@@ -2327,7 +2389,7 @@ function guestSnap(s) {
 }
 function guestPump(now, dt) {
   const s = BT.latest; if (!s) return;
-  if (s.ph === 'play' && !s.intro) BT.predElx = Math.min(10, BT.predElx + (s.ot ? (s.c <= 60 ? 3 : 2) : (s.c <= 60 ? 2 : 1)) / 2.8 * dt);
+  if (s.ph === 'play' && !s.intro) BT.predElx = Math.min(10, BT.predElx + (s.em || 1) * (s.ot ? (s.c <= 60 ? 3 : 2) : (s.c <= 60 ? 2 : 1)) / 2.8 * dt);
   const rt = guestRenderT(now);
   while (BT.evq.length && BT.evq[0].t <= rt + 0.02) onEvent(BT.evq.shift().ev);
 }
@@ -2370,9 +2432,9 @@ function viewFromSim() {
 }
 
 /* ---------- state for the HUD ---------- */
-function myHand() { if (BT.mode === 'guest') return BT.latest ? BT.latest.h[BT.side] : []; return BT.B.P[BT.side].hand; }
-function myNext() { if (BT.mode === 'guest') return BT.latest ? BT.latest.n[BT.side] : null; return BT.B.P[BT.side].queue[0]; }
-function myElx() { if (BT.mode === 'guest') return BT.predElx; return BT.B.elx[BT.side]; }
+function myHand() { if (BT.watch) return []; if (BT.mode === 'guest') return BT.latest ? (BT.seat ? BT.latest.h2 || [[], []] : BT.latest.h)[BT.side] : []; return BT.B.P[BT.side].hand; }
+function myNext() { if (BT.watch) return null; if (BT.mode === 'guest') return BT.latest ? (BT.seat ? BT.latest.n2 || [] : BT.latest.n)[BT.side] : null; return BT.B.P[BT.side].queue[0]; }
+function myElx() { if (BT.watch) return 0; if (BT.mode === 'guest') return BT.predElx; return BT.B.elx[BT.side]; }
 function clockInfo() {
   if (BT.mode === 'guest') { const s = BT.latest; return s ? { c: s.c, ot: s.ot, ph: s.ph, cr: s.cr } : { c: 180, ot: 0, ph: 'play', cr: [0, 0] }; }
   return { c: BT.B.clock, ot: BT.B.ot, ph: BT.B.phase, cr: [BT.B.P[0].crowns, BT.B.P[1].crowns] };
@@ -2435,7 +2497,7 @@ function paintHand() {
 
 /* ---------- input: pick a card, drag or tap onto the arena ---------- */
 function handDown(ev, i) {
-  if (!BT || BT.ended) return;
+  if (!BT || BT.ended || BT.watch) return;
   ev.preventDefault();
   const id = myHand()[i]; if (!id) return;
   if (BT.pend && BT.pend.slot === i) return;
@@ -2477,10 +2539,10 @@ function placeFor(cid, x, y) {
 function deployAt(i, p) {
   const cid = myHand()[i]; if (!cid || !p || !p.ok || cid !== p.cid) { if (p && !p.ok) toast('You can’t place that there'); return; }
   const d = DEF[cid];
-  if (myElx() < d.cost - 1e-6) { toast('Not enough Elixir'); const h = BT.handEls[i]; h.animate([{ transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'none' }], { duration: 200 }); return; }
+  if (myElx() < d.cost - 1e-6) { toast('Not enough Mana'); const h = BT.handEls[i]; h.animate([{ transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'none' }], { duration: 200 }); return; }
   if (BT.mode === 'guest') {
     if (BT.pend) return;
-    NET.send('play', { c: cid, x: +p.x.toFixed(2), y: +p.y.toFixed(2), q: ++BT.seq });
+    NET.send('play', { c: cid, x: +p.x.toFixed(2), y: +p.y.toFixed(2), q: ++BT.seq, seat: BT.seat || 0 });
     BT.pend = { slot: i, cid, until: performance.now() + 1600 };
     BT.predElx -= d.cost;
     BT.fx.push({ k: 'ghost', x: p.x, y: p.y, c: cid, t: 0, dur: 0.9, side: BT.side });
@@ -2493,15 +2555,17 @@ function vById(id) { for (const v of BT.view) if (v.id === id) return v; return 
 function animOf(id) { let a = BT.anim.get(id); if (!a) { a = { atkAt: -9, heat: 0, first: performance.now() }; BT.anim.set(id, a); } return a; }
 function onEvent(ev) {
   if (!BT) return;
+  if (window.CRX) try { CRX.ev(ev); } catch (e) {}
   const now = performance.now() / 1000;
   switch (ev.e) {
     case 'play': {
       const pd = DEF[ev.c], mine = ev.s === BT.side;
       if (pd) BT.fx.push({ k: 'tag', c: ev.c, x: ev.x, y: ev.y, t: 0, dur: pd.type === 'spell' ? 1.1 : DEPLOY_T + 0.15, mine }); // 1.1: the card's name over where it lands
       if (!mine) BT.fx.push({ k: 'oppcard', x: ev.x, y: ev.y, c: ev.c, t: 0, dur: 1.1 });
-      else if (pd && SAVE && SAVE.used) SAVE.used[ev.c] = (SAVE.used[ev.c] || 0) + 1; // for "favourite card" on your profile
-      sfxT('deploy', 80); if (BT.bot && !mine && Math.random() < 0.04) botEmote(); break;
+      else if (pd && SAVE && SAVE.used && !BT.feed && !BT.watch && BT.kind !== 'training' && !(BT.mate && ev.q !== (BT.seat || 0))) SAVE.used[ev.c] = (SAVE.used[ev.c] || 0) + 1; // for "favourite card" on your profile
+      sfxT('deploy', 80); if (BT.bot && !mine && !BT.feed && Math.random() < 0.04) botEmote(); break;
     }
+    case 'end': break;
     case 'land': BT.fx.push({ k: 'dust', x: ev.x, y: ev.y, r: ev.r, t: 0, dur: 0.45 }); break;
     case 'hit': animOf(ev.a).atkAt = now; if (ev.k !== 'shot') sfxT('hit', 70); break;
     case 'proj': {
@@ -2521,8 +2585,8 @@ function onEvent(ev) {
     case 'wake': BT.fx.push({ k: 'wake', id: ev.id, t: 0, dur: 0.8 }); break;
     case 'elx': if (ev.s === BT.side) { BT.texts.push({ x: ev.x, y: ev.y, txt: '+' + (ev.n || 1), col: '#ff8cf4', t: 0, dur: 1.1 }); sfxT('elx', 100); } break;
     case 'charge': BT.fx.push({ k: 'dust', x: 0, y: 0, follow: ev.id, t: 0, dur: 0.3, r: 0.6 }); break;
-    case 'x2': banner('2x Elixir!', null, '#ff9cf8'); break;
-    case 'x3': banner('3x Elixir!', null, '#ff9cf8'); break;
+    case 'x2': banner('2x Mana!', null, '#ff9cf8'); break;
+    case 'x3': banner('3x Mana!', null, '#ff9cf8'); break;
     case 'ot': banner('Overtime!', 'First tower wins', '#ffb08a'); break;
     case 'tb': banner('Tiebreaker!', 'Lowest tower loses', '#ffe27a'); break;
   }
@@ -2818,7 +2882,8 @@ function drawTexts(dt) {
 /* ---------- emotes & chat ---------- */
 function buildEmotes() {
   const p = $('#emoPanel'); p.innerHTML = '';
-  for (const e of EMOTES) { const b = el('button', e.f ? 'f' : '', e.f || esc(e.t)); b.onclick = () => sendEmote(e.k); p.appendChild(b); }
+  const list = window.CRX && CRX.battleEmotes ? CRX.battleEmotes() : EMOTES; // 1.2: your four chosen emotes and the quick chats
+  for (const e of list) { const b = el('button', e.f ? 'f' : '', e.f || esc(e.t)); b.onclick = () => sendEmote(e.k); p.appendChild(b); }
   const cl = el('div', 'chatline'); cl.innerHTML = '<input id="chatIn" maxlength="60" placeholder="Type a message…" autocomplete="off"><button class="btn blue" id="chatGo" style="padding:4px 10px;font-size:14px">Send</button>'; p.appendChild(cl);
   const mu = el('button', 'mute', BT.muted ? 'Unmute opponent' : 'Mute opponent'); mu.onclick = () => { BT.muted = !BT.muted; mu.textContent = BT.muted ? 'Unmute opponent' : 'Mute opponent'; toast(BT.muted ? 'Opponent muted' : 'Opponent unmuted'); }; p.appendChild(mu);
   const send = () => { const i = $('#chatIn'); const t = tidyWS(i.value).slice(0, 60); if (!t) return; i.value = ''; sendChat(t); };
@@ -2855,21 +2920,23 @@ function positionBubbles() {
 function battleOver(res) {
   if (!BT || BT.ended) return;
   BT.ended = true; BT.sel = -1; BT.ghost = null;
-  if (BT.mode === 'host') NET.sendEnd(res);
+  if (BT.mode === 'host') { NET.sendEnd(res); NET.tvOff(); }
   const me = BT.side, out = res.winner === me ? 'win' : res.winner === -1 ? 'draw' : 'loss';
   setTimeout(() => {
     if (!BT) return;
-    const r = BT.onEnd ? BT.onEnd(out, res.crowns[me], res.crowns[1 - me]) : {};
+    const r = BT.onEnd ? BT.onEnd(out, res.crowns[me], res.crowns[1 - me]) || {} : {};
+    let more = ''; if (window.CRX) try { more = CRX.end(res, out, r) || ''; } catch (e) { console.error(e); }
     sfx(out === 'win' ? 'win' : 'lose');
     const d = el('div', 'result o');
     const crowns = (n, cls) => '<div class="crw ' + cls + '">' + [0, 1, 2].map(i => '<i class="' + (i < n ? 'on' : '') + '"></i>').join('') + '</div>';
-    d.innerHTML = '<div class="who">' + esc(BT.opp.name) + '</div>' + crowns(res.crowns[1 - me], 'r') +
+    d.innerHTML = '<div class="who">' + esc(BT.opp.name + (BT.opp2 ? ' & ' + BT.opp2.name : '')) + '</div>' + crowns(res.crowns[1 - me], 'r') +
       '<div class="win">' + (out === 'win' ? 'Winner!' : out === 'draw' ? 'Draw' : 'Defeat') + '</div>' +
-      crowns(res.crowns[me], 'b') + '<div class="who">' + esc(BT.me.name) + '</div>' +
+      crowns(res.crowns[me], 'b') + '<div class="who">' + esc(BT.me.name + (BT.mate ? ' & ' + BT.mate.name : '')) + '</div>' +
       '<div class="rw">' + (r.tr != null ? '<div><span class="troph"></span>' + (r.tr > 0 ? '+' : '') + r.tr + '</div>' : '') + (r.gold ? '<div><span class="coin"></span>+' + r.gold + '</div>' : '') + (r.xp ? '<div>XP +' + r.xp + '</div>' : '') + (r.chest ? '<div>🎁 ' + esc(CHESTS[r.chest].n) + '</div>' : '') + (r.note ? '<div style="font-size:13px">' + esc(r.note) + '</div>' : '') + '</div>' +
-      '<button class="btn blue" id="resOk" style="font-size:22px;padding:10px 40px">OK</button>';
+      more + '<button class="btn blue" id="resOk" style="font-size:22px;padding:10px 40px">OK</button>';
     $('#battle').appendChild(d);
-    $('#resOk').onclick = () => { sfx('click'); NET.leaveMatch(); leaveBattle(); if (window.afterBattle) afterBattle(r); };
+    if (window.CRX) try { CRX.endShown(d); } catch (e) {}
+    $('#resOk').onclick = () => { sfx('click'); NET.leaveMatch(); leaveBattle(); if (window.afterBattle) afterBattle(r); if (window.CRX && CRX.after) CRX.after(r); };
   }, 1600);
 }
 /* ---- 60-net.js ---- */
@@ -2904,19 +2971,23 @@ const NET = (() => {
     const s = p.st && typeof p.st === 'object' ? p.st : {}, num = (v, hi) => Math.max(0, Math.min(hi, +v | 0));
     const st = { tag: /^#[A-Z0-9]{4,10}$/.test(String(s.tag)) ? String(s.tag) : '', best: num(s.best, 99999), wins: num(s.wins, 9999999), losses: num(s.losses, 9999999), draws: num(s.draws, 9999999),
       three: num(s.three, 9999999), found: num(s.found, CARDS.length), fav: DEF[s.fav] && !DEF[s.fav].token ? String(s.fav) : '' };
-    return { id: String(p.id || '').slice(0, 40), name: tidy(String(p.name || 'Player')).slice(0, 16) || 'Player', tr: Math.max(0, Math.min(99999, +p.tr | 0)), kl: Math.max(1, Math.min(MAX_KL, +p.kl | 0)), deck, lv, st };
+    return { id: String(p.id || '').slice(0, 40), name: tidy(String(p.name || 'Player')).slice(0, 16) || 'Player', tr: Math.max(0, Math.min(99999, +p.tr | 0)), kl: Math.max(1, Math.min(MAX_KL, +p.kl | 0)), deck, lv, st, sk: SKIN_PAL[p.sk] ? String(p.sk) : 'stone' }; // 1.2: sk = tower skin
   }
 
   /* ---------- the queue ---------- */
   let gen = 0; // bumped by cancel(), so a search that was cancelled while connecting stops instead of joining the queue
-  async function search(profile, onStatus) {
+  // 1.2: opts.q = which queue ('cr-queue' ranked, 'cr-fr-<CODE>' a friendly battle, 'cr-duo' / 'cr-duo-<CODE>' a 2v2 partner),
+  // opts.kind = 'ranked' | 'friendly' | 'duo' (sent to the guest in 'start')
+  let opts = {};
+  async function search(profile, onStatus, o) {
     cancel();
     const my = gen;
+    opts = o || {};
     prof = profile; myId = profile.id; cb = onStatus; matched = null; inviting = null; ended = false;
     cb({ s: 'connecting' });
     await getClient();
     if (my !== gen) return;
-    const c = q = client.channel('cr-queue' + SUF, { config: { broadcast: { self: false }, presence: { key: myId } } });
+    const c = q = client.channel((opts.q || 'cr-queue') + SUF, { config: { broadcast: { self: false }, presence: { key: myId } } });
     c.on('presence', { event: 'sync' }, consider);
     c.on('broadcast', { event: '*' }, m => onQueue(m.event, m.payload || {}));
     await sub(c);
@@ -2980,7 +3051,12 @@ const NET = (() => {
   }
   function forfeit() {
     if (!BT || BT.ended) return;
-    toast('Your opponent left the battle', 2600);
+    if (BT.kind === 'duo' && BT.mode === 'host') { // 1.2: in 2v2 a bot takes over from a partner who leaves
+      if (!BT.mateBot) { BT.mateBot = 1; BT.bots.push(Object.assign(mkBot(0, BT.arena + 1, 0), { seat: 1 })); toast('Your partner left. A bot takes their cards.', 2600); }
+      return;
+    }
+    toast(BT.kind === 'duo' ? 'Your partner left the battle' : 'Your opponent left the battle', 2600); BT.oppLeft = 1;
+    if (BT.kind === 'duo') { battleOver({ winner: -1, crowns: BT.latest ? BT.latest.cr : [0, 0], left: 1 }); return; }
     if (BT.mode === 'host') { const B = BT.B; finish(B, BT.side); }
     else { const s = BT.latest; battleOver({ winner: BT.side, crowns: s ? s.cr : [0, 0] }); }
   }
@@ -2988,25 +3064,27 @@ const NET = (() => {
   function onMatch(ev, d) {
     if (ev === 'hello' && matched && matched.host && !BT) {
       const opp = clean(d); if (!opp) return;
-      const seed = (Math.random() * 2 ** 31) | 0;
-      send('start', { seed, host: prof, guest: opp });
+      const seed = (Math.random() * 2 ** 31) | 0, kind = opts.kind || 'ranked', extra = opts.extra ? opts.extra(opp) : {};
+      send('start', Object.assign({ seed, host: prof, guest: opp, kind }, extra));
       clearTimeout(startTimer);
       startTimer = setTimeout(() => {}, 0);
       if (cb) cb({ s: 'start' });
-      startOnline('host', 0, prof, opp, seed);
+      startOnline('host', 0, prof, opp, seed, Object.assign({ kind }, extra));
       return;
     }
     if (ev === 'start' && matched && !matched.host && !BT) {
       const host = clean(d.host); if (!host) return;
+      const kind = ['ranked', 'friendly', 'duo'].includes(d.kind) ? d.kind : 'ranked';
+      if (kind !== (opts.kind || 'ranked')) return; // never pulled into a different kind of battle
       clearInterval(helloTimer); clearTimeout(startTimer);
       if (cb) cb({ s: 'start' });
-      startOnline('guest', 1, prof, host, d.seed);
+      startOnline('guest', kind === 'duo' ? 0 : 1, prof, host, d.seed, Object.assign({}, d, { kind, host: undefined, guest: undefined }));
       return;
     }
     if (!BT) return;
     peerSeenAt = Date.now();
     if (ev === 's' && BT.mode === 'guest') guestSnap(d);
-    else if (ev === 'play' && BT.mode === 'host') { if (!play(BT.B, 1, String(d.c), +d.x, +d.y)) send('nack', { q: d.q }); }
+    else if (ev === 'play' && BT.mode === 'host') { if (!(BT.mate ? play(BT.B, 0, String(d.c), +d.x, +d.y, 1) : play(BT.B, 1, String(d.c), +d.x, +d.y))) send('nack', { q: d.q }); }
     else if (ev === 'nack' && BT.mode === 'guest') { BT.pend = null; toast('You can’t place that there'); }
     else if (ev === 'emo') showBubble(false, { k: String(d.k) });
     else if (ev === 'chat') showBubble(false, { t: String(d.t || '').slice(0, 60) });
@@ -3020,7 +3098,29 @@ const NET = (() => {
   }
   // the host tells the guest how it ended (a few times, in case one is lost)
   function sendEnd(res) { for (let i = 0; i < 3; i++) setTimeout(() => send('end', { w: res.winner, cr: res.crowns }), i * 400); }
-  return { search, cancel, send, leaveMatch, sendEnd, get testRoom() { return room || ''; } };
+  /* 1.2: TV Royale. The host of a ranked battle lists it on 'cr-tv' (Presence: names, trophies, arena, start time) while it
+     runs; anyone can open the list and watch: a spectator joins the battle's channel with a 'spec-' key and draws the
+     snapshots the host already sends ten times a second, so watching costs the players nothing extra. */
+  let tvCh = null, specCh = null;
+  async function tvOn(info) {
+    try { await getClient(); tvOff(); const c = tvCh = client.channel('cr-tv' + SUF, { config: { presence: { key: myId } } }); await sub(c); if (tvCh !== c) return; await c.track(Object.assign({ code: matched ? matched.code : '', t: Date.now(), v: GAME_VER }, info)); } catch (e) {}
+  }
+  function tvOff() { if (tvCh) { const c = tvCh; tvCh = null; try { c.untrack(); } catch (e) {} setTimeout(() => { try { client.removeChannel(c); } catch (e) {} }, 200); } }
+  async function tvList() {
+    await getClient();
+    const c = client.channel('cr-tv' + SUF, { config: { presence: { key: 'tvl-' + Math.random().toString(36).slice(2, 9) } } });
+    try { await sub(c); await new Promise(r => setTimeout(r, 900)); const st = c.presenceState(), out = [];
+      for (const k in st) { const m = st[k] && st[k][0]; if (m && m.code && m.v === GAME_VER && Date.now() - (+m.t || 0) < 6 * 60000) out.push(m); }
+      return out; } finally { setTimeout(() => { try { client.removeChannel(c); } catch (e) {} }, 100); }
+  }
+  async function spectate(code, onSnap, onEnd) {
+    await getClient(); unspectate();
+    const c = specCh = client.channel('cr-m-' + code + SUF, { config: { broadcast: { self: false }, presence: { key: 'spec-' + myId + Math.random().toString(36).slice(2, 6) } } });
+    c.on('broadcast', { event: '*' }, m => { if (specCh !== c) return; const d = m.payload || {}; if (m.event === 's') onSnap(d); else if (m.event === 'end') onEnd(d); });
+    await sub(c);
+  }
+  function unspectate() { if (specCh) { const c = specCh; specCh = null; setTimeout(() => { try { client.removeChannel(c); } catch (e) {} }, 100); } }
+  return { search, cancel, send, leaveMatch, sendEnd, tvOn, tvOff, tvList, spectate, unspectate, clean, getClient, sub, get myId() { return myId; }, get testRoom() { return room || ''; }, get SUF() { return SUF; } };
 })();
 /* ---- 50-menu.js ---- */
 /* ============================================================
@@ -3066,7 +3166,7 @@ function dailyReset() {
 function myName() { return (window.ARCADE_NAME || '').slice(0, 16) || 'Player'; }
 function arena() { return arenaOf(SAVE.tr); }
 function cardLv(id) { return (SAVE.cards[id] && SAVE.cards[id].lv) || 1; }
-function profile() { const lv = {}; SAVE.deck.forEach(c => { lv[c] = cardLv(c); }); return { id: SESSION_ID, name: myName(), tr: SAVE.tr, kl: SAVE.kl, deck: SAVE.deck.slice(), lv, st: myStats() }; }
+function profile() { const lv = {}; SAVE.deck.forEach(c => { lv[c] = cardLv(c); }); return { id: SESSION_ID, name: myName(), tr: SAVE.tr, kl: SAVE.kl, deck: SAVE.deck.slice(), lv, st: myStats(), sk: SAVE.skin || 'stone' }; }
 // 1.1: what other players see on your profile (sent with your deck when a battle starts)
 function myStats() {
   const used = SAVE.used || {}, fav = Object.keys(used).filter(c => DEF[c] && !DEF[c].token).sort((a, b) => used[b] - used[a])[0] || SAVE.deck[0];
@@ -3112,6 +3212,7 @@ function drawChest(g, type, w, h, open) {
 function arenaCanvas(a) {
   const c = document.createElement('canvas'); c.width = 300; c.height = 230; const g = c.getContext('2d'), P = themeOf(a), rnd = mkRng(31 + a), T = 12;
   const lerp = (p, q, t) => p + (q - p) * t;
+  if (P.stars) { const gl = g.createRadialGradient(150, 130, 10, 150, 130, 150); gl.addColorStop(0, 'rgba(255,215,110,.45)'); gl.addColorStop(1, 'rgba(255,215,110,0)'); g.fillStyle = gl; g.fillRect(0, 0, 300, 230); for (let i = 0; i < 40; i++) { const x = rnd() * 300, y = rnd() * 110; circ(g, x, y, 0.6 + rnd() * 1.6, 'rgba(255,248,210,' + (0.5 + rnd() * 0.5).toFixed(2) + ')'); } }
   ell(g, 150, 212, 118, 14, 'rgba(0,0,0,.28)');
   // the island's underside: layers of earth and rock
   const dirt = shade(P.bank, -0.05);
@@ -3190,7 +3291,7 @@ function renderBattle() {
   const crownReady = SAVE.crowns >= 10;
   p.innerHTML = '<div class="prof" id="bProf"><div class="ava o">' + esc(myName().charAt(0).toUpperCase()) + '</div><div class="nm o"><b>' + esc(myName()) + '</b><small>' + esc(SAVE.tag) + ' · tap for profile</small></div><div class="trbox o"><span class="troph"></span>' + SAVE.tr + '</div><button class="gear" id="bGear">⚙</button></div>' +
     '<div class="duo"><div class="free" id="bFree"><canvas width="48" height="43" id="cvFree"></canvas><div><div class="t">Free Chest</div><div class="big">' + (SAVE.freeLeft ? 'OPEN' : fmtT(msToMidnight() / 1000)) + '</div></div>' + (SAVE.freeLeft ? '<span class="cnt">x' + SAVE.freeLeft + '</span>' : '') + '</div>' +
-    '<div class="crownc o" id="bCrown"><div style="flex:1"><div class="t">Crown Chest</div><div style="font-size:12px">' + (crownReady ? 'Tap to open!' : 'Win crowns to open:') + '</div><div class="bar"><i style="width:' + Math.min(100, SAVE.crowns * 10) + '%"></i><span>' + Math.min(10, SAVE.crowns) + '/10</span></div></div><canvas width="48" height="43" id="cvCrown"></canvas></div></div>' +
+    '<div class="crownc o" id="bCrown"><div style="flex:1"><div class="t">Victory Chest</div><div style="font-size:12px">' + (crownReady ? 'Tap to open!' : 'Win crowns to open:') + '</div><div class="bar"><i style="width:' + Math.min(100, SAVE.crowns * 10) + '%"></i><span>' + Math.min(10, SAVE.crowns) + '/10</span></div></div><canvas width="48" height="43" id="cvCrown"></canvas></div></div>' +
     '<div class="arenaWrap"><div class="sideBtns"><button class="sb" id="bRoad" title="Trophy Road">🏆</button><button class="sb" id="bLog" title="Battle log">📋</button></div>' +
     '<div class="arena" id="bArena"></div><div class="sideBtns"><button class="sb" id="bHelp" title="How to play">❓</button><button class="sb" id="bDeck" title="Your deck">🃏</button></div></div>' +
     '<button class="battleBtn o" id="bBattle">Battle</button><div class="slots" id="bSlots"></div>';
@@ -3248,7 +3349,7 @@ function openFree() {
 }
 function openCrown() {
   sfx('click');
-  if (SAVE.crowns < 10) { toast('Win ' + (10 - SAVE.crowns) + ' more crowns to open the Crown Chest'); return; }
+  if (SAVE.crowns < 10) { toast('Win ' + (10 - SAVE.crowns) + ' more crowns to open the Victory Chest'); return; }
   SAVE.crowns = 0; save(); openChest('crown', arena());
 }
 
@@ -3293,7 +3394,7 @@ function openChest(type, a, then) {
     const st = steps[i];
     if (i === 0) { ov.innerHTML = ''; const c2 = chestCanvas(type, 260, true); c2.className = 'ch'; c2.style.opacity = 0.35; c2.style.position = 'absolute'; c2.style.bottom = '8%'; ov.appendChild(c2); }
     ov.querySelectorAll('.reveal,.left,.tapnote,.sumbox').forEach(e => e.remove());
-    const rv = el('div', 'reveal o');
+    const rv = el('div', 'reveal o' + (st.k === 'card' && st.c.isNew ? ' isnew' : '')); // 1.2: a new card gets rays and sparks (extras.js)
     const remaining = steps.length - 1 - i;
     if (st.k === 'gold') { rv.innerHTML = '<div class="coin" style="width:90px;height:90px;margin:0 auto;border-width:4px"></div><div class="cnt">+' + res.gold + '</div><div class="nm">Gold</div>'; sfx('card'); }
     else if (st.k === 'gems') { rv.innerHTML = '<div class="gem" style="width:80px;height:90px;margin:0 auto"></div><div class="cnt">+' + res.gems + '</div><div class="nm">Gems</div>'; sfx('card'); }
@@ -3338,7 +3439,7 @@ function renderCards() {
   const p = $('#pg-cards');
   const avg = (SAVE.deck.reduce((a, c) => a + DEF[c].cost, 0) / 8).toFixed(1);
   p.innerHTML = (swapCard ? '<div class="swapbar o">Tap a card in your deck to swap in ' + esc(DEF[swapCard].name) + ' <button class="btn grey" id="swX" style="padding:2px 10px;font-size:13px;margin-left:6px">Cancel</button></div>' : '') +
-    '<div class="wood"><div class="whead o"><span>Battle Deck</span><small>Average Elixir cost: ' + avg + '</small></div><div class="cgrid" id="deckG"></div></div>' +
+    '<div class="wood"><div class="whead o"><span>Battle Deck</span><small>Average Mana cost: ' + avg + '</small></div><div class="cgrid" id="deckG"></div></div>' +
     '<div class="coll"><div class="whead o"><span>Card Collection</span><small style="color:#ffe27a">Found: ' + Object.keys(SAVE.cards).length + '/' + CARDS.length + '</small></div><div class="cgrid" id="collG"></div></div>';
   if (swapCard) $('#swX').onclick = () => { swapCard = null; renderCards(); };
   SAVE.deck.forEach((id, i) => {
@@ -3360,7 +3461,7 @@ function statRows(id, lv) {
     if (s.dot) f('Damage per second', Math.round(s.dot * m), Math.round(s.dot * m2));
     if (s.dmg || s.dot) f('Tower damage', Math.round((s.dmg || s.dot) * m * s.tower));
     if (s.r) f('Radius', s.r); if (s.dur) f('Duration', s.dur + 's'); if (s.freeze) f('Freeze', s.freeze + 's'); if (s.stun) f('Stun', s.stun + 's');
-    if (s.spawn) { const t = DEF[s.spawn]; f('Troops', s.n + ' ' + t.name); f('Goblin HP', Math.round(t.hp * m), Math.round(t.hp * m2)); }
+    if (s.spawn) { const t = DEF[s.spawn]; f('Troops', s.n + ' ' + t.name); f('Troop HP', Math.round(t.hp * m), Math.round(t.hp * m2)); }
     if (s.log) f('Range', s.len + ' tiles'); if (s.bolts) f('Strikes', s.bolts);
     if (s.heal) { f('Healing per second', Math.round(s.heal * m), Math.round(s.heal * m2)); f('Duration', s.dur + 's'); }
     if (s.slow) f('Slow', s.slow + 's'); if (s.push) f('Knockback', 'Strong'); if (s.ground) f('Targets', 'Ground & Buildings'); if (s.wait) f('Lands after', s.wait + 's');
@@ -3372,10 +3473,10 @@ function statRows(id, lv) {
     if (d.ramp) f('Damage (ramps x16)', Math.round(u.dmg * m) + '-' + Math.round(u.dmg * 16 * m));
     if (u.spd) f('Speed', sp(u.spd)); if (u.rng) f('Range', u.rng > 1.6 ? u.rng : 'Melee');
     if (u.tgt) f('Targets', tg[u.tgt]); if (d.count > 1) f('Count', 'x' + d.count); if (d.life) f('Lifetime', d.life + 's');
-    if (d.spawn) f('Spawns', (d.spawn.n > 1 ? d.spawn.n + ' ' : '') + DEF[d.spawn.c].name + (d.spawn.n > 1 ? 's' : '') + ' every ' + d.spawn.every + 's'); if (d.elixirGen) f('Elixir', '+1 every ' + d.elixirGen + 's');
+    if (d.spawn) f('Spawns', (d.spawn.n > 1 ? d.spawn.n + ' ' : '') + DEF[d.spawn.c].name + (d.spawn.n > 1 && !/s$/.test(DEF[d.spawn.c].name) ? 's' : '') + ' every ' + d.spawn.every + 's'); if (d.elixirGen) f('Mana', '+1 every ' + d.elixirGen + 's');
     if (d.heal) f('Heals every ' + d.heal.every + 's', Math.round(d.heal.amt * m), Math.round(d.heal.amt * m2));
     if (d.stunHit) f('Stun', d.stunHit + 's'); if (d.slowHit) f('Effect', 'Slows');
-    if (d.deathSpawn) f('On death', d.deathSpawn.n + ' ' + DEF[d.deathSpawn.c].name + (d.deathSpawn.n > 1 ? 's' : ''));
+    if (d.deathSpawn) f('On death', d.deathSpawn.n + ' ' + DEF[d.deathSpawn.c].name + (d.deathSpawn.n > 1 && !/s$/.test(DEF[d.deathSpawn.c].name) ? 's' : ''));
     if (d.air) f('Type', 'Flying');
   }
   return rows.join('');
@@ -3414,7 +3515,7 @@ function levelUps(list) {
   const r = journeyReward(L), T = towerStats(L);
   SAVE.gems += r.gems; save(); renderTop();
   sfx('win');
-  const b = modal('<h2>King Level ' + L + '!</h2><div style="text-align:center"><div class="lvl o" style="width:70px;height:70px;margin:0 auto 6px;font-size:32px"><b>' + L + '</b></div></div><p style="text-align:center">Your towers are stronger: Princess Towers ' + T.php + ' HP, King Tower ' + T.khp + ' HP.</p><p style="text-align:center">King’s Journey reward:</p><div style="text-align:center" id="mJC"></div><p style="text-align:center">' + esc(CHESTS[r.chest].n) + ' + <span class="gem" style="display:inline-block;vertical-align:-3px"></span> ' + r.gems + '</p><div class="mrow"><button class="btn green" id="mJo">Open!</button></div>', { noX: true });
+  const b = modal('<h2>King Level ' + L + '!</h2><div style="text-align:center"><div class="lvl o" style="width:70px;height:70px;margin:0 auto 6px;font-size:32px"><b>' + L + '</b></div></div><p style="text-align:center">Your towers are stronger: Guard Towers ' + T.php + ' HP, King Tower ' + T.khp + ' HP.</p><p style="text-align:center">King’s Journey reward:</p><div style="text-align:center" id="mJC"></div><p style="text-align:center">' + esc(CHESTS[r.chest].n) + ' + <span class="gem" style="display:inline-block;vertical-align:-3px"></span> ' + r.gems + '</p><div class="mrow"><button class="btn green" id="mJo">Open!</button></div>', { noX: true });
   b.querySelector('#mJC').appendChild(chestCanvas(r.chest, 130));
   b.querySelector('#mJo').onclick = () => { closeModal(); openChest(r.chest, arena(), () => levelUps(list)); };
 }
@@ -3575,12 +3676,12 @@ function openRoad() {
 function openHelp(first) {
   modal('<h2>How to play</h2>' +
     '<p>⚔️ Destroy more enemy towers than your opponent in 3 minutes. Knock down the King Tower in the middle and you win straight away with 3 crowns.</p>' +
-    '<p>💧 Cards cost Elixir. You start with 5, hold up to 10, and get one every 2.8 seconds. In the last minute it comes twice as fast.</p>' +
-    '<p>🃏 Drag a card from your hand onto your side of the arena (or tap the card, then tap the arena). Spells can go anywhere. Knock down a Princess Tower and you can place troops further forward on that side.</p>' +
+    '<p>💧 Cards cost Mana. You start with 5, hold up to 10, and get one every 2.8 seconds. In the last minute it comes twice as fast.</p>' +
+    '<p>🃏 Drag a card from your hand onto your side of the arena (or tap the card, then tap the arena). Spells can go anywhere. Knock down a Guard Tower and you can place troops further forward on that side.</p>' +
     '<p>⏳ Troops and buildings take 1.5 seconds to arrive. Until then you see their outline, and a ring fills up around it.</p>' +
-    '<p>🏰 Princess Towers shoot anything on your side of the river. The King wakes up when a Princess Tower falls or he gets hit.</p>' +
+    '<p>🏰 Guard Towers shoot anything on your side of the river. The King wakes up when a Guard Tower falls or he gets hit.</p>' +
     '<p>⏱️ A tie after 3 minutes goes to Overtime: the first tower to fall wins. Still tied? The tower with the lowest health falls and that side loses.</p>' +
-    '<p>🎁 Win battles for chests, open 3 free chests every day, and win crowns for the Crown Chest. New cards come from chests, and level ups give you more.</p>' +
+    '<p>🎁 Win battles for chests, open 3 free chests every day, and win crowns for the Victory Chest. New cards come from chests, and level ups give you more.</p>' +
     '<p>🤖 Nobody online? After 10 seconds of searching a bot takes the battle, and it still counts for trophies.</p>' +
     '<p>🏆 Tap the arena picture to see the Trophy Road: every arena, and how far you are from the next one. Tap a battle in your Battle Log to see that player’s profile.</p>', first ? { onClose: () => { SAVE.tut = true; save(); } } : null);
 }
@@ -3627,9 +3728,12 @@ function startSearch() {
   NET.search(profile(), st => { if (run !== searchRun || last.s === 'bot') return; last = st; paint(st); if (st.s === 'start') { clearInterval(searchTick); setTimeout(() => s.classList.add('hide'), 300); } })
     .catch(() => { if (run !== searchRun || last.s === 'bot') return; last = { s: 'error' }; });
 }
-function startOnline(mode, side, me, opp, seed) {
+function startOnline(mode, side, me, opp, seed, x) {
   $('#search').classList.add('hide'); closeModal();
-  startBattle({ mode, side, seed, me, opp, arena: arenaOf(Math.min(me.tr, opp.tr)), onEnd: (out, mc, oc) => applyResult(out, mc, oc, opp, false) });
+  x = x || {};
+  if (x.kind && x.kind !== 'ranked' && window.CRX) { CRX.startOnlineKind(mode, side, me, opp, seed, x); return; } // 1.2: friendly battles and 2v2
+  startBattle({ mode, side, seed, me, opp, kind: 'ranked', arena: arenaOf(Math.min(me.tr, opp.tr)), onEnd: (out, mc, oc) => applyResult(out, mc, oc, opp, false) });
+  if (mode === 'host') NET.tvOn({ a: me.name, b: opp.name, at: me.tr, bt: opp.tr, ar: arenaOf(Math.min(me.tr, opp.tr)) }); // 1.2: on TV Royale while it runs
 }
 // (1.1: the Bot Battle button is gone; a bot only takes over a search that has run for BOT_WAIT seconds)
 const BOT_NAMES = ['Trainer Cheddar', 'Trainer Tobi', 'Trainer Pip', 'Trainer Gus', 'Trainer Mo', 'Trainer Lulu'];
@@ -3682,7 +3786,7 @@ window.afterBattle = function (r) {
 load();
 renderAll();
 if (!SAVE.tut) setTimeout(() => openHelp(true), 400);
-else if (SAVE.ver !== GAME_VER) setTimeout(openPatch, 400);
+else if (SAVE.ver !== GAME_VER) setTimeout(() => openPatch(), 400);
 SAVE.ver = GAME_VER; save();
 function openPatch() {
   modal('<h2>Update ' + GAME_VER + '</h2>' +
@@ -3698,6 +3802,7 @@ function openPatch() {
 document.fonts && document.fonts.ready.then(() => { for (const k in PORTRAIT) delete PORTRAIT[k]; if (PAGE !== 'battle') renderPage(); });
 addEventListener('visibilitychange', () => { if (!document.hidden && !BT) { dailyReset(); renderAll(); } });
 </script>
+<script src="extras.js?v=1"></script>
 <script src="../moving.js?v=1"></script>
 <script src="../cursors.js?v=2"></script>
 <script src="../outage.js?v=2"></script>

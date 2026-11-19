@@ -112,15 +112,16 @@ window.GAMES = [
     id: 'card-royale',
     title: 'Card Royale',
     category: 'Strategy',
-    tagline: 'Real-time card battles, 1v1 online: drop troops, cast spells and knock down the enemy towers.',
-    description: 'A real-time 1v1 card battle. Spend Elixir to drop troops, buildings and spells from your 8-card deck, and knock down more towers than your opponent in three minutes. Battle players online, or a bot if nobody is found.',
+    tagline: 'Real-time card battles online: drop troops, cast spells and knock down the enemy towers. 1v1 or 2v2.',
+    description: 'A real-time card battle. Spend Mana to drop troops, buildings and spells from your 8-card deck, and knock down more towers than your opponent in three minutes. Battle players online (bots step in if nobody is found), team up in 2v2, or join a clan.',
     controls: 'Mouse or touch',
-    keys: [['Drag a card', 'Place it on your side of the arena'], ['Tap card, then arena', 'Same as dragging'], ['Speech bubble', 'Emotes and chat'], ['Battle', 'Quick match (a bot after 10 seconds if nobody is online)'], ['Tap the arena', 'Trophy Road'], ['Tap a battle in the log', 'That player\u2019s profile']],
+    keys: [['Drag a card', 'Place it on your side of the arena'], ['Tap card, then arena', 'Same as dragging'], ['Speech bubble', 'Emotes and chat'], ['Battle', 'Quick match (a bot after 10 seconds if nobody is online)'], ['Tap the arena', 'Trophy Road (tap an arena to preview it)'], ['Tap a battle in the log', 'That player\u2019s profile'], ['2v2 / Friendly', 'Team up or battle a friend with a code'], ['Challenges / Training', 'Special rules, or try every card'], ['TV Royale / Replays', 'Watch live battles or your own'], ['Cards tab', 'Five deck slots, card info, mastery, emotes, tower skins']],
     path: 'card-royale/index.html',
     thumb: 'card-royale/thumb.jpg',
     added: '2026-11-03T12:00:00+11:00',
-    updated: '2026-11-05T08:45:00+11:00',
-    stat() { const s = readSave('cardroyale.save', true); return s && (s.wins || s.losses || s.draws) ? (s.tr || 0) + ' trophies' : null; },
+    updated: '2026-11-19T18:00:00+11:00',
+    // 1.2: '· Season MM/YY: N' = the best trophies this month (Card Royale's season leaderboard reads it from /acct/top)
+    stat() { const s = readSave('cardroyale.save', true); if (!s || !(s.wins || s.losses || s.draws)) return null; const d = new Date(), id = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); const se = s.season && s.season.id === id && s.season.hi ? ' · Season ' + id.slice(5) + '/' + id.slice(2, 4) + ': ' + s.season.hi : ''; return (s.tr || 0) + ' trophies' + se; },
   },
   {
     id: 'siege',
@@ -214,11 +215,11 @@ window.GAMES = [
     tagline: 'Classic chess against the computer, or online against a real person.',
     description: 'Classic chess against the computer on Easy, Medium or Hard, or online against a real person for a rating. Every rule is included and your game is saved.',
     controls: 'Mouse or touch',
-    keys: [['Local 2-player', 'Two players on one screen: the board turns round after every move'], ['🏆 Leaderboard', 'Everyone\u2019s highest online rating'], ['Drag or click', 'Move a piece'], ['⏱ Game mode', 'Bullet, Blitz, Rapid, Classical and more for online games'], ['Pre-move', 'Move while your opponent is thinking; right-click to cancel'], ['Undo', 'Take back your last move'], ['Flip', 'Turn the board around'], ['Play online', 'Quick match or a private table']],
+    keys: [['Local 2-player', 'Two players on one screen: the board turns round after every move'], ['🏆 Leaderboard', 'Everyone\u2019s highest online rating'], ['Drag or click', 'Move a piece'], ['⏱ Game mode', 'Bullet, Blitz, Rapid, Classical and more for online games'], ['Pre-move', 'Move while your opponent is thinking; right-click to cancel'], ['After a game', 'Your accuracy and every best move, mistake and blunder'], ['Undo', 'Take back your last move'], ['Flip', 'Turn the board around'], ['Play online', 'Quick match or a private table']],
     path: 'chess/index.html',
     thumb: 'chess/thumb.svg',
     added: '2026-10-17T17:11:00+11:00',
-    updated: '2026-11-18T14:00:00+11:00',
+    updated: '2026-11-19T18:00:00+11:00',
     stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rv === 2 && isFinite(s.rating.r) ? 'Elo ' + Math.round(s.rating.r) : s.rating ? 'Elo 2000' : ''; /* 1.5.1: everyone was reset to 2000 */ return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
   },
   {
@@ -377,6 +378,9 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-19', game: 'card-royale', imgs: ['card-royale/news/1.2-2v2.jpg', 'card-royale/news/1.2-decks.jpg', 'card-royale/news/1.2-card-info.jpg', 'card-royale/news/1.2-mana-graph.jpg'], headline: 'Card Royale 1.2: 2v2, clans, replays and more', text: 'Card Royale 1.2 is huge: 2v2 battles with a friend, a random partner or a bot, friendly battles with a code, Challenges (Triple Mana, Mirror and Draft) and a Training Camp with every card. Five deck slots with deck stats, card mastery, daily quests, a monthly Season Road and a new Legend arena, Starfall Summit. Watch replays and live battles on TV Royale, join a clan to chat and donate cards, collect emotes and tower skins, and see a Mana graph after every battle. Every card, arena and chest has a new original name, and nine cards got balance changes.',
+    post: '🃏 Card Royale 1.2 is HERE!\n\n👥 2v2 with a friend, a random partner or a bot\n🤝 Friendly battles with a code\n🏅 Challenges: Triple Mana, Mirror and Draft\n🎯 Training Camp: try every card\n🛡️ Clans: chat, ask for cards, donate, and Clan Wars on weekends\n🎬 Replays + 📺 TV Royale\n🛣️ Season Road, daily quests, card mastery\n✨ New Legend arena: Starfall Summit at 4000 trophies\n\nWhich mode are you trying first? 👇\n\n#TheArcade #CardRoyale' },
+  { date: '2026-11-19', game: 'chess', imgs: ['chess/news/1.8-accuracy.jpg'], headline: 'Chess 1.8: how accurate were you?', text: 'Chess 1.8: after every game the computer looks back over all the moves and gives both players an accuracy score, like 87%, with a count of best moves, good moves, inaccuracies, mistakes and blunders. The bad moves are marked in the move list, and the review runs in the background so the page never freezes.' },
   { date: '2026-11-19', game: 'turn-turn-turn', imgs: ['turn-turn-turn/news/1.6-garage.jpg', 'turn-turn-turn/news/1.6-courses.jpg', 'turn-turn-turn/news/1.6-events.jpg'], headline: 'Turn! Turn! TURN! 1.6: a whole new menu', text: 'Turn! Turn! TURN! 1.6 has a brand new menu. Your car spins on a turntable in the garage, with your name, gold medals, level and stars along the top. Play and Multiplayer each let you pick Classic or Horror, every course has its own card with a picture, its gold time and your best time, and Events has the Daily Stage with a countdown, a Play button and its own leaderboard. The full leaderboard is under the trophy at the top.', post: '🏁 Turn! Turn! TURN! 1.6: a whole new menu\n\n🚗 Your car now spins on a turntable in the garage. Drag it to spin it yourself.\n👤 Your name, gold medals, level and stars along the top\n▶️ Play and Multiplayer: pick Classic or Horror\n🗺️ Every course gets its own card with a picture, its gold time and your best time\n📅 Events: today\'s Daily Stage with a countdown, a Play button and its own leaderboard\n🏆 The full leaderboard is under the trophy at the top\n\nGo set some gold times. 👇\n\n#turnturnturn #TheArcade #Update' },
   { date: '2026-11-19', href: 'index.html', imgs: ['news/online-spots.jpg'], headline: 'See who is on Social, Global chat and Players', text: 'The online now list on the home page shows how many people are on Social, in the Global chat and on the Players tab right now, above the games. Tap one to go straight there.', post: '👀 New on the home page!\n\nOpen the 🟢 online now list and you can see how many people are on 📸 Social, 💬 Global chat and 👥 Players right now, not just in games. Tap one to jump straight in.' },
   { date: '2026-11-19', game: 'turn-turn-turn', imgs: ['turn-turn-turn/news/1.5.1-lights.jpg'], headline: 'Turn! Turn! TURN! 1.5.1: better lights in Horror mode', text: 'Turn! Turn! TURN! 1.5.1: in Horror mode the headlights are much brighter and reach further down the road, and a dim, warm light in the roof lets you see the inside of the car at night.', post: '💡 Turn! Turn! TURN! 1.5.1\n\n🔦 Horror mode headlights are now much brighter and reach further down the road. You\'ll see the corners (and the dead trees) coming.\n🕯️ A dim, warm light in the roof so you can actually see the inside of your car at night.\n\nIt\'s still dark out there. It\'s still behind you. 👇\n\n#turnturnturn #TheArcade #Update' },

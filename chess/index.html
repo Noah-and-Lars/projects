@@ -219,6 +219,19 @@
   .tcg-f button { border: 1px solid var(--line); background: #3c3a37; color: var(--ink); border-radius: 6px; padding: 7px 12px; font-weight: 800; font-size: 14px; cursor: pointer; font-variant-numeric: tabular-nums; }
   .tcg-f button:hover { background: #484643; } .tcg-f button.on { background: var(--green); border-color: var(--green); color: #fff; }
   .tcg-f button small { display: block; font-size: 10px; font-weight: 700; opacity: .75; }
+  /* 1.8: game review (accuracy) */
+  #revBox:empty, #review:empty { display: none; }
+  #result .card { max-height: 96%; overflow-y: auto; box-sizing: border-box; }
+  #revBox { margin: -4px 0 14px; } #review { margin: 8px 0 4px; padding: 10px; border-radius: 8px; background: var(--panel2); }
+  .rv-bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: 6px; } .rv-bar i { display: block; height: 100%; background: var(--green); transition: width .2s; }
+  .rv-wait { color: var(--muted); font-weight: 700; font-size: 13px; }
+  .rv-tbl { width: 100%; border-collapse: collapse; font-size: 13px; font-weight: 700; }
+  .rv-tbl th { font-size: 11px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 0 4px 4px; }
+  .rv-tbl td { padding: 2px 4px; text-align: center; } .rv-tbl td:first-child { text-align: left; color: var(--muted); }
+  .rv-tbl tr.acc td { font-size: 22px; font-weight: 900; color: var(--ink); padding-bottom: 6px; } .rv-tbl tr.acc td:first-child { font-size: 13px; color: var(--muted); }
+  .rv-g { display: inline-block; min-width: 22px; padding: 0 4px; border-radius: 4px; font-size: 11px; font-weight: 900; color: #111; margin-right: 6px; text-align: center; }
+  .rv-best { background: #96bc4b; } .rv-good { background: #b7d68c; } .rv-inacc { background: #f7c631; } .rv-mist { background: #ffa459; } .rv-blun { background: #fa412d; color: #fff; }
+  .mv .rvt { font-size: 11px; font-weight: 900; margin-left: 2px; } .rvt.rv-inacc { color: #f7c631; background: none; } .rvt.rv-mist { color: #ffa459; background: none; } .rvt.rv-blun { color: #fa412d; background: none; }
 </style>
 </head>
 <body>
@@ -228,7 +241,7 @@
     <div id="moveClock" hidden></div>
     <div class="player" id="topBar"><div class="avatar">🤖</div><div style="min-width:0"><div class="pname" id="topName">Computer</div><div class="caps" id="topCaps"></div></div><div class="thinking" id="thinking" hidden><i></i><i></i><i></i></div><div class="clk" id="topClk" hidden></div></div>
     <div id="board"><div id="squares"></div><div id="pieces"></div><div id="promo" hidden></div>
-      <div id="result" hidden><div class="card"><h2 id="resT"></h2><p id="resP"></p><p id="resR"></p><button class="bigbtn" id="resNew">New game</button><button class="link" id="resView" style="margin-top:10px;background:none;border:0;color:var(--muted);font-weight:700">View the board</button></div></div>
+      <div id="result" hidden><div class="card"><h2 id="resT"></h2><p id="resP"></p><p id="resR"></p><div id="revBox" aria-live="polite"></div><button class="bigbtn" id="resNew">New game</button><button class="link" id="resView" style="margin-top:10px;background:none;border:0;color:var(--muted);font-weight:700">View the board</button></div></div>
     </div>
     <div class="player" id="botBar"><div class="avatar you">🙂</div><div style="min-width:0"><div class="pname" id="botName">You</div><div class="caps" id="botCaps"></div></div><div class="clk" id="botClk" hidden></div></div>
   </div>
@@ -254,6 +267,7 @@
     </div>
     <div class="sect"><button class="netbtn" id="lbBtn">🏆 Chess leaderboard</button><button class="netbtn" id="specBtn">📺 Watch live games</button></div>
     <div id="moves"></div>
+    <div id="review" aria-live="polite"></div>
     <div id="status"></div>
     <div class="tools"><button id="undoBtn" title="Take back your last move"><b>↶</b>Undo</button><button id="flipBtn" title="Turn the board around"><b>⇅</b>Flip</button><button id="resignBtn" title="Give up this game"><b>⚑</b>Resign</button></div>
     <div class="sect"><h4 id="statsT">Your record against this level</h4><div class="stats" id="stats"></div>
@@ -279,7 +293,11 @@
 <div id="lb" hidden><div class="card"><h2>🏆 Chess leaderboard</h2><p class="lbsub">Everyone with an Arcade account who has played chess, ranked by their Elo. In 1.5.1 everyone started again at 2000, so players on the same Elo share a place. Local 2-player games and games against the computer aren’t rated.</p><div id="lbList"></div><div style="display:flex;gap:8px"><button class="netbtn" id="lbRefresh" style="flex:1">Refresh</button><button class="bigbtn" id="lbClose" style="flex:1">Close</button></div></div></div>
 <div id="notes">
   <details>
-    <summary>Patch notes <span>v1.7</span></summary>
+    <summary>Patch notes <span>v1.8</span></summary>
+    <h3>v1.8 <small>Move accuracy</small></h3>
+    <ul><li><b>Accuracy:</b> after every game the computer looks back over all the moves and gives each player an accuracy score, like 87%. It counts your Best moves, Good moves, Inaccuracies, Mistakes and Blunders, and shows them next to your opponent’s.</li>
+      <li>Inaccuracies (?!), mistakes (?) and blunders (??) are marked in the move list, so you can see where the game turned.</li>
+      <li>The review runs in the background, so you can keep using the page, and your average accuracy is kept under the score.</li></ul>
     <h3>v1.7 <small>Game modes and pre-moves</small></h3>
     <ul><li><b>⏱ Game modes:</b> pick how fast your online games are under Play online: UltraBullet (15s, 30s, 0+1), Bullet (1+0, 1+1, 2+1), Blitz (3+0, 3+2, 5+0, 5+3), Rapid (10+0, 10+5, 15+10, 30+0), Classical (60+30, 90+30) or the old 1:30 a move. Each mode explains how it plays when you choose it.</li>
       <li><b>Chess clocks:</b> in timed modes both players have a clock next to their name. It counts down on your turn, and the extra seconds (the number after the +) are added after each move. Run out and you lose on time. Your first move has its own 30 seconds, so nobody loses before the game gets going.</li>
@@ -643,6 +661,35 @@ function pickMove(fen, level, history) {
   }
   return uci(best);
 }
+// 1.8: game review. The score of a position for the side to move and the best move there, searching for about ms
+// milliseconds (at most maxD moves deep). Used after a game to grade every move.
+function evalPos(G, ms, maxD) {
+  const moves = legal(G);
+  if (!moves.length) return { v: inCheck(G, G.w) ? -MATE : 0, m: '' };
+  const S = { nodes: 0, stop: false, end: Date.now() + ms, killers: [], seen: new Set() };
+  let best = moves[0], bestV = 0;
+  for (let d = 1; d <= maxD; d++) {
+    let alpha = -INF, bh = null;
+    for (const m of sortMoves(legal(G), S, 0, best)) {
+      make(G, m); const v = -search(G, d - 1, -INF, -alpha, 1, S); unmake(G);
+      if (S.stop) break;
+      if (v > alpha || !bh) { alpha = v; bh = m; }
+    }
+    if (S.stop && d > 1) break; // an unfinished depth: keep the last full one
+    if (bh) { best = bh; bestV = alpha; }
+    if (S.stop || alpha > MATE / 2) break;
+  }
+  return { v: bestV, m: uci(best) };
+}
+// grades a whole game from the start position: posts { i, n, v, m } for every position, then { done: 1 }
+function reviewGame(list, ms, post) {
+  const G = fromFEN(START_FEN), n = list.length + 1;
+  for (let i = 0; i < n; i++) {
+    const e = evalPos(G, ms, 7); post({ i, n, v: e.v, m: e.m });
+    if (i < list.length) { const m = legal(G).find(x => uci(x) === list[i]); if (!m) break; make(G, m); G.u.length = 0; }
+  }
+  post({ done: 1 });
+}
 
 </script>
 <script>
@@ -650,7 +697,7 @@ function pickMove(fen, level, history) {
 // =====================================================================
 //  Chess v1.0: the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.7';
+const VERSION = '1.8';
 const LEVELS = ['easy', 'casual', 'medium', 'advanced', 'hard', 'master']; // 1.3: Casual, Advanced and Master join Easy, Medium and Hard
 const $ = id => document.getElementById(id);
 
@@ -788,7 +835,7 @@ function finishLocal() {
   $('resP').textContent = over.resigned ? SIDE(over.winner === 'w' ? 'b' : 'w') + ' resigned' : (over.winner ? SIDE(over.winner) + ' won ' : 'Drawn ') + over.why;
   $('resNew').textContent = 'New game'; $('resNew').disabled = false;
   setTimeout(() => { if (over) { $('result').hidden = false; Sound.end(true); } }, 450);
-  renderSide();
+  renderSide(); Review.start();
 }
 function checkEnd() {
   if (over) return;
@@ -825,7 +872,7 @@ function finish() {
   }
   $('resNew').textContent = !online.on ? 'New game' : Net.left || !Net.on ? 'Find a new game' : 'Rematch'; $('resNew').disabled = false;
   setTimeout(() => { if (over) { $('result').hidden = false; Sound.end(won); } }, 450);
-  renderSide();
+  renderSide(); if (!aborted) Review.start();
 }
 
 // ---------- the computer ----------
@@ -967,9 +1014,10 @@ function renderSide() {
   // the thinking dots go on the computer's bar
   const think = $('thinking'); (topCol === aiColor ? $('topBar') : $('botBar')).appendChild(think);
   // move list
+  if (!over) Review.clear(); // 1.8: a new game (or undo) drops the last review
   let h = ''; for (let i = 0; i < hist.length; i += 2) {
     const a = hist[i], b = hist[i + 1], last = hist.length - 1;
-    h += `<div class="mrow"><span class="n">${i / 2 + 1}.</span><span class="mv${i === last ? ' cur' : ''}">${a.san}</span><span class="mv${i + 1 === last ? ' cur' : ''}">${b ? b.san : ''}</span></div>`;
+    h += `<div class="mrow"><span class="n">${i / 2 + 1}.</span><span class="mv${i === last ? ' cur' : ''}">${a.san}${Review.tag(i)}</span><span class="mv${i + 1 === last ? ' cur' : ''}">${b ? b.san + Review.tag(i + 1) : ''}</span></div>`;
   }
   const mv = $('moves'); mv.innerHTML = h || '<div class="mrow" style="color:var(--muted);display:block">Moves will show here.</div>'; mv.scrollTop = mv.scrollHeight;
   // status line
@@ -1662,6 +1710,82 @@ const Spec = (() => {
   $('spec').addEventListener('click', e => { if (e.target === $('spec')) close(); });
   $('netBox').addEventListener('click', e => { if (e.target.closest('button[data-net]') && !$('spec').hidden) close(); }, true); // playing online yourself ends watching
   return { open, close };
+})();
+
+/* 1.8: game review. When a game ends, every move is graded by the same engine the computer plays with, in its own
+   Web Worker (so the page never freezes): each position is searched for a moment, and a move's grade is how much it
+   lowered the mover's chance of winning (win % from the score, like chess.com): Best (the engine's move, or within 1%),
+   Good (under 5%), Inaccuracy (under 10%), Mistake (under 20%) or Blunder. Accuracy is the average of
+   103.17 * e^(-0.0435 * loss) - 3.17 over that side's moves, 0 to 100. */
+const Review = (() => {
+  const GR = [['best', 'Best', '★'], ['good', 'Good', '✓'], ['inacc', 'Inaccuracy', '?!'], ['mist', 'Mistake', '?'], ['blun', 'Blunder', '??']];
+  let w = null, gen = 0, ev = [], grades = [], list = [], done = false, active = false;
+  const winPct = cp => 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * Math.max(-1500, Math.min(1500, cp)))) - 1);
+  const cpOf = v => Math.abs(v) > MATE / 2 ? (v > 0 ? 1500 : -1500) : v;
+  function clear() {
+    if (!active && !done) return;
+    gen++; active = false; done = false; ev = []; grades = []; list = [];
+    if (w) { try { w.terminate(); } catch (e) {} w = null; }
+    $('revBox').innerHTML = ''; $('review').innerHTML = '';
+  }
+  function start() {
+    if (hist.length < 2) return;
+    clear(); const id = ++gen; active = true; list = hist.map(x => uci(x.m)); ev = new Array(list.length + 1);
+    const ms = Math.max(120, Math.min(450, Math.round(14000 / (list.length + 1)))); // about 15 seconds at most
+    const got = d => { if (id !== gen) return; if (d.done) finishUp(); else { ev[d.i] = d; progress(d.i + 1, d.n); } };
+    try {
+      w = new Worker(URL.createObjectURL(new Blob([$('engine').textContent + '\nonmessage = e => reviewGame(e.data.list, e.data.ms, d => postMessage(d));'], { type: 'text/javascript' })));
+      w.onmessage = e => got(e.data);
+      w.onerror = () => { if (id === gen) { $('revBox').innerHTML = ''; $('review').innerHTML = ''; active = false; } };
+      w.postMessage({ list, ms });
+    } catch (e) {
+      // no workers: one position at a time on the page, with breaks in between
+      w = null; const G2 = fromFEN(START_FEN); let i = 0;
+      const step = () => {
+        if (id !== gen) return;
+        const e2 = evalPos(G2, 60, 4); got({ i, n: list.length + 1, v: e2.v, m: e2.m });
+        if (i < list.length) { const m = legal(G2).find(x => uci(x) === list[i]); if (m) { make(G2, m); G2.u.length = 0; } }
+        if (++i <= list.length) setTimeout(step, 0); else got({ done: 1 });
+      };
+      setTimeout(step, 0);
+    }
+    progress(0, list.length + 1);
+  }
+  function progress(k, n) {
+    const h = `<div class="rv-wait">Reviewing the moves… ${Math.round(100 * k / n)}%</div><div class="rv-bar"><i style="width:${(100 * k / n).toFixed(1)}%"></i></div>`;
+    $('revBox').innerHTML = h; $('review').innerHTML = h;
+  }
+  function finishUp() {
+    active = false; done = true; if (w) { w.terminate(); w = null; }
+    const acc = { w: [], b: [] }, cnt = { w: [0, 0, 0, 0, 0], b: [0, 0, 0, 0, 0] };
+    for (let i = 0; i < list.length; i++) {
+      const a = ev[i], b = ev[i + 1]; if (!a || !b) break;
+      const side = i % 2 ? 'b' : 'w', before = winPct(cpOf(a.v)), after = winPct(cpOf(-b.v));
+      const loss = Math.max(0, before - after), g = a.m === list[i] || loss <= 1 ? 0 : loss < 5 ? 1 : loss < 10 ? 2 : loss < 20 ? 3 : 4;
+      grades[i] = g; cnt[side][g]++;
+      acc[side].push(Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * (g === 0 ? 0 : loss)) - 3.1669)));
+    }
+    const avg = a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null;
+    const A = { w: avg(acc.w), b: avg(acc.b) };
+    // columns: you first (White and Black by name in a local game)
+    const me = localGame ? 'w' : player, them = me === 'w' ? 'b' : 'w';
+    const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const nm = c => localGame ? SIDE(c) : c === player ? 'You' : online.on ? esc(oppName()) : 'Computer';
+    let h = `<table class="rv-tbl"><tr><th></th><th>${nm(me)}</th><th>${nm(them)}</th></tr>`
+      + `<tr class="acc"><td>Accuracy</td><td>${A[me] == null ? '–' : A[me] + '%'}</td><td>${A[them] == null ? '–' : A[them] + '%'}</td></tr>`;
+    GR.forEach(([k, label, sym], g) => { h += `<tr><td><span class="rv-g rv-${k}">${sym}</span>${label}</td><td>${cnt[me][g]}</td><td>${cnt[them][g]}</td></tr>`; });
+    h += '</table>';
+    // keep your accuracy (games against the computer and online) for the average under your record
+    if (!localGame && A[me] != null) {
+      const r = save.acc && typeof save.acc === 'object' ? save.acc : {}; r.n = (r.n | 0) + 1; r.s = (+r.s || 0) + A[me]; r.last = A[me]; save.acc = r; persist();
+      h += `<div class="rv-wait" style="margin-top:6px">Your average: ${Math.round(r.s / r.n)}% over ${r.n} game${r.n === 1 ? '' : 's'}</div>`;
+    }
+    $('revBox').innerHTML = h; $('review').innerHTML = h;
+    renderSide();
+  }
+  // the little ?!, ? or ?? after a move in the move list
+  const tag = i => { const g = grades[i]; return g >= 2 ? `<span class="rvt rv-${GR[g][0]}" title="${GR[g][1]}">${GR[g][2]}</span>` : ''; };
+  return { start, clear, tag };
 })();
 
 // ---------- start: carry on a saved game, or start a new one ----------
