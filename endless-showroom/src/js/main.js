@@ -190,6 +190,7 @@ function renderAchievements() {
   }
 }
 $('b-ach').onclick = () => { returnTo = 'menu'; renderAchievements(); show('achievements'); };
+$('p-ach').onclick = () => { returnTo = 'pause'; renderAchievements(); show('achievements'); };
 
 // Day length for the stores you start (solo, or a room you create).
 function refreshDayLen() {
