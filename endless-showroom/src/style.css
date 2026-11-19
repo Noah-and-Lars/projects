@@ -150,3 +150,6 @@ body.crimson #clock-day { color: #ff8a8a; }
 .dt-day { font-size: clamp(48px, 9vw, 96px); font-weight: 900; letter-spacing: 0.12em; color: #fff; text-shadow: 0 4px 30px #000c; }
 .dt-week { font-size: clamp(16px, 2.4vw, 24px); font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: #ffd34d; text-shadow: 0 2px 12px #000c; }
 @keyframes daytitle { 0% { opacity: 0; transform: scale(1.08); } 12% { opacity: 1; transform: scale(1); } 70% { opacity: 1; } 100% { opacity: 0; } }
+
+.seg { padding: 4px 10px; border-radius: 8px; border: 1px solid #ffffff2a; background: #ffffff10; font-size: 12px; font-weight: 700; }
+.seg.on { background: var(--blue); border-color: #5b9bdf; }

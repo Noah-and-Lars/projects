@@ -27,6 +27,10 @@ other games it needs an online Arcade account.
   every 20 seconds and when you leave, and **Continue Solo** picks it up again
   (the day, every piece you moved, your stats, inventory and waypoints).
 
+Under **Days** on the menu you can pick **Normal** (6 minute days, 5 minute
+nights) or **Short** (3 and 2.5 minutes) for any store you start, solo or a
+room you create. Everyone in the room plays to the host's choice.
+
 Everyone starts somewhere random in the store. Whistle (H) to find each
 other, and read the aisle signs (`AISLE E3 · S2`) to say where you are. Pick a
 shirt colour on the menu so friends can tell you apart.

@@ -13,7 +13,7 @@ import { createNet, myName, cleanName, myShirt } from './net.js';
 import { input, initInput, initTouch, lockPointer, endFrame, pollGamepad } from './input.js';
 import { makeShopper, makeStaff, animate, setHeld, nameTag, nameHash, SHIRT_COLORS } from './models.js';
 import { initAudio, sfx, setAmbience, setVolume, setMusic, setMusicVolume } from './audio.js';
-import { DAY_LEN, CYCLE, EVENTS, POWERCUT, HAIL, hailing, dayEvent, cascade, eventAt, nightEvent, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
+import { DAY_LEN, CYCLE, EVENTS, POWERCUT, HAIL, DAY_SCALE, setDayScale, hailing, dayEvent, cascade, eventAt, nightEvent, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
 import { clamp, lerp, angLerp } from './rng.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { uniforms, storeMaterial, SURF, makeFixtures, makeDust, setLowQuality, furnitureMaterial as furnitureMaterialRef } from './mats.js';
@@ -24,7 +24,7 @@ const darkEl = $('dark');
 const IS_TOUCH = matchMedia('(pointer: coarse)').matches && 'ontouchstart' in window;
 
 // ---------------------------------------------------------------- settings
-const settings = { sens: 1, vol: 0.7, music: 0.5, fov: 75, low: IS_TOUCH, voice: true, invert: false };
+const settings = { sens: 1, vol: 0.7, music: 0.5, fov: 75, low: IS_TOUCH, voice: true, invert: false, short: false };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('es-settings') || '{}')); } catch (_) {}
 const saveSettings = () => { try { localStorage.setItem('es-settings', JSON.stringify(settings)); } catch (_) {} };
 const stats = { best: 0, days: 0 };
@@ -175,6 +175,13 @@ function toast(msg) { chatLine('', msg, true); }
 // ---------------------------------------------------------------- menus
 $('name-in').value = myName();
 $('name-in').addEventListener('change', () => { const n = cleanName($('name-in').value) || 'Shopper'; $('name-in').value = n; try { localStorage.setItem('es-name', n); } catch (_) {} });
+// Day length for the stores you start (solo, or a room you create).
+function refreshDayLen() {
+  for (const b of document.querySelectorAll('#daylen button')) b.classList.toggle('on', (b.dataset.v === 'short') === !!settings.short);
+}
+for (const b of document.querySelectorAll('#daylen button')) b.onclick = () => { settings.short = b.dataset.v === 'short'; saveSettings(); refreshDayLen(); };
+refreshDayLen();
+
 // Shirt colour picker on the menu.
 {
   const row = $('shirts');
@@ -223,7 +230,7 @@ function saveSolo() {
   if (net.on || mode !== 'play') return;
   try {
     localStorage.setItem('es-solo', JSON.stringify({
-      v: 1, seed: world.seed, day: clock.day, t: +clock.t.toFixed(1), mods: world.allMods().map(([id, st]) => [id, st.c ? Object.assign({}, st, { c: 0 }) : st]), waypoints,
+      v: 1, seed: world.seed, day: clock.day, t: +clock.t.toFixed(1), k: DAY_SCALE, mods: world.allMods().map(([id, st]) => [id, st.c ? Object.assign({}, st, { c: 0 }) : st]), waypoints,
       P: { x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), yaw: +P.yaw.toFixed(2), hp: P.alive ? Math.ceil(P.hp) : 100, food: Math.ceil(P.food), en: Math.ceil(P.en), nights: P.nights, inv: P.inv, invId: P.invId },
     }));
   } catch (_) {}
@@ -272,6 +279,7 @@ function roomText() { return net.on ? (net.isPublic ? `Public store ${net.room.r
 
 // ---------------------------------------------------------------- game start / leave
 function startGame(seed, waitForState, save) {
+  setDayScale(save ? +save.k || 1 : waitForState ? 1 : settings.short ? 0.5 : 1);
   world.reset(seed);
   clock.day = 1; clock.t = 30; clock.ev = '';
   world.setDay(1);
@@ -413,6 +421,7 @@ function onWorld(list) {
 }
 function onStaffSnap(list) { ingestStaff(list, performance.now()); }
 function onClock(p) {
+  if (p.k !== undefined && setDayScale(+p.k)) refreshDayLen();
   const d = Math.max(1, p.d | 0), t = clamp(num(p.t), 0, CYCLE);
   if (d !== clock.day) { clock.day = d; world.setDay(d); clock.t = t; }
   else if (Math.abs(t - clock.t) > 1.5) clock.t = t;
@@ -446,7 +455,7 @@ function onCaught(from, p) { const r = remotes.get(from); toast(`${r ? r.name : 
 function onNeed(from) {
   // Send the newcomer every change, in parts small enough for the server.
   const mods = world.allMods(), size = 80, n = Math.max(1, Math.ceil(mods.length / size));
-  for (let i = 0; i < n; i++) net.send('full', { to: from, i, n, m: mods.slice(i * size, (i + 1) * size), d: clock.day, t: clock.t });
+  for (let i = 0; i < n; i++) net.send('full', { to: from, i, n, m: mods.slice(i * size, (i + 1) * size), d: clock.day, t: clock.t, k: DAY_SCALE });
 }
 function onFull(p) {
   if (!Array.isArray(p.m)) return;
@@ -1006,7 +1015,7 @@ function updateClock(dt) {
   // tips on your first day
   if (stats.days === 0 && clock.day === 1) for (const [at, tip] of TIPS) if (clock.t >= at && clock.t - dt < at) toast('Tip: ' + tip);
   // the odd announcement over the PA during the day
-  if (phase === 'day') for (const at of PA_TIMES) if (clock.t >= at && clock.t - dt < at) { const line = PA_LINES[(clock.day * 3 + at) % PA_LINES.length]; sfx.chime(); setTimeout(() => announcePA(line), 1200); }
+  if (phase === 'day') for (const f of PA_TIMES) { const at = f * DAY_LEN; if (clock.t >= at && clock.t - dt < at) { const line = PA_LINES[(clock.day * 3 + Math.round(f * 100)) % PA_LINES.length]; sfx.chime(); setTimeout(() => announcePA(line), 1200); } }
   // hunger and energy warnings
   if (P.alive && P.food < 20 && !warn.food) { warn.food = true; toast("You're getting very hungry. Find something to eat."); }
   if (P.food > 30) warn.food = false;
@@ -1024,7 +1033,7 @@ const TIPS = [
   [260, 'Press Z to drop a waypoint at your base so you can find it again.'],
   [300, 'If a member of staff catches you, click to shove them over, then run and break their line of sight.'],
 ];
-const PA_TIMES = [75, 210];
+const PA_TIMES = [0.21, 0.58]; // fractions of the day
 const PA_LINES = [
   'Good day, shoppers. Please remember to return any trolleys to the trolley bays.',
   'A reminder that our cafeteria is open all day. While stocks last.',
@@ -1173,7 +1182,7 @@ function frame() {
     const snap = staffSim.snapshot();
     ingestStaff(snap, now);
     if (now >= staffSendT && net.on) { staffSendT = now + 125; net.send('s', { s: snap }); }
-    if (now >= clockSendT && net.on) { clockSendT = now + 1000; net.send('g', { d: clock.day, t: +clock.t.toFixed(2) }); }
+    if (now >= clockSendT && net.on) { clockSendT = now + 1000; net.send('g', { d: clock.day, t: +clock.t.toFixed(2), k: DAY_SCALE }); }
   }
   drawStaff(dt, now);
   drawRemotes(dt, now);

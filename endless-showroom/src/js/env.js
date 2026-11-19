@@ -10,9 +10,17 @@ import * as THREE from 'three';
 import { hashInts } from './rng.js';
 import { uniforms } from './mats.js';
 
-export const DAY_LEN = 360, NIGHT_LEN = 300, CYCLE = DAY_LEN + NIGHT_LEN;
-export const POWERCUT = [150, 240];
-export const HAIL = [120, 300];
+// Day length can be shortened per store (the host picks); these update live.
+export let DAY_LEN = 360, NIGHT_LEN = 300, CYCLE = DAY_LEN + NIGHT_LEN, DAY_SCALE = 1;
+export let POWERCUT = [150, 240];
+export let HAIL = [120, 300];
+export function setDayScale(k) {
+  k = k === 0.5 ? 0.5 : 1;
+  if (k === DAY_SCALE) return false;
+  DAY_SCALE = k; DAY_LEN = 360 * k; NIGHT_LEN = 300 * k; CYCLE = DAY_LEN + NIGHT_LEN;
+  POWERCUT = [150 * k, 240 * k]; HAIL = [120 * k, 300 * k];
+  return true;
+}
 export const hailing = (t, ev) => ev === 'hail' && t >= HAIL[0] && t < HAIL[1];
 export const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 export const weekday = (day) => WEEKDAYS[(day - 1) % 7];
