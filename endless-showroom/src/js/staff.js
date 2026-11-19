@@ -157,10 +157,12 @@ export class StaffSim {
   }
 
   spawnNear(p, manager = false) {
-    for (let tries = 0; tries < 12; tries++) {
+    for (let tries = 0; tries < 16; tries++) {
       const a = Math.random() * Math.PI * 2, d = 20 + Math.random() * 16;
       const x = p.x + Math.cos(a) * d, z = p.z + Math.sin(a) * d;
       if (!bodyFits(this.world, x, 0, z, 0.32, 2.4)) continue;
+      // never pop into view: only spawn where that shopper can't see
+      if (tries < 10 && this.canSee(p.x, (p.y || 0) + 1.6, p.z, x, 1.2, z)) continue;
       const id = manager ? nextManager++ : nextId++, look = staffLook(id);
       this.staff.set(id, {
         id, look, x, y: 0, z, ry: Math.random() * 6.28, vy: 0, radius: RADIUS * look.widthScale, height: 2.0 * look.heightScale, step: 0.36, gravity: 20, onGround: true,
