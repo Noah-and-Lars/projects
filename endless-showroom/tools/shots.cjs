@@ -38,6 +38,38 @@ fs.mkdirSync(out, { recursive: true });
   await shot('look-7-crimson.png', () => { __game.setClock(420, 10); __game.P.pitch = 0; }, 3500);
   await shot('look-8-fog.png', () => { __game.setClock(120, 15); __game.P.pitch = -0.05; }, 3000);
   await shot('look-6-third.png', () => { __game.setClock(60, 16); __game.P.third = true; __game.P.pitch = -0.3; }, 2000);
+  // A clear view: move to a spot with 4.5 m of open floor ahead.
+  const clearView = () => p.evaluate(() => {
+    const P = __game.P, w = __game.world;
+    for (let tries = 0; tries < 40; tries++) {
+      __game.spawnAt(P.x + (Math.random() - 0.5) * 20, P.z + (Math.random() - 0.5) * 20, 6);
+      for (let a = 0; a < 6.28; a += 0.4) {
+        let clear = true;
+        for (let d = 1; d <= 4.5; d += 0.5) { const x = P.x - Math.sin(a) * d, z = P.z - Math.cos(a) * d; if (!w.fits({ x0: x - 1.2, x1: x + 1.2, z0: z - 0.6, z1: z + 0.6, y0: 0.05, y1: 2.6 })) { clear = false; break; } }
+        if (clear) { P.yaw = a; P.y = 0; P.pitch = 0.05; return true; }
+      }
+    }
+    return false;
+  });
+  // The Floor Manager and a member of staff on a Crimson Night.
+  await p.evaluate(() => { __game.P.third = false; __game.setClock(400, 10); });
+  await p.waitForTimeout(2500);
+  await clearView();
+  await shot('look-9-manager.png', () => {
+    const S = __game.staff, P = __game.P;
+    let m = [...S.staff.values()].find((s) => s.look.manager); if (!m) { S.spawnNear(P, true); m = [...S.staff.values()].find((s) => s.look.manager); }
+    let n = [...S.staff.values()].find((s) => !s.look.manager); if (!n) { S.spawnNear(P); n = [...S.staff.values()].find((s) => !s.look.manager); }
+    for (const [s, off] of [[m, 0.55], [n, -0.6]]) if (s) { s.x = P.x - Math.sin(P.yaw) * 3.6 + Math.cos(P.yaw) * off; s.z = P.z - Math.cos(P.yaw) * 3.6 - Math.sin(P.yaw) * off; s.y = 0; s.ry = P.yaw; s.senseT = 99; s.mode = 'wander'; s.waitT = 99; s.goal = null; s.path = []; }
+  }, 2500);
+  // A hailstorm in a garden centre.
+  await shot('look-10-hail.png', () => {
+    const w = __game.world; let found = null;
+    for (let r = 0; r < 14 && !found; r++) for (let i = -r; i <= r && !found; i++) for (let j = -r; j <= r && !found; j++) if (w.sectionAt(i * 24 + 12, j * 24 + 12) === 'garden') found = [i * 24 + 12, j * 24 + 12];
+    if (!found) return;
+    __game.spawnAt(found[0], found[1], 3); __game.P.pitch = 0.25;
+    let day = 0; for (let d = 2; d < 600; d++) if (__game.dayEventForTest(d) === 'hail') { day = d; break; }
+    __game.setClock(150, day);
+  }, 4000);
   console.log(errors.length ? 'ERRORS ' + errors.join('\n') : 'no page errors');
   await b.close();
 })();

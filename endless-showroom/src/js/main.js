@@ -132,7 +132,7 @@ const net = createNet({
 
 const INV = 16, HOTBAR = 8;
 const P = {
-  x: 0, y: 0, z: 0, vy: 0, yaw: 0, pitch: 0, radius: 0.35, height: 1.75, step: 0.45, gravity: 22, onGround: true,
+  x: 0, y: 0, z: 0, vy: 0, yaw: 0, pitch: 0, radius: 0.35, height: 1.75, step: 0.45, gravity: 22, onGround: true, isPlayer: true,
   hp: 100, food: 100, en: 100, alive: true, carry: null, inv: new Array(INV).fill(null), invId: new Array(INV).fill(null), sel: 0, third: false,
   nights: 0, hurtT: 99, respawnT: 0, stepAcc: 0, eatCd: 0, speed: 0, deadAt: 0, carryDist: 3, canClimb: false, climbing: false,
   using: null, whistleT: 0, sprinting: false, crouch: false, eyeH: 1.6,
@@ -143,7 +143,7 @@ let mode = 'menu', paused = false, chatOpen = false, lastPhase = '', warned = fa
 const remotes = new Map(); // id -> { model, tag, buf, name, st }
 const staffViews = new Map(); // id -> { model, buf, seen }
 let myModel = null;
-const pendingFull = { parts: null, n: 0, timer: 0 };
+const pendingFull = { got: false };
 
 // ---------------------------------------------------------------- UI helpers
 function show(id) { for (const s of ['menu', 'how', 'settings', 'pause', 'loading']) $(s).classList.toggle('hidden', s !== id); }
@@ -223,7 +223,7 @@ function saveSolo() {
   if (net.on || mode !== 'play') return;
   try {
     localStorage.setItem('es-solo', JSON.stringify({
-      v: 1, seed: world.seed, day: clock.day, t: +clock.t.toFixed(1), mods: world.allMods(), waypoints,
+      v: 1, seed: world.seed, day: clock.day, t: +clock.t.toFixed(1), mods: world.allMods().map(([id, st]) => [id, st.c ? Object.assign({}, st, { c: 0 }) : st]), waypoints,
       P: { x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), yaw: +P.yaw.toFixed(2), hp: P.alive ? Math.ceil(P.hp) : 100, food: Math.ceil(P.food), en: Math.ceil(P.en), nights: P.nights, inv: P.inv, invId: P.invId },
     }));
   } catch (_) {}
@@ -276,7 +276,7 @@ function startGame(seed, waitForState, save) {
   clock.day = 1; clock.t = 30; clock.ev = '';
   world.setDay(1);
   if (save) { // carry on a saved solo store
-    for (const [id, st] of save.mods || []) world.applyState(id, st);
+    for (const [id, st] of save.mods || []) if (Array.isArray([id, st]) && st) world.applyState(id, Object.assign({}, st, { c: 0 }));
     clock.day = Math.max(1, save.day | 0); clock.t = clamp(+save.t || 30, 0, CYCLE - 1);
     world.setDay(clock.day);
   }
@@ -306,7 +306,11 @@ function startGame(seed, waitForState, save) {
   $('chat-log').innerHTML = '';
   if (IS_TOUCH) initTouchOnce(); else lockPointer(canvas);
   buildHotbar();
-  if (waitForState) { pendingFull.parts = null; net.send('need', {}); }
+  if (waitForState) {
+    pendingFull.got = false; net.send('need', {});
+    let tries = 0;
+    const retry = setInterval(() => { if (pendingFull.got || !net.on || mode !== 'play' || ++tries > 5) { clearInterval(retry); return; } net.send('need', {}); }, 4000);
+  }
   if (net.on) toast(`Joined ${roomText().toLowerCase()}. Press Enter to chat.`);
   showDayTitle();
   if (save) { announce(`Welcome back · Day ${clock.day}`, 'Your solo store is just as you left it.', 5); return; }
@@ -340,6 +344,7 @@ function spawnAt(x, z, spread) {
 // ---------------------------------------------------------------- networking handlers
 function onMembers(list) {
   for (const [id, r] of remotes) if (!list.some((m) => m.id === id)) { scene.remove(r.model.root); remotes.delete(id); toast(`${r.name} left the store.`); }
+  releaseOrphans(list);
   for (const m of list) if (m.id !== net.id && !remotes.has(m.id)) {
     const model = makeShopper(nameHash(m.id), (m.lk | 0) >= 0 && (m.lk | 0) < 10 && m.lk !== undefined ? m.lk | 0 : -1);
     const name = cleanName(m.n) || 'Shopper';
@@ -351,31 +356,59 @@ function onMembers(list) {
   }
   updateRoster();
 }
+// The host lets go of anything held by someone who has left: it drops where
+// it was picked up from.
+function releaseOrphans(list = net.members()) {
+  if (!net.isHost() || !net.on) return;
+  const ids = [];
+  for (const it of world.items.values()) if (it.c && it.c !== net.id && !list.some((m) => m.id === it.c)) { world.edit(it, { c: null }); ids.push(it.id); }
+  if (ids.length) broadcastItems(ids);
+}
 function onHostChanged(isMe) {
   if (isMe && mode === 'play') {
     staffSim = new StaffSim(world);
+    releaseOrphans();
     staffViews.forEach((s) => scene.remove(s.model.root)); staffViews.clear();
     toast('You are now hosting this store.');
   } else if (!isMe) staffSim = null;
 }
-const num = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
+// Numbers from the network: finite, and within the store's sane range.
+const num = (v, d = 0) => (Number.isFinite(+v) ? clamp(+v, -1e6, 1e6) : d);
+const has = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 function onPlayer(id, p) {
   const r = remotes.get(id); if (!r) return;
-  const st = { t: performance.now(), x: num(p.x), y: clamp(num(p.y), 0, CEIL), z: num(p.z), ry: num(p.ry), a: p.a ? 1 : 0, ct: TYPES[p.ct] ? p.ct : '', cv: p.cv | 0, n: p.n | 0, hp: clamp(num(p.hp, 100), 0, 100), sp: p.sp ? 1 : 0, cr: p.cr ? 1 : 0 };
+  const st = { t: performance.now(), x: num(p.x), y: clamp(num(p.y), 0, CEIL), z: num(p.z), ry: num(p.ry), a: p.a ? 1 : 0, ct: has(TYPES, p.ct) ? p.ct : '', cv: p.cv | 0, n: p.n | 0, hp: clamp(num(p.hp, 100), 0, 100), sp: p.sp ? 1 : 0, cr: p.cr ? 1 : 0 };
   r.buf.push(st); if (r.buf.length > 20) r.buf.shift();
   r.st = st; r.seen = performance.now();
 }
+// Our requests still waiting for the host: item id -> sequence number. A
+// change the host made before our latest request is old news, so we don't let
+// it undo what we just did.
+const pending = new Map();
+let reqSeq = 0;
 function onWorld(list) {
   for (const e of list) {
-    if (!Array.isArray(e) || typeof e[0] !== 'string') continue;
-    const it = world.applyState(e[0], e[1]);
+    if (!Array.isArray(e) || typeof e[0] !== 'string' || !e[1] || typeof e[1] !== 'object') continue;
+    const id = e[0], st = e[1], mine = st.rf === net.id;
+    const pend = pending.get(id);
+    if (pend && performance.now() - pend.t > 5000) pending.delete(id); // the echo got lost: stop waiting
+    else if (pend) {
+      if (!mine || (st.rs | 0) < pend.s) continue; // stale: our newer request is still on its way
+      pending.delete(id);
+    }
+    if (mine && st.rj) { // the host said no: somebody else took that food first
+      const i = P.invId.indexOf(id);
+      if (i >= 0) { P.inv[i] = null; P.invId[i] = null; buildHotbar(); toast('Somebody else took that first.'); }
+    }
+    const it = world.applyState(id, st);
     if (!it) continue;
-    if (P.carry && P.carry.id === it.id && it.c !== net.id && !(e[1] && e[1].keep)) {
-      // Somebody else got there first, or the host put it down for us.
+    if (P.carry && P.carry.id === it.id && it.c !== net.id) {
       if (it.c) toast('Somebody else grabbed that first.');
       P.carry = null;
+    } else if (it.c === net.id && (!P.carry || P.carry.id !== it.id) && !flying.some((f) => f.carry.id === it.id)) {
+      // the host thinks we're holding something we aren't: put it back down
+      request({ a: 'place', id: it.id, x: it.x, y: it.y, z: it.z, r: it.r, tl: it.tl });
     }
-    if (e[1] && e[1].brk && Math.hypot(it.x - P.x, it.z - P.z) < 20) sfx.breakIt();
   }
 }
 function onStaffSnap(list) { ingestStaff(list, performance.now()); }
@@ -417,6 +450,7 @@ function onNeed(from) {
 }
 function onFull(p) {
   if (!Array.isArray(p.m)) return;
+  pendingFull.got = true;
   for (const [id, s] of p.m) if (typeof id === 'string') world.applyState(id, s);
   onClock(p);
 }
@@ -439,31 +473,34 @@ function hostRequest(from, q) {
   if (!q || typeof q.id !== 'string') return;
   const it = world.items.get(q.id);
   if (!it) return;
+  const echo = { [it.id]: { rf: from, rs: q.s | 0 } };
   if (q.a === 'take') {
     if (it.k === 'i') {
-      if (world.isGone(it) && from !== net.id) return;
+      if (world.isGone(it) && from !== net.id) { echo[it.id].rj = 1; broadcastItems([it.id], echo); return; }
       world.edit(it, { g: true, d: restockEpoch(clock.day) });
-      broadcastItems([it.id]);
+      broadcastItems([it.id], echo);
       return;
     }
-    if (world.isGone(it) || (it.c && it.c !== from)) { broadcastItems([it.id]); return; }
+    if (world.isGone(it) || (it.c && it.c !== from)) { broadcastItems([it.id], echo); return; }
     world.edit(it, { c: from });
-    broadcastItems([it.id]);
+    broadcastItems([it.id], echo);
   } else if (q.a === 'drop' && it.k === 'i') {
-    // food or a kit put down from someone's inventory
+    // food or a kit put down from someone's inventory (so it must be taken)
+    if (!it.g && from !== net.id) { broadcastItems([it.id], echo); return; }
     world.edit(it, { x: num(q.x, it.x), y: clamp(num(q.y), 0, CEIL), z: num(q.z, it.z), g: false, c: null });
-    broadcastItems([it.id]);
+    broadcastItems([it.id], echo);
   } else if (q.a === 'place') {
-    if (it.c !== from) { broadcastItems([it.id]); return; }
+    if (it.c !== from) { broadcastItems([it.id], echo); return; }
     const x = num(q.x, it.x), y = clamp(num(q.y), 0, CEIL), z = num(q.z, it.z);
     world.edit(it, { x, y, z, r: (q.r | 0) & 3, tl: ((q.tl | 0) % 3 + 3) % 3, c: null });
-    broadcastItems([it.id]);
+    broadcastItems([it.id], echo);
   }
 }
 // Ask the host; if we are the host, just do it.
 function request(q) {
-  if (net.isHost()) hostRequest(net.id, q);
-  else net.send('q', q);
+  if (net.isHost()) { hostRequest(net.id, q); return; }
+  q.s = ++reqSeq; pending.set(q.id, { s: q.s, t: performance.now() });
+  net.send('q', q);
 }
 // The staff give you a few seconds after the lights go out before they start.
 const staffEnv = () => ({ hostile: isHostile(clock.t, clock.ev) && !(isNight(clock.t) && clock.t < DAY_LEN + 5), event: clock.ev });
@@ -721,11 +758,11 @@ function pickUp(it) {
   if (!net.isHost()) { world.edit(it, { c: net.id }); }
   request({ a: 'take', id: it.id });
 }
-function placeCarry(p) {
-  const id = P.carry.id;
+function placeCarry(p, carry = P.carry) {
+  const id = carry.id;
   const it = world.items.get(id);
   if (it && !net.isHost()) { world.edit(it, { x: p.x, y: p.y, z: p.z, r: p.r, tl: p.tl | 0, c: null }); }
-  P.carry = null;
+  if (P.carry === carry) P.carry = null;
   sfx.place();
   request({ a: 'place', id, x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3), r: p.r, tl: p.tl | 0 });
 }
@@ -802,7 +839,7 @@ function updateFlying(dt) {
     if (f.i >= f.pts.length) {
       scene.remove(f.mesh);
       flying.splice(k, 1);
-      P.carry = f.carry; placeCarry(f.land);
+      placeCarry(f.land, f.carry);
     }
   }
 }
@@ -879,11 +916,11 @@ function buildHotbar() {
   $('inv-count').textContent = `${P.inv.filter(Boolean).length} / ${INV}`;
 }
 let invOpen = false;
-function toggleInventory(open = !invOpen) {
+function toggleInventory(open = !invOpen, noLock = false) {
   invOpen = open;
   $('inv').classList.toggle('hidden', !open);
   if (open) { input.keys.clear(); try { document.exitPointerLock(); } catch (_) {} }
-  else if (!IS_TOUCH && mode === 'play' && !paused) lockPointer(canvas);
+  else if (!noLock && !IS_TOUCH && mode === 'play' && !paused) lockPointer(canvas);
 }
 $('inv-close').onclick = () => toggleInventory(false);
 function updateRoster() {
@@ -1121,6 +1158,7 @@ function frame() {
   updateInteraction(dt);
   updateFlying(dt);
   updateHail(dt);
+  if (Math.random() < dt / (isNight(clock.t) ? 14 : 30)) sfx.distant(isNight(clock.t));
   // host: staff
   if (net.isHost() && staffSim) {
     const players = [{ id: net.id, x: P.x, y: P.y, z: P.z, alive: P.alive, sprinting: P.sprinting, crouch: P.crouch }];
@@ -1274,7 +1312,7 @@ function handleKeys() {
   const p = input.pressed;
   if (chatOpen) return;
   if (p.has('Enter') || p.has('Slash')) { openChat(); return; }
-  if (p.has('Escape') && (IS_TOUCH || invOpen)) { if (invOpen) toggleInventory(false); else pause(); return; }
+  if (p.has('Escape') && (IS_TOUCH || invOpen)) { if (invOpen) { toggleInventory(false, true); pause(); } else pause(); return; }
   if (p.has('KeyG') || p.has('KeyI')) toggleInventory();
   if (p.has('KeyV')) P.third = !P.third;
   if (p.has('KeyH')) whistle();

@@ -106,12 +106,14 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   check(await B.evaluate(() => !!__game.P.carry), 'guest still carrying after host confirms');
 
   // Night: staff from the host appear on the guest.
-  await A.evaluate(() => __game.setClock(361));
+  await A.evaluate(() => __game.setClock(372));
   await A.waitForTimeout(8000);
   const sA = await A.evaluate(() => __game.staffViews.size), sB = await B.evaluate(() => __game.staffViews.size);
   check(sA > 0 && sB > 0, `staff on host (${sA}) and guest (${sB})`);
-  check(await B.evaluate(() => __game.clock.t > 360), 'guest clock follows host into night');
+  check(await B.evaluate(() => __game.clock.t > 365), 'guest clock follows host into night');
   // Put a member of staff right next to Bravo and wait for a hit.
+  await B.evaluate(() => __game.spawnAt(__game.P.x, __game.P.z, 8)); // open floor
+  await B.waitForTimeout(1500);
   const hp0 = await B.evaluate(() => __game.P.hp);
   const bp = await B.evaluate(() => ({ x: __game.P.x, y: __game.P.y, z: __game.P.z }));
   await A.evaluate((bp) => {
@@ -128,11 +130,16 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   check(hp1 < hp0, `guest got hit by host's staff (${hp0} -> ${hp1})`);
   await B.screenshot({ path: path.join(out, 'mp-02-guest-night.png') });
 
+  // Host leaves while carrying something: the new host lets go of it.
+  const held = await A.evaluate(() => { const w = __game.world, P = __game.P; const it = [...w.items.values()].find((i) => i.k === 'f' && w.active(i)); return it && __game.grabForTest(it.id) ? it.id : null; });
+  await A.waitForTimeout(800);
   // Host leaves: guest takes over.
   await A.close();
   await B.waitForFunction(() => __game.net.isHost(), null, { timeout: 120000 }).catch(() => {});
   check(await B.evaluate(() => __game.net.isHost()), 'guest became host after host left');
   check(await B.evaluate((id) => { const it = __game.world.items.get(id); return !!(it && __game.world.mods.has(id)); }, moved), 'guest kept the store changes');
+  await B.waitForTimeout(1500);
+  check(held && await B.evaluate((id) => { const it = __game.world.items.get(id); return !!it && !it.c; }, held), 'what the old host was carrying is let go');
   await B.waitForTimeout(3000);
   check(await B.evaluate(() => __game.staffViews.size > 0), 'new host runs the staff');
 

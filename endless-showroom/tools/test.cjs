@@ -181,6 +181,31 @@ fs.mkdirSync(out, { recursive: true });
   const hailHp = await g(() => __game.P.hp);
   console.log((hailInfo && hailHp < 100 ? 'ok   ' : 'FAIL ') + `hail hurts you under an open skylight (day ${hailInfo}, hp ${hailHp})`);
 
+  // You can walk up a mezzanine's stairs.
+  const stairs = await g(() => {
+    const w = __game.world, P = __game.P, focus = [];
+    for (let i = -8; i <= 8; i += 2) for (let j = -8; j <= 8; j += 2) focus.push({ x: i * 24, z: j * 24, render: false });
+    w.update(focus);
+    for (const ch of w.chunks.values()) {
+      const first = ch.boxes.find((b) => Math.abs(b.y1 - 3 / 10.5) < 0.005), last = ch.boxes.find((b) => Math.abs(b.y1 - 3 * 10 / 10.5) < 0.005);
+      if (!first || !last) continue;
+      const fx = (first.x0 + first.x1) / 2, fz = (first.z0 + first.z1) / 2, lx = (last.x0 + last.x1) / 2, lz = (last.z0 + last.z1) / 2;
+      const d = Math.hypot(lx - fx, lz - fz), ux = (lx - fx) / d, uz = (lz - fz) / d;
+      w.update([{ x: fx, z: fz, render: true }]);
+      P.x = fx - ux * 0.7; P.z = fz - uz * 0.7; P.y = 0; P.vy = 0;
+      P.yaw = Math.atan2(-ux, -uz); P.pitch = 0;
+      return [fx, fz];
+    }
+    return null;
+  });
+  if (stairs) {
+    await page.keyboard.down('KeyW');
+    { const t0 = await g(() => __game.clock.t); await page.waitForFunction((t0) => __game.clock.t > t0 + 2.5 || __game.P.y > 2.9, t0, { timeout: 150000 }); }
+    await page.keyboard.up('KeyW');
+  }
+  const upY = await g(() => +__game.P.y.toFixed(2));
+  console.log((stairs && upY > 2.9 ? 'ok   ' : 'FAIL ') + `walked up a mezzanine staircase (y ${upY})`);
+
   // Food restocks on Mondays and Fridays only.
   const rs = await g(() => [1, 2, 4, 5, 7, 8, 12].map((d) => __game.restockEpoch(d)).join(','));
   console.log((rs === '1,1,1,2,2,3,4' ? 'ok   ' : 'FAIL ') + 'restock days (' + rs + ')');

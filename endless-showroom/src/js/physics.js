@@ -6,6 +6,10 @@ import { CEIL } from './world.js';
 
 export function moveBody(world, b, dx, dz, dt) {
   const r = b.radius, step = b.step;
+  // A player who's ended up inside something (someone put a fridge on them)
+  // can walk out of it. Staff can't: trapping them in furniture works.
+  let inside = null;
+  if (b.isPlayer) world.forBoxes(b.x - r, b.z - r, b.x + r, b.z + r, (o) => { if (o.y1 > b.y + step + 0.01 && o.y0 < b.y + b.height - 0.05) (inside = inside || new Set()).add(o.item || o); });
   // Horizontal, one axis at a time.
   const tryAxis = (ax, d) => {
     if (!d) return;
@@ -13,6 +17,7 @@ export function moveBody(world, b, dx, dz, dt) {
     let blocked = false, stepUp = 0;
     world.forBoxes(nx - r, nz - r, nx + r, nz + r, (o) => {
       if (o.y1 <= b.y + 0.001 || o.y0 >= b.y + b.height) return; // below feet or above head
+      if (inside && inside.has(o.item || o)) return;
       if (o.y1 - b.y <= step && (b.onGround || b.climbing)) { // a step: rise onto it if there's room
         stepUp = Math.max(stepUp, o.y1 - b.y);
         return;

@@ -18,7 +18,7 @@ import { SURF, staticMaterial, furnitureMaterial, shadowMaterial, shadowGeometry
 
 export const CHUNK = 24, CEIL = 6.5, HALF = 12;
 const CELL = 4; // item spatial hash cell
-const RENDER_R = 2, DATA_R = 1;
+const RENDER_R = 2, DATA_R = 2; // data around other players reaches past where staff spawn
 const Q = 9.6, QPAD = 1.2; // usable quadrant size and aisle padding
 
 const WALL = 0xd9d3c7, WALL_BASE = 0x8a857b, PILLAR = 0xd6d1c8, PARTITION = 0xe4ded2, RACK = 0x3f6f9a, RACK_BEAM = 0xe07b2b;
@@ -573,8 +573,8 @@ export class World {
   // ---- Items ----
   _addItem(id, s) {
     const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: ((s.tl | 0) % 3 + 3) % 3, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, mesh: null, cells: null };
-    if (it.k === 'f' && !TYPES[it.t]) return null;
-    if (it.k === 'i' && !ITEMS[it.t]) return null;
+    if (it.k === 'f' && !Object.prototype.hasOwnProperty.call(TYPES, it.t)) return null;
+    if (it.k === 'i' && !Object.prototype.hasOwnProperty.call(ITEMS, it.t)) return null;
     this.items.set(id, it);
     this._gridAdd(it);
     this.itemsDirty = true;
@@ -766,8 +766,9 @@ export class World {
 
   applyState(id, s) {
     if (!s || typeof s !== 'object') return null;
-    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: +s.x || 0, y: Math.max(0, +s.y || 0), z: +s.z || 0, r: (s.r | 0) & 3, tl: ((s.tl | 0) % 3 + 3) % 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0 };
-    if (st.k === 'f' ? !TYPES[st.t] : !ITEMS[st.t]) return null;
+    const fin = (v, lo, hi) => { v = +v; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : 0; };
+    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: fin(s.x, -1e6, 1e6), y: fin(s.y, 0, CEIL), z: fin(s.z, -1e6, 1e6), r: (s.r | 0) & 3, tl: ((s.tl | 0) % 3 + 3) % 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0 };
+    if (st.k === 'f' ? !Object.prototype.hasOwnProperty.call(TYPES, st.t) : !Object.prototype.hasOwnProperty.call(ITEMS, st.t)) return null;
     this.mods.set(id, st);
     let it = this.items.get(id);
     if (!it) return this._addItem(id, st);

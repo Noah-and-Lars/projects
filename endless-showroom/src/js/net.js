@@ -102,7 +102,15 @@ export function createNet(h) {
             members = listMembers();
             const j = members.findIndex((m) => m.id === myId);
             if (j >= MAX) { drop(); res('full'); return; }
-            if (j > 0 && members[0].sd) { api.seed = members[0].sd >>> 0; me.sd = api.seed; track(); }
+            // Don't trust our own clock to make us the oldest: if anyone else is
+            // already here, join after them and take on their store.
+            const others = members.filter((m) => m.id !== myId);
+            if (others.length && (j === 0 || members[0].id === myId)) {
+              me.t = Math.max(...others.map((m) => +m.t || 0)) + 1;
+              members = listMembers().map((m) => (m.id === myId ? Object.assign({}, m, { t: me.t }) : m)).sort((a, b) => (a.t - b.t) || (a.id < b.id ? -1 : 1));
+            }
+            if (members[0] && members[0].id !== myId && members[0].sd) { api.seed = members[0].sd >>> 0; me.sd = api.seed; }
+            track();
             hostId = members[0].id;
             res('ok');
             h.members?.(members.slice(0, MAX));

@@ -115,6 +115,21 @@ export const sfx = {
   staffStep(pan, vol) { burst(0.12, 110 + Math.random() * 30, 0.22 * vol, 1.1, 'lowpass', pan); },
   shove() { burst(0.12, 300, 0.35, 0.8); tone(90, 0.12, 'sine', 0.2); },
   drink() { for (let i = 0; i < 4; i++) setTimeout(() => tone(300 + Math.random() * 80, 0.07, 'sine', 0.08), i * 140); },
+  // Far-off sounds in the store. Night: a shelf creaking, something falling
+  // over, a murmur. Day: a trolley rattling past a few aisles away.
+  distant(night) {
+    if (!ctx) return;
+    const pan = Math.random() * 1.6 - 0.8, k = Math.random();
+    if (!night) { for (let i = 0; i < 7; i++) setTimeout(() => burst(0.05, 900 + Math.random() * 600, 0.025, 3, 'bandpass', pan), i * 70); return; }
+    if (k < 0.35) { // creak
+      const t = ctx.currentTime, o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(90, t); o.frequency.linearRampToValueAtTime(140 + Math.random() * 60, t + 0.8);
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 600; f.Q.value = 6;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.03, t + 0.2); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+      let n = g; if (ctx.createStereoPanner) { const pp = ctx.createStereoPanner(); pp.pan.value = pan; g.connect(pp); n = pp; }
+      o.connect(f); f.connect(g); n.connect(master); o.start(t); o.stop(t + 1);
+    } else if (k < 0.65) { burst(0.35, 260, 0.06, 0.8, 'lowpass', pan); setTimeout(() => burst(0.2, 500, 0.03, 1, 'bandpass', pan), 180); } // something falls
+    else for (let i = 0; i < 3; i++) setTimeout(() => burst(0.5, 150 + Math.random() * 80, 0.035, 5, 'bandpass', pan), i * 420); // a murmur
+  },
   tick(n) { tone(1500 + n * 120, 0.05, 'square', 0.04 + n * 0.02); burst(0.03, 4000, 0.05 + n * 0.02, 4); },
 };
 
