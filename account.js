@@ -53,7 +53,7 @@
     ['2048', /^2048-/],
     ['poly-racer', /^polyracer/],
     ['blockcraft', /^blockcraft-(?!.*-backup-1x$)/],
-    ['arcade', /^arcade-(played|playtime|popup-closed|tos-agreed|chat-muted)$/]
+    ['arcade', /^arcade-(played|playtime|playdays|popup-closed|tos-agreed|chat-muted)$/]
   ];
   // this device's own things, never copied: the account itself, ids, the chat log, anti-cheat bookkeeping, old backups
   var NEVER = /^(arcade-(acct|local|online-id|chat-id|chat-log|chat-cleared|chat-name)|caLedger$|caReset1$|sb-)|-backup-1x$/;
