@@ -141,6 +141,7 @@ class ChunkGen {
       else if (roll < 0.04 && this.section !== 'food') this.q_fort(f);
       else if (roll < 0.08 && this.section === 'showroom') this.q_play(f);
       else if (roll < 0.14 && this.section === 'storage') this.q_office(f);
+      else if (roll < 0.06 && (this.section === 'display' || this.section === 'market' || this.section === 'warehouse')) this.q_mezzanine(f);
       else if (roll < 0.35 && this.section === 'market') this.q_snack(f);
       else this['q_' + this.section](f);
     }
@@ -345,6 +346,27 @@ class ChunkGen {
     for (let i = 0; i < 4; i++) this.ff(f, 'filingCabinet', 0.6 + i * 0.6, 9.0, 2);
     this.ff(f, 'plant', 8.9, 9.0, 0); this.ff(f, 'lockers', 7.6, 9.0, 2);
     if (r.chance(0.5)) this.fd(f, ['water', 'soda', 'cookie', 'chips'], 1.4, 1.4, 0.75);
+  }
+
+  // A mezzanine: a platform 3 m up on four posts, with a staircase and
+  // railings, and something left on top. A ready-made high point, if you can
+  // keep the stairs clear.
+  q_mezzanine(f) {
+    const { r } = this, top = 3.0, STEEL = 0x34495e;
+    this.fs(f, 3.0, 2.0, 9.2, 8.2, top - 0.2, top, 0x8d8b86);                 // the deck
+    for (const [u, v] of [[3.1, 2.1], [9.0, 2.1], [3.1, 8.0], [9.0, 8.0]]) this.fs(f, u, v, u + 0.12, v + 0.12, 0, top - 0.2, STEEL);
+    // railings on three sides (the stairs come up the fourth, at u = 3)
+    this.fs(f, 3.0, 2.0, 9.2, 2.06, top, top + 1.0, STEEL); this.fs(f, 3.0, 8.14, 9.2, 8.2, top, top + 1.0, STEEL);
+    this.fs(f, 9.14, 2.0, 9.2, 8.2, top, top + 1.0, STEEL);
+    this.fs(f, 3.0, 4.2, 3.06, 8.2, top, top + 1.0, STEEL);
+    // stairs: ten 0.28 m steps climbing towards +u, up to the open gap at v 2..4.2
+    for (let i = 0; i < 10; i++) {
+      const h = (i + 1) * (top / 10.5);
+      this.fs(f, 0.2 + i * 0.28, 2.1, 0.48 + i * 0.28, 4.1, 0, h, 0x9aa2aa);
+    }
+    this.fs(f, 0.2, 2.06, 3.0, 2.1, 0, top, STEEL);
+    this.ff(f, r.pick(['crate', 'box', 'bench', 'floorLamp']), 6.0, 5.0, r.int(4), top);
+    if (r.chance(0.4)) this.fd(f, STOCK.any, 7.2, 6.0, top);
   }
 
   // A first aid station: a white kiosk with four kits on it.

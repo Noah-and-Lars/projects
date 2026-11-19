@@ -178,6 +178,10 @@ four 12 m plots:
 | Garden Centre | Grass, planters, a tree, patio sets, all under open skylights |
 | Stock Room | Crates, boxes and lockers, and sometimes an office floor of desks and filing cabinets |
 
+Some furniture, market and warehouse plots have a **mezzanine**: a deck 3 m
+up on four posts, with railings and a staircase. It's a ready-made high
+point, if you can keep the stairs clear.
+
 Any plot can instead be a **first aid station** (a kiosk with four kits, 2.5%)
 or an **abandoned fort** (a ring of upturned pallets round a lamp, a platform,
 and maybe some food left behind, 1.5%). About a third of chunk edges have
