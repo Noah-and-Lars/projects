@@ -447,6 +447,18 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
   bike.js, STOCK 125 (the original) and MID 250 (faster; computer riders stay on the stock bike). The speedometer is
   Poly Racer's dial (`speedo.js`), computer riders make mistakes (`slip` / `fumble` in ai.js), and the menu has
   Patch notes (in src/index.html; add each version there).
+  1.3 (2026-11-19): the src/ on `main` is older than the live 1.2 file, so 1.3 was built on the file itself. The minified
+  game script got eight small hook edits (search `__trx`; the header comment lists them): `__game.x` exposes internals
+  (createRace, createView, step, BIKES, RIDERS, LANES, audio, a few THREE classes...), the build calls
+  `__trx.newRace(race, i, online)`, `__trx.newView(view, race)`, `__trx.pre(race)` / `__trx.post(race)` around each
+  1/60 s step, multiplies frame time by `window.__trxScale` (slow motion), and exposes `audio._x()` and `view.models`.
+  Everything new is the readable `<script id="tr-extras">` / `<style id="tr-extras-css">` blocks (edit by hand): MODES
+  (time attack with medals `GOLD`, trick mode, freestyle arena, elimination, 10-round championship + podium, stunt
+  challenges, track builder with `TRB1.` codes, sand/mud/laps/ruts), ghosts (`TR1.` ghost codes), split times, flips,
+  holeshot, lean assist, pit board, engine sound packs, crash camera, roost, rain/night, photo finish, garage (gear and
+  coin upgrades, offline only), rivals, replay editor (clips go to the arcade's 🎬 Clip recorder inside play.html, or
+  download). Extra save keys: `throttle-ridge.x1` (settings, splits, medals, coins, garage, champ...) and
+  `throttle-ridge.ghost`. Online races are unchanged (no new messages): rain, upgrades and ghosts are off online.
 - `cube-assault/`: first-person 3D shooter (Three.js bundled into the file). Since 2.3 it has touch controls (`#touch` layer, `autoTouch` / `touchMode()`, setting `touch`: auto, on or off).
   Since 2.6 it has online multiplayer. The blocks `mp-ui-css`, `mp-ui`, `mp-stub` and `CS MAP` are the lobby, HUD, results and Outpost map; the `<script id="mp-net">` block is the netcode and provides `window.CAMP` (the interface `mp-ui` uses) and `window.mpNet` (hooks the game calls from `shoot()`, `slash()`, `fireRocket()`; look for `// mp-net hook`). `gameMode` is `'mp'` during a match. Rooms are realtime channels `ca-room-<CODE>` (Presence = player list, host = first to join) plus one `ca-room-<CODE>-<id>` pipe per player to the host. It reuses the arcade's connection (`ArcadeOnline.client()`, or `window.caSupabase` from the game's own counter). Supabase's free plan capped the whole project at 100 messages a second, so the host lowers the update rate in bigger rooms (`MAX_HZ`, `ROOM_BUDGET`); the Cloudflare server doesn't need that cap, so it can be raised (an mp-net change: ask first). Room chat (2.8.3): 'chat' on the room channel, `CAMP.chat()` and the 'chat' event, drawn by the `<script id="mp-chat">` block (Enter opens it).
 - `block-drop/`: Blocktris, a falling-block puzzle with keyboard and touch controls.
