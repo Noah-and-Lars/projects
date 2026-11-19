@@ -1308,6 +1308,7 @@ function frame() {
   updateLamps(L);
   floor.position.set(Math.round(P.x / 4) * 4, 0, Math.round(P.z / 4) * 4);
   ceiling.position.set(Math.round(P.x / 6) * 6, CEIL, Math.round(P.z / 6) * 6);
+  uniforms.uTime.value = (now / 1000) % 10000;
   fixtures.update(P.x, P.z, L, uniforms.uEmerg.value, CEIL);
   setSkyLight(isNight(clock.t) ? 0 : 1, hailing(clock.t, clock.ev));
   document.body.classList.toggle('crimson', clock.ev === 'crimson' && isNight(clock.t));

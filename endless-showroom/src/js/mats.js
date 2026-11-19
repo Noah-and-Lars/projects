@@ -28,7 +28,14 @@ export const uniforms = {
   uCutC: { value: new THREE.Vector2() },
   uCutR: { value: 0 },
   uCutIn: { value: 1 },
+  uTime: { value: 0 },
 };
+// About one fitting in 37 is faulty and flickers (the same on every screen).
+export function flickerAt(cx, cz, t) {
+  if (((((cx * 11 + cz * 17) % 37) + 37) % 37) !== 0) return 1;
+  const s = Math.sin(t * 7.3 + cx * 1.7) + Math.sin(t * 23.1 + cz);
+  return s > 0.6 ? 0.25 : 1;
+}
 
 // ---- Detail texture: R wood grain, G fabric weave, B card fibre, A plaster.
 function makeDetail() {
@@ -93,7 +100,7 @@ vWN = normalize(mat3(modelMatrix) * esN);
 `;
 const FRAG_HEAD = /* glsl */`
 uniform sampler2D uDetail;
-uniform float uLevel, uEmerg, uCeil, uGain, uRed, uCutR, uCutIn;
+uniform float uLevel, uEmerg, uCeil, uGain, uRed, uCutR, uCutIn, uTime;
 uniform vec2 uCutC;
 varying float vMat;
 varying vec3 vWP;
@@ -143,6 +150,7 @@ const FRAG_LIGHTS = /* glsl */`
     float sel = mix(step(mod(c.x * 7.0 + c.y * 13.0, 9.0), 0.5), step(mod(c.x * 7.0 + c.y * 13.0, 3.0), 0.5), uRed);
     float em = sel * uEmerg;
     float lvl = distance(c * ${FIX.spacing.toFixed(1)} + ${(FIX.spacing / 2).toFixed(1)}, uCutC) < uCutR ? uCutIn : uLevel;
+    if (abs(mod(c.x * 11.0 + c.y * 17.0, 37.0)) < 0.5 && sin(uTime * 7.3 + c.x * 1.7) + sin(uTime * 23.1 + c.y) > 0.6) lvl *= 0.25;
     float I = lvl + em * mix(0.3, 0.45, uRed);
     if (I < 0.002) continue;
     vec3 emCol = mix(vec3(1.0, 0.42, 0.16), vec3(1.0, 0.06, 0.03), uRed);
@@ -238,7 +246,7 @@ export function makeFixtures(scene) {
     update(x, z, level, emergLevel, ceil) {
       const ncx = Math.floor(x / FIX.spacing), ncz = Math.floor(z / FIX.spacing);
       const cut = uniforms.uCutR.value;
-      const key = ncx + ',' + ncz + ',' + level.toFixed(2) + ',' + emergLevel.toFixed(2) + ',' + uniforms.uRed.value + ',' + cut.toFixed(1);
+      const key = ncx + ',' + ncz + ',' + level.toFixed(2) + ',' + emergLevel.toFixed(2) + ',' + uniforms.uRed.value + ',' + cut.toFixed(1) + ',' + Math.round(uniforms.uTime.value * 20);
       if (key === lastKey) return;
       const moved = ncx !== cx || ncz !== cz;
       lastKey = key; cx = ncx; cz = ncz;
@@ -255,7 +263,7 @@ export function makeFixtures(scene) {
         const isEm = ((((gx * 7 + gz * 13) % (red ? 3 : 9)) + (red ? 3 : 9)) % (red ? 3 : 9)) === 0;
         const fx = gx * FIX.spacing + FIX.spacing / 2, fz = gz * FIX.spacing + FIX.spacing / 2;
         const lv = cut > 0 && Math.hypot(fx - uniforms.uCutC.value.x, fz - uniforms.uCutC.value.y) < cut ? uniforms.uCutIn.value : level;
-        col.copy(off).lerp(day, lv);
+        col.copy(off).lerp(day, lv * flickerAt(gx, gz, uniforms.uTime.value));
         if (isEm && emergLevel > 0) col.lerp(red ? redEm : emerg, emergLevel * (1 - Math.min(1, lv * 3)));
         mesh.setColorAt(k, col);
         k++;
