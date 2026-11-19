@@ -59,6 +59,7 @@ function burst(dur, freq, gain = 0.2, q = 1, type = 'bandpass', pan = 0) {
 export const sfx = {
   chime() { tone(784, 0.6, 'sine', 0.18); tone(659, 0.6, 'sine', 0.18, 0.35); tone(523, 0.9, 'sine', 0.18, 0.7); },
   morning() { tone(523, 0.5, 'sine', 0.18); tone(659, 0.5, 'sine', 0.18, 0.3); tone(784, 0.8, 'sine', 0.18, 0.6); },
+  grassStep() { burst(0.09, 2400, 0.05, 0.6, 'highpass'); },
   step(soft) { burst(0.07, soft ? 500 : 900, soft ? 0.05 : 0.09, 1.2); },
   land() { burst(0.15, 300, 0.22, 0.8); },
   pick() { tone(440, 0.08, 'triangle', 0.15); tone(660, 0.1, 'triangle', 0.12, 0.06); },

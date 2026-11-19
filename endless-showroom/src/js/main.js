@@ -542,7 +542,9 @@ function die(why) {
   for (let i = waypoints.length - 1; i >= 0; i--) if (waypoints[i].death) waypoints.splice(i, 1);
   waypoints.push({ x: P.x, y: P.y + 1, z: P.z, name: 'Where you were caught', death: true });
   $('death').classList.remove('hidden');
-  $('death-msg').textContent = why === 'hunger' ? 'You starved.' : why === 'fall' ? 'You fell too far.' : why === 'food' ? 'Something you ate finished you off.' : why === 'hail' ? 'The hail got you.' : `You survived ${P.nights} night${P.nights === 1 ? '' : 's'}.`;
+  const head = { hunger: 'You starved.', fall: 'You fell too far.', food: 'Something you ate finished you off.', hail: 'The hail got you.' }[why] || 'You were caught.';
+  $('death-head').textContent = head;
+  $('death-msg').textContent = `You survived ${P.nights} night${P.nights === 1 ? '' : 's'}.`;
   net.send('x', { n: P.nights, w: why });
   $('death-best').textContent = `Day ${clock.day} · your best: ${Math.max(stats.best, P.nights)} night${Math.max(stats.best, P.nights) === 1 ? '' : 's'}`;
   P.nights = 0;
@@ -594,7 +596,7 @@ function updatePlayer(dt) {
   if (wasAir && P.onGround && P.landSpeed > 4) { sfx.land(); feel.dip = Math.min(0.5, P.landSpeed * 0.035); }
   if (P.landSpeed > 13) hurt((P.landSpeed - 13) * 9, 'fall');
   // footsteps
-  if (P.onGround && P.speed > 0.5) { P.stepAcc += P.speed * dt; if (P.stepAcc > (sprint ? 2.2 : 1.7)) { P.stepAcc = 0; sfx.step(!sprint); } }
+  if (P.onGround && P.speed > 0.5) { P.stepAcc += P.speed * dt; if (P.stepAcc > (sprint ? 2.2 : 1.7)) { P.stepAcc = 0; if (P.y < 0.05 && world.sectionAt(P.x, P.z) === 'garden') sfx.grassStep(); else sfx.step(!sprint); } }
   if (P.alive) {
     // Energy: sprinting, jumping and carrying use it; standing still slowly gets it back.
     if (sprint) P.en = Math.max(0, P.en - 3.2 * dt);
@@ -1199,7 +1201,23 @@ function frame() {
   updateHud(dt);
   world.flushItems();
   renderer.render(scene, camera);
+  autoResolution(dt);
   endFrame();
+}
+
+// Keep the frame rate up: if frames are slow for a few seconds, draw at a
+// lower resolution; if they're quick again, go back up.
+const res = { acc: 0, n: 0, scale: 1 };
+function autoResolution(dt) {
+  if (document.hidden) return;
+  res.acc += dt; res.n++;
+  if (res.acc < 3) return;
+  const avg = res.acc / res.n; res.acc = 0; res.n = 0;
+  const max = Math.min(devicePixelRatio, settings.low ? 1 : 1.75);
+  if (avg > 0.028 && res.scale > 0.5) res.scale = Math.max(0.5, res.scale - 0.15);
+  else if (avg < 0.016 && res.scale < 1) res.scale = Math.min(1, res.scale + 0.1);
+  else return;
+  renderer.setPixelRatio(max * res.scale);
 }
 
 const _v = new THREE.Vector3();
@@ -1289,9 +1307,17 @@ function placeCamera(dt) {
     const dist = Math.max(0.6, hit.t - 0.3);
     camera.position.set(P.x - dx * dist, ey - dy * dist + 0.3, P.z - dz * dist);
     myModel.root.visible = true;
+  } else if (!P.alive) {
+    // caught: the camera drifts up and circles where it happened
+    const k = Math.min(1, (performance.now() - P.deadAt) / 2500), a = performance.now() / 4000;
+    camera.position.set(P.x + Math.cos(a) * (1 + k * 3), P.y + 0.5 + k * 3, P.z + Math.sin(a) * (1 + k * 3));
+    camera.lookAt(P.x, P.y + 0.3, P.z);
+    myModel.root.visible = true;
+    myModel.body.rotation.x = -1.45; myModel.body.position.y = 0.2;
   } else {
-    camera.position.set(P.x + Math.cos(P.yaw) * Math.sin(feel.bob) * 0.025 * bobAmt, P.alive ? ey : P.y + 0.4, P.z - Math.sin(P.yaw) * Math.sin(feel.bob) * 0.025 * bobAmt);
+    camera.position.set(P.x + Math.cos(P.yaw) * Math.sin(feel.bob) * 0.025 * bobAmt, ey, P.z - Math.sin(P.yaw) * Math.sin(feel.bob) * 0.025 * bobAmt);
     myModel.root.visible = false;
+    myModel.body.rotation.x = 0;
   }
   // first-person carried piece
   const key = P.carry && !P.third ? P.carry.t + ':' + P.carry.v : '';
