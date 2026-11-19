@@ -27,3 +27,13 @@ function fromCache(req) {
     return c.match(req).then(function (m) { return m || c.match(req, { ignoreSearch: true }); });
   }).catch(function () { return null; });
 }
+// 2026-11-19: notify.js shows browser alerts through this registration on phones; a tap opens (or focuses) its page
+self.addEventListener('notificationclick', function (e) {
+  var url = (e.notification.data && e.notification.data.url) || '/';
+  e.notification.close();
+  try { if (new URL(url).origin !== location.origin) url = '/'; } catch (x) { url = '/'; }
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+    for (var i = 0; i < list.length; i++) if (list[i].url === url && 'focus' in list[i]) return list[i].focus();
+    return self.clients.openWindow ? self.clients.openWindow(url) : null;
+  }));
+});
