@@ -25,6 +25,9 @@
     if (!online() || !a.api) return Promise.resolve(STUN);
     return a.api('turn', { auth: true }).then(function (r) { return r && r.status === 200 && Array.isArray(r.iceServers) ? STUN.concat(r.iceServers) : STUN; }, function () { return STUN; });
   }
+  // ICE candidates can arrive before the other side's description is set: keep them until it is
+  function addIce(pc, c) { if (pc.remoteDescription) pc.addIceCandidate(c).catch(function () {}); else (pc._q = pc._q || []).push(c); }
+  function flushIce(pc) { var q = pc._q || []; pc._q = []; q.forEach(function (c) { pc.addIceCandidate(c).catch(function () {}); }); }
   var REACTS = { fire: '🔥', clap: '👏', wow: '😮', lol: '😂', gg: 'GG' };
 
   /* ---------- tickets ---------- */
@@ -96,7 +99,7 @@
       client(function (c) {
         if (!c) { stop(); return; }
         ch = c.channel('live:' + lower, { config: { presence: { key: 'host' } } });
-        ch.on('broadcast', { event: 'hello' }, function (e) { var m = e.payload || {}; if (m.from) offer(m.from); });
+        ch.on('broadcast', { event: 'hello' }, function (e) { var m = e.payload || {}; if (m.from) { drop(m.from); offer(m.from); } }); // a repeated hello is a retry: start again
         ch.on('broadcast', { event: 'sig' }, function (e) { onSig(e.payload || {}); });
         ch.on('broadcast', { event: 'chat' }, function (e) { var m = e.payload || {}; if (m.n && m.x) addChat(m.n, m.x); });
         ch.on('broadcast', { event: 'react' }, function (e) { var m = e.payload || {}; if (REACTS[m.e]) floatReact(m.e); });
@@ -130,8 +133,8 @@
     function onSig(m) {
       if (m.to !== 'host' || !peers[m.from]) return;
       var pc = peers[m.from];
-      if (m.d && m.d.sdp) pc.setRemoteDescription(m.d.sdp).catch(function () {});
-      else if (m.d && m.d.c) pc.addIceCandidate(m.d.c).catch(function () {});
+      if (m.d && m.d.sdp) pc.setRemoteDescription(m.d.sdp).then(function () { flushIce(pc); }).catch(function () {});
+      else if (m.d && m.d.c) addIce(pc, m.d.c);
     }
     function sig(to, d) { if (ch) ch.send({ type: 'broadcast', event: 'sig', payload: { to: to, from: 'host', d: d } }); }
     function drop(id) { var pc = peers[id]; if (pc) { try { pc.close(); } catch (e) {} delete peers[id]; } }
@@ -207,9 +210,9 @@
      ====================================================================================================== */
   function watch(name, ui) {
     var lower = String(name).toLowerCase(), me = uid(), ch = null, pc = null, live = false, ended = false, pred = null, myBet = null, retry = 0;
-    var video = ui.video;
+    var video = ui.video, iceP = ice(), dog = 0, tries = 0, gotPics = false;
     // the stream counts as on once pictures actually arrive
-    video.addEventListener('playing', function () { ui.status('live'); });
+    video.addEventListener('playing', function () { gotPics = true; tries = 0; clearTimeout(dog); ui.status('live'); });
     video.addEventListener('resize', function () { if (video.videoWidth) ui.status('live'); });
     client(function (c) {
       if (!c) { ui.status('offline', 'Can’t connect right now.'); return; }
@@ -230,21 +233,37 @@
       });
       ch.subscribe(function (s) { if (s === 'SUBSCRIBED') ch.track({ role: 'viewer', id: me, n: myName() }); });
     });
-    function hello() { if (pc) return; ui.status('connecting', 'Joining the stream…'); ch.send({ type: 'broadcast', event: 'hello', payload: { from: me } }); }
+    function hello() {
+      if (pc || !ch) return;
+      gotPics = false;
+      ui.status('connecting', tries ? 'Still joining… (try ' + (tries + 1) + ')' : 'Joining the stream…');
+      ch.send({ type: 'broadcast', event: 'hello', payload: { from: me } });
+      // no pictures after 12 s: ask again from scratch, then give up with a reason instead of spinning forever
+      clearTimeout(dog);
+      dog = setTimeout(function () {
+        if (gotPics || !live) return;
+        close();
+        if (++tries < 4) hello();
+        else ui.status('offline', 'Couldn’t connect to ' + name + '’s stream. Their network or yours may be blocking it: try another wifi, or turn wifi off on your phone. Reload to try again.');
+      }, 12000);
+    }
     function onSig(d) {
       if (d.sdp && d.sdp.type === 'offer') {
         close();
-        ice().then(function (list) {
-          pc = new RTCPeerConnection({ iceServers: list });
+        var mine = pc = new RTCPeerConnection({ iceServers: STUN }); // placeholder so candidates queue on it at once
+        mine._q = [];
+        iceP.then(function (list) {
+          if (pc !== mine) return;
+          try { pc.setConfiguration({ iceServers: list }); } catch (e) {}
           pc.ontrack = function (e) { if (video.srcObject !== e.streams[0]) { video.srcObject = e.streams[0]; video.play().catch(function () { ui.status('tap', 'Tap to start watching'); }); } };
           window.__livePc = pc; // tests
           pc.onicecandidate = function (e) { if (e.candidate) ch.send({ type: 'broadcast', event: 'sig', payload: { to: 'host', from: me, d: { c: e.candidate } } }); };
           pc.onconnectionstatechange = function () { if (pc && (pc.connectionState === 'failed' || pc.connectionState === 'disconnected')) { close(); if (live && retry++ < 3) setTimeout(hello, 1500); } };
-          return pc.setRemoteDescription(d.sdp).then(function () { return pc.createAnswer(); }).then(function (a) { return pc.setLocalDescription(a); }).then(function () {
+          return pc.setRemoteDescription(d.sdp).then(function () { flushIce(mine); return pc.createAnswer(); }).then(function (a) { return pc.setLocalDescription(a); }).then(function () {
             ch.send({ type: 'broadcast', event: 'sig', payload: { to: 'host', from: me, d: { sdp: pc.localDescription } } });
           });
         }).catch(function () { ui.status('offline', 'Couldn’t join the stream.'); });
-      } else if (d.c && pc) pc.addIceCandidate(d.c).catch(function () {});
+      } else if (d.c && pc) addIce(pc, d.c);
     }
     function close() { if (pc) { try { pc.close(); } catch (e) {} pc = null; } }
     function onPred(p) {

@@ -111,6 +111,9 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
   (`arcade-pred-tickets`, kept apart from the shop's Tickets in `arcade-tickets`: 1000 to start, topped up to 200 a day; hidden in prediction-free mode via `[data-predictions]`). tourney.html lets viewers bet 50 tickets on a ready match
   (`arcade-tbets`, paid double on this device when that player wins; the server doesn't see bets). The home screen's
   rotation, the "Top 5" row and the trailer include every game again (the casino and Russian Roulette too).
+  Joining (2026-11-19, live.js?v=2): a repeated 'hello' makes the streamer drop that viewer's link and offer again; ICE
+  candidates that arrive early are queued (`addIce`/`flushIce`); a viewer with no pictures after 12 s asks again, and after
+  4 tries shows why instead of spinning. Viewers without an account get STUN only, so the streamer's TURN does the relaying.
 - `assistant.js` (2026-11-18, the owner's request; loaded right after account.js on index, play, chat, players, social,
   support and tourney): the Assistant. A button (a chat bubble with an accent spark, `ICON`; it was ✨ until the evening) in `header.top` just before `#acctBtn` (in the desktop rail above the
   account button; on play.html beside Clip/Fullscreen, never over the game) opens `#aiPanel`, a right-side slide-out
