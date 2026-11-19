@@ -257,7 +257,7 @@ ArcadeOnline.start('tickets');
   $('tourNext').onclick = () => { if (step < STEPS.length - 1) { step++; tour(); return; } const got = T.bonus('tour'); closeTour(); if (got) $('shopMsg').textContent = '+' + got + ' tickets for finishing the tour!'; paint(); };
 
   T.onChange(paint);
-  addEventListener('arcade:parental', paint);
+  addEventListener('arcade:predictions', paint);
   if (window.ArcadeAccount && ArcadeAccount.onPulled) ArcadeAccount.onPulled(paint);
   paint();
 })();

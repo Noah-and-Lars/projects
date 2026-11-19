@@ -115,7 +115,6 @@
   function deliver(n, opts) {
     opts = opts || {};
     if (!S.types[n.ty] && n.ty !== 'digest') return false;
-    if (n.ty === 'tickets' && window.ArcadeParental && ArcadeParental.ticketsHidden()) return false;
     n.id = Date.now().toString(36) + (seq++).toString(36);
     n.t = Date.now(); n.rd = 0;
     if (window.ArcadeVoice && n.tx) try { n.tx = ArcadeVoice.preview(n.tx); } catch (e) {}
@@ -360,7 +359,7 @@
     var ft = panel.querySelector('.ntf-ft'); ft.innerHTML = '';
     if (view === 'list') {
       var clr = el('button', 'ntf-ib', 'Clear all'); clr.type = 'button'; clr.onclick = function () { list = []; saveList(); paint(); renderList(); }; ft.appendChild(clr);
-      if (!(window.ArcadeParental && ArcadeParental.ticketsHidden())) { var tk = el('a', 'ntf-ib', '🎟️ Tickets' + (window.ArcadeTickets ? ': ' + ArcadeTickets.balance() : '')); tk.href = 'tickets.html'; tk.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;text-decoration:none'; ft.appendChild(tk); }
+      { var tk = el('a', 'ntf-ib', '🎟️ Tickets' + (window.ArcadeTickets ? ': ' + ArcadeTickets.balance() : '')); tk.href = 'tickets.html'; tk.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;text-decoration:none'; ft.appendChild(tk); }
       renderList();
     } else renderSettings();
   }
@@ -387,7 +386,6 @@
     var fs = function (title) { var f = el('fieldset'); f.appendChild(el('legend', '', title)); body.appendChild(f); return f; };
     var t = fs('What to tell me about');
     TYPES.forEach(function (x) {
-      if (x[0] === 'tickets' && window.ArcadeParental && ArcadeParental.ticketsHidden()) return;
       t.appendChild(check(x[1], x[2], S.types[x[0]], function (v) { S.types[x[0]] = v ? 1 : 0; }));
     });
     t.appendChild(el('p', 'ntf-note', 'Turned off means no pop-up and nothing in the list.'));

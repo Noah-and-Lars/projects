@@ -1,5 +1,5 @@
 /* tickets.js (2026-11-19): Tickets, The Arcade's play currency. Loaded by account.js (its add-on list) on every page
-   with an account button, and directly by tickets.html (the page: balance, earning, shop, history, parent settings).
+   with an account button, and directly by tickets.html (the page: balance, earning, shop, history, settings).
    No real money, ever: tickets can't be bought, sold or swapped for anything outside The Arcade.
    - Earning: play.html counts time on screen (15 s steps, one tab at a time through `lt`): +5 for the first 2 minutes
      of play each day, then 1 per 4 minutes, at most DAILY_CAP (20) a day from playing. Helping bonuses (`bonus(id)`):
@@ -13,9 +13,9 @@
      prediction-free mode). account.js GROUPS has it as its own group 'tickets' (score = earned ever), so it rides the
      account's cloud save sync and follows the account to other devices. It is still a browser save, so it is easy to
      edit: that is why tickets only buy looks and can't be gifted until the server keeps the balance.
-   - Prediction-free mode (the player's own switch, `np`) hides predictions but keeps tickets. window.ArcadeParental
-     tells other code (ticketsHidden() is always false now: the PIN parent switch was removed, 2026-11-19); html gets
-     .arcade-no-predictions and 'arcade:parental' fires when it changes. */
+   - Prediction-free mode (the player's own switch, `np`) hides predictions but keeps tickets.
+     ArcadeTickets.noPredict() tells other code; html gets .arcade-no-predictions and 'arcade:predictions' fires when
+     it changes. */
 (function () {
   if (window.ArcadeTickets) return;
   var K = 'arcade-tickets';
@@ -63,24 +63,19 @@
   function earn(o, n, why) { o.b += n; o.e += n; log(o, n, why); }
   var subs = [];
   function fire() { applyLooks(); subs.forEach(function (f) { try { f(); } catch (e) {} }); }
-  addEventListener('storage', function (e) { if (e.key === K) { applyParental(); fire(); } });
+  addEventListener('storage', function (e) { if (e.key === K) { applyPredict(); fire(); } });
 
   /* ---------- prediction-free mode ---------- */
-  var Parental = {
-    ticketsHidden: function () { return false; },
-    predictionsHidden: function () { return !!read().np; },
-  };
-  var lastPar = '';
-  function applyParental() {
-    var c = document.documentElement.classList, th = Parental.ticketsHidden(), ph = Parental.predictionsHidden(), k = th + '|' + ph;
-    c.toggle('arcade-no-tickets', th); c.toggle('arcade-no-predictions', ph);
-    if (k !== lastPar) { lastPar = k; try { dispatchEvent(new CustomEvent('arcade:parental', { detail: { tickets: th, predictions: ph } })); } catch (e) {} }
+  var lastNp = null;
+  function applyPredict() {
+    var np = !!read().np; document.documentElement.classList.toggle('arcade-no-predictions', np);
+    if (np !== lastNp) { lastNp = np; try { dispatchEvent(new CustomEvent('arcade:predictions', { detail: { hidden: np } })); } catch (e) {} }
   }
 
   /* ---------- earning by playing (play.html) ---------- */
   var onPlay = /play\.html$/.test(location.pathname) && /[?&]game=/.test(location.search);
   function tick() {
-    if (document.hidden || Parental.ticketsHidden()) return;
+    if (document.hidden) return;
     var o = read(), now = Date.now();
     if (now - o.lt < 14000) return; // another tab counted this moment
     o.lt = now; o.ps += 15;
@@ -105,7 +100,7 @@
   function bonus(id, why) {
     id = String(id || '');
     var h = HELP[id] || (/^tutorial:[a-z0-9-]{1,40}$/.test(id) ? [3, why || 'Finished a tutorial'] : null);
-    if (!h || Parental.ticketsHidden()) return 0;
+    if (!h) return 0;
     var o = read(); if (o.done[id]) return 0;
     if (/^tutorial:/.test(id) && Object.keys(o.done).filter(function (k) { return /^tutorial:/.test(k); }).length >= 20) return 0;
     o.done[id] = Date.now(); earn(o, h[0], h[1]); write(o);
@@ -113,7 +108,6 @@
   }
   function buy(id) {
     var it = item(id); if (!it) return { error: 'That isn’t in the shop.' };
-    if (Parental.ticketsHidden()) return { error: 'Tickets are turned off on this device.' };
     var o = read();
     if (o.own[id]) return { error: 'You already have it.' };
     if (o.b < it.p) return { error: 'You need ' + (it.p - o.b) + ' more tickets.' };
@@ -125,12 +119,12 @@
     if (id) o.use[kind] = id; else delete o.use[kind];
     write(o); return true;
   }
-  function setNoPredict(v) { var o = read(); o.np = v ? 1 : 0; write(o); applyParental(); }
+  function setNoPredict(v) { var o = read(); o.np = v ? 1 : 0; write(o); applyPredict(); }
 
   /* ---------- your looks on every page ---------- */
   var themeEl = null, stickerT = 0;
   function applyLooks() {
-    var o = read(), hide = Parental.ticketsHidden();
+    var o = read(), hide = false;
     // colour theme
     var th = !hide && o.use.theme && o.own[o.use.theme] && item(o.use.theme);
     if (th) {
@@ -182,16 +176,15 @@
     '#tkSticker{position:absolute;left:-2px;top:-4px;font-size:15px;line-height:1;pointer-events:none;filter:drop-shadow(0 1px 2px #000)}.top #acctBtn{position:relative}' +
     '.tk-pill{display:inline-block;margin-left:10px;padding:3px 10px;border-radius:999px;background:#ffb22422;border:1px solid #ffb22466;color:#ffd27a;font:700 12.5px/1.5 var(--font,system-ui);white-space:nowrap;animation:tkP .3s ease-out;transition:opacity .5s}' +
     '.tk-pill.out{opacity:0}@keyframes tkP{from{opacity:0;transform:translateY(-4px)}}' +
-    'html.arcade-no-tickets [data-tickets],html.arcade-no-predictions [data-predictions]{display:none!important}';
+    'html.arcade-no-predictions [data-predictions]{display:none!important}';
   function css() { if (document.getElementById('tkCss')) return; var s = document.createElement('style'); s.id = 'tkCss'; s.textContent = CSS; document.head.appendChild(s); }
 
   function start() {
-    css(); applyParental(); applyLooks();
+    css(); applyPredict(); applyLooks();
     if (onPlay) setInterval(tick, 15000);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 
-  window.ArcadeParental = Parental;
   window.ArcadeTickets = {
     DAILY_CAP: DAILY_CAP, BONUS: BONUS, STEP: STEP, ITEMS: ITEMS, HELP: HELP,
     state: read, balance: function () { return read().b; },

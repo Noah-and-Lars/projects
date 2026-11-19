@@ -144,8 +144,9 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
   one-off helping bonuses (`ArcadeTickets.bonus('tour' | 'tutorial:<id>')`), spent on own cursor trails, colour themes
   and stickers (only the player sees them). Saved in `arcade-tickets`, its own sync group 'tickets' in account.js. It is
   a browser save, so gifts stay disabled until the server keeps balances. Prediction-free mode (the player's switch):
-  `window.ArcadeParental.predictionsHidden()`, html `.arcade-no-predictions` (hides `[data-predictions]`). The PIN parent
-  switch was removed (2026-11-19, the owner's request); `ticketsHidden()` stays as a stub that returns false. sw.js opens the page on a notification click.
+  `ArcadeTickets.noPredict()`, html `.arcade-no-predictions` (hides `[data-predictions]`), event 'arcade:predictions'.
+  No family or parent features (no PIN parent switch, no family profiles, no parents' safety page): removed
+  2026-11-19 at the owner's request; don't add them back. sw.js opens the page on a notification click.
 - `console.js` (2026-11-11, loaded by every site page after account.js): the console version. It detects PlayStation, Xbox,
   Nintendo and smart-TV browsers from the user agent (`?console=on|off|playstation|xbox|tv` overrides, remembered in
   `arcade-console`), adds `html.console` (bigger text and cards, a yellow focus ring), a banner "You're on the console

@@ -1,6 +1,6 @@
 /* tv.js (2026-11-19): the extras of the console/TV version. console.js loads it once html.console is on.
-   - TV menu (the banner's "TV menu" button, the remote's Info key, or pressing the left stick): settings, family
-     profiles, sign in with your phone, per-game volume (on play.html) and the tour again.
+   - TV menu (the banner's "TV menu" button, the remote's Info key, or pressing the left stick): settings, sign in
+     with your phone, per-game volume (on play.html) and the tour again.
    - On-screen keyboard for text boxes (OK / A on a text box; X = delete, Y = space while it's open).
    - Sleep timer: after N idle minutes (no remote, controller, mouse or game input; never in a video call or while a
      video plays) the TV goes back to the home page, with a minute's warning.
@@ -8,9 +8,6 @@
      gain node we add after the game's output (after clips.js's recorder tap, so clips keep the game's own level); an
      analyser learns each game's average loudness and "Even out game volume" trims it towards one level (-12 to +6 dB).
      <audio>/<video> sound only gets the manual trim (its loudness can't be measured without rerouting it).
-   - Family profiles: several online accounts remembered on this TV ('arcade-acct-couch', never synced). Switching
-     syncs the current account first, clears this device's copy of the progress (like logging out, but the session is
-     kept), signs in as the other account and reloads, so account.js downloads that account's progress.
    - Sign in with your phone: the TV shows a QR code and a 5-letter code on the realtime channel pair:<code> (free to
      join without an account, like pair.js). The phone (tvlink.html) types the username and password, stretches the
      password like account.js does and sends {name, key} encrypted for this TV only (ECDH P-256 + AES-GCM; the TV's
@@ -41,8 +38,6 @@
     '.tvov button.pri{background:#ff6a3d;border-color:#ff6a3d;color:#160a05}.tvov button.dan{color:#ff8b8b}',
     '.tvov .tvset{display:grid;grid-template-columns:1fr auto;gap:8px 16px;align-items:center}.tvov .tvset span{color:#d9d9e2}',
     '.tvov .tvset button{min-width:150px}',
-    '.tvov .tvprof{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid #ffffff12}.tvov .tvprof b{flex:1;font-size:19px}',
-    '.tvov .tvprof .av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:800 18px system-ui;color:#fff}',
     '.tvov .tvnote{font-size:14px;color:#9a9aa8}',
     '.tvov .tvcode{display:flex;gap:8px;margin:8px 0 12px}.tvov .tvcode span{width:54px;height:66px;display:grid;place-items:center;border-radius:12px;background:#ffffff12;font:800 36px ui-monospace,monospace}',
     '.tvov .tvqr{width:220px;height:220px;background:#fff;border-radius:14px;padding:8px;flex:none}.tvov .tvqr svg{width:100%;height:100%;display:block}',
@@ -101,8 +96,7 @@
   function menu() {
     var old = document.querySelector('.tvmenu'); if (old) { close(old); return; }
     var h = '<h2>TV menu</h2><p>Settings for this TV. Back closes this.</p>';
-    h += '<h3>Profiles</h3><div id="tvProfs"></div>';
-    h += '<div class="tvrow" style="margin-top:8px"><button type="button" id="tvAdd">Add another account</button>' + (online() ? '' : '<button type="button" id="tvPhone" class="pri">Sign in with your phone</button>') + '</div>';
+    if (!online()) h += '<h3>Account</h3><div class="tvrow"><button type="button" id="tvPhone" class="pri">Sign in with your phone</button></div>';
     if (gameId) h += '<h3>Volume for this game</h3><div class="tvrow"><button type="button" id="tvVolDn" aria-label="Quieter">− Quieter</button><b id="tvVolV" style="min-width:120px;text-align:center"></b><button type="button" id="tvVolUp" aria-label="Louder">+ Louder</button></div><p class="tvnote" id="tvVolN"></p>';
     h += '<h3>Settings</h3><div class="tvset">' + SETTINGS.map(function (s, i) { return '<span>' + esc(s.name) + '</span><button type="button" data-set="' + i + '"></button>'; }).join('') + '</div>';
     h += '<h3>Help</h3><div class="tvrow"><button type="button" id="tvTour">Show the tour again</button><button type="button" id="tvClose" class="pri">Done</button></div>';
@@ -110,13 +104,11 @@
     var paint = function () {
       d.querySelectorAll('[data-set]').forEach(function (b) { var s = SETTINGS[+b.dataset.set]; b.textContent = s.show(opt(s.k)); });
       if (gameId) { var v = vol(gameId); $('tvVolV').textContent = fmtDb(v.m) + ' dB'; $('tvVolN').textContent = opt('autovol') ? (v.n >= 15 ? 'Evening out adds ' + fmtDb(v.a) + ' dB for this game.' : 'Still learning how loud this game is.') + (audioHooked ? '' : ' (This game hasn’t made any sound yet.)') : 'Evening out is off: only your own setting applies.'; }
-      profList(d.querySelector('#tvProfs'));
     };
     d.querySelectorAll('[data-set]').forEach(function (b) { b.onclick = function () { var s = SETTINGS[+b.dataset.set], i = s.vals.indexOf(opt(s.k)); C.setOpt(s.k, s.vals[(i + 1) % s.vals.length]); paint(); applyVol(); }; });
     if (gameId) { $('tvVolDn').onclick = function () { setMan(-3); paint(); }; $('tvVolUp').onclick = function () { setMan(3); paint(); }; }
     $('tvTour').onclick = function () { close(d); tour(); };
     $('tvClose').onclick = function () { close(d); };
-    $('tvAdd').onclick = addAccount;
     if ($('tvPhone')) $('tvPhone').onclick = function () { close(d); phoneSignIn(); };
     paint();
   }
@@ -260,22 +252,10 @@
     }, 250);
   }
 
-  /* ---------- family profiles ---------- */
-  var K_COUCH = 'arcade-acct-couch', HUES = [12, 200, 140, 280, 40, 330, 90, 240];
-  function couch() { try { var l = JSON.parse(ls.get(K_COUCH) || '[]'); return Array.isArray(l) ? l.filter(function (x) { return x && x.name && x.token; }) : []; } catch (e) { return []; } }
-  function saveCouch(l) { ls.set(K_COUCH, JSON.stringify(l.slice(0, 8))); }
-  function remember(a) { if (!a || !a.name || !a.token) return; var l = couch().filter(function (x) { return x.name.toLowerCase() !== a.name.toLowerCase(); }); l.unshift({ name: a.name, token: a.token, at: Date.now() }); saveCouch(l); }
+  /* ---------- switching the signed-in account (used by phone sign-in) ---------- */
   function curAcct() { try { var a = JSON.parse(ls.get('arcade-acct') || 'null'); return a && a.name && a.token ? a : null; } catch (e) { return null; } }
-  function profList(box) {
-    var me = curAcct(), l = couch();
-    if (me && !l.some(function (x) { return x.name.toLowerCase() === me.name.toLowerCase(); })) l.unshift(me); // shown, not stored until a switch
-    if (!l.length || (l.length === 1 && me)) { box.innerHTML = '<p class="tvnote">Add the family’s accounts to switch between them here without typing passwords again. Anyone using this TV can switch to them.</p>'; return; }
-    box.innerHTML = l.map(function (x, i) { var mine = me && x.name.toLowerCase() === me.name.toLowerCase(); return '<div class="tvprof"><span class="av" style="background:hsl(' + HUES[i % HUES.length] + ' 60% 42%)">' + esc(x.name.charAt(0).toUpperCase()) + '</span><b>' + esc(x.name) + (mine ? ' <small class="tvnote">· playing now</small>' : '') + '</b>' + (mine ? '' : '<button type="button" data-sw="' + i + '" class="pri">Switch</button><button type="button" data-rm="' + i + '" class="dan">Remove</button>') + '</div>'; }).join('') + '<p class="tvnote">Anyone using this TV can switch to these accounts. Remove one to sign it out of this TV.</p>';
-    box.querySelectorAll('[data-sw]').forEach(function (b) { b.onclick = function () { switchTo(l[+b.dataset.sw]); }; });
-    box.querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function () { var x = l[+b.dataset.rm]; if (!confirm('Sign ' + x.name + ' out of this TV?')) return; signOutToken(x.token); saveCouch(couch().filter(function (y) { return y.name !== x.name; })); profList(box); }; });
-  }
   function signOutToken(tok) { try { var a = A(); fetch(((a && a.server) || 'https://arcade-realtime.arcade-realtime.workers.dev') + '/acct/logout', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok }, body: '{}' }).catch(function () {}); } catch (e) {} }
-  // save the account on screen to the cloud, keep its sign-in for later and clear this device's copy of its progress
+  // save the account on screen to the cloud and clear this device's copy of its progress
   function leaveCurrent() {
     var a = A(), me = curAcct();
     if (!me) {
@@ -285,7 +265,6 @@
     if (window.ArcadeOutage && ArcadeOutage.down && ArcadeOutage.down()) return Promise.reject(new Error('The Arcade’s servers are down right now, so switching would lose progress that hasn’t synced. Try again later.'));
     return a.sync('switch').then(function (r) {
       if (r === null) throw new Error('Couldn’t save ' + me.name + '’s progress first. Check the connection and try again.');
-      remember(curAcct() || me); // the sync may have renamed it
       var g = a._test && a._test.groupOf;
       var keys = []; for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
       keys.forEach(function (k) { var grp = g ? g(k) : null; if (grp && (grp !== 'arcade' || /^arcade-(played|playtime|playdays)$/.test(k))) ls.del(k); });
@@ -293,25 +272,11 @@
     });
   }
   function keepConsole() { var v = ls.get('arcade-console'); return function () { if (v) ls.set('arcade-console', v); }; }
-  function switchTo(x) {
-    var back = keepConsole();
-    toast('Saving and switching to ' + x.name + '…', 8000);
-    leaveCurrent().then(function () {
-      back(); ls.set('arcade-acct', JSON.stringify({ name: x.name, token: x.token })); ls.del('arcade-acct-sync');
-      ss.set('arcade-tv-switched', x.name); location.reload();
-    }, function (e) { toast(e.message, 6000); });
-  }
-  function addAccount() {
-    var back = keepConsole();
-    leaveCurrent().then(function () { back(); ss.set('arcade-tv-add', '1'); location.reload(); }, function (e) { toast(e.message, 6000); });
-  }
-  // after a reload: open the log-in for "Add another account"; drop a remembered account whose sign-in no longer works
+  // after a phone sign-in reload: say hello, or that it didn't work
   setTimeout(function () {
     var a = A(); if (!a) return;
-    if (ss.get('arcade-tv-add')) { ss.del('arcade-tv-add'); if (!online()) { if (a.welcome) a.welcome('login', 'Log in to add another account to this TV.'); setTimeout(addPhoneButton, 300); } }
     var sw = ss.get('arcade-tv-switched');
-    if (sw) setTimeout(function () { ss.del('arcade-tv-switched'); if (online()) { toast('Hi ' + a.name() + '!'); remember(curAcct()); } else { saveCouch(couch().filter(function (y) { return y.name !== sw; })); toast(sw + ' needs to log in again on this TV.', 6000); } }, 5000);
-    else if (online()) { var me = curAcct(); if (couch().some(function (y) { return y.name.toLowerCase() === me.name.toLowerCase(); })) remember(me); } // keep a remembered account's token fresh
+    if (sw) setTimeout(function () { ss.del('arcade-tv-switched'); if (online()) toast('Hi ' + a.name() + '!'); else toast(sw + ' needs to log in again on this TV.', 6000); }, 5000);
   }, 1200);
 
   /* ---------- sign in with your phone ---------- */
@@ -400,7 +365,6 @@
             var wasOnline = !!curAcct(), back = keepConsole();
             (wasOnline ? leaveCurrent() : Promise.resolve()).then(function () {
               back(); ls.set('arcade-acct', JSON.stringify({ name: r.name, token: r.token })); ls.del('arcade-acct-sync');
-              if (couch().length || wasOnline) remember({ name: r.name, token: r.token });
               ss.set('arcade-tv-switched', r.name); location.reload();
             }, function (e) { signOutToken(r.token); body('<p>' + esc(e.message) + '</p>'); });
           });
@@ -429,7 +393,7 @@
       { ic: '🕹️', h: 'Move around', p: tv ? 'Use the arrow buttons to move the yellow box.' : 'Use the D-pad or the left stick to move the yellow box. LB/RB (L1/R1) switch tabs.', k: tv ? ['◀ ▲ ▼ ▶'] : ['D-pad', 'Left stick'] },
       { ic: '✅', h: 'Choose and go back', p: tv ? 'OK chooses. Back goes back or closes a pop-up.' : 'A (✕) chooses. B (○) goes back or closes a pop-up.', k: tv ? ['OK', 'Back'] : [C.device === 'playstation' ? '✕ choose' : 'A choose', C.device === 'playstation' ? '○ back' : 'B back'] },
       { ic: '🌈', h: 'Shortcuts', p: 'Jump straight to the place you want. They’re also in the corner of the screen.', k: tv ? [dot('#ff4d4d') + 'Search', dot('#3ddc6f') + 'Chat', dot('#ffd23f') + 'Profile', dot('#4d8bff') + 'Home'] : [K[0] + ' Search', K[1] + ' Chat', K[2] + ' Profile', K[3] + ' Home'] },
-      { ic: '📺', h: 'The TV menu', p: 'Text size, the sleep timer, game volume, family profiles and signing in with your phone are all in the TV menu at the top of the screen.', k: [tv ? 'Info button' : 'Press the left stick'] }
+      { ic: '📺', h: 'The TV menu', p: 'Text size, the sleep timer, game volume and signing in with your phone are all in the TV menu at the top of the screen.', k: [tv ? 'Info button' : 'Press the left stick'] }
     ];
     var i = 0, d = overlay('<div id="tvTourIn"></div>', 'tvtour', function () { S.tour = 1; C.saveSettings(); });
     function draw() {
@@ -453,7 +417,7 @@
   if (/[?&]tvsearch=1/.test(location.search)) setTimeout(function () { var b = $('searchBtn'); if (b) b.click(); }, 900);
 
   window.ArcadeTV = {
-    menu: menu, osk: oskOpen, phoneSignIn: phoneSignIn, tour: tour, profiles: couch, switchTo: switchTo,
+    menu: menu, osk: oskOpen, phoneSignIn: phoneSignIn, tour: tour,
     back: function () { if (osk) { osk.close(); return true; } if (stack.length) { close(); return true; } return false; },
     key: function (e) {
       if (!osk) return false;

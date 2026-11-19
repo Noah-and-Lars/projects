@@ -1,4 +1,4 @@
-/* support.js (2026-11-19): the Support page and its sub-pages (release-notes.html, safety.html, tester.html).
+/* support.js (2026-11-19): the Support page and its sub-pages (release-notes.html, tester.html).
    Loaded after games.js and account.js. Each part only runs when its element is on the page.
    - Status (#spStatus): asks the Worker's public /notice route once (the same check outage.js makes) and follows
      ArcadeOutage, so Support says at the top when the servers are down or paused for the day.
@@ -265,7 +265,7 @@
     { id: 'chat-rules', cat: 'social', q: 'How does the Global chat work?', tags: 'chat global guest mute rules swear',
       a: '<p>Anyone can chat, even without an account (guests are marked “guest”). Signed-in players chat under their account name.</p>' +
         '<ul><li>You can send 5 messages every 10 seconds.</li><li>Messages are <b>not</b> swear-filtered; usernames are.</li><li><b>Mute</b> hides someone’s messages on your device. You can also hide the chat history.</li><li>Admins can delete messages.</li></ul>' +
-        '<p>Someone breaking the rules? <a href="#spContact" data-cat="player">Report them</a>. See the <a href="safety.html">Safety page</a> for more.</p>' },
+        '<p>Someone breaking the rules? <a href="#spContact" data-cat="player">Report them</a>.</p>' },
     { id: 'friends-dms', cat: 'social', q: 'Friends, messages and blocking', tags: 'friend request dm private message block group chat call',
       a: '<p>On the <b>Players</b> tab, open someone’s profile to add them as a friend, message them, or video call them. Group chats can have up to 15 people.</p>' +
         '<p><b>Block</b> on their profile stops them messaging you, calling you or sending friend requests. They aren’t told. Local accounts can’t use friends or messages.</p>' },
