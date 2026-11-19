@@ -1517,6 +1517,8 @@ function openCreate() {
   b.append(el('p', 'note', 'Only post things you made or have the right to share. No personal details, and keep it friendly: posts can be reported and removed.'));
   const ov = sheet('Create', b, true);
 }
+// 2026-11-19: a photo or video shared to the installed site (manifest share_target -> sw.js -> offline.js) opens the post maker
+window.ArcadeShareToSocial = (files, text) => { if (!me()) { needAccount(); return false; } if (!files.length) { openCreate(); return true; } editUpload(files.slice(0, MAX_ITEMS)); if (text) setTimeout(() => { const c = document.querySelector('.sheet-b input[type=text]'); if (c && !c.value) c.value = text; }, 400); return true; };
 const MAX_BYTES = 12 * 1024 * 1024, MAX_VIDEO_S = 180, MAX_ITEMS = 5;
 function thumb(src, w, h) {
   const c = document.createElement('canvas'), k = Math.min(1, 360 / Math.max(w, h));
@@ -1820,7 +1822,7 @@ let lastName = me();
 setInterval(() => { if (me() !== lastName) { lastName = me(); loadSoc(); forYouCache = null; route(); } }, 1000);
 </script>
 <script src="tos.js?v=21"></script>
-<script src="appbanner.js?v=4"></script>
+<script src="appbanner.js?v=5"></script>
 <script src="moving.js?v=1"></script>
 <script src="cursors.js?v=2"></script>
 <script src="outage.js?v=2"></script>
