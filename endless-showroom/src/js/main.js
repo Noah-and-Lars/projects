@@ -25,7 +25,7 @@ const darkEl = $('dark');
 const IS_TOUCH = matchMedia('(pointer: coarse)').matches && 'ontouchstart' in window;
 
 // ---------------------------------------------------------------- settings
-const settings = { sens: 1, vol: 0.7, music: 0.5, fov: 75, low: IS_TOUCH, voice: true, invert: false, short: false };
+const settings = { sens: 1, vol: 0.7, music: 0.5, fov: 75, low: IS_TOUCH, voice: true, invert: false, short: false, calm: false };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('es-settings') || '{}')); } catch (_) {}
 const saveSettings = () => { try { localStorage.setItem('es-settings', JSON.stringify(settings)); } catch (_) {} };
 const stats = { best: 0, days: 0 };
@@ -270,7 +270,7 @@ $('p-settings').onclick = () => { returnTo = 'pause'; openSettings(); };
 $('p-leave').onclick = leaveGame;
 
 function openSettings() {
-  $('s-sens').value = settings.sens; $('s-vol').value = settings.vol; $('s-music').value = settings.music; $('s-fov').value = settings.fov; $('s-low').checked = settings.low; $('s-voice').checked = settings.voice; $('s-invert').checked = settings.invert;
+  $('s-sens').value = settings.sens; $('s-vol').value = settings.vol; $('s-music').value = settings.music; $('s-fov').value = settings.fov; $('s-low').checked = settings.low; $('s-voice').checked = settings.voice; $('s-invert').checked = settings.invert; $('s-calm').checked = settings.calm;
   show('settings');
 }
 $('s-sens').oninput = (e) => { settings.sens = +e.target.value; saveSettings(); };
@@ -281,6 +281,7 @@ setVolume(settings.vol);
 setMusicVolume(settings.music);
 $('s-voice').onchange = (e) => { settings.voice = e.target.checked; saveSettings(); };
 $('s-invert').onchange = (e) => { settings.invert = e.target.checked; saveSettings(); };
+$('s-calm').onchange = (e) => { settings.calm = e.target.checked; saveSettings(); };
 $('s-music').oninput = (e) => { settings.music = +e.target.value; setMusicVolume(settings.music); saveSettings(); };
 
 initInput(canvas, {
@@ -380,6 +381,7 @@ function onMembers(list) {
     if (mode === 'play') toast(`${name} entered the store.`);
   }
   updateRoster();
+  $('room-tag').textContent = `${roomText()} · ${list.length} player${list.length === 1 ? '' : 's'}`;
 }
 // The host lets go of anything held by someone who has left: it drops where
 // it was picked up from.
@@ -1339,11 +1341,12 @@ const feel = { bob: 0, dip: 0, shake: 0, fov: 0 };
 function placeCamera(dt) {
   const moving = P.onGround && P.speed > 0.5 && P.alive;
   feel.bob += moving ? dt * P.speed * 1.9 : 0;
-  const bobAmt = moving ? Math.min(1, P.speed / 5) : 0;
+  const bobAmt = moving && !settings.calm ? Math.min(1, P.speed / 5) : 0;
+  if (settings.calm) { feel.shake = 0; feel.dip = 0; }
   feel.dip = Math.max(0, feel.dip - dt * 1.6);
   feel.shake = Math.max(0, feel.shake - dt * 2.5);
   const sprinting = P.speed > 6;
-  feel.fov += ((sprinting ? 7 : 0) - feel.fov) * Math.min(1, dt * 6);
+  feel.fov += ((sprinting && !settings.calm ? 7 : 0) - feel.fov) * Math.min(1, dt * 6);
   const fov = settings.fov + feel.fov;
   if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = fov; camera.updateProjectionMatrix(); }
   const sh = feel.shake * feel.shake;
