@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Endless Showroom</title>
+<meta name="description" content="Survive an endless furniture store with your friends. Build forts, find food, and stay out of reach of the night staff.">
+<meta name="theme-color" content="#1c2430">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Endless Showroom">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" id="apple-icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hurt"></div>
+<div id="dark"></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="clock"><div id="clock-day">Day 1</div><div id="clock-time">08:00</div><div id="clock-phase">Open</div></div>
+  <div id="event" class="hidden"></div>
+  <div id="cross"></div>
+  <div id="prompt" class="hidden"></div>
+  <div id="bars">
+    <div class="bar hp"><span>Health</span><i></i></div>
+    <div class="bar food"><span>Hunger</span><i></i></div>
+    <div class="bar stam"><span>Stamina</span><i></i></div>
+  </div>
+  <div id="hotbar"></div>
+  <div id="roster" class="hidden"></div>
+  <div id="room-tag" class="hidden"></div>
+  <div id="survived"></div>
+  <div id="chat"><div id="chat-log"></div><input id="chat-in" maxlength="120" placeholder="Say something… (Enter to send, Esc to cancel)" autocomplete="off" class="hidden"></div>
+  <div id="announce" class="hidden"></div>
+  <div id="help-hint">Press <b>H</b> for controls</div>
+</div>
+
+<div id="death" class="hidden">
+  <h2>You were caught.</h2>
+  <p id="death-msg"></p>
+  <p id="death-timer"></p>
+</div>
+
+<!-- Menus -->
+<div id="menu" class="screen">
+  <div class="panel">
+    <div class="logo"><span class="logo-a">ENDLESS</span><span class="logo-b">SHOWROOM</span></div>
+    <p class="tag">An endless furniture store. Friendly staff by day. Not by night.</p>
+    <label class="name-row">Your name <input id="name-in" maxlength="16" autocomplete="off"></label>
+    <div class="btns">
+      <button id="b-online" class="primary">Play Online</button>
+      <button id="b-create">Create Private Room</button>
+      <div class="join-row"><input id="code-in" maxlength="6" placeholder="CODE" autocomplete="off"><button id="b-join">Join</button></div>
+      <button id="b-solo">Play Solo</button>
+    </div>
+    <p id="menu-msg" class="msg"></p>
+    <div class="row-links"><button id="b-how" class="link">How to play</button><button id="b-settings" class="link">Settings</button></div>
+    <p class="best" id="best"></p>
+  </div>
+</div>
+
+<div id="how" class="screen hidden">
+  <div class="panel wide">
+    <h2>How to survive</h2>
+    <ul class="how">
+      <li><b>The store never ends.</b> There are no exits. Count the days you survive.</li>
+      <li><b>Day</b> (6 minutes): the lights are on and staff wander about, harmless. Gather food and build.</li>
+      <li><b>Night</b> (3 minutes): the lights go down and the staff hunt shoppers. They hit hard.</li>
+      <li><b>Staff can't climb or jump.</b> Stand on something tall and they can't reach you. Wall yourself in and they'll start breaking the furniture.</li>
+      <li><b>Pick up furniture</b> and carry it to build towers and forts. Stack it to climb higher.</li>
+      <li><b>Eat</b> to keep your hunger up. Food restocks every morning. First aid kits heal you.</li>
+      <li>Some days bring <b>events</b>: fog, power cuts, overtime staff, or a calm night.</li>
+      <li>Read the aisle signs (like <i>AISLE E3 · S2</i>) to tell friends where you are.</li>
+    </ul>
+    <table class="keys">
+      <tr><td>WASD / arrows</td><td>Move</td><td>Mouse</td><td>Look</td></tr>
+      <tr><td>Shift</td><td>Sprint</td><td>Space</td><td>Jump</td></tr>
+      <tr><td>E</td><td>Pick up / place</td><td>Left click</td><td>Place / use food</td></tr>
+      <tr><td>R</td><td>Rotate carried piece</td><td>Q</td><td>Drop carried piece</td></tr>
+      <tr><td>1–5 / wheel</td><td>Choose hotbar slot</td><td>F</td><td>Torch</td></tr>
+      <tr><td>V</td><td>First / third person</td><td>T / Enter</td><td>Chat</td></tr>
+      <tr><td>Tab</td><td>Players</td><td>Esc</td><td>Pause</td></tr>
+    </table>
+    <button class="back primary">Back</button>
+  </div>
+</div>
+
+<div id="settings" class="screen hidden">
+  <div class="panel">
+    <h2>Settings</h2>
+    <label class="slider">Mouse sensitivity <input id="s-sens" type="range" min="0.2" max="3" step="0.1"></label>
+    <label class="slider">Volume <input id="s-vol" type="range" min="0" max="1" step="0.05"></label>
+    <label class="slider">Field of view <input id="s-fov" type="range" min="60" max="100" step="1"></label>
+    <label class="check"><input id="s-low" type="checkbox"> Low graphics (shorter view distance)</label>
+    <button class="back primary">Back</button>
+  </div>
+</div>
+
+<div id="pause" class="screen hidden">
+  <div class="panel">
+    <h2>Paused</h2>
+    <p class="msg" id="pause-room"></p>
+    <div class="btns">
+      <button id="p-resume" class="primary">Resume</button>
+      <button id="p-how">How to play</button>
+      <button id="p-settings">Settings</button>
+      <button id="p-leave">Leave to menu</button>
+    </div>
+    <p class="msg small">In online play the store keeps going while you're paused.</p>
+  </div>
+</div>
+
+<div id="loading" class="screen hidden"><div class="panel"><p id="loading-msg">Finding a store…</p></div></div>
+
+<!-- Touch controls -->
+<div id="touch" class="hidden">
+  <div class="stick"><div class="knob"></div></div>
+  <div class="tb-col">
+    <div class="tb" data-key="Space">Jump</div>
+    <div class="tb" data-key="ShiftLeft">Run</div>
+    <div class="tb" data-key="KeyE">Grab</div>
+    <div class="tb" data-key="Mouse0">Use</div>
+    <div class="tb" data-key="KeyR">Turn</div>
+    <div class="tb" data-key="KeyF">Torch</div>
+  </div>
+  <div class="tb tb-pause" data-key="Escape">II</div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

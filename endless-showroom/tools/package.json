@@ -1,0 +1,11 @@
+{
+  "name": "endless-showroom-tools",
+  "private": true,
+  "type": "module",
+  "description": "Build and test tooling for Endless Showroom (not shipped).",
+  "scripts": { "build": "node build.mjs" },
+  "devDependencies": {
+    "esbuild": "0.24.2",
+    "three": "0.170.0"
+  }
+}
