@@ -540,7 +540,7 @@ function hostRequest(from, q) {
       broadcastItems([it.id, nid], echo);
       return;
     }
-    if ((u === 'strip' || u === 'tv') && !it.c && !world.isGone(it)) world.edit(it, { s: q.s == null ? (it.s ? 0 : 1) : Math.max(0, Math.min(u === 'tv' ? TV_CHANNELS : 6, q.s | 0)) });
+    if ((u === 'strip' || u === 'colour' || u === 'tv') && !it.c && !world.isGone(it)) world.edit(it, { s: q.s == null ? (it.s ? 0 : 1) : Math.max(0, Math.min(u === 'tv' ? TV_CHANNELS : 7, q.s | 0)) });
     else if (u && u !== 'flush' && u !== 'gift' && !it.c && !world.isGone(it)) world.edit(it, { s: it.s ? 0 : 1 });
     broadcastItems([it.id], echo);
   } else if (q.a === 'place') {
@@ -975,7 +975,7 @@ function placeCarry(p, carry = P.carry) {
 function useWord(it) {
   const u = TYPES[it.t].use;
   return u === 'lamp' ? (it.s ? 'switch on' : 'switch off') : u === 'door' ? (it.s ? 'close' : 'open') : u === 'tv' ? (it.s ? 'turn off' : 'turn on')
-    : u === 'strip' ? (it.s >= 6 ? 'switch off' : it.s ? 'change colour' : 'switch on') : u === 'music' ? (it.s ? 'stop the record' : 'play a record')
+    : u === 'strip' || u === 'colour' ? (it.s >= 7 ? 'switch off' : it.s === 6 ? 'fade through colours' : it.s ? 'change colour' : 'switch on') : u === 'music' ? (it.s ? 'stop the record' : 'play a record')
     : u === 'roll' ? 'roll' : u === 'gift' ? 'open' : u === 'button' ? 'press' : u === 'ding' ? 'switch on' : 'flush';
 }
 // Light strips dropped touching each other are linked: changing one changes
@@ -1000,10 +1000,11 @@ function useItem(it) {
   if (u === 'ding') { sfx.ding(); return; }
   if (u === 'button') { sfx.click(); setTimeout(() => sfx.ding(), 250); toast(BUTTON_LINES[(Math.random() * BUTTON_LINES.length) | 0]); return; }
   if (u === 'roll') { sfx.land(); const n = 1 + ((Math.random() * 6) | 0); toast(`You rolled a ${n}.`); const m = `rolled a ${n} on the foam dice`; net.send('c', { m }); chatLine(myName(), m); return; }
-  if (u === 'strip') {
-    const next = it.s >= 6 ? 0 : (it.s | 0) + 1;
+  if (u === 'strip' || u === 'colour') {
+    // off, six colours, then a slow fade through them all
+    const next = it.s >= 7 ? 0 : (it.s | 0) + 1;
     sfx.switchOn();
-    for (const o of linkedStrips(it)) { if (!net.isHost()) world.edit(o, { s: next }); request({ a: 'use', id: o.id, s: next }); }
+    for (const o of u === 'strip' ? linkedStrips(it) : [it]) { if (!net.isHost()) world.edit(o, { s: next }); request({ a: 'use', id: o.id, s: next }); }
     return;
   }
   if (u === 'gift') { sfx.pick(); if (!net.isHost()) world.edit(it, { g: true }); request({ a: 'use', id: it.id }); ach.unlock('gift'); return; }
@@ -1436,6 +1437,7 @@ function frame() {
   updateInteraction(dt);
   updateFlying(dt);
   updateRecords(dt);
+  { const ph = Math.floor(now / 800); if (ph !== world.fadePhase) { world.fadePhase = ph; if (world.hasFading) world.itemsDirty = true; } }
   achT -= dt;
   if (achT <= 0 && P.alive) {
     achT = 0.5;
@@ -1527,7 +1529,7 @@ function updateLamps(L) {
     if (torchLit()) lampList.push({ head: true });
     for (const r of remotes.values()) if (r.st && r.st.a && r.st.tc) { const p = r.model.root.position; lampList.push({ x: p.x, y: p.y + 1.7, z: p.z }); }
     for (const r of remotes.values()) if (r.hold && TYPES[r.hold.t].lamp) lampList.push({ x: r.hold.x, y: r.hold.y + itemDims(r.hold.t, 0, 0, r.hold.o)[1] * 0.85, z: r.hold.z });
-    for (const it of world.lampsNear(P.x, P.z, 30, 6)) lampList.push({ x: it.x, y: it.y + itemDims(it.t, it.r, it.tl)[1] + 0.08, z: it.z });
+    for (const it of world.lampsNear(P.x, P.z, 30, 6)) { const tt = TYPES[it.t]; lampList.push({ x: it.x, y: it.y + itemDims(it.t, it.r, it.tl, it.o)[1] * (tt.glowY ?? 1) + (tt.glowY != null ? -0.1 : 0.08), z: it.z, col: world.lightColor(it), k: tt.glowK || 1 }); }
     lampList = lampList.slice(0, lampLights.length);
   }
   const k = Math.max(0, 1 - L * 1.4);
@@ -1538,7 +1540,8 @@ function updateLamps(L) {
     if (e.mine) { const h = myHold(); if (h) l.position.set(h.x, h.y + itemDims(h.t, 0, 0, h.o)[1] * 0.85, h.z); }
     else if (e.head) l.position.set(P.x - Math.sin(P.yaw) * 0.6, P.y + P.eyeH + 0.1, P.z - Math.cos(P.yaw) * 0.6);
     else l.position.set(e.x, e.y, e.z);
-    l.intensity = 9 * k;
+    l.color.setHex(e.col || 0xffd59a);
+    l.intensity = 9 * k * (e.k || 1);
   });
 }
 

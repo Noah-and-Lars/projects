@@ -192,13 +192,16 @@ fs.mkdirSync(out, { recursive: true });
   const spot = await g(() => { const P = __game.P, w = __game.world; for (let i = 0; i < 60; i++) { const x = P.x + (Math.random() - 0.5) * 30, z = P.z + (Math.random() - 0.5) * 30; if (w.fits({ x0: x - 0.6, x1: x + 0.6, z0: z - 0.6, z1: z + 0.6, y0: 0, y1: 6.4 })) return [x, z]; } return null; });
   const floorHp = spot ? await dropFrom(spot[0], spot[1], 6.3) : null;
   let bagHp = null;
-  if (fall.bag) { const b = await g((id) => { const it = __game.world.items.get(id); return [it.x, it.z]; }, fall.bag); bagHp = await dropFrom(b[0], b[1], 6.3); }
+  if (spot) { // a beanbag of our own on the same open floor
+    await g((sp) => { __game.world.applyState('test:bag', { t: 'beanbag', k: 'f', v: 0, x: sp[0] + 1.5, y: 0, z: sp[1], r: 0, a: 1 }); }, spot);
+    bagHp = await dropFrom(spot[0] + 1.5, spot[1], 6.3);
+  }
   console.log((floorHp !== null && floorHp < 100 && (bagHp === null || bagHp > floorHp) ? 'ok   ' : 'FAIL ') + `a beanbag softens a fall (floor hp ${floorHp}, beanbag hp ${bagHp})`);
 
   // Picking up takes a held E; a tap isn't enough.
   const tapGrab = await g(() => {
     const P = __game.P, w = __game.world; let best = null, bd = 1e9;
-    for (const it of w.items.values()) { if (it.k !== 'f' || !w.active(it) || it.y > 0.01 || it.t === 'rug') continue; const d = Math.hypot(it.x - P.x, it.z - P.z); if (d < bd) { bd = d; best = it; } }
+    for (const it of w.items.values()) { if (it.k !== 'f' || !w.active(it) || it.y > 0.01 || __game.TYPES[it.t].flat || __game.TYPES[it.t].h < 0.5 || (__game.TYPES[it.t].heavy || 0) > 1) continue; const d = Math.hypot(it.x - P.x, it.z - P.z); if (d < bd) { bd = d; best = it; } }
     const a = Math.atan2(P.x - best.x, P.z - best.z); P.x = best.x + Math.sin(a) * 1.5; P.z = best.z + Math.cos(a) * 1.5; P.y = 0;
     P.yaw = a; P.pitch = Math.atan2(best.y + 0.25 - 1.6, 1.5); return best.id;
   });

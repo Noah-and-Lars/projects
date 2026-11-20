@@ -163,14 +163,25 @@ turn that off).
   Carry one at night to see where you're going, or press **F** on one to
   switch it off so it doesn't give you away.
 - **Doors** open and close with **F**. The staff can't open them.
-- **Screens**: five kinds of TV (flat-screen, wall-mounted, curved, box and
-  mini) and arcade cabinets switch on with F. A TV comes on to one of 12
-  channels (a summer field, colour bars, the city at night, a boat at sea, the
-  weather, the news, football, a sunset, an aquarium, mountains, space, a
-  cooking show), and about one in five is already on when you find it. A lit
-  screen glows in the dark. A wall TV stays up when you put it against a wall. Toilets flush, microwaves and toasters ding.
-- **Light strips** glow in six colours (F to switch on and change colour).
-  Strips dropped touching each other link up: change one and they all change.
+- **Screens**: five kinds of TV (flat-screen on a foot, wall-mounted, curved
+  wall-mounted, box, and a monitor-sized mini TV) and arcade cabinets switch on
+  with F. A TV comes on to one of 24 channels (a summer field, colour bars, the
+  city at night, a boat at sea, the weather, the news, football, a sunset, an
+  aquarium, mountains, space, a cooking show, a cat, a quiz show, a racing
+  game, a forest, fireworks, the store's own advert, a test pattern, a rainy
+  street, a desert, a cartoon, a bird, static), and about one in five is
+  already on when you find it. A lit screen glows in the dark. Wall TVs stay up
+  when you put them against a wall.
+- **Lights**: floor lamps, table lamps, warm table lamps, green and purple
+  lamps, industrial, modern, triple and arc lamps, a thin LED light, desk lamps,
+  lanterns, candles, night lights, small and tall work lights, garden lamps,
+  ceiling lamps (hold one up against the ceiling and it hangs there) and wall
+  lights (put one against a wall). Every light switches on and off with F and
+  lights the dark around it. **Colour lights** (the pencil lamp, the mood globe
+  and light strips) step through six colours and then a slow fade through all
+  of them; their light takes their colour. Toilets flush, microwaves and toasters ding.
+- **Light strips** dropped touching each other link up: change one and they
+  all change.
 - **Record players** play a little tune you can hear nearby.
 - **Gift boxes** open (F) into something: usually food, sometimes a first aid
   kit or a head torch. **Foam dice** roll (and tell everyone the number), and

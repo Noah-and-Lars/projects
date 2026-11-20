@@ -26,7 +26,7 @@ function screen(g, x, y, z, w, h, on, game) {
   try { screenPicture(g, x, y, z, w, h, game, on); } finally { g.matOf = prev; }
 }
 // What's on: twelve channels, picked when a screen is switched on.
-export const TV_CHANNELS = 12;
+export const TV_CHANNELS = 24;
 function screenPicture(g, x, y, z, w, h, game, ch = 1) {
   const f = z + 0.0025, d = 0.001, f2 = f + 0.0005;
   const R = (u0, v0, u1, v1, col, k = f2) => g.box(x + w * (u0 + u1) / 2, y + h * (v0 + v1) / 2, k, w * (u1 - u0), h * (v1 - v0), d, col); // u, v in -0.5..0.5
@@ -61,8 +61,32 @@ function screenPicture(g, x, y, z, w, h, game, ch = 1) {
       R(-0.48, -0.47, 0.48, 0.47, 0xb9dcf2, f); R(-0.4, -0.47, 0.1, 0.15, 0x6a7f96); R(0.0, -0.47, 0.46, 0.25, 0x5a6f86); R(-0.22, 0.02, -0.08, 0.15, 0xf6f8fa); R(0.15, 0.1, 0.32, 0.25, 0xf6f8fa); R(-0.48, -0.47, 0.48, -0.32, 0xf2f6f8, f2 + 0.0004); break;
     case 10: // space
       R(-0.48, -0.47, 0.48, 0.47, 0x05061a, f); R(-0.05, -0.25, 0.3, 0.1, 0xd68a4a); R(-0.12, -0.12, 0.37, -0.08, 0xe8c08a, f2 + 0.0004); for (let i = 0; i < 9; i++) R(-0.45 + ((i * 53) % 90) / 100, -0.4 + ((i * 29) % 80) / 100, -0.44 + ((i * 53) % 90) / 100, -0.39 + ((i * 29) % 80) / 100, 0xffffff); break;
-    default: // a cooking show
+    case 11: // a cooking show
       R(-0.48, -0.47, 0.48, 0.47, 0xe8dcc8, f); R(-0.48, -0.47, 0.48, -0.15, 0x8a5a36); R(-0.1, -0.15, 0.1, 0.25, 0xf6f6f2); R(-0.06, 0.25, 0.06, 0.38, 0xf6f6f2); R(0.2, -0.15, 0.34, -0.05, 0x9a9590); R(-0.34, -0.15, -0.2, -0.08, 0xd8322a); break;
+    case 12: // a cat on a sofa
+      R(-0.48, -0.47, 0.48, 0.47, 0xd9c8a8, f); R(-0.48, -0.47, 0.48, -0.1, 0x7a4b8a); R(-0.15, -0.1, 0.15, 0.12, 0xe08a3a); R(-0.1, 0.12, 0.1, 0.28, 0xe08a3a); R(-0.1, 0.28, -0.04, 0.34, 0xe08a3a); R(0.04, 0.28, 0.1, 0.34, 0xe08a3a); R(-0.06, 0.18, -0.03, 0.21, 0x1a1a1a, f2 + 0.0004); R(0.03, 0.18, 0.06, 0.21, 0x1a1a1a, f2 + 0.0004); break;
+    case 13: // a quiz show
+      R(-0.48, -0.47, 0.48, 0.47, 0x3a1a6a, f); for (let i = 0; i < 4; i++) R(-0.42 + (i % 2) * 0.44, -0.4 + Math.floor(i / 2) * 0.22, -0.02 + (i % 2) * 0.44, -0.22 + Math.floor(i / 2) * 0.22, [0xd8322a, 0x2d6fb5, 0xf1c40f, 0x2ab84a][i]); R(-0.42, 0.12, 0.42, 0.4, 0xf2f2f2); break;
+    case 14: // a racing game
+      R(-0.48, 0.0, 0.48, 0.47, 0x7fc4ef, f); R(-0.48, -0.47, 0.48, 0.0, 0x4f9a46, f); R(-0.2, -0.47, 0.2, 0.0, 0x55575c); R(-0.01, -0.45, 0.01, -0.02, 0xf2f2f2); R(-0.08, -0.32, 0.08, -0.2, 0xd8322a); break;
+    case 15: // a forest
+      R(-0.48, -0.47, 0.48, 0.47, 0xa8d8a8, f); for (let i = 0; i < 6; i++) { R(-0.44 + i * 0.16, -0.47, -0.4 + i * 0.16, -0.1, 0x6a4a2a); R(-0.48 + i * 0.16, -0.15 + (i % 2) * 0.08, -0.36 + i * 0.16, 0.25 + (i % 2) * 0.08, 0x2f7a3a); } break;
+    case 16: // fireworks
+      R(-0.48, -0.47, 0.48, 0.47, 0x0a0a22, f); for (const [u, v, c] of [[-0.25, 0.2, 0xff4d6a], [0.2, 0.25, 0x4dd2ff], [0.0, -0.05, 0xffe14d]]) { R(u - 0.08, v - 0.01, u + 0.08, v + 0.01, c); R(u - 0.01, v - 0.08, u + 0.01, v + 0.08, c); R(u - 0.05, v - 0.05, u + 0.05, v + 0.05, c, f2 + 0.0002); } break;
+    case 17: // the store's own advert
+      R(-0.48, -0.47, 0.48, 0.47, 0x2b6cb0, f); R(-0.4, 0.05, 0.4, 0.3, 0xf2f2f2); R(-0.3, -0.3, 0.3, -0.05, 0xffd34d); R(-0.36, 0.1, -0.2, 0.25, 0x2b6cb0, f2 + 0.0004); break;
+    case 18: // a test pattern
+      R(-0.48, -0.47, 0.48, 0.47, 0x9a9a9a, f); R(-0.3, -0.3, 0.3, 0.3, 0x1a1a1a); R(-0.25, -0.25, 0.25, 0.25, 0xf2f2f2, f2 + 0.0004); R(-0.02, -0.25, 0.02, 0.25, 0x1a1a1a, f2 + 0.0008); R(-0.25, -0.02, 0.25, 0.02, 0x1a1a1a, f2 + 0.0008); break;
+    case 19: // a rainy street
+      R(-0.48, -0.47, 0.48, 0.47, 0x5a6878, f); R(-0.48, -0.47, 0.48, -0.25, 0x3a4450); for (let i = 0; i < 10; i++) R(-0.45 + i * 0.1, -0.2 + (i % 3) * 0.2, -0.44 + i * 0.1, -0.08 + (i % 3) * 0.2, 0xb8c8d8); R(0.2, -0.25, 0.3, 0.1, 0xffd27a); break;
+    case 20: // a desert
+      R(-0.48, -0.1, 0.48, 0.47, 0xf2c88a, f); R(-0.48, -0.47, 0.48, -0.1, 0xd8a85a, f); R(0.25, 0.2, 0.35, 0.3, 0xfff2c8); R(-0.3, -0.1, -0.26, 0.15, 0x3f7a3a); R(-0.34, 0.0, -0.3, 0.08, 0x3f7a3a); break;
+    case 21: // a cartoon
+      R(-0.48, -0.47, 0.48, 0.47, 0xf7d64a, f); R(-0.2, -0.3, 0.2, 0.2, 0xff8ac8); R(-0.1, 0.0, -0.04, 0.08, 0x1a1a1a, f2 + 0.0004); R(0.04, 0.0, 0.1, 0.08, 0x1a1a1a, f2 + 0.0004); R(-0.08, -0.15, 0.08, -0.1, 0xd8322a, f2 + 0.0004); break;
+    case 22: // a nature show: a bird
+      R(-0.48, -0.47, 0.48, 0.47, 0x9fd3ef, f); R(-0.48, -0.47, 0.48, -0.3, 0x5d9e4a); R(-0.08, -0.05, 0.08, 0.05, 0x2d6fb5); R(-0.2, 0.0, -0.08, 0.08, 0x2d6fb5); R(0.08, 0.0, 0.2, 0.08, 0x2d6fb5); R(0.08, -0.02, 0.12, 0.02, 0xf1c40f, f2 + 0.0004); break;
+    default: // static
+      R(-0.48, -0.47, 0.48, 0.47, 0x5a5a5a, f); for (let i = 0; i < 18; i++) R(-0.46 + ((i * 41) % 92) / 100, -0.45 + ((i * 67) % 90) / 100, -0.4 + ((i * 41) % 92) / 100, -0.42 + ((i * 67) % 90) / 100, i % 2 ? 0xdcdcdc : 0x2a2a2a); break;
   }
 }
 
@@ -729,7 +753,66 @@ export const TYPES = {
     g.box(0, 1.94, 0, 0.22, 0.28, 0.22, 0xfff2c4); for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.box(sx * 0.11, 1.94, sz * 0.11, 0.025, 0.3, 0.025, c);
     g.cyl(0, 2.08, 0, 0.15, 0.12, c, 4, 0.02);
   } },
-  lightStrip: { m: 'plastic', use: 'strip', name: 'Light Strip', w: 1.2, d: 0.05, h: 0.04, hp: 10, cols: [0xe8e8e8, 0x2f2f33], build(g, c, s) {
+  // ---- more lights ----
+  warmTableLamp: { m: 'plastic', lamp: true, use: 'lamp', glowCol: 0xffa94d, glowK: 0.7, name: 'Warm Table Lamp', w: 0.3, d: 0.3, h: 0.45, hp: 20, cols: [0xe8a85a, 0xd88a4a, 0xc9a07a], build(g, c) {
+    g.cyl(0, 0, 0, 0.1, 0.03, 0x6e4a2f, 12); g.cyl(0, 0.03, 0, 0.06, 0.12, 0x8a6440, 10, 0.03);
+    g.cyl(0, 0.15, 0, 0.03, 0.05, 0xfff4d6, 8); g.cyl(0, 0.2, 0, 0.14, 0.22, c, 12, 0.11);
+  } },
+  colourLamp: { m: 'plastic', lamp: true, use: 'lamp', glowCol: 'shade', name: 'Coloured Lamp', w: 0.3, d: 0.3, h: 0.5, hp: 20, cols: [0x5ad06a, 0xa45ad8], build(g, c) {
+    g.cyl(0, 0, 0, 0.11, 0.025, DARK, 12); g.cyl(0, 0.025, 0, 0.018, 0.2, METAL, 6);
+    g.cyl(0, 0.22, 0, 0.035, 0.05, 0xfff4d6, 8); g.cyl(0, 0.25, 0, 0.15, 0.25, c, 12, 0.1);
+  } },
+  modernLamp: { m: 'metal', lamp: true, use: 'lamp', name: 'Modern Lamp', w: 0.4, d: 0.4, h: 1.5, hp: 30, cols: [0xe8e8e8, 0x2f2f33, 0xd4af37], build(g, c) {
+    g.cyl(0, 0, 0, 0.17, 0.025, c, 16); g.cyl(0, 0.025, 0, 0.012, 1.18, c, 6);
+    // a glowing globe on a thin stem
+    for (let i = 0; i < 6; i++) { const t = (i + 0.5) / 6, r = Math.sin(Math.PI * t) * 0.16; g.cyl(0, 1.2 + i * 0.05, 0, r, 0.05, 0xfff4d6, 14); }
+  } },
+  tripleLamp: { m: 'metal', lamp: true, use: 'lamp', name: 'Triple Lamp', w: 0.6, d: 0.6, h: 1.7, hp: 35, cols: [DARK, 0xe8e8e8, 0x8a6440], build(g, c) {
+    g.cyl(0, 0, 0, 0.2, 0.03, c, 14); g.cyl(0, 0.03, 0, 0.02, 1.2, c, 6);
+    for (const [dx, dz, y] of [[0.22, 0, 1.45], [-0.11, 0.19, 1.3], [-0.11, -0.19, 1.55]]) {
+      g.box(dx / 2, y - 0.04, dz / 2, Math.abs(dx) + 0.02, 0.015, Math.abs(dz) + 0.02, c);
+      g.cyl(dx, y - 0.02, dz, 0.03, 0.05, 0xfff4d6, 8); g.cyl(dx, y, dz, 0.09, 0.14, 0xf2ead8, 10, 0.05);
+    }
+  } },
+  thinLight: { m: 'metal', lamp: true, use: 'lamp', glowCol: 0xe8f0ff, name: 'Thin Light', w: 0.25, d: 0.25, h: 1.6, hp: 25, cols: [0xf2f2f2, 0x2f2f33], build(g, c) {
+    g.box(0, 0.015, 0, 0.25, 0.03, 0.25, c); g.box(0, 0.8, -0.03, 0.05, 1.56, 0.03, c);
+    const prev = g.matOf; g.matOf = () => SURF.glow; g.box(0, 0.85, -0.01, 0.03, 1.4, 0.012, 0xf6f8ff); g.matOf = prev;
+  } },
+  ceilingLamp: { m: 'metal', lamp: true, use: 'lamp', glowY: 0.05, name: 'Ceiling Lamp', w: 0.5, d: 0.5, h: 1.2, hp: 25, cols: [0x2f2f33, 0xe8e8e8, 0xb5523b], build(g, c) {
+    // hangs from its cord: hold it up against the ceiling and it stays there
+    g.cyl(0, 1.17, 0, 0.08, 0.03, c, 10); g.cyl(0, 0.3, 0, 0.006, 0.87, DARK, 4);
+    g.cyl(0, 0.0, 0, 0.24, 0.24, c, 16, 0.07); g.cyl(0, 0.02, 0, 0.06, 0.06, 0xfff4d6, 8);
+  } },
+  wallLight: { m: 'metal', lamp: true, use: 'lamp', glowK: 0.8, name: 'Wall Light', w: 0.25, d: 0.22, h: 0.35, hp: 20, cols: [0xd4af37, 0x2f2f33, 0xe8e8e8], build(g, c) {
+    // a sconce: put it against a wall and it stays there
+    g.box(0, 0.17, -0.1, 0.12, 0.3, 0.02, c); g.box(0, 0.12, -0.04, 0.02, 0.02, 0.12, c);
+    g.cyl(0, 0.13, 0.03, 0.03, 0.04, 0xfff4d6, 8); g.cyl(0, 0.15, 0.03, 0.1, 0.18, 0xf2ead8, 10, 0.06);
+  } },
+  nightLight: { m: 'plastic', lamp: true, use: 'lamp', glowCol: 0x9ad0ff, glowK: 0.35, name: 'Night Light', w: 0.12, d: 0.08, h: 0.14, hp: 10, cols: [0xf2f2f2, 0xffd0e0, 0xd0f0ff], build(g, c) {
+    g.box(0, 0.06, -0.02, 0.1, 0.12, 0.03, c);
+    const prev = g.matOf; g.matOf = () => SURF.glow; g.cyl(0, 0.06, 0.005, 0.035, 0.02, 0xbfe4ff, 10); g.matOf = prev;
+  } },
+  smallWorkLight: { m: 'metal', lamp: true, use: 'lamp', glowCol: 0xf6f8ff, name: 'Small Work Light', w: 0.35, d: 0.3, h: 0.45, hp: 30, cols: [0xf1c40f, 0xe67e22], build(g, c) {
+    g.box(0, 0.015, 0, 0.32, 0.03, 0.26, DARK); g.box(-0.13, 0.15, 0, 0.02, 0.26, 0.02, DARK); g.box(0.13, 0.15, 0, 0.02, 0.26, 0.02, DARK);
+    g.box(0, 0.3, 0, 0.28, 0.22, 0.12, c); g.box(0, 0.3, 0.065, 0.24, 0.18, 0.01, 0xfff8e0);
+  } },
+  pencilLamp: { m: 'plastic', lamp: true, use: 'colour', name: 'Pencil Lamp', w: 0.14, d: 0.14, h: 0.7, hp: 15, cols: [0xf2f2f2], build(g, c, s) {
+    // a pencil-shaped lamp whose body glows in a colour of your choosing (F)
+    g.cyl(0, 0, 0, 0.07, 0.03, DARK, 6);
+    const col = s ? STRIP_COLORS[(s - 1) % STRIP_COLORS.length] : 0xd8d8d8;
+    const prev = g.matOf; if (s) g.matOf = () => SURF.glow;
+    g.cyl(0, 0.03, 0, 0.055, 0.5, col, 6); g.cyl(0, 0.53, 0, 0.055, 0.12, shade(col, 0.95), 6, 0.012);
+    g.matOf = prev; g.cyl(0, 0.53, 0, 0.056, 0.02, 0xd4af37, 6);
+  } },
+  globeLamp: { m: 'plastic', lamp: true, use: 'colour', name: 'Mood Globe', w: 0.3, d: 0.3, h: 0.34, hp: 15, cols: [0xf2f2f2], build(g, c, s) {
+    // a round lamp that glows in a colour of your choosing (F)
+    g.cyl(0, 0, 0, 0.1, 0.03, DARK, 12);
+    const col = s ? STRIP_COLORS[(s - 1) % STRIP_COLORS.length] : 0xe0e0e0;
+    const prev = g.matOf; if (s) g.matOf = () => SURF.glow;
+    for (let i = 0; i < 6; i++) { const t = (i + 0.5) / 6, r = Math.sin(Math.PI * t) * 0.15; g.cyl(0, 0.03 + i * 0.05, 0, r, 0.05, col, 14); }
+    g.matOf = prev;
+  } },
+  lightStrip: { m: 'plastic', lamp: true, glowK: 0.4, use: 'strip', name: 'Light Strip', w: 1.2, d: 0.05, h: 0.04, hp: 10, cols: [0xe8e8e8, 0x2f2f33], build(g, c, s) {
     g.box(0, 0.012, 0, 1.2, 0.024, 0.05, c);
     if (!s) { g.box(0, 0.028, 0, 1.16, 0.012, 0.03, 0x55575c); return; }
     const prev = g.matOf; g.matOf = () => SURF.glow;
@@ -750,23 +833,21 @@ export const TYPES = {
     screen(g, 0, 0.405, 0.0115, 1.24, 0.71, s);
     g.box(0.58, 0.04, 0.012, 0.03, 0.008, 0.002, s ? 0x44ff66 : 0xff4444);
   } },
-  curvedTV: { m: 'plastic', use: 'tv', name: 'Curved TV', w: 1.4, d: 0.35, h: 0.75, hp: 70, cols: [0x1d1f24, 0x3a3c42], build(g, c, s) {
-    g.box(0, 0.015, 0.02, 0.5, 0.03, 0.26, shade(c, 0.85)); g.box(0, 0.1, -0.02, 0.08, 0.16, 0.05, c);
-    // the frame bends towards you at the edges: five panels set back in a gentle curve
+  curvedTV: { m: 'plastic', use: 'tv', name: 'Curved TV', w: 1.4, d: 0.14, h: 0.62, hp: 70, cols: [0x1d1f24, 0x3a3c42], build(g, c, s) {
+    // a curved panel for the wall: the ends bend towards you
     const seg = 5, sw = 1.4 / seg;
     for (let i = 0; i < seg; i++) {
-      const cx = -0.7 + sw * (i + 0.5), off = Math.pow(Math.abs(cx) / 0.7, 2) * 0.035;
-      g.box(cx, 0.46, -0.03 + off, sw + 0.004, 0.56, 0.045, c);
+      const cx = -0.7 + sw * (i + 0.5), off = Math.pow(Math.abs(cx) / 0.7, 2) * 0.06;
+      g.box(cx, 0.31, -0.035 + off, sw + 0.004, 0.6, 0.045, c);
     }
-    screen(g, 0, 0.465, 0.0265, 1.34, 0.5, s);
+    g.box(0, 0.31, -0.065, 0.5, 0.3, 0.02, shade(c, 0.7));
+    screen(g, 0, 0.315, 0.035, 1.34, 0.54, s);
   } },
-  miniTV: { m: 'plastic', use: 'tv', name: 'Mini TV', w: 0.4, d: 0.25, h: 0.35, hp: 35, cols: [0xd8322a, 0xece6d8, 0x2f6fb5, 0x3a3c42], build(g, c, s) {
-    g.box(0, 0.15, -0.01, 0.4, 0.28, 0.23, c); g.box(0, 0.15, 0.1, 0.36, 0.24, 0.02, shade(c, 0.8));
-    screen(g, -0.04, 0.155, 0.111, 0.24, 0.18, s);
-    g.cyl(0.14, 0.2, 0.112, 0.018, 0.01, DARK, 8); g.cyl(0.14, 0.12, 0.112, 0.018, 0.01, DARK, 8);
-    g.box(-0.05, 0.31, -0.02, 0.012, 0.012, 0.012, DARK); g.box(-0.09, 0.33, -0.02, 0.006, 0.06, 0.006, METAL); g.box(-0.01, 0.33, -0.02, 0.006, 0.06, 0.006, METAL);
-    g.box(-0.13, 0.36, -0.02, 0.006, 0.006, 0.006, METAL); g.box(0.03, 0.36, -0.02, 0.006, 0.006, 0.006, METAL);
-    g.box(0, 0.005, 0, 0.3, 0.01, 0.18, DARK);
+  miniTV: { m: 'plastic', use: 'tv', name: 'Mini TV', w: 0.5, d: 0.2, h: 0.42, hp: 35, cols: [0x1d1f24, 0xd8d8d8, 0x2f2f33], build(g, c, s) {
+    // a small screen on a stand, about the size of a computer monitor
+    g.box(0, 0.01, 0, 0.22, 0.02, 0.16, c); g.box(0, 0.08, -0.03, 0.04, 0.12, 0.03, c);
+    g.box(0, 0.27, -0.01, 0.5, 0.3, 0.035, c); screen(g, 0, 0.275, 0.0085, 0.46, 0.26, s);
+    g.box(0.21, 0.13, 0.009, 0.015, 0.006, 0.002, s ? 0x44ff66 : 0xff4444);
   } },
   miniTvStand: { m: 'wood', name: 'Small TV Stand', w: 0.8, d: 0.4, h: 0.45, hp: 60, cols: WOOD, build(g, c) {
     legs4(g, 0.8, 0.4, 0.42, 0.04, c, 0.03); g.box(0, 0.43, 0, 0.8, 0.03, 0.4, c); g.box(0, 0.18, 0, 0.72, 0.02, 0.34, shade(c, 0.88));
@@ -971,11 +1052,11 @@ const geoCache = new Map();
 // state: a piece's switch (item.s): 1 = a door standing open, a TV or arcade
 // machine switched on, a record on the turntable; a light strip's colour
 // (0 = off, 1..6). Other pieces look the same either way.
-export const hasState = (type) => { const u = TYPES[type] && TYPES[type].use; return u === 'door' || u === 'tv' || u === 'strip' || u === 'music'; };
+export const hasState = (type) => { const u = TYPES[type] && TYPES[type].use; return u === 'door' || u === 'tv' || u === 'strip' || u === 'colour' || u === 'music'; };
 export function furnitureGeometry(type, variant, state = 0) {
   // light strips have 7 states (off + 6 colours); everything else is on or off
   const u = TYPES[type] && TYPES[type].use;
-  const st = state && hasState(type) ? (u === 'strip' ? Math.max(0, Math.min(6, state | 0)) : u === 'tv' && !TYPES[type].game ? Math.max(1, Math.min(TV_CHANNELS, state | 0)) : 1) : 0;
+  const st = state && hasState(type) ? (u === 'strip' || u === 'colour' ? Math.max(0, Math.min(6, state | 0)) : u === 'tv' && !TYPES[type].game ? Math.max(1, Math.min(TV_CHANNELS, state | 0)) : 1) : 0;
   const key = type + ':' + variant + ':' + st;
   let g = geoCache.get(key);
   if (!g) {
