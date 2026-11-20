@@ -49,3 +49,22 @@ new_sqlite_classes = ["Clips"]
 # 2026-11-14: every 5 minutes, record players online for the admin console (scheduled() in src/worker.js)
 [triggers]
 crons = ["*/5 * * * *"]
+
+# matching the live Worker (2026-11-20): Workers AI + per-IP rate limits
+[ai]
+binding = "AI"
+
+[[ratelimits]]
+name = "RL_ALL"
+namespace_id = "1701"
+simple = { limit = 1000, period = 60 }
+
+[[ratelimits]]
+name = "RL_WS"
+namespace_id = "1702"
+simple = { limit = 120, period = 60 }
+
+[[ratelimits]]
+name = "RL_ROOT"
+namespace_id = "1703"
+simple = { limit = 30, period = 60 }

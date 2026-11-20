@@ -18,6 +18,7 @@ import { DurableObject } from 'cloudflare:workers';
 const MAX_TOPIC = 200;        // characters
 const MAX_MSG = 64 * 1024;    // bytes per message
 const MAX_SOCKETS = 400;      // per room
+const MAX_SOCKETS_PER_IP = 100;
 const STALE_MS = 90 * 1000;   // a socket that hasn't pinged for this long is gone
 const SWEEP_MS = 5 * 60 * 1000;
 
@@ -25,19 +26,36 @@ const SWEEP_MS = 5 * 60 * 1000;
 // handshake and page code can't forge it, so a downloaded/edited copy (origin null) or a copy re-hosted
 // elsewhere is refused here, on the server, where a cheater can't edit this rule.
 const ALLOWED_ORIGINS = ['https://noah-and-lars.github.io', 'https://thearcade.pages.dev']; // 2026-11-13: the Cloudflare Pages copy shares this server
+// 2026-11-17: per-IP rate limits (Workers rate limiting bindings, counted per Cloudflare location, per minute)
+async function rateLimited(req, env) {
+  const p = new URL(req.url).pathname;
+  const rl = p === '/' ? env.RL_ROOT : (p === '/ws' || p === '/chat/ws' || p === '/acct/ws') ? env.RL_WS : env.RL_ALL;
+  if (!rl) return null;
+  if (env.BOT_KEY && same(req.headers.get('x-bot-key') || '', env.BOT_KEY)) return null;
+  try {
+    const { success } = await rl.limit({ key: req.headers.get('CF-Connecting-IP') || 'unknown' });
+    if (!success) return new Response('too many requests, slow down', { status: 429, headers: { 'retry-after': '60' } });
+  } catch (e) {}
+  return null;
+}
 
 export default {
   // 2026-11-14: every 5 minutes (wrangler.toml [triggers]) the Worker records players online and its own response time,
   // so the admin console's graphs cover all day, not only while someone has it open
   async scheduled(event, env, ctx) { ctx.waitUntil(recordHistory(env)); },
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
+    const limited = await rateLimited(req, env);
+    if (limited) return limited;
     const url = new URL(req.url);
     if (url.pathname.startsWith('/acct/')) return accounts(req, env, url);
     if (url.pathname === '/chat/ws') return chatSocket(req, env, url);
     if (url.pathname === '/notice') return siteNotice(req, env);
     if (url.pathname.startsWith('/kd/')) return krill(req, env, url);
     if (url.pathname.startsWith('/ttt/')) return turnBoard(req, env, url);
+    if (url.pathname.startsWith('/sp/')) return sprout(req, env, url);
     if (url.pathname.startsWith('/clips/')) return clips(req, env, url);
+    if (url.pathname === '/tourn') return tournApi(req, env, url);
+    if (url.pathname === '/ai') return aiChat(req, env, ctx);
     if (url.pathname !== '/ws') return new Response('arcade realtime ok', { headers: { 'content-type': 'text/plain' } });
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected a websocket', { status: 426 });
     const origin = req.headers.get('Origin') || '';
@@ -45,14 +63,16 @@ export default {
     if (origin === MOVED_FROM && Date.now() >= MOVED_AT) return new Response('online play has moved to https://thearcade.pages.dev', { status: 403 }); // the move (2026-11-13)
     const topic = url.searchParams.get('topic') || '';
     if (!topic || topic.length > MAX_TOPIC) return new Response('bad topic', { status: 400 });
-    return env.ROOMS.get(env.ROOMS.idFromName(topic)).fetch(req);
+    const fh = new Headers(req.headers);
+    fh.set('x-arcade-cip', req.headers.get('CF-Connecting-IP') || '');
+    return env.ROOMS.get(env.ROOMS.idFromName(topic)).fetch(new Request(req, { headers: fh }));
   },
 };
 
 // The move (2026-11-13, the owner's request): from 2:30pm Sydney time that day, the old GitHub address gets no online
 // play at all: new connections are refused above, and a socket opened from there before is closed on its next message.
 // The site itself (accounts, saves, chat) keeps working there, so progress can still sync before people move.
-const MOVED_FROM = 'https://noah-and-lars.github.io', MOVED_AT = Date.UTC(2026, 10, 13, 3, 30);
+const MOVED_FROM = 'https://noah-and-lars.github.io', MOVED_AT = Infinity;
 export class Room extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
@@ -68,12 +88,14 @@ export class Room extends DurableObject {
     }
     this.sweep();
     if (this.ctx.getWebSockets().length >= MAX_SOCKETS) return new Response('room full', { status: 503 });
+    const ip = req.headers.get('x-arcade-cip') || req.headers.get('CF-Connecting-IP') || '';
+    if (ip && this.ctx.getWebSockets().filter(s => (s.deserializeAttachment() || {}).ip === ip).length >= MAX_SOCKETS_PER_IP) return new Response('too many connections from your network', { status: 429 });
     const url = new URL(req.url);
     const key = (url.searchParams.get('key') || '').slice(0, 100) || crypto.randomUUID();
     const pair = new WebSocketPair();
     const ws = pair[1];
     this.ctx.acceptWebSocket(ws);
-    ws.serializeAttachment({ key, ref: crypto.randomUUID().slice(0, 8), at: Date.now(), meta: null, old: req.headers.get('Origin') === MOVED_FROM ? 1 : 0 });
+    ws.serializeAttachment({ key, ip, ref: crypto.randomUUID().slice(0, 8), at: Date.now(), meta: null, old: req.headers.get('Origin') === MOVED_FROM ? 1 : 0 });
     ws.send('{"t":"joined"}');
     ws.send(JSON.stringify({ t: 'state', s: this.state() }));
     return new Response(null, { status: 101, webSocket: pair[0] });
@@ -84,6 +106,7 @@ export class Room extends DurableObject {
     if (Date.now() >= MOVED_AT && (ws.deserializeAttachment() || {}).old) { try { ws.close(4001, 'moved'); } catch (e) {} return; }
     let m; try { m = JSON.parse(data); } catch (e) { return; }
     if (m.t === 'b') {
+      if (/chat|say|msg|txt|text/i.test(String(m.e || '')) && chatText(m.p, 0)) return;
       const out = JSON.stringify({ t: 'b', e: String(m.e || ''), p: m.p === undefined ? {} : m.p });
       for (const o of this.ctx.getWebSockets()) if (o !== ws || m.s) try { o.send(out); } catch (e) {}
     } else if (m.t === 'track' || m.t === 'untrack') {
@@ -386,7 +409,7 @@ async function admin(env, body, out, auth) {
    (admin ops noticeget / noticeset / noticeclear). Stored as one value on the '__notice__' object.
    GET /notice -> { n: { id, text, level: 'info'|'warn'|'alert', until, link, linkText, at, by } | null }
    Each Worker instance keeps it for a minute so page views don't each wake the object; account.js keeps it for 2 minutes. */
-let noticeCache = { at: 0, v: null };
+let noticeCache = { at: 0, v: null, de: 0 };
 const NOTICE_LINK = /^(https:\/\/(noah-and-lars\.github\.io|thearcade\.pages\.dev)\/[^\s"'<>]*|[a-z0-9][a-z0-9_\-./?=&#]*)$/i;
 function cleanNotice(b, who) {
   const text = tidy(b.text).slice(0, 280), level = ['info', 'warn', 'alert'].includes(b.level) ? b.level : 'info', now = Date.now();
@@ -398,12 +421,207 @@ async function siteNotice(req, env) {
   const origin = req.headers.get('Origin') || '';
   if (!ACCT_ORIGINS.includes(origin)) return new Response('only available on the official website', { status: 403 });
   if (Date.now() - noticeCache.at > 60000) {
-    const r = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('__notice__')).fetch(new Request('https://acct/noticeget', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: '{}' })).catch(() => null);
+    let de = 0;
+    const r = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName('__notice__')).fetch(new Request('https://acct/noticeget', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-admin': '1' }, body: '{}' })).catch(e => { de = /exceed|limit|quota|free tier/i.test(String((e && e.message) || e)) ? 2 : 1; return null; });
+    if (r && r.status >= 500) { const t = await r.clone().text().catch(() => ''); de = /exceed|limit|quota|free tier/i.test(t) ? 2 : 1; }
     const x = r && r.ok ? await r.json().catch(() => ({})) : {};
-    noticeCache = { at: Date.now(), v: x.n || null };
+    noticeCache = { at: de ? Date.now() - 45000 : Date.now(), v: de ? noticeCache.v : (x.n || null), de };
   }
   const n = noticeCache.v && (!noticeCache.v.until || noticeCache.v.until > Date.now()) ? noticeCache.v : null;
-  return new Response(JSON.stringify({ n }), { headers: { 'content-type': 'application/json', 'Access-Control-Allow-Origin': origin, 'Vary': 'Origin', 'Cache-Control': 'max-age=60' } });
+  return new Response(JSON.stringify(noticeCache.de ? { n, de: noticeCache.de } : { n }), { headers: { 'content-type': 'application/json', 'Access-Control-Allow-Origin': origin, 'Vary': 'Origin', 'Cache-Control': 'max-age=60' } });
+}
+/* AI assistant (2026-11-18, the owner's request): the ✨ side panel (assistant.js) on every page of the site.
+   POST /ai { msgs: [{ r: 'u' | 'a', t }], g: { title, text } | null, p: page } with the account's Bearer token. Guests and
+   local accounts get 401. The answer is a text/event-stream of 'data: {"t": "..."}' lines as the reply is written, then
+   'data: {"done": 1, "m": model key, "use": {..}}', or the same with "blocked": 1 when Llama Guard flags the finished reply (it checks
+   the reply only; assistant.js then swaps the text for a polite refusal and doesn't keep it). Errors are JSON
+   { error: 'auth' | 'limit' | 'resting' | 'bad' | 'failed', t: text to show } ('limit' adds which: 'session' | 'day' and use).
+   POST /ai { usage: 1 } returns { use } without asking anything (assistant.js, when the panel opens).
+   Usage per account (2026-11-18, the owner's request: a lighter model uses less): counted in the neurons its replies
+   really cost, on its Account object (`a.ai` { d: UTC day, u: used today, s: session start, su: used this session }).
+   A session starts with the first message and lasts AI_SESSION_MS (5 hours); limits AI_SESSION a session and
+   AI_USER_DAY a day. Route 'aiuse' (the token check and the up-front charge of the model's `est` are that one request)
+   refuses a model whose `est` doesn't fit what's left; after the reply 'aicharge' corrects it to the real cost (a second
+   request, in waitUntil). `use` = { s, sl, sr: session refill time (0 = no session), d, dl, dr: next 00:00 UTC }.
+   At the measured costs that's about 4 GPT-OSS 120B or 16 GLM 4.7 Flash messages a session (see AI_MODELS). Also about AI_SITE_NEURONS neurons a day for the whole site (the free plan gives 10,000; both reset at
+   00:00 UTC = 11am in Sydney), after which everyone gets AI_RESTING. Each Worker instance keeps a running total from the
+   models' own usage figures and adds it to the Tally object 'ai-budget' every AI_SYNC_N neurons or AI_SYNC_MS (after a
+   reply, never per message), reading back the site total; an instance that hasn't heard for AI_STALE_MS asks first.
+   Only the current game's summary (from games.js, sent by the page) goes in the prompt, never the whole list.
+   Screen pictures (2026-11-19, the owner's request: "the ai can also see the players screen if they allow it"): the page
+   may add `img`, one still screenshot the player chose to send (assistant.js: opt-in, a thumbnail they can drop, never
+   stored), as a JPEG or PNG data URL of at most AI_IMG_BYTES. Only AI_VISION models take it (others get it refused with
+   { error: 'img' }). Before answering, the same model checks the picture alone (AI_IMG_CHECK; there is no picture-capable
+   Llama Guard on Workers AI) and anything but a clear SAFE answers { blocked: 1 } without sending it on. A picture message
+   is charged AI_IMG_EST more up front (the check plus the picture's tokens), then corrected to the real cost as usual.
+   Pictures are never stored or logged. POST /ai { usage: 1 } also answers vision: 1 so the page turns its setting on. */
+// The models players can pick (2026-11-18, the owner's request): every one runs on the free Workers plan (the bigger Kimi
+// K2.6, DeepSeek V4 Pro and GLM 5.3 need the paid plan; Gemma 3 isn't allowed on this account; Nemotron 3 answered with
+// thinking only). The page sends the key as `m`; anything else gets AI_DEFAULT. in/out = neurons per million tokens (the
+// price list, used when a chunk's usage has no neuron figure), est = the average real cost of a message measured
+// 2026-11-18 (system prompt + two earlier exchanges + a question; charged up front, then corrected), x = extra settings (thinking off or 'low': thinking tokens count as
+// output and against AI_MAX_TOKENS; with Gemma 4's on, the thinking ate the whole reply). assistant.js has the same keys.
+const AI_MODELS = {
+  oss120: { id: '@cf/openai/gpt-oss-120b', in: 31818, out: 68182, est: 65, x: { reasoning_effort: 'low' } },
+  llama70: { id: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', in: 26668, out: 204805, est: 44 },
+  qwen27: { id: '@cf/qwen/qwen3.8-27b', in: 40909, out: 290909, est: 69, x: { chat_template_kwargs: { enable_thinking: false } } },
+  gemma4: { id: '@cf/google/gemma-4-26b-a4b-it', in: 9091, out: 27273, est: 23, x: { chat_template_kwargs: { enable_thinking: false } } },
+  mistral: { id: '@cf/mistralai/mistral-small-3.1-24b-instruct', in: 31876, out: 50488, est: 38 },
+  scout: { id: '@cf/meta/llama-4-scout-17b-16e-instruct', in: 24545, out: 77273, est: 38 },
+  oss20: { id: '@cf/openai/gpt-oss-20b', in: 18182, out: 27273, est: 31, x: { reasoning_effort: 'low' } },
+  glm: { id: '@cf/zai-org/glm-4.7-flash', in: 5500, out: 36400, est: 18, x: { chat_template_kwargs: { enable_thinking: false } } },
+  qwen30: { id: '@cf/qwen/qwen3-30b-a3b-fp8', in: 4625, out: 30475, est: 19, x: { chat_template_kwargs: { enable_thinking: false } } },
+  llama8: { id: '@cf/meta/llama-3.1-8b-instruct-fp8-fast', in: 4119, out: 34868, est: 20 },
+};
+const AI_DEFAULT = 'oss120', AI_GUARD = '@cf/meta/llama-guard-3-8b';
+// per account, in neurons (messages a session / a day at each model's est: glm 16/50, qwen30 15/47, llama8 15/45,
+// gemma4 13/39, oss20 9/29, scout and mistral 7/23, llama70 6/20, oss120 4/13, qwen27 4/13)
+const AI_SESSION = 300, AI_SESSION_MS = 5 * 3600e3, AI_USER_DAY = 900;
+const AI_SITE_NEURONS = 9000, AI_SYNC_N = 150, AI_SYNC_MS = 60000, AI_STALE_MS = 5 * 60000;
+const AI_HIST = 8, AI_MSG_LEN = 500, AI_GAME_LEN = 700, AI_MAX_TOKENS = 700;
+// screen pictures: models that can see them (Llama 4 Scout is the one Workers AI marks as vision; Mistral Small 3.1's schema
+// takes images too but isn't marked, so it isn't used), the biggest picture, and the extra up-front charge
+const AI_VISION = new Set(['scout']), AI_IMG_BYTES = 200000, AI_IMG_EST = 60;
+const AI_IMG_CHECK = `You check pictures for a website of games for kids. Look only at the picture. Reply with exactly one word.
+Reply UNSAFE if it shows any of: nudity or sexual content; graphic violence, blood, gore or injury; self-harm; hate symbols or hateful text; drugs or weapons used to hurt real people; or someone's private details (a home address, phone number, email address, password or similar written out).
+Otherwise reply SAFE. Cartoon or video game action (shooting, explosions, cars crashing) is SAFE.`;
+const AI_RESTING = "Assistant's resting until 11am";
+const AI_PAGES = { home: 'the Games page (the list of every game)', play: 'a game', chat: 'the Global chat', players: 'the Players page (friends and private messages)', social: 'Social (players share game clips and photos)', support: 'the Support page (bug reports, feature ideas, tester and developer applications)', tourney: 'Tournaments' };
+const AI_SYSTEM = `You are the Arcade Assistant, the helper on The Arcade, a free website of browser games. Many players are kids, so be friendly, kind and clear, and keep everything suitable for children.
+You can talk about anything a kid might ask: school work and homework (explain it so they learn, rather than just giving answers), science, maths, history, animals, space, sport, writing, jokes, riddles, ideas and fun facts, as well as The Arcade itself: its games (how to play, controls, tips, modes, online play), the Games list, Global chat, Players (friends and private messages), Social (sharing game clips), Tournaments, Support (bug reports and feature ideas) and Arcade accounts, which save progress to the cloud and are needed for online play.
+Keep answers fairly short: a few sentences or a short list, under 180 words, unless they ask for more detail. Write plain text with no markdown: no asterisks, bold or headings; for a list, start each line with a dash or a number.
+Never say the name of anyone who made, runs or plays on The Arcade. Never ask for or repeat personal details (real names, age, address, school, phone, passwords). Kindly refuse anything violent, sexual, hateful, dangerous or otherwise not right for kids, and anything meant to cheat, hack or hurt someone. If someone seems upset or unsafe, gently tell them to talk to a trusted adult.
+Don't make up games, features or controls of The Arcade. If you aren't sure about something, say so. Don't write links.
+Sometimes the player sends a screenshot of their screen. Describe and help with what you see (the game, the menu, the problem). Never read out names, usernames, messages, addresses or other personal details that appear in it.`;
+let aiSite = { d: '', used: 0, pend: 0, at: 0 }; // this Worker instance's view of today's site-wide neurons
+const aiDay = () => new Date().toISOString().slice(0, 10);
+const aiFresh = () => { if (aiSite.d !== aiDay()) aiSite = { d: aiDay(), used: 0, pend: 0, at: 0 }; };
+const aiSpend = n => { aiFresh(); aiSite.used += n; aiSite.pend += n; };
+async function aiSync(env) {
+  aiFresh();
+  const d = aiSite.d, n = aiSite.pend; aiSite.pend = 0;
+  try {
+    const r = await env.TALLY.get(env.TALLY.idFromName('ai-budget')).fetch(new Request('https://tally/ai-add', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ d, n: Math.round(n * 100) / 100 }) }));
+    const x = await r.json();
+    if (aiSite.d === d && r.ok) { aiSite.used = (+x.used || 0) + aiSite.pend; aiSite.at = Date.now(); }
+    else if (aiSite.d === d) aiSite.pend += n;
+  } catch (e) { if (aiSite.d === d) aiSite.pend += n; }
+}
+const aiNeurons = (u, inPerM, outPerM) => u ? (+u.neurons || ((+u.prompt_tokens || 0) * inPerM + (+u.completion_tokens || 0) * outPerM) / 1e6) : 0;
+// a screenshot from the page: a JPEG or PNG data URL whose bytes really are one, at most AI_IMG_BYTES; '' if not
+function aiImage(v) {
+  if (typeof v !== 'string' || v.length > AI_IMG_BYTES * 1.4 + 40) return '';
+  const m = /^data:image\/(jpeg|png);base64,([A-Za-z0-9+/]+={0,2})$/.exec(v); if (!m) return '';
+  let bin; try { bin = atob(m[2].slice(0, 16)); } catch (e) { return ''; }
+  const size = Math.floor(m[2].length * 3 / 4) - (m[2].endsWith('==') ? 2 : m[2].endsWith('=') ? 1 : 0);
+  if (size < 100 || size > AI_IMG_BYTES) return '';
+  const c = i => bin.charCodeAt(i);
+  const isJpeg = c(0) === 0xFF && c(1) === 0xD8 && c(2) === 0xFF, isPng = c(0) === 0x89 && c(1) === 0x50 && c(2) === 0x4E && c(3) === 0x47;
+  return (m[1] === 'jpeg' ? isJpeg : isPng) ? v : '';
+}
+async function aiChat(req, env, ctx) {
+  const origin = req.headers.get('Origin') || '';
+  if (!ACCT_ORIGINS.includes(origin)) return new Response('only available on the official website', { status: 403 });
+  const cors = { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'content-type, authorization', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Max-Age': '86400', 'Vary': 'Origin' };
+  const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-store' } });
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+  if (req.method !== 'POST' || +(req.headers.get('content-length') || 0) > 16000 + AI_IMG_BYTES * 1.4) return out({ error: 'bad' }, 400);
+  const auth = req.headers.get('Authorization') || '', nm = auth.replace(/^Bearer\s+/i, '').split('.')[0] || '';
+  if (!NAME_RE.test(nm)) return out({ error: 'auth', t: 'Sign in to use the assistant' }, 401);
+  if (!env.AI) return out({ error: 'failed', t: 'The assistant isn\'t switched on yet.' }, 503);
+  let b; try { b = await req.json(); } catch (e) { return out({ error: 'bad' }, 400); }
+  if (!b || typeof b !== 'object') return out({ error: 'bad' }, 400);
+  const acct = (route, o) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName('u:' + nm.toLowerCase())).fetch(new Request('https://acct/' + route, { method: 'POST', headers: { authorization: auth, 'content-type': 'application/json' }, body: JSON.stringify(o) }));
+  if (b.usage) {
+    const r = await acct('aiusage', {}).catch(() => null), x = r ? await r.json().catch(() => ({})) : {};
+    return r && r.ok && x.use ? out({ use: x.use, vision: 1 }) : out({ error: 'auth', t: 'Sign in to use the assistant' }, 401);
+  }
+  const msgs = (Array.isArray(b.msgs) ? b.msgs : []).slice(-AI_HIST).map(m => ({ role: m && m.r === 'a' ? 'assistant' : 'user', content: plain(m && m.t).slice(0, AI_MSG_LEN) })).filter(m => m.content);
+  while (msgs.length && msgs[0].role !== 'user') msgs.shift();
+  if (!msgs.length || msgs[msgs.length - 1].role !== 'user') return out({ error: 'bad' }, 400);
+  // the site's budget first, so a resting assistant doesn't use up anyone's messages
+  aiFresh();
+  if (Date.now() - aiSite.at > AI_STALE_MS) await aiSync(env);
+  if (aiSite.used >= AI_SITE_NEURONS) return out({ error: 'resting', t: AI_RESTING }, 503);
+  const mk = Object.prototype.hasOwnProperty.call(AI_MODELS, b.m) ? b.m : AI_DEFAULT, M = AI_MODELS[mk];
+  let img = '';
+  if (b.img != null) {
+    img = aiImage(b.img);
+    if (!img) return out({ error: 'img', t: 'That picture couldn\'t be used. Try taking it again.' }, 400);
+    if (!AI_VISION.has(mk)) return out({ error: 'img', t: 'Pictures need Llama 4 Scout. Pick it in the Model menu.' }, 400);
+  }
+  const est = M.est + (img ? AI_IMG_EST : 0);
+  const r = await acct('aiuse', { est }).catch(() => null);
+  const who = r ? await r.json().catch(() => ({})) : {};
+  if (r && r.status === 429) return out({ error: 'limit', which: who.which, use: who.use, t: who.which === 'day' ? 'You\'ve used today\'s allowance. More at 11am!' : 'You\'ve used this session\'s allowance. It refills in a few hours.' }, 429);
+  if (!r || !r.ok || !who.name) return out({ error: 'auth', t: 'Sign in to use the assistant' }, 401);
+  const g = b.g && typeof b.g === 'object' ? b.g : null, gt = g ? plain(g.title).slice(0, 60) : '', gx = g ? plain(g.text).slice(0, AI_GAME_LEN) : '';
+  const where = gt ? 'The player is playing ' + gt + ' on The Arcade. About this game (from the site): ' + gx : 'The player is on ' + (AI_PAGES[b.p] || 'The Arcade') + '.';
+  aiSpend(est); // corrected to the real figure when the reply ends (a reply cut short keeps this guess)
+  let pre = 0; // neurons spent before the reply (the picture check)
+  if (img) {
+    let ok = false;
+    try {
+      const cr = await env.AI.run(M.id, { messages: [{ role: 'system', content: AI_IMG_CHECK }, { role: 'user', content: [{ type: 'text', text: 'Is this picture SAFE or UNSAFE?' }, { type: 'image_url', image_url: { url: img } }] }], max_tokens: 5, temperature: 0 });
+      pre = aiNeurons(cr && cr.usage, M.in, M.out) || 800 * M.in / 1e6;
+      const v = String((cr && (cr.response ?? (cr.choices && cr.choices[0] && cr.choices[0].message && cr.choices[0].message.content))) || '').trim().toUpperCase();
+      ok = /^SAFE\b/.test(v);
+    } catch (e) { ok = false; }
+    if (!ok) { // refused: charge what the check really cost and say so the way a blocked reply does
+      const fix = Math.round((pre - est) * 10) / 10;
+      const c = acct('aicharge', { n: fix }).catch(() => null); if (ctx && ctx.waitUntil) ctx.waitUntil(c); else await c;
+      aiSpend(pre - est);
+      const use = who.use ? { ...who.use, s: Math.max(0, who.use.s + fix), d: Math.max(0, who.use.d + fix) } : null;
+      return new Response('data: ' + JSON.stringify({ done: 1, blocked: 1, img: 1, m: mk, use }) + '\n\n', { headers: { ...cors, 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-store' } });
+    }
+    const last = msgs[msgs.length - 1];
+    last.content = [{ type: 'text', text: last.content }, { type: 'image_url', image_url: { url: img } }];
+  }
+  const messages = [{ role: 'system', content: AI_SYSTEM + '\n\n' + where }, ...msgs];
+  let stream;
+  try { stream = await env.AI.run(M.id, { messages, stream: true, max_tokens: AI_MAX_TOKENS, temperature: 0.6, ...(M.x || {}) }); }
+  catch (e) {
+    if (/allocation|quota|exceed|4006/i.test(String((e && e.message) || e))) { aiSite.used = Math.max(aiSite.used, AI_SITE_NEURONS); return out({ error: 'resting', t: AI_RESTING }, 503); }
+    return out({ error: 'failed', t: 'The assistant had a hiccup. Try again in a moment.' }, 502);
+  }
+  const enc = new TextEncoder(), dec = new TextDecoder();
+  let buf = '', text = '', used = 0;
+  const send = (ctl, o) => ctl.enqueue(enc.encode('data: ' + JSON.stringify(o) + '\n\n'));
+  const ts = new TransformStream({
+    transform(chunk, ctl) {
+      buf += dec.decode(chunk, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!line.startsWith('data:')) continue;
+        const d = line.slice(5).trim(); if (!d || d === '[DONE]') continue;
+        let x; try { x = JSON.parse(d); } catch (e) { continue; }
+        // GPT-OSS (like Gemma) streams OpenAI-style chunks, each with its own usage (summed); older models sent { response } and one usage
+        if (x.usage) used = x.choices ? used + aiNeurons(x.usage, M.in, M.out) : aiNeurons(x.usage, M.in, M.out);
+        const piece = typeof x.response === 'string' ? x.response : x.choices && x.choices[0] && x.choices[0].delta && x.choices[0].delta.content;
+        if (typeof piece === 'string' && piece) { text += piece; send(ctl, { t: piece }); }
+      }
+    },
+    async flush(ctl) {
+      if (!used) used = ((img ? JSON.stringify(messages).length - img.length + 3000 : JSON.stringify(messages).length) / 4 * M.in + text.length / 4 * M.out) / 1e6;
+      used += pre;
+      let blocked = 0;
+      if (text.trim()) {
+        try { // Llama Guard reads the reply only (with a placeholder question), not the conversation
+          const gr = await env.AI.run(AI_GUARD, { messages: [{ role: 'user', content: 'A question.' }, { role: 'assistant', content: text }], max_tokens: 10 });
+          used += aiNeurons(gr && gr.usage, 44003, 2730) || (text.length / 4 + 200) * 44003 / 1e6;
+          const v = gr && gr.response;
+          blocked = (typeof v === 'string' ? /unsafe/i.test(v) : !!(v && v.safe === false)) ? 1 : 0;
+        } catch (e) { blocked = 1; }
+      }
+      const fix = Math.round((used - est) * 10) / 10, use = who.use ? { ...who.use, s: Math.max(0, who.use.s + fix), d: Math.max(0, who.use.d + fix) } : null;
+      send(ctl, blocked ? { done: 1, blocked: 1, m: mk, use } : { done: 1, m: mk, use });
+      if (fix) { const c = acct('aicharge', { n: fix }).catch(() => null); if (ctx && ctx.waitUntil) ctx.waitUntil(c); else await c; }
+      aiSpend(used - est);
+      if (aiSite.pend >= AI_SYNC_N || Date.now() - aiSite.at > AI_SYNC_MS) { if (ctx && ctx.waitUntil) ctx.waitUntil(aiSync(env)); else await aiSync(env); }
+    },
+  });
+  return new Response(stream.pipeThrough(ts), { headers: { ...cors, 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-store' } });
 }
 /* Player history (2026-11-14): one point every 5 minutes { t, v: players online, g: { game: players }, s: sockets, ms: how long
    the room took to answer } (or { t, err: 1 } if it didn't), kept on the '__history__' object as one array per UTC day
@@ -486,6 +704,24 @@ export class Account extends DurableObject {
     // accounts made before the Players list (2026-11-06) join it the next time they're used
     if (!a.listed) { const r = await dirCall(this.env, 'add', { n: a.name, c: a.created }); if (r.ok) { a.listed = 1; await S.put('acct', a); } }
     if (route === 'whoami') return j({ name: a.name });
+    if (route === 'aiuse' || route === 'aicharge' || route === 'aiusage') { // the AI assistant's usage (aiChat); only the Worker can call these
+      const d = new Date(now).toISOString().slice(0, 10), u = a.ai && a.ai.d === d && 'u' in a.ai ? a.ai : { d, u: 0, s: 0, su: 0 };
+      if (u.s && now - u.s >= AI_SESSION_MS) { u.s = 0; u.su = 0; }
+      const use = () => ({ s: Math.round(u.su * 10) / 10, sl: AI_SESSION, sr: u.s ? u.s + AI_SESSION_MS : 0, d: Math.round(u.u * 10) / 10, dl: AI_USER_DAY, dr: Date.parse(d) + 864e5 });
+      if (route === 'aiusage') return j({ name: a.name, use: use() });
+      if (route === 'aicharge') { // the real cost minus the estimate already charged
+        const n = Math.min(400, Math.max(-200, +(body && body.n) || 0));
+        if (u.s) u.su = Math.max(0, u.su + n);
+        u.u = Math.max(0, u.u + n); a.ai = u; await S.put('acct', a);
+        return j({ use: use() });
+      }
+      const est = Math.min(200, Math.max(1, +(body && body.est) || 50));
+      if (u.su + est > AI_SESSION) return j({ error: 'limit', which: 'session', use: use() }, 429);
+      if (u.u + est > AI_USER_DAY) return j({ error: 'limit', which: 'day', use: use() }, 429);
+      if (!u.s) u.s = now;
+      u.su += est; u.u += est; a.ai = u; await S.put('acct', a);
+      return j({ name: a.name, use: use() });
+    }
     if (route === 'ws' && req.headers.get('Upgrade') === 'websocket') {
       const pair = new WebSocketPair();
       this.ctx.acceptWebSocket(pair[1]);
@@ -680,6 +916,14 @@ export class Account extends DurableObject {
   async webSocketMessage() {}
   async webSocketClose(ws, code) { try { ws.close(code === 1005 || code === 1006 ? 1000 : code, 'bye'); } catch (e) {} }
   async webSocketError(ws) { this.webSocketClose(ws, 1011); }
+  /* read receipts (2026-11-15): opening a chat tells the others when you read it (once per new message from them);
+     they keep it as c.rd = { lower name: time } and their open pages get { t: 'seen', k, n, ts } */
+  async sendSeen(s, c, names, b, now) {
+    if (!c.ts || (c.seen || 0) >= c.ts || c.me) return;
+    c.seen = now;
+    await this.ctx.storage.put('soc', s);
+    await Promise.all(names.slice(0, GROUP_MAX).map(n => peerCall(this.env, n, 'p-seen', b).catch(() => null)));
+  }
   async addMsg(s, k, n, m, mine) {
     const S = this.ctx.storage, c = s.c[k] || (s.c[k] = { n, seq: 0, un: 0 });
     c.n = n; c.seq = (c.seq || 0) + 1; c.ts = m.ts; c.t = m.t.slice(0, 80); c.me = mine ? 1 : 0; c.by = m.by || '';
@@ -699,7 +943,11 @@ export class Account extends DurableObject {
   // the signed-in player's own requests
   async social(route, req, url, body, a, j, now) {
     const S = this.ctx.storage, s = await this.soc(), me = a.name.toLowerCase();
-    if (route === 'social') return j({ name: a.name, f: s.f, c: s.c, b: s.b });
+    if (route === 'social') {
+      const c = {};
+      for (const x in s.c) c[x] = chatBanned(s.c[x].t) ? Object.assign({}, s.c[x], { t: '' }) : s.c[x];
+      return j({ name: a.name, f: s.f, c, b: s.b });
+    }
     if (route === 'profile') { // the player's best in each game, worked out by their browser from the saves (games.js stat())
       const st = body && body.s, clean = {};
       if (!st || typeof st !== 'object') return j({ error: 'bad' }, 400);
@@ -743,11 +991,13 @@ export class Account extends DurableObject {
       if (before > 0) opt.end = 'm:' + k + ':' + pad(before);
       const list = [...(await S.list(opt)).values()].reverse(), c = s.c[k];
       if (c && c.un) { c.un = 0; await S.put('soc', s); this.push({ t: 'read', k }); }
-      return j({ n: (c && c.n) || (s.f[k] && s.f[k].n) || other, msgs: list, more: list.length === 50 });
+      if (c) await this.sendSeen(s, c, [other], { from: a.name }, now);
+      return j({ n: (c && c.n) || (s.f[k] && s.f[k].n) || other, msgs: list.filter(m => !chatBanned(m.t)), more: list.length === 50, rd: (c && c.rd) || {} });
     }
     if (route === 'dm' && req.method === 'POST') {
       const t = plain(body.text).slice(0, DM_LEN);
       if (!t) return j({ error: 'bad' }, 400);
+      if (chatBanned(t)) return j({ error: 'banned_link' }, 403);
       if (s.b[k]) return j({ error: 'you_blocked' }, 403);
       this.sent = (this.sent || []).filter(x => now - x < 10000);
       if (this.sent.length >= 8) return j({ error: 'slow' }, 429);
@@ -793,7 +1043,7 @@ export class Account extends DurableObject {
   async group(req, url, body, a, j, now) {
     const S = this.ctx.storage, s = await this.soc(), me = a.name;
     const gid = String((body && body.id) || url.searchParams.get('id') || ''), k = 'g~' + gid, c = s.c[k];
-    const gname = v => plain(v).slice(0, 40);
+    const gname = v => { const n = plain(v).slice(0, 40); return chatBanned(n) ? '' : n; };
     const tell = (names, b) => Promise.all(names.map(n => peerCall(this.env, n, b.op ? 'p-grp' : 'p-gmsg', Object.assign({ from: me, id: gid }, b)).then(r => ({ n, r }), () => ({ n, r: { status: 0 } }))));
     if (req.method === 'GET') {
       if (!c || !c.g) return j({ error: 'not_found' }, 404);
@@ -801,7 +1051,8 @@ export class Account extends DurableObject {
       if (before > 0) opt.end = 'm:' + k + ':' + pad(before);
       const list = [...(await S.list(opt)).values()].reverse();
       if (c.un) { c.un = 0; await S.put('soc', s); this.push({ t: 'read', k }); }
-      return j({ n: c.n, mem: c.mem, own: c.own, msgs: list, more: list.length === 50 });
+      await this.sendSeen(s, c, c.mem.filter(n => n.toLowerCase() !== me.toLowerCase()), { from: me, id: gid }, now);
+      return j({ n: c.n, mem: c.mem, own: c.own, msgs: list.filter(m => !chatBanned(m.t)), more: list.length === 50, rd: c.rd || {} });
     }
     if (!body || typeof body !== 'object') return j({ error: 'bad' }, 400);
     const names = v => [...new Map((Array.isArray(v) ? v : []).map(String).filter(n => NAME_RE.test(n) && n.toLowerCase() !== me.toLowerCase()).map(n => [n.toLowerCase(), n])).values()];
@@ -842,6 +1093,7 @@ export class Account extends DurableObject {
     if (body.op === 'say') {
       const t = plain(body.text).slice(0, DM_LEN);
       if (!t) return j({ error: 'bad' }, 400);
+      if (chatBanned(t)) return j({ error: 'banned_link' }, 403);
       this.sent = (this.sent || []).filter(x => now - x < 10000);
       if (this.sent.length >= 8) return j({ error: 'slow' }, 429);
       this.sent.push(now);
@@ -911,6 +1163,8 @@ export class Account extends DurableObject {
       if (s.b[k]) return j({ ok: true, n: a.name });
       const m = { id: String(body.id || '').slice(0, 16), t: plain(body.t).slice(0, DM_LEN), ts: +body.ts || now };
       if (!m.t) return j({ error: 'bad' }, 400);
+      if (chatBanned(m.t)) return j({ error: 'banned_link' }, 403);
+      (s.c[k] = s.c[k] || { n: from, seq: 0, un: 0 }).rd = Object.assign(s.c[k].rd || {}, { [k]: now }); // a message from them means they've read yours
       const rec = await this.addMsg(s, k, from, m, false);
       this.push({ t: 'dm', k, n: from, m: rec });
       return j({ ok: true, n: a.name });
@@ -938,12 +1192,22 @@ export class Account extends DurableObject {
       this.push({ t: 'grp', k: gk, c, by: from, fresh: !cur });
       return j({ ok: 1, n: a.name });
     }
+    if (route === 'p-seen') { // they opened your chat (or a group you're both in) after your last message
+      const ck = body.id ? 'g~' + String(body.id).replace(/[^0-9a-f]/g, '').slice(0, 16) : k, c = s.c[ck];
+      if (!c || (c.g && !c.mem.some(n => n.toLowerCase() === k)) || s.b[k]) return j({ ok: 0 });
+      c.rd = c.rd || {}; c.rd[k] = now;
+      await S.put('soc', s);
+      this.push({ t: 'seen', k: ck, n: from, ts: now });
+      return j({ ok: 1 });
+    }
     if (route === 'p-gmsg') { // a message in a group you're in
       const gk = 'g~' + String(body.id || '').replace(/[^0-9a-f]/g, '').slice(0, 16), c = s.c[gk], m0 = body.m || {};
       if (!c || !c.mem.some(n => n.toLowerCase() === k)) return j({ ok: 0 });
       if (s.b[k]) return j({ ok: 1 });
       const m = { id: String(m0.id || '').slice(0, 16), t: plain(m0.t).slice(0, DM_LEN), ts: +m0.ts || now, by: from };
       if (!m.t) return j({ error: 'bad' }, 400);
+      if (chatBanned(m.t)) return j({ error: 'banned_link' }, 403);
+      c.rd = Object.assign(c.rd || {}, { [k]: now });
       const rec = await this.addMsg(s, gk, c.n, m, false);
       this.push({ t: 'gm', k: gk, n: c.n, m: rec });
       return j({ ok: 1 });
@@ -982,7 +1246,12 @@ export class Account extends DurableObject {
      old object passes old tokens on, and the live sockets are told { t: 'renamed', name } before they close. */
   async renameTo(a, body, j, now, byAdmin) {
     // anyone can change their name (2026-11-11), once a week; a forced change (or the owner's) is always allowed
-    if (!byAdmin && !mustRename(a) && a.renamedAt && now - a.renamedAt < 7 * 864e5) return j({ error: 'slow', wait: Math.ceil((a.renamedAt + 7 * 864e5 - now) / 864e5) }, 429);
+    // username changes: 3 in any 24 hours and 10 minutes apart (a.rn = the times of the last ones; it was once a week)
+    const rn = (a.rn || (a.renamedAt ? [a.renamedAt] : [])).filter(t => now - t < 864e5);
+    if (!byAdmin && !mustRename(a)) {
+      const until = rn.length >= 3 ? rn[rn.length - 3] + 864e5 : rn.length && now - rn[rn.length - 1] < 600000 ? rn[rn.length - 1] + 600000 : 0;
+      if (until > now) return j({ error: 'slow', mins: Math.ceil((until - now) / 60000), day: rn.length >= 3 ? 1 : 0, wait: Math.ceil((until - now) / 864e5) }, 429);
+    }
     const nn = String(body.name || ''), p = nameProblem(nn);
     if (p) return j({ error: p }, 400);
     if (nn.toLowerCase() === a.name.toLowerCase()) return j({ error: 'taken' }, 409);
@@ -994,6 +1263,7 @@ export class Account extends DurableObject {
     if (!a.kn) a.kn = old.toLowerCase(); // the password key was stretched with the old name: keep using it until the password changes
     logEv(a, 'rename', { from: old, to: nn, by: byAdmin ? (body.by || 'admin') : '' });
     a.name = nn; a.listed = 1; a.renamedAt = now;
+    a.rn = byAdmin ? rn : rn.concat(now);
     const token = byAdmin ? '' : await this.session(a); // an admin's rename adds no session (the player's own carry over)
     if (await move({ e: [['acct', a]], end: 1 }) !== 200) return j({ error: 'failed' }, 502);
     // the Players list, with the scores carried over
@@ -1218,8 +1488,32 @@ function chatSocket(req, env, url) {
 const CHAT_KEEP = 150, CHAT_LEN = 200, CHAT_MAX = 1000, CHAT_HIST = 300; // CHAT_HIST: each account's own kept messages
 // links the owner banned from the Global chat (2026-11-13: another games site). Checked with spaces, dots and
 // look-alike characters taken out, so 'playforge-3pb . pages . dev' or 'p l a y f o r g e' is caught too.
-const CHAT_BANNED = ['playforge'];
-const chatBanned = t => { const s = String(t || '').toLowerCase().normalize('NFKD').replace(/[0]/g, 'o').replace(/[1!|]/g, 'l').replace(/[^a-z]/g, ''); return CHAT_BANNED.some(w => s.includes(w)); };
+const CHAT_BANNED = ['playforge', 'thearcumpages', 'pagesdev', 'workersdev', 'githubio', 'discordgg', 'vercelapp', 'netlifyapp', 'dotcom', 'bitly', 'tinyurl', 'glitchme', 'replit', 'http'];
+// No links at all in the chats, DMs, groups, comments and captions: anything that looks like an address is refused
+const LINK_TLD = 'com|net|org|io|dev|app|gg|xyz|tv|ly|uk|ru|cn|de|fr|cc|tk|gl|html?|php|pages|vercel|netlify|github|onion';
+const LINK_RES = [
+  /:\s*\/\s*\//,
+  /\bwww\s*\./,
+  /\b(https?|ftp)\b/,
+  /[a-z0-9]\.[a-z]{2,}/, // name.anything
+  new RegExp('[a-z0-9]\\s*(\\s\\.|\\.\\s|[(\\[{<]\\s*(\\.|dot)\\s*[)\\]}>]|\\bdot\\b)\\s*(' + LINK_TLD + ')\\b'), // name . com, name(dot)com, name dot com
+  /[a-z0-9],(com|net|org|io|dev|app|gg|xyz)\b/, // name,com
+  /\b\d{1,3}(\s*\.\s*\d{1,3}){3}\b/, // IP addresses
+  /\b(gg|ly|io|com|dev|app)\s*\/\s*[a-z0-9]/ // discord.gg/ style tails
+];
+const chatFold = t => String(t || '').normalize('NFKD').replace(/[̀-ͯ​-‏⁠﻿]/g, '').toLowerCase().replace(/[。｡．․‧·•・܁܂]/g, '.').replace(/[⁄∕／]/g, '/');
+// game chats on the rooms server: any string in a chat-like broadcast's payload (3 levels deep)
+const chatText = (p, d) => typeof p === 'string' ? chatBanned(p) : !!p && typeof p === 'object' && d < 3 && Object.keys(p).slice(0, 20).some(k => chatText(p[k], d + 1));
+const chatBanned = t => {
+  const f = chatFold(t), g = f.split(/\s+/).reduce((o, w, i, a) => o + (i && w.length === 1 && a[i - 1].length === 1 ? '' : ' ') + w, '');
+  if (LINK_RES.some(r => r.test(f) || r.test(g))) return true;
+  const l = f.replace(/[4@]/g, 'a').replace(/3/g, 'e').replace(/7|\+/g, 't').replace(/0/g, 'o').replace(/[1!|]/g, 'l').replace(/[(¢]/g, 'c');
+  const all = l.replace(/[^a-z]/g, '');
+  if (CHAT_BANNED.some(w => all.includes(w))) return true;
+  if (/thearc(?!ade|ane|h|tic)/.test(all)) return true;
+  const words = l.replace(/\b([a-z])[^a-z]+(?=[a-z]\b)/g, '$1').split(/[^a-z]+/);
+  return words.some(w => /^arc(?!ade|ane|h|tic|ing)/.test(w));
+};
 // One room's chat. The newest CHAT_KEEP messages are one stored value ('log'), so waking up costs one read and
 // each message one write. Everyone connected is the "In the chat" list.
 export class Chat extends DurableObject {
@@ -1283,6 +1577,7 @@ export class Chat extends DurableObject {
     if (m.t !== 'say') return;
     a.sent = (a.sent || []).filter(x => now - x < 10000);
     const k = String(m.k || '').slice(0, 20);
+    if (!a.a) { try { ws.send(JSON.stringify({ t: 'guest', k })); } catch (e) {} return; } // only online accounts can write in the Global chat
     if (a.sent.length >= 5) { try { ws.send(JSON.stringify({ t: 'slow', k })); } catch (e) {} return; }
     const text = plain(m.text).slice(0, CHAT_LEN);
     if (!text) return;
@@ -1338,6 +1633,148 @@ export class Chat extends DurableObject {
 // page. The list [[name, created, hasScores, lastSeen], ...] is kept in memory and stored as a few big values ('L:0', 'L:1',
 // ...), so reading it costs a handful of rows; each player's scores are their own value ('u:<lower>').
 const DIR_CHUNK = 100000;
+/* Tournaments (2026-11-18): kept on the server, so everyone sees them and they run without the host's page open.
+   GET /tourn = every open, live and recently finished tournament (summaries); GET /tourn?id=X = one in full.
+   POST /tourn {op, ...} with the player's Bearer token (online accounts only; local accounts can't host or join):
+   create {t, g, at, cap, play} · join · leave · here (I'm on the page) · start · later {at} · cancel · win {mid, w}
+   (host or admin) · result {mid, code, res} (a player in that match). Everything lives in one object
+   (DIR '__tourn__'). A tournament starts by itself at its time with the players seen in the last 2 minutes. */
+const T_GAMES = ["chess", "checkers", "card-royale", "rocket-rivals"], T_CAPS = [4, 8, 16, 32, 64], T_ALPH = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const T_MAX_ACTIVE = 40, T_PER_HOST = 2, T_KEEP_DONE = 24 * 3600e3, T_HERE_MS = 120e3;
+const tRid = (n) => { let s = ""; const b = crypto.getRandomValues(new Uint8Array(n)); for (let i = 0; i < n; i++) s += T_ALPH[b[i] % T_ALPH.length]; return s; };
+const tSame = (a, b) => String(a || "").toLowerCase() === String(b || "").toLowerCase();
+function tShuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function tMk(r, i, a, b) { return { id: r + "-" + i, a, b, w: null, code: tRid(5), st: "wait", rep: {}, g: 1 }; }
+function tDraw(players) {
+  const n = players.length; let size = 1; while (size < n) size *= 2;
+  const seeds = tShuffle(players), byes = size - n, slots = [];
+  for (let i = 0; i < size / 2; i++) { const a = seeds.shift() || null, b = i < byes ? null : (seeds.shift() || null); slots.push([a, b]); }
+  const first = slots.map((p, i) => tMk(0, i, p[0], p[1])); let rounds = [first];
+  for (let r = 1, c = size / 4; c >= 1; r++, c /= 2) { const row = []; for (let j = 0; j < c; j++) row.push(tMk(r, j, null, null)); rounds.push(row); }
+  if (size === 2) rounds = [first];
+  return rounds;
+}
+function tSettle(T) {
+  let moved = true;
+  while (moved) {
+    moved = false;
+    T.rounds.forEach((row, r) => row.forEach((m, i) => {
+      if (!m.w && r === 0 && m.a && !m.b) { m.w = m.a; m.st = "bye"; moved = true; }
+      if (!m.w && r === 0 && !m.a && m.b) { m.w = m.b; m.st = "bye"; moved = true; }
+      if (!m.w && m.a && m.b && m.st === "wait") { m.st = "ready"; m.at = Date.now(); moved = true; }
+      if (m.w && T.rounds[r + 1]) { const up = T.rounds[r + 1][Math.floor(i / 2)], side = i % 2 ? "b" : "a"; if (up[side] !== m.w) { up[side] = m.w; moved = true; } }
+      if (!m.w && r > 0 && (m.a || m.b) && !(m.a && m.b)) { const f = T.rounds[r - 1].slice(i * 2, i * 2 + 2); if (f.every((x) => x.w || x.st === "void")) { m.w = m.a || m.b; m.st = "bye"; moved = true; } }
+    }));
+  }
+  const fin = T.rounds[T.rounds.length - 1][0];
+  if (fin.w && T.st !== "done") { T.st = "done"; T.champ = fin.w; T.ended = Date.now(); }
+}
+function tFind(T, mid) { for (const row of T.rounds || []) for (const m of row) if (m.id === mid) return m; return null; }
+function tHere(T, now) { return (T.players || []).filter((p) => now - ((T.seen || {})[p.toLowerCase()] || 0) < T_HERE_MS); }
+function tBegin(T, force, now) {
+  if (T.st !== "open") return "";
+  const here = tHere(T, now), list = here.length >= 2 ? here : T.players;
+  if (list.length < 2) { if (force) return "At least 2 players are needed to start."; T.at = now + 5 * 60e3; T.moved = (T.moved || 0) + 1; T.note = "Not enough players yet: the start moved back 5 minutes."; return ""; }
+  T.dropped = T.players.filter((p) => !list.includes(p)); T.players = list; T.rounds = tDraw(list); T.st = "live"; T.started = now; T.note = "";
+  tSettle(T); return "";
+}
+function tSummary(T) { return { id: T.id, t: T.t, g: T.g, at: T.at, n: (T.players || []).length, cap: T.cap, st: T.st, h: T.host, w: T.champ || "", r: T.rounds ? T.rounds.length : 0, x: T.cancelled ? 1 : 0 }; }
+async function tournApi(req, env, url) {
+  const origin = req.headers.get("Origin") || "";
+  if (!ACCT_ORIGINS.includes(origin)) return new Response("only available on the official website", { status: 403 });
+  const cors = { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Headers": "content-type, authorization", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Max-Age": "86400", "Vary": "Origin" };
+  const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, "content-type": "application/json", "Cache-Control": "no-store" } });
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+  const stub = env.DIR.get(env.DIR.idFromName("__tourn__"));
+  if (req.method === "GET") {
+    const id = String(url.searchParams.get("id") || "").toUpperCase();
+    const r = await stub.fetch(new Request("https://dir/t/" + (id ? "get?id=" + encodeURIComponent(id) : "list")));
+    return new Response(r.body, { status: r.status, headers: { ...cors, "content-type": "application/json", "Cache-Control": "no-store" } });
+  }
+  if (req.method !== "POST" || +(req.headers.get("content-length") || 0) > 4000) return out({ error: "bad" }, 400);
+  let body; try { body = await req.json(); } catch (e) { return out({ error: "bad" }, 400); }
+  if (!body || typeof body !== "object") return out({ error: "bad" }, 400);
+  // who is asking: their own account object checks the session token (online accounts only)
+  const tok = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, ""), nm = tok.split(".")[0] || "";
+  if (!NAME_RE.test(nm)) return out({ error: "auth" }, 401);
+  const who = await env.ACCOUNTS.get(env.ACCOUNTS.idFromName("u:" + nm.toLowerCase())).fetch(new Request("https://acct/whoami", { headers: { authorization: "Bearer " + tok, "content-type": "application/json" } })).catch(() => null);
+  if (!who || !who.ok) return out({ error: "auth" }, 401);
+  const name = ((await who.json().catch(() => ({}))) || {}).name; if (!name) return out({ error: "auth" }, 401);
+  const r = await stub.fetch(new Request("https://dir/t/op", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, by: name, admin: ADMIN_ACCOUNTS.includes(name.toLowerCase()) ? 1 : 0 }) }));
+  return new Response(r.body, { status: r.status, headers: { ...cors, "content-type": "application/json", "Cache-Control": "no-store" } });
+}
+async function tournDO(self, req) {
+  const url = new URL(req.url), S = self.ctx.storage, now = Date.now();
+  const j = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { "content-type": "application/json" } });
+  const all = self.tAll || (self.tAll = (await S.get("all")) || {});
+  let dirty = false;
+  // start the ones whose time has come, tidy away old ones
+  for (const id of Object.keys(all)) {
+    const T = all[id];
+    if (T.st === "open" && now >= T.at) { tBegin(T, false, now); T.v++; dirty = true; if (T.moved > 24) { T.st = "done"; T.cancelled = true; T.ended = now; } }
+    if (T.st === "done" && now - (T.ended || T.created) > T_KEEP_DONE) { delete all[id]; dirty = true; }
+    if (T.st === "live" && now - (T.started || now) > 3 * 24 * 3600e3) { T.st = "done"; T.ended = now; T.cancelled = true; dirty = true; }
+  }
+  const save = async () => { await S.put("all", all); };
+  if (url.pathname === "/t/list") {
+    if (dirty) await save();
+    const rank = { live: 0, open: 1, done: 2 };
+    return j({ list: Object.values(all).map(tSummary).sort((a, b) => rank[a.st] - rank[b.st] || a.at - b.at), now });
+  }
+  if (url.pathname === "/t/get") {
+    if (dirty) await save();
+    const T = all[String(url.searchParams.get("id") || "")];
+    return T ? j({ T, now }) : j({ error: "not_found" }, 404);
+  }
+  if (url.pathname !== "/t/op" || req.method !== "POST") return j({ error: "bad" }, 400);
+  const b = await req.json().catch(() => ({})), by = String(b.by || ""), op = String(b.op || "");
+  const fail = async (e, st = 400) => { if (dirty) await save(); return j({ error: e }, st); };
+  if (op === "create") {
+    const active = Object.values(all).filter((T) => T.st !== "done");
+    if (active.length >= T_MAX_ACTIVE) return fail("Too many tournaments are running right now. Try again later.");
+    if (active.filter((T) => tSame(T.host, by)).length >= T_PER_HOST) return fail("You’re already hosting " + T_PER_HOST + " tournaments. Wait for one to finish or cancel it.");
+    const g = String(b.g || ""), cap = +b.cap, at = +b.at;
+    if (!T_GAMES.includes(g) || !T_CAPS.includes(cap) || !(at >= now - 60e3 && at <= now + 8 * 24 * 3600e3)) return fail("bad");
+    let t = String(b.t || "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 40) || "Tournament";
+    if (typeof chatBanned === "function" && chatBanned(t)) t = "Tournament";
+    let id; do id = tRid(6); while (all[id]);
+    const T = all[id] = { id, host: by, t, g, at: Math.max(at, now), cap, st: "open", players: b.play ? [by] : [], seen: { [by.toLowerCase()]: now }, v: 1, created: now };
+    await save(); return j({ T, now });
+  }
+  const T = all[String(b.id || "")];
+  if (!T) return fail("not_found", 404);
+  const boss = tSame(T.host, by) || !!b.admin;
+  let err = "";
+  if (op === "here") { T.seen = T.seen || {}; if (Object.keys(T.seen).length < 300 || T.seen[by.toLowerCase()]) T.seen[by.toLowerCase()] = now; await save(); return j({ ok: 1, v: T.v }); }
+  if (op === "join") {
+    if (T.st !== "open") err = "This tournament has already started.";
+    else if (T.players.some((p) => tSame(p, by))) err = "";
+    else if (T.players.length >= T.cap) err = "This tournament is full.";
+    else { T.players.push(by); (T.seen = T.seen || {})[by.toLowerCase()] = now; }
+  } else if (op === "leave") { if (T.st === "open") T.players = T.players.filter((p) => !tSame(p, by)); }
+  else if (op === "start") { if (!boss) err = "Only the host can start it."; else err = tBegin(T, true, now); }
+  else if (op === "later") { if (!boss || T.st !== "open") err = "bad"; else T.at = Math.min(now + 8 * 24 * 3600e3, Math.max(now, +b.at || now)); }
+  else if (op === "cancel") { if (!boss) err = "Only the host can cancel it."; else if (T.st !== "done") { T.st = "done"; T.cancelled = true; T.ended = now; } }
+  else if (op === "win") {
+    const m = boss && T.st === "live" && tFind(T, String(b.mid || ""));
+    if (!m || m.w || !(tSame(b.w, m.a) || tSame(b.w, m.b))) err = "bad"; else { m.w = tSame(b.w, m.a) ? m.a : m.b; m.st = "done"; m.note = ""; tSettle(T); }
+  } else if (op === "result") {
+    const m = T.st === "live" && tFind(T, String(b.mid || ""));
+    if (!m || m.w || !(tSame(m.a, by) || tSame(m.b, by)) || m.code !== b.code) err = "bad";
+    else if (b.res === "d") { m.code = tRid(5); m.g++; m.rep = {}; m.st = "ready"; m.note = "Draw: play again"; }
+    else if (["w", "l", "left", "quit"].includes(b.res)) {
+      const mine = tSame(m.a, by) ? m.a : m.b, theirs = mine === m.a ? m.b : m.a, winner = b.res === "w" || b.res === "left" ? mine : theirs;
+      m.rep[by.toLowerCase()] = winner;
+      const reps = Object.values(m.rep);
+      if (reps.length === 2 && !tSame(reps[0], reps[1])) m.st = "dispute";
+      else { m.w = winner; m.st = "done"; m.note = ""; tSettle(T); }
+    }
+  } else err = "bad";
+  if (err) return fail(err);
+  T.v = (T.v || 0) + 1; await save();
+  return j({ T, now });
+}
+
 export class Directory extends DurableObject {
   async names() {
     if (this.list) return this.list;
@@ -1354,6 +1791,7 @@ export class Directory extends DurableObject {
     if (old > n) await S.delete([...Array(old - n).keys()].map(i => 'L:' + (n + i)));
   }
   async fetch(req) {
+    if (new URL(req.url).pathname.startsWith('/t/')) return tournDO(this, req);
     const url = new URL(req.url), route = url.pathname.slice(1), S = this.ctx.storage;
     const j = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { 'content-type': 'application/json' } });
     const list = await this.names();
@@ -1491,6 +1929,16 @@ export class Tally extends DurableObject {
     const j = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { 'content-type': 'application/json' } });
     const str = (v, n) => typeof v === 'string' && v.length && v.length <= n ? v : '';
     const total = rec => Object.keys(rec.v).length;
+    if (route === 'ai-add') { // { d: UTC day, n: neurons } from aiSync() -> { used: the site's neurons that day } (object 'ai-budget')
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(b.d || '')) return j({ error: 'bad' }, 400);
+      const key = 'ai:' + b.d, n = Math.max(0, Math.min(5000, +b.n || 0)), old = await S.get(key);
+      let used = old || 0;
+      if (n) {
+        used += n; await S.put(key, used);
+        if (old === undefined) { const ks = [...(await S.list({ prefix: 'ai:' })).keys()].filter(k => k !== key); if (ks.length) await S.delete(ks); }
+      }
+      return j({ used });
+    }
     if (route === 'vote') { // { q, a, id } -> { c: divers who gave this answer, n: divers who answered }
       const q = str(b.q, KD_Q), a = str(b.a, KD_A), id = KD_ID.test(b.id || '') ? b.id : '';
       if (!q || !a || !id) return j({ error: 'bad' }, 400);
@@ -1551,6 +1999,7 @@ export class Tally extends DurableObject {
       const k = list.findIndex(e => e.d === b.d && e.n === b.n && e.ms === b.ms);
       return j({ rank: k >= 0 ? k + 1 : 0, best: b.ms });
     }
+    if (route.startsWith('sp-')) return spTally(route.slice(3), b, S, j);
     return j({ error: 'not_found' }, 404);
   }
 }
@@ -1584,7 +2033,7 @@ export class Tally extends DurableObject {
    The owner deletes any clip with /acct/admin op 'clipdel', and a profile picture with op 'avatardel' {name}. Every route takes ?r=<room> for test rooms.
    ========================================================================== */
 const CLIP_MAX = 12 * 1024 * 1024, CLIP_PIECE = 1024 * 1024, CLIP_STORE = 3.5e9, CLIP_DAY = 25, CLIP_PER_USER = 100;
-const CLIP_ID = /^[a-z0-9]{10}$/, CLIP_TITLE = 80, CLIP_COMMENT = 300, CLIP_COMMENTS = 500, CLIP_VIEWERS = 5000;
+const CLIP_TEXT = 500, CLIP_TITLE = 80, CLIP_COMMENT = 300, CLIP_COMMENTS = 500, CLIP_VIEWERS = 5000;
 const CLIP_POSTER = 60000, AVATAR_MAX = 40000, CLIP_REPORTS = 3, VIEWER_RE = /^[A-Za-z0-9_:.-]{3,40}$/;
 // Social moderators: these accounts can delete anyone's post or comment (the owner's choice, 2026-11-11). Lower case.
 const CLIP_MODS = ['claude'];
@@ -1604,6 +2053,10 @@ async function clipsBot(req, env) {
   if (!env.BOT_KEY || !same(req.headers.get('x-bot-key') || '', env.BOT_KEY)) return out({ error: 'auth' }, 401);
   let b; try { b = await req.json(); } catch (e) { return out({ error: 'bad' }, 400); }
   const room = String(b.r || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24).toLowerCase();
+  if (b.op === 'del') { // take one of Claude's own posts down
+    const r = await clipIndex(env, room).fetch(new Request('https://clips/botdel', { method: 'POST', body: JSON.stringify({ me: BOT_NAME, id: b.id, int: 1 }) }));
+    return out(await r.json(), r.status);
+  }
   // 2026-11-11: Claude's profile description, and one comment per post on other players' posts
   if (b.op === 'bio' || b.op === 'comment') { const r = await clipIndex(env, room).fetch(new Request('https://clips/bot' + b.op, { method: 'POST', body: JSON.stringify({ me: BOT_NAME, t: b.t, id: b.id, int: 1 }) })); return out(await r.json(), r.status); }
   const img = Uint8Array.from(atob(String(b.img || '')), c => c.charCodeAt(0));
@@ -1625,12 +2078,12 @@ async function clips(req, env, url) {
   const room = (url.searchParams.get('r') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24).toLowerCase();
   const route = url.pathname.slice(7);
   if (route.startsWith('v/')) { // a clip's video
-    const id = route.slice(2);
-    if (!CLIP_ID.test(id)) return out({ error: 'bad' }, 400);
+    const id = route.slice(2), mm = /^([a-z0-9]{10})(?:-([1-4]))?$/.exec(id); // '<id>' or '<id>-<n>': the n-th extra photo/video of a post
+    if (!mm) return out({ error: 'bad' }, 400);
     if (req.method === 'GET') return pass(await clipMedia(env, id).fetch(new Request('https://clips/media-get')));
     if (req.method !== 'PUT') return out({ error: 'bad' }, 400);
     if (+(req.headers.get('content-length') || 0) > CLIP_MAX) return out({ error: 'too_big' }, 413);
-    const q = new URLSearchParams({ id, k: url.searchParams.get('k') || '', r: room });
+    const q = new URLSearchParams({ id: mm[1], i: mm[2] || '0', k: url.searchParams.get('k') || '', r: room });
     return pass(await clipMedia(env, id).fetch(new Request('https://clips/media-put?' + q, { method: 'PUT', headers: { 'content-type': req.headers.get('content-type') || '' }, body: req.body })));
   }
   const idx = clipIndex(env, room);
@@ -1642,7 +2095,7 @@ async function clips(req, env, url) {
   let b; try { b = await req.json(); } catch (e) { return out({ error: 'bad' }, 400); }
   if (!b || typeof b !== 'object') return out({ error: 'bad' }, 400);
   if (route === 'seen' || route === 'share') return pass(await idx.fetch(new Request('https://clips/' + route, { method: 'POST', body: JSON.stringify(b) })));
-  if (!['new', 'like', 'comment', 'cdel', 'clike', 'follow', 'del', 'report', 'avatar'].includes(route)) return out({ error: 'not_found' }, 404);
+  if (!['new', 'like', 'comment', 'cdel', 'clike', 'follow', 'del', 'report', 'avatar', 'vnote'].includes(route)) return out({ error: 'not_found' }, 404);
   const who = await whoami(env, req.headers.get('authorization') || '');
   if (!who) return out({ error: 'auth' }, 401);
   b.me = who;
@@ -1682,7 +2135,9 @@ export class Clips extends DurableObject {
       const mp4 = u[4] === 0x66 && u[5] === 0x74 && u[6] === 0x79 && u[7] === 0x70; // 'ftyp' (MP4 and MOV)
       const jpg = u[0] === 0xff && u[1] === 0xd8 && u[2] === 0xff, png = u[0] === 0x89 && u[1] === 0x50 && u[2] === 0x4e && u[3] === 0x47;
       const gif = u[0] === 0x47 && u[1] === 0x49 && u[2] === 0x46, webp = u[0] === 0x52 && u[1] === 0x49 && u[2] === 0x46 && u[3] === 0x46 && u[8] === 0x57 && u[9] === 0x45;
-      const ty = webm ? 'video/webm' : mp4 ? 'video/mp4' : jpg ? 'image/jpeg' : png ? 'image/png' : gif ? 'image/gif' : webp ? 'image/webp' : '';
+      const ogg = u[0] === 79 && u[1] === 103 && u[2] === 103 && u[3] === 83;
+      const mp3 = (u[0] === 73 && u[1] === 68 && u[2] === 51) || (u[0] === 255 && (u[1] & 224) === 224);
+      const ty = ogg ? 'audio/ogg' : mp3 ? 'audio/mpeg' : webm ? 'video/webm' : mp4 ? 'video/mp4' : jpg ? 'image/jpeg' : png ? 'image/png' : gif ? 'image/gif' : webp ? 'image/webp' : '';
       if (!ty) return j({ error: 'not_video' }, 415);
       const head = new TextDecoder('latin1').decode(new Uint8Array(buf, 0, Math.min(4096, buf.byteLength))), own = ty === 'video/webm' && head.includes('The Arcade') ? 1 : 0;
       const n = Math.ceil(buf.byteLength / CLIP_PIECE), put = { vn: n, ty };
@@ -1690,7 +2145,7 @@ export class Clips extends DurableObject {
       // pieces go in a few at a time (each put is one transaction, kept well under its size limit)
       const keys = Object.keys(put);
       for (let i = 0; i < keys.length; i += 4) { const part = {}; for (const k of keys.slice(i, i + 4)) part[k] = put[k]; await S.put(part); }
-      const r = await this.env.CLIPS.get(this.env.CLIPS.idFromName(p.get('r') ? 'index-test-' + p.get('r') : 'index')).fetch(new Request('https://clips/commit', { method: 'POST', body: JSON.stringify({ id: p.get('id'), k: p.get('k'), sz: buf.byteLength, ty: put.ty, own, int: 1 }) }));
+      const r = await this.env.CLIPS.get(this.env.CLIPS.idFromName(p.get('r') ? 'index-test-' + p.get('r') : 'index')).fetch(new Request('https://clips/commit', { method: 'POST', body: JSON.stringify({ id: p.get('id'), i: +p.get('i') || 0, k: p.get('k'), sz: buf.byteLength, ty: put.ty, own, int: 1 }) }));
       if (r.status !== 200) { await S.deleteAll(); return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json' } }); }
       return j(await r.json());
     }
@@ -1723,7 +2178,7 @@ export class Clips extends DurableObject {
     for (let i = 0; i < list.length; i += 128) for (const [k, v] of await S.get(list.slice(i, i + 128).map(m => 'p:' + m.id))) posters.set(k, v);
     const u = me ? await this.user(me) : null, liked = new Set(u ? u.lk : []), now = Date.now();
     return list.map(m => ({ id: m.id, by: m.by, k: m.k || 'clip', ll: m.ll || '', g: m.g, t: m.t, at: m.at, dur: m.dur, w: m.w, h: m.h, lk: m.lk, vw: m.vw, cm: m.cm, sh: m.sh || 0,
-      wr: m.vw ? Math.round(m.wf / m.vw * 100) / 100 : 0, bot: m.bot ? 1 : 0, pin: m.pin ? 1 : 0, pend: m.pend ? 1 : 0, ty: m.ty || '', rp: (m.rp || []).length, hot: Math.round(this.hot(m, now) * 1e4) / 1e4, p: posters.get('p:' + m.id) || '', me: liked.has(m.id) ? 1 : 0 }));
+      wr: m.vw ? Math.round(m.wf / m.vw * 100) / 100 : 0, bot: m.bot ? 1 : 0, pin: m.pin ? 1 : 0, pend: m.pend ? 1 : 0, ty: m.ty || '', x: m.x || undefined, bg: m.k === 'text' ? m.bg | 0 : undefined, rp: (m.rp || []).length, hot: Math.round(this.hot(m, now) * 1e4) / 1e4, p: posters.get('p:' + m.id) || '', me: liked.has(m.id) ? 1 : 0 }));
   }
   live() { return [...this.m.values()].filter(m => !m.pend && (m.rp || []).length < CLIP_REPORTS); }
   async read(route, q, j) {
@@ -1768,7 +2223,7 @@ export class Clips extends DurableObject {
       const id = q.get('id') || '', mk = me.toLowerCase();
       if (!this.m.has(id) || this.m.get(id).pend) return j({ error: 'not_found' }, 404);
       const list = (await this.ctx.storage.get('c:' + id)) || [];
-      return j({ list: list.map(c => ({ i: c.i, n: c.n, t: c.t, at: c.at, re: c.re || '', lk: (c.lk || []).length, me: mk && (c.lk || []).includes(mk) ? 1 : 0 })) });
+      return j({ list: list.filter(c => !chatBanned(c.t)).map(c => ({ i: c.i, n: c.n, t: c.t, at: c.at, re: c.re || '', lk: (c.lk || []).length, me: mk && (c.lk || []).includes(mk) ? 1 : 0 })) });
     }
     return j({ error: 'not_found' }, 404);
   }
@@ -1778,11 +2233,27 @@ export class Clips extends DurableObject {
       if (!b.int) return j({ error: 'bad' }, 400);
       const q = await S.get('q:' + b.id);
       if (!q || !same(String(b.k || ''), q.k) || now - q.at > 30 * 60000) return j({ error: 'expired' }, 410);
-      if ((q.m.k === 'photo') !== String(b.ty || '').startsWith('image/')) return j({ error: 'not_video' }, 415); // a photo post takes a picture, the others a video
+      if (q.vn) { // a voice note for a DM: kept as 'n:<id>', not a post
+        if (String(b.ty || '').startsWith('image/')) return j({ error: 'not_video' }, 415);
+        await S.put('n:' + b.id, { by: q.m.by, dur: q.m.dur, at: now, ty: b.ty, sz: +b.sz || 0 });
+        await S.delete('q:' + b.id);
+        return j({ ok: 1, id: b.id });
+      }
+      const i = b.i | 0, it = i ? (q.m.x || [])[i - 1] : q.m; // i = which file of the post (0 = the first, 1-4 = the extras in q.m.x)
+      if (!it) return j({ error: 'bad' }, 400);
+      if ((it.k === 'photo') !== String(b.ty || '').startsWith('image/')) return j({ error: 'not_video' }, 415); // a photo post takes a picture, the others a video
+      if (q.m.x && q.m.x.length) { // a post of several files goes live once every one has arrived
+        q.got = q.got || {};
+        q.got[i] = { sz: +b.sz || 0, ty: b.ty };
+        if (Object.keys(q.got).length < q.m.x.length + 1) { await S.put('q:' + b.id, q); return j({ ok: 1, wait: 1 }); }
+        q.m.x.forEach((x, n) => { x.ty = q.got[n + 1].ty; });
+        b.sz = Object.values(q.got).reduce((a, g) => a + g.sz, 0);
+        b.ty = q.got[0].ty;
+      }
       const m = Object.assign(q.m, { sz: +b.sz || 0, ty: b.ty, at: now });
       // 2026-11-11: game clips made by the site's recorder and Claude's posts go live; uploaded photos and videos wait
       // for an admin account to approve them ('pend', hidden everywhere until then)
-      if (!m.bot && !(m.k === 'clip' && b.own)) m.pend = 1;
+      if (!m.bot && m.k !== 'voice' && !(m.k === 'clip' && b.own)) m.pend = 1;
       this.m.set(m.id, m);
       await S.put({ ['m:' + m.id]: m, ['p:' + m.id]: q.p });
       await S.delete('q:' + b.id);
@@ -1841,6 +2312,12 @@ export class Clips extends DurableObject {
     }
     if (!NAME_RE.test(me)) return j({ error: 'auth' }, 401);
     if (route === 'botbio' && b.int) { const u = await this.user(me); u.bio = String(b.t || '').replace(/\r/g, '').trim().slice(0, 300); await this.saveUser(u); return j({ ok: 1 }); }
+    if (route === 'botdel' && b.int) { // Claude takes down one of its own posts
+      const m = this.m.get(String(b.id || ''));
+      if (!m || !m.bot) return j({ error: 'not_found' }, 404);
+      await this.drop(m.id);
+      return j({ ok: 1 });
+    }
     if (route === 'botcomment' && b.int) { // at most one Claude comment per post, never on Claude's own posts
       const id = String(b.id || ''), m = this.m.get(id), t = plain(b.t).slice(0, CLIP_COMMENT);
       if (!m || m.pend || !t) return j({ error: 'not_found' }, 404);
@@ -1877,19 +2354,54 @@ export class Clips extends DurableObject {
       if (u.k >= CLIP_DAY) return j({ error: 'slow' }, 429);
       if ([...this.m.values()].filter(m => m.by.toLowerCase() === mk).length >= CLIP_PER_USER) return j({ error: 'too_many' }, 400);
       const p = String(b.poster || '');
-      // kinds: 'clip' (recorded on play.html, always from a game), 'video' and 'photo' (the player's own uploads; a game is optional)
-      const kind = ['clip', 'video', 'photo'].includes(b.kind) ? b.kind : 'clip';
+      if (b.kind === 'text') { // a text post: no file, the words drawn on a coloured card (bg 0-7); the poster is that card
+        const t = String(b.t || '').replace(/\r/g, '').replace(/[^\S\n]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, CLIP_TEXT);
+        if (!t || (b.g && !GAME_RE.test(b.g))) return j({ error: 'bad' }, 400);
+        if (chatBanned(t)) return j({ error: 'banned_link' }, 403);
+        if (!/^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(p) || p.length > CLIP_POSTER) return j({ error: 'bad' }, 400);
+        let id3; do { id3 = rnd(5); } while (this.m.has(id3));
+        const m3 = { id: id3, by: me, k: 'text', g: b.g || '', t, at: now, dur: 0, w: 1, h: 1, sz: 0, ty: '', lk: 0, vw: 0, wf: 0, cm: 0, sh: 0, rp: [], bg: Math.max(0, Math.min(7, b.bg | 0)) };
+        u.k++; await this.saveUser(u);
+        this.m.set(id3, m3);
+        await S.put({ ['m:' + id3]: m3, ['p:' + id3]: p });
+        await this.prune(now);
+        return j({ ok: 1, id: id3, pend: 0 });
+      }
+      // kinds: 'clip' (recorded on play.html, always from a game), 'video' and 'photo' (the player's own uploads; a game is optional), 'voice'
+      const kind = ['clip', 'video', 'photo', 'voice'].includes(b.kind) ? b.kind : 'clip';
       if (b.g ? !GAME_RE.test(b.g) : kind === 'clip') return j({ error: 'bad' }, 400);
-      if (!(kind === 'photo' ? true : b.dur > 0.5 && b.dur <= (kind === 'clip' ? 75 : 185)) || !(b.sz > 0 && b.sz <= CLIP_MAX)) return j({ error: 'bad' }, 400);
+      if (!(kind === 'photo' ? true : b.dur > 0.5 && b.dur <= (kind === 'clip' ? 75 : kind === 'voice' ? 125 : 185)) || !(b.sz > 0 && b.sz <= CLIP_MAX)) return j({ error: 'bad' }, 400);
       if (!/^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(p) || p.length > CLIP_POSTER) return j({ error: 'bad' }, 400);
+      // up to 4 more photos/videos in one post (b.x), each uploaded to '<id>-<n>'
+      const xs = kind === 'clip' || kind === 'voice' || !Array.isArray(b.x) ? [] : b.x;
+      if (xs.length > 4) return j({ error: 'bad' }, 400);
+      const x = [];
+      for (const e of xs) {
+        const xk = e && ['video', 'photo'].includes(e.kind) ? e.kind : '';
+        if (!xk || !(e.sz > 0 && e.sz <= CLIP_MAX) || !(xk === 'photo' || (e.dur > 0.5 && e.dur <= 185))) return j({ error: 'bad' }, 400);
+        x.push({ k: xk, dur: xk === 'photo' ? 0 : Math.round(e.dur * 10) / 10, w: Math.min(4096, e.w | 0), h: Math.min(4096, e.h | 0) });
+      }
+      if (chatBanned(plain(b.t))) return j({ error: 'banned_link' }, 403);
       let id; do { id = rnd(5); } while (this.m.has(id));
       const m = { id, by: me, k: kind, g: b.g || '', t: plain(b.t).slice(0, CLIP_TITLE), at: now, dur: kind === 'photo' ? 0 : Math.round(b.dur * 10) / 10, w: Math.min(4096, b.w | 0), h: Math.min(4096, b.h | 0), sz: 0, ty: '', lk: 0, vw: 0, wf: 0, cm: 0, sh: 0, rp: [] };
+      if (x.length) m.x = x;
       const k = rnd(16);
       u.k++; await this.saveUser(u);
       await S.put('q:' + id, { k, m, p, at: now });
       // forget uploads that never sent their video
       const old = [...(await S.list({ prefix: 'q:' })).entries()].filter(([, x]) => now - x.at > 60 * 60000).map(([key]) => key);
       if (old.length) await S.delete(old);
+      return j({ id, k });
+    }
+    if (route === 'vnote') { // a voice note for a DM (300 a day): uploaded like a post's file, kept as 'n:<id>'
+      const u = await this.user(me), day = new Date(now).toISOString().slice(0, 10);
+      if (u.vday !== day) { u.vday = day; u.vk = 0; }
+      if (u.vk >= 300) return j({ error: 'slow' }, 429);
+      if (!(b.dur > 0.3 && b.dur <= 125) || !(b.sz > 0 && b.sz <= 3 * 1024 * 1024)) return j({ error: 'bad' }, 400);
+      let id; do { id = rnd(5); } while (this.m.has(id) || await S.get('n:' + id));
+      const k = rnd(16);
+      u.vk++; await this.saveUser(u);
+      await S.put('q:' + id, { k, vn: 1, m: { id, by: me, k: 'vnote', dur: Math.round(b.dur * 10) / 10 }, at: now });
       return j({ id, k });
     }
     if (route === 'avatar') { // your profile picture: a small square JPEG/WebP/PNG data URL, or '' to remove it
@@ -1924,6 +2436,7 @@ export class Clips extends DurableObject {
     if (route === 'comment') { // comments aren't word-filtered, like the chats (the owner's choice); shown as plain text
       const t = plain(b.t).slice(0, CLIP_COMMENT);
       if (!t) return j({ error: 'bad' }, 400);
+      if (chatBanned(t)) return j({ error: 'banned_link' }, 403);
       const list = (await S.get('c:' + id)) || [];
       if (list.filter(c => c.n.toLowerCase() === mk && now - c.at < 60000).length >= 5) return j({ error: 'slow' }, 429);
       const c = { i: rnd(4), n: me, t, at: now, lk: [] };
@@ -1966,14 +2479,165 @@ export class Clips extends DurableObject {
     for (const k of likes.slice(0, 500)) { const u = await this.user(k); if (u) { u.lk = u.lk.filter(x => x !== id); await this.saveUser(u); } }
     await S.delete(['m:' + id, 'p:' + id, 'l:' + id, 'c:' + id, 'v:' + id]);
     await this.env.CLIPS.get(this.env.CLIPS.idFromName('clip:' + id)).fetch(new Request('https://clips/media-del', { method: 'POST' })).catch(() => null);
+    for (let n = 1; n <= (m.x || []).length; n++) await this.env.CLIPS.get(this.env.CLIPS.idFromName('clip:' + id + '-' + n)).fetch(new Request('https://clips/media-del', { method: 'POST' })).catch(() => null);
   }
   // keep the clips under CLIP_STORE: the weakest clip older than 3 days goes first
   async prune(now) {
     let total = 0; for (const m of this.m.values()) total += m.sz || 0;
     while (total > CLIP_STORE) {
-      const old = [...this.m.values()].filter(m => !m.bot && now - m.at > 3 * 864e5).sort((a, b) => this.hot(a, now) - this.hot(b, now))[0];
+      const old = [...this.m.values()].filter(m => !m.bot && m.sz && now - m.at > 3 * 864e5).sort((a, b) => this.hot(a, now) - this.hot(b, now))[0];
       if (!old) break;
       total -= old.sz || 0; await this.drop(old.id);
     }
   }
+}
+
+/* Sproutling courses: players share the courses they build. GET /sp/list {s: new|top|plays, q, o}, GET /sp/get {id},
+   POST /sp/play {id}; with the account token: POST /sp/upload {n, d}, /sp/time {id, ms}, /sp/del {id} (the maker or an admin).
+   Kept on the Tally object 'sproutling' (spidx = the list, spc:<id> = a course with its best times). */
+const SP_ID = /^[a-z0-9]{6}$/;
+const SP_MAX = 1500;
+const SP_PER_USER = 60;
+const SP_TIMES = 100;
+const SP_SHOW = 10;
+const SP_PAGE = 40;
+const SP_DATA = 4e4;
+const SP_THEMES = 15;
+function spCourseOk(d) {
+  try {
+    if (!d || d.v !== 1) return false;
+    const w = d.w;
+    if (!Number.isInteger(w) || w < 20 || w > 300 || !Number.isInteger(d.t) || d.t < 0 || d.t >= SP_THEMES) return false;
+    if (!Array.isArray(d.m) || d.m.length > w * 14 * 2 || d.m.length % 2) return false;
+    let n = 0;
+    for (let i = 0; i < d.m.length; i += 2) {
+      const id = d.m[i], c = d.m[i + 1];
+      if (!Number.isInteger(id) || id < 0 || id > 20 || !Number.isInteger(c) || c < 1) return false;
+      n += c;
+    }
+    if (n !== w * 14) return false;
+    if (!Array.isArray(d.e) || d.e.length > 400) return false;
+    for (const e of d.e) if (!Array.isArray(e) || e.length < 3 || e.length > 4 || typeof e[0] !== "string" || e[0].length > 10 || !e.slice(1).every(Number.isInteger)) return false;
+    const pt = (a) => Array.isArray(a) && a.length === 2 && a.every(Number.isInteger);
+    return pt(d.s) && pt(d.g);
+  } catch (e) {
+    return false;
+  }
+}
+async function sprout(req, env, url) {
+  const origin = req.headers.get("Origin") || "";
+  if (!ACCT_ORIGINS.includes(origin)) return new Response("only available on the official website", { status: 403 });
+  const cors = { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Headers": "content-type, authorization", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Max-Age": "86400", "Vary": "Origin" };
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+  const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, "content-type": "application/json" } });
+  const route = url.pathname.slice(4), tally = env.TALLY.get(env.TALLY.idFromName("sproutling"));
+  const call = async (r, body) => {
+    const q = await tally.fetch(new Request("https://tally/sp-" + r, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
+    return new Response(q.body, { status: q.status, headers: { ...cors, "content-type": "application/json" } });
+  };
+  if (req.method === "GET") {
+    if (route === "list") {
+      const sp = url.searchParams, s = ["new", "top", "plays"].includes(sp.get("s")) ? sp.get("s") : "new";
+      return call("list", { s, q: (sp.get("q") || "").slice(0, 30).toLowerCase(), o: Math.max(0, Math.min(1e4, parseInt(sp.get("o"), 10) || 0)) });
+    }
+    if (route === "get") {
+      const id = url.searchParams.get("id") || "";
+      if (!SP_ID.test(id)) return out({ error: "bad" }, 400);
+      return call("get", { id });
+    }
+    return out({ error: "not_found" }, 404);
+  }
+  if (req.method !== "POST" || +(req.headers.get("content-length") || 0) > 6e4) return out({ error: "bad" }, 400);
+  let b;
+  try {
+    b = await req.json();
+  } catch (e) {
+    return out({ error: "bad" }, 400);
+  }
+  if (route === "play") {
+    if (!SP_ID.test(b.id || "")) return out({ error: "bad" }, 400);
+    return call("play", { id: b.id });
+  }
+  if (!["upload", "time", "del"].includes(route)) return out({ error: "not_found" }, 404);
+  const me = await whoami(env, req.headers.get("authorization") || "");
+  if (!me) return out({ error: "auth" }, 401);
+  if (route === "upload") {
+    const n = String(b.n || "").replace(/[^\x20-\x7e]/g, "").replace(/\s+/g, " ").trim().slice(0, 30);
+    if (!n || !spCourseOk(b.d)) return out({ error: "bad" }, 400);
+    if (JSON.stringify(b.d).length > SP_DATA) return out({ error: "big" }, 413);
+    return call("upload", { n, by: me, d: b.d });
+  }
+  if (!SP_ID.test(b.id || "")) return out({ error: "bad" }, 400);
+  if (route === "time") {
+    if (!Number.isInteger(b.ms) || b.ms < 2e3 || b.ms > 36e5) return out({ error: "bad" }, 400);
+    return call("time", { id: b.id, n: me, ms: b.ms });
+  }
+  return call("del", { id: b.id, me, admin: ADMIN_ACCOUNTS.includes(me.toLowerCase()) });
+}
+async function spTally(r, b, S, j) {
+  const idx = await S.get("spidx") || [];
+  const brief = (c2) => ({ id: c2.id, n: c2.n, by: c2.by, t: c2.t, w: c2.w, at: c2.at, p: c2.p, c: c2.c, wr: c2.times[0] ? { n: c2.times[0].n, ms: c2.times[0].ms } : null });
+  const save = async (c2) => {
+    await S.put("spc:" + c2.id, c2);
+    const i = idx.findIndex((x) => x.id === c2.id);
+    if (i >= 0) idx[i] = brief(c2);
+    else idx.unshift(brief(c2));
+    await S.put("spidx", idx);
+  };
+  const score = (x) => (x.c + 1) / (x.p + 2) * Math.log2(x.p + 2);
+  if (r === "list") {
+    let l = idx;
+    if (b.q) l = l.filter((x) => x.n.toLowerCase().includes(b.q) || x.by.toLowerCase().includes(b.q));
+    if (b.s === "plays") l = l.slice().sort((x, y) => y.p - x.p || y.at - x.at);
+    else if (b.s === "top") l = l.slice().sort((x, y) => score(y) - score(x) || y.at - x.at);
+    return j({ list: l.slice(b.o, b.o + SP_PAGE), more: l.length > b.o + SP_PAGE, total: l.length });
+  }
+  if (r === "upload") {
+    if (idx.length >= SP_MAX) return j({ error: "full" }, 507);
+    const lo = b.by.toLowerCase();
+    if (idx.filter((x) => x.by.toLowerCase() === lo).length >= SP_PER_USER) return j({ error: "too_many" }, 429);
+    if (Date.now() - (await S.get("splast:" + lo) || 0) < 2e4) return j({ error: "slow" }, 429);
+    let id;
+    do {
+      id = Math.random().toString(36).slice(2, 8).padEnd(6, "0");
+    } while (!SP_ID.test(id) || await S.get("spc:" + id));
+    await S.put("splast:" + lo, Date.now());
+    await save({ id, n: b.n, by: b.by, t: b.d.t, w: b.d.w, at: Date.now(), p: 0, c: 0, d: b.d, times: [] });
+    return j({ id });
+  }
+  const c = await S.get("spc:" + b.id);
+  if (r === "del") {
+    if (!c) return j({ ok: 1 });
+    if (!b.admin && c.by.toLowerCase() !== b.me.toLowerCase()) return j({ error: "auth" }, 403);
+    await S.delete("spc:" + b.id);
+    const i = idx.findIndex((x) => x.id === b.id);
+    if (i >= 0) {
+      idx.splice(i, 1);
+      await S.put("spidx", idx);
+    }
+    return j({ ok: 1 });
+  }
+  if (!c) return j({ error: "gone" }, 404);
+  if (r === "get") return j({ ...brief(c), d: c.d, top: c.times.slice(0, SP_SHOW) });
+  if (r === "play") {
+    c.p++;
+    await save(c);
+    return j({ p: c.p });
+  }
+  if (r === "time") {
+    c.c++;
+    const lo = b.n.toLowerCase(), i = c.times.findIndex((e) => e.n.toLowerCase() === lo);
+    let best = b.ms;
+    if (i >= 0 && c.times[i].ms <= b.ms) best = c.times[i].ms;
+    else {
+      if (i >= 0) c.times.splice(i, 1);
+      c.times.push({ n: b.n, ms: b.ms, at: Date.now() });
+      c.times.sort((x, y) => x.ms - y.ms || x.at - y.at);
+      c.times.length = Math.min(c.times.length, SP_TIMES);
+    }
+    await save(c);
+    const k = c.times.findIndex((e) => e.n.toLowerCase() === lo);
+    return j({ rank: k + 1, best, top: c.times.slice(0, SP_SHOW) });
+  }
+  return j({ error: "not_found" }, 404);
 }
