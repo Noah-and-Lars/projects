@@ -75,6 +75,12 @@ export const sfx = {
   },
   deny() { tone(200, 0.12, 'square', 0.08); },
   click() { tone(900, 0.04, 'square', 0.05); },
+  heartbeat() { tone(55, 0.12, 'sine', 0.35); tone(50, 0.14, 'sine', 0.28, 0.2); },
+  growl() { burst(0.9, 140, 0.18, 0.5, 'lowpass'); tone(70, 0.7, 'sawtooth', 0.03, 0, 0.6); },
+  switchOn() { tone(1400, 0.03, 'square', 0.05); burst(0.04, 3000, 0.06, 3); },
+  door(open) { burst(0.25, open ? 500 : 350, 0.2, 0.8); tone(open ? 180 : 120, 0.2, 'triangle', 0.06); },
+  flush() { burst(1.6, 900, 0.18, 0.4, 'bandpass'); burst(1.2, 300, 0.12, 0.6, 'lowpass', 0, 0.5); },
+  slide() { burst(0.45, 700, 0.16, 0.6, 'bandpass'); },
   death() { tone(220, 1.2, 'sawtooth', 0.15, 0, 0.25); burst(0.8, 200, 0.3, 0.5, 'lowpass'); },
   chat() { tone(1200, 0.05, 'sine', 0.06); },
   // Closing time: a heavy breaker clunk, the hum dying, and a falling warning tone.
@@ -170,19 +176,23 @@ function schedule() {
   while (nextBeat < ahead) {
     const t = nextBeat;
     if (musicMode === 'day') {
-      const spb = 60 / 84 / 2; // eighth notes at 84 bpm
+      // the odd Friday plays a livelier take on the tune
+      const remix = (musicDay - 1) % 7 === 4 && ((musicDay * 2654435761) >>> 0) % 50 === 7;
+      const spb = 60 / (remix ? 108 : 84) / 2; // eighth notes at 84 bpm
       const root = DAY_ROOTS[(musicDay - 1) % 7], prog = (musicDay % 2) ? PROG : PROG_B;
       const bar = Math.floor(beat / 8) % 4, step = beat % 8, ch = prog[bar];
       const pat = [0, 1, 2, 1, 0, 2, 1, 2];
-      note(mtof(root + 12 + ch[pat[(step + musicDay) % 8]]), t, 0.9, 'triangle', 0.05, 2200);
+      note(mtof(root + 12 + ch[pat[(step + musicDay) % 8]]), t, remix ? 0.4 : 0.9, remix ? 'square' : 'triangle', remix ? 0.03 : 0.05, 2200);
+      if (remix && step % 2 === 1) note(mtof(root - 12 + ch[0]), t, 0.2, 'triangle', 0.05, 900);
       if (step === 0) { note(mtof(root - 12 + ch[0]), t, 1.8, 'sine', 0.09); for (const c of ch) note(mtof(root + c), t, 2.6, 'sine', 0.025); }
       if (step === 4) note(mtof(root - 12 + ch[2]), t, 1.0, 'sine', 0.05);
       if (step === 6 && bar === 3 && Math.random() < 0.5) note(mtof(root + 24 + ch[1]), t, 1.2, 'sine', 0.025);
       nextBeat += spb;
-    } else if (musicMode === 'fog') {
-      const spb = 60 / 60 / 2, root = 57;
+    } else if (musicMode === 'low') {
+      // badly hurt: slow, muffled, far away
+      const spb = 60 / 50 / 2, root = 52;
       const bar = Math.floor(beat / 8) % 4, step = beat % 8, ch = FOG_PROG[bar];
-      note(mtof(root + 12 + ch[[0, 2, 1, 2, 0, 1, 2, 1][step]]), t, 1.6, 'sine', 0.045, 1200);
+      note(mtof(root + 12 + ch[[0, 2, 1, 2, 0, 1, 2, 1][step]]), t, 1.6, 'sine', 0.03, 600);
       if (step === 0) { note(mtof(root - 12 + ch[0]), t, 3.6, 'sine', 0.08); for (const c of ch) note(mtof(root + c), t, 3.8, 'triangle', 0.02, 800); }
       nextBeat += spb;
     } else if (musicMode === 'night') {
@@ -190,7 +200,7 @@ function schedule() {
       if (Math.random() < 0.35) { const sc = [0, 3, 5, 7, 10, 12, 13]; note(mtof(57 + sc[Math.floor(Math.random() * sc.length)] + (Math.random() < 0.3 ? 12 : 0)), t, 3, 'sine', 0.035, 900); }
       if (Math.random() < 0.06) { note(mtof(69), t, 4, 'sine', 0.02); note(mtof(70), t, 4, 'sine', 0.02); } // a sour cluster
       nextBeat += 1.2 + Math.random() * 1.8;
-    } else if (musicMode === 'crimson') {
+    } else if (musicMode === 'chase') {
       const spb = 60 / 132 / 4;
       const step = beat % 16;
       note(mtof(step % 8 === 7 ? 34 : 33), t, 0.16, 'sawtooth', 0.07, 420);
@@ -203,7 +213,7 @@ function schedule() {
 }
 
 export function setMusicVolume(v) { musicVol = v; if (musicGain) musicGain.gain.setTargetAtTime(musicVol * 0.6, ctx.currentTime, 0.3); }
-// mode: 'day' | 'night' | 'crimson' | 'fog' | '' (silence); day = the day number (sets the weekday tune)
+// mode: 'day' | 'night' | 'chase' (being hunted) | 'low' (badly hurt) | '' (silence); day = the day number (sets the weekday tune)
 export function setMusic(mode, day) {
   if (!ctx) return;
   if (!musicGain) { musicGain = ctx.createGain(); musicGain.gain.value = musicVol * 0.6; musicGain.connect(master); musicTimer = setInterval(schedule, 90); }
@@ -213,8 +223,8 @@ export function setMusic(mode, day) {
   if (changed) {
     beat = 0; nextBeat = ctx.currentTime + 1.5;
     if (mode === 'night') startDrone([mtof(33), mtof(40), mtof(45.1)], 0.05);
-    else if (mode === 'crimson') startDrone([mtof(33), mtof(34)], 0.045, 'sawtooth', 300);
-    else if (mode === 'fog') startDrone([mtof(45), mtof(52)], 0.02, 'triangle', 500);
+    else if (mode === 'chase') startDrone([mtof(33), mtof(34)], 0.04, 'sawtooth', 300);
+    else if (mode === 'low') startDrone([mtof(40), mtof(47)], 0.015, 'triangle', 300);
     else stopDrone();
   }
 }

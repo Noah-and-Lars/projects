@@ -36,10 +36,8 @@ export function staffLook(id) {
   return { size, width, skin, heightScale, widthScale, speedScale: 1.22 - 0.28 * heightScale - 0.08 * (widthScale - 1) };
 }
 
-function params(env) {
-  const ev = env.event;
-  if (ev === 'crimson') return { climb: 2.2, chase: 11.5, sight: 45, hear: 22, dmg: [5, 8], cd: 0.55, stun: 1.2, per: 1.7, push: true };
-  if (ev === 'fog' && env.hostile) return { climb: 1.0, chase: 2.2, sight: 11, hear: 8, dmg: [38, 45], cd: 1.6, stun: 0, per: 1, push: false };
+// How the staff behave at night. (Day: they wander and do no harm.)
+function params() {
   return { climb: 1.15, chase: 6.4, sight: 32, hear: 14, dmg: [7, 13], cd: 1.0, stun: 2.6, per: 1, push: true };
 }
 
@@ -142,6 +140,8 @@ export class StaffSim {
     let clear = true;
     this.world.forBoxes(Math.min(x0, x1), Math.min(z0, z1), Math.max(x0, x1), Math.max(z0, z1), (b) => {
       if (!clear) return;
+      // pallets, coffee tables, ladders and open racks are full of gaps: they see through
+      if (b.item && b.item.k === 'f' && TYPES[b.item.t] && TYPES[b.item.t].see) return;
       let t0 = 0.02, t1 = 0.98;
       const o = [x0, y0, z0], d = [dx, dy, dz], lo = [b.x0, b.y0, b.z0], hi = [b.x1, b.y1, b.z1];
       for (let a = 0; a < 3; a++) {
@@ -177,7 +177,7 @@ export class StaffSim {
   push(id, fromX, fromZ, env) {
     const s = this.staff.get(id);
     if (!s) return '';
-    const P = params(env);
+    const P = params();
     if (!env.hostile) return '';
     if (!P.push || s.look.manager) return 'immune';
     const dx = s.x - fromX, dz = s.z - fromZ, d = Math.hypot(dx, dz) || 1;
@@ -193,7 +193,7 @@ export class StaffSim {
   update(dt, players, env, day) {
     const out = { hits: [] };
     const alive = players.filter((p) => p.alive);
-    const P = params(env);
+    const P = params();
     const night = env.hostile;
     const perPlayer = night ? Math.round(Math.min(3 + Math.floor(day / 2), 12) * P.per) : 2;
     for (const n of this.noises) n.t -= dt;
@@ -209,18 +209,7 @@ export class StaffSim {
         if (near < perPlayer) this.spawnNear(p);
       }
     }
-    // On a Crimson Night the Floor Manager walks the aisles: one near each shopper.
-    if (env.event === 'crimson' && night) {
-      this.mgrT = (this.mgrT || 0) - dt;
-      if (this.mgrT <= 0) {
-        this.mgrT = 5;
-        for (const p of alive) {
-          let has = false;
-          for (const s of this.staff.values()) if (s.look.manager && Math.hypot(s.x - p.x, s.z - p.z) < 55) has = true;
-          if (!has) this.spawnNear(p, true);
-        }
-      }
-    } else for (const s of this.staff.values()) if (s.look.manager) this.staff.delete(s.id);
+    for (const s of this.staff.values()) if (s.look.manager) this.staff.delete(s.id);
     for (const s of this.staff.values()) {
       let nearest = Infinity;
       for (const p of players) nearest = Math.min(nearest, Math.hypot(s.x - p.x, s.z - p.z));

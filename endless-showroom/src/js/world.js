@@ -581,7 +581,7 @@ export class World {
 
   // ---- Items ----
   _addItem(id, s) {
-    const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: ((s.tl | 0) % 3 + 3) % 3, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, mesh: null, cells: null };
+    const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: ((s.tl | 0) % 3 + 3) % 3, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: s.s ? 1 : 0, mesh: null, cells: null };
     if (it.k === 'f' && !Object.prototype.hasOwnProperty.call(TYPES, it.t)) return null;
     if (it.k === 'i' && !Object.prototype.hasOwnProperty.call(ITEMS, it.t)) return null;
     this.items.set(id, it);
@@ -649,7 +649,8 @@ export class World {
     const R = CHUNK * (RENDER_R + 0.5);
     for (const it of this.items.values()) {
       if (!this.active(it) || Math.abs(it.x - this.focusX) > R || Math.abs(it.z - this.focusZ) > R) continue;
-      const key = it.k === 'f' ? it.t + ':' + (it.v % TYPES[it.t].cols.length) : 'item:' + it.t;
+      // doors and screens have a second model (open / showing a picture)
+      const key = it.k === 'f' ? it.t + ':' + (it.v % TYPES[it.t].cols.length) + ':' + (it.s && (TYPES[it.t].use === 'door' || TYPES[it.t].use === 'tv') ? 1 : 0) : 'item:' + it.t;
       let g = groups.get(key); if (!g) groups.set(key, g = []);
       g.push(it);
     }
@@ -658,7 +659,7 @@ export class World {
     // a soft glow over every lamp (shown at night)
     {
       const lamps = [];
-      for (const list of groups.values()) for (const it of list) if (it.k === 'f' && TYPES[it.t].lamp) lamps.push(it);
+      for (const list of groups.values()) for (const it of list) if (it.k === 'f' && TYPES[it.t].lamp && !it.s) lamps.push(it);
       if (!this.glow || this.glow.geometry.attributes.position.count < lamps.length) {
         if (this.glow) { this.group.remove(this.glow); this.glow.geometry.dispose(); }
         const g = new THREE.BufferGeometry();
@@ -694,8 +695,8 @@ export class World {
       let im = this.inst.get(key);
       if (!im || im.instanceMatrix.count < list.length) {
         if (im) { this.group.remove(im); im.dispose(); }
-        const [a, b] = key.split(':');
-        const geo = a === 'item' ? itemGeometry(b) : furnitureGeometry(a, +b);
+        const [a, b, st] = key.split(':');
+        const geo = a === 'item' ? itemGeometry(b) : furnitureGeometry(a, +b, +st || 0);
         im = new THREE.InstancedMesh(geo, furnitureMaterial, Math.max(16, Math.ceil(list.length * 1.5)));
         im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
         this.group.add(im);
@@ -716,7 +717,7 @@ export class World {
   lampsNear(x, z, r, max) {
     const out = [];
     this.forItems(x - r, z - r, x + r, z + r, (it) => {
-      if (it.k !== 'f' || !TYPES[it.t].lamp || !this.active(it)) return;
+      if (it.k !== 'f' || !TYPES[it.t].lamp || it.s || !this.active(it)) return;
       const d = Math.hypot(it.x - x, it.z - z); if (d < r) out.push([d, it]);
     });
     out.sort((a, b) => a[0] - b[0]);
@@ -743,7 +744,7 @@ export class World {
       if (it.k !== 'f' || TYPES[it.t].flat) return;
       const b = this.itemBox(it);
       if (!(b.x1 > x0 && b.x0 < x1 && b.z1 > z0 && b.z0 < z1)) return;
-      const parts = itemParts(it.t, it.r, it.tl, it.o);
+      const parts = itemParts(it.t, it.r, it.tl, it.o, it.s);
       if (!parts) { fn(b); return; }
       for (const [a, c, d, e, f, g] of parts) {
         const pb = { x0: it.x + a, x1: it.x + e, y0: it.y + c, y1: it.y + f, z0: it.z + d, z1: it.z + g, item: it, climb: b.climb };
@@ -773,12 +774,12 @@ export class World {
   }
 
   // ---- Shared state (net.js keeps every screen's mods the same) ----
-  stateOf(it) { const s = { t: it.t, k: it.k, v: it.v, x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), r: it.r, tl: it.tl | 0, hp: Math.round(it.hp), g: it.g ? 1 : 0, c: it.c || 0, d: it.d }; if (it.o) s.o = it.o; if (it.a) s.a = 1; return s; }
+  stateOf(it) { const s = { t: it.t, k: it.k, v: it.v, x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), r: it.r, tl: it.tl | 0, hp: Math.round(it.hp), g: it.g ? 1 : 0, c: it.c || 0, d: it.d }; if (it.o) s.o = it.o; if (it.a) s.a = 1; if (it.s) s.s = 1; return s; }
 
   applyState(id, s) {
     if (!s || typeof s !== 'object') return null;
     const fin = (v, lo, hi) => { v = +v; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : 0; };
-    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: fin(s.x, -1e6, 1e6), y: fin(s.y, 0, CEIL), z: fin(s.z, -1e6, 1e6), r: (s.r | 0) & 3, tl: ((s.tl | 0) % 3 + 3) % 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a };
+    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: fin(s.x, -1e6, 1e6), y: fin(s.y, 0, CEIL), z: fin(s.z, -1e6, 1e6), r: (s.r | 0) & 3, tl: ((s.tl | 0) % 3 + 3) % 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: s.s ? 1 : 0 };
     if (st.k === 'f' ? !Object.prototype.hasOwnProperty.call(TYPES, st.t) : !Object.prototype.hasOwnProperty.call(ITEMS, st.t)) return null;
     this.mods.set(id, st);
     let it = this.items.get(id);

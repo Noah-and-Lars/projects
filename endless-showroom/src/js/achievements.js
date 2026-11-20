@@ -4,9 +4,6 @@ export const ACH = [
   { id: 'night1', name: 'Closing Time', desc: 'Survive your first night.' },
   { id: 'week', name: 'Regular Customer', desc: 'Survive 7 nights in a row.' },
   { id: 'month', name: 'Part of the Furniture', desc: 'Survive 30 nights in a row.' },
-  { id: 'crimson', name: 'Seeing Red', desc: 'Survive a Crimson Night.' },
-  { id: 'fog', name: 'Through the Haze', desc: 'Survive a Fog Day.' },
-  { id: 'hail', name: 'Under Cover', desc: 'Get through a Hailstorm without being hit.' },
   { id: 'build50', name: 'Interior Designer', desc: 'Place 50 pieces of furniture.' },
   { id: 'build500', name: 'Architect', desc: 'Place 500 pieces of furniture.' },
   { id: 'shove20', name: 'Excuse Me', desc: 'Shove 20 members of staff.' },
@@ -14,11 +11,15 @@ export const ACH = [
   { id: 'full', name: 'Hoarder', desc: 'Fill all 16 inventory slots.' },
   { id: 'cafe', name: 'Lunch Break', desc: 'Find a cafeteria.' },
   { id: 'fort', name: 'Somebody Was Here', desc: 'Find an abandoned fort.' },
-  { id: 'manager', name: 'Can I Speak to the Manager', desc: 'Survive a night with the Floor Manager after you.' },
   { id: 'hide', name: 'Wardrobe Malfunction', desc: 'Hide inside a wardrobe at night.' },
   { id: 'high', name: 'Top Shelf', desc: 'Stand as high as the top of a warehouse rack (4.3 m).' },
   { id: 'far', name: 'Lost in the Aisles', desc: 'Walk 1 km from where you started.' },
   { id: 'whistle', name: 'Over Here!', desc: 'Whistle 10 times.' },
+  { id: 'cushion', name: 'Soft Landing', desc: 'Have a bed, sofa or beanbag save you from a fall that would have killed you.' },
+  { id: 'slide', name: 'Wet Floor', desc: 'Slide 10 times.' },
+  { id: 'patience', name: 'Worth the Wait', desc: 'Pick up the store safe. It takes a while.' },
+  { id: 'landmark', name: 'Rare Find', desc: 'Find the rarest pillar in the store.' },
+  { id: 'lights', name: 'Lights Out', desc: 'Switch off 10 lamps.' },
 ];
 
 let state = { got: {}, n: {} };

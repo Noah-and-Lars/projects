@@ -30,7 +30,6 @@
 <!-- HUD -->
 <div id="hud" class="hidden">
   <div id="clock"><div id="clock-day">Day 1</div><div id="clock-time">08:00</div><div id="clock-phase">Open</div></div>
-  <div id="event" class="hidden"></div>
   <div id="cross"></div>
   <div id="prompt" class="hidden"></div>
   <div id="bars">
@@ -60,11 +59,14 @@
   </div>
 </div>
 
+<div id="lowhp"></div>
 <div id="death" class="hidden">
   <h2 id="death-head">You were caught.</h2>
   <p id="death-msg"></p>
   <p id="death-best" class="msg small"></p>
+  <ul id="death-stats"></ul>
   <p id="death-timer"></p>
+  <button id="death-wake" class="btn" disabled>Wake up</button>
 </div>
 
 <!-- Menus -->
@@ -96,13 +98,11 @@
       <li><b>Day</b> (6 minutes): the lights are on and the staff wander about, harmless. Gather food and build.</li>
       <li><b>Night</b> (5 minutes): the lights go out and the staff hunt anyone they see or hear. Break their line of sight and they lose you. A click shoves one over for a moment.</li>
       <li><b>Staff climb</b> about a metre at a time, and up shelving and bookcases. Build high, then take your last step away. Furniture stays wherever you put it, even in mid-air.</li>
-      <li><b>Every 10th night is a Crimson Night</b>: more staff, twice as fast, climbing higher. <b>Every 15th day is a Fog Day</b>: they hunt by day and hit very hard.</li>
       <li><b>Hunger</b> runs down; at zero you lose health. <b>Energy</b> goes on sprinting, jumping and carrying; with none you can't sprint and get hungry faster. Health only comes back from food and first aid.</li>
       <li><b>Food and first aid restock on Mondays and Fridays.</b> Cafeterias have the most. Carry a lamp at night to see.</li>
       <li><b>Whistle</b> to see who's nearby and show your friends where you are, but at night the staff hear it too.</li>
       <li>Read the aisle signs (like <i>AISLE E3 · S2</i>) to tell friends where you are, and drop waypoints to find your base again.</li>
       <li><b>Hold Shift while placing</b> to drop a piece onto what's below. Lie on a bed or a sofa to get your energy back faster.</li>
-      <li>Hail sometimes falls through the garden centre skylights. Get something over your head.</li>
     </ul>
     <table class="keys">
       <tr><td>WASD / arrows</td><td>Move</td><td>Mouse</td><td>Look</td></tr>
@@ -135,6 +135,8 @@
     <label class="check"><input id="s-voice" type="checkbox"> Staff speak out loud (subtitles always show)</label>
     <label class="check"><input id="s-invert" type="checkbox"> Invert looking up and down</label>
     <label class="check"><input id="s-calm" type="checkbox"> Reduce motion (no head bob, shake or sprint zoom)</label>
+    <label class="check"><input id="s-tips" type="checkbox"> Tips in chat now and then</label>
+    <label>Snap held furniture to a grid <select id="s-snap"><option value="0">Off</option><option value="0.25">25 cm</option><option value="0.5">50 cm</option><option value="1">1 m</option></select></label>
     <button class="back primary">Back</button>
   </div>
 </div>

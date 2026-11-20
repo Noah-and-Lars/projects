@@ -13,7 +13,7 @@ import { createNet, myName, cleanName, myShirt } from './net.js';
 import { input, initInput, initTouch, lockPointer, endFrame, pollGamepad } from './input.js';
 import { makeShopper, makeStaff, animate, setHeld, nameTag, nameHash, SHIRT_COLORS } from './models.js';
 import { initAudio, sfx, setAmbience, setVolume, setMusic, setMusicVolume } from './audio.js';
-import { DAY_LEN, CYCLE, EVENTS, POWERCUT, HAIL, DAY_SCALE, setDayScale, hailing, dayEvent, cascade, eventAt, nightEvent, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
+import { DAY_LEN, DAY_SCALE, setDayScale, cycleLen, nightLen, cascade, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
 import { clamp, lerp, angLerp } from './rng.js';
 import * as ach from './achievements.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -25,7 +25,7 @@ const darkEl = $('dark');
 const IS_TOUCH = matchMedia('(pointer: coarse)').matches && 'ontouchstart' in window;
 
 // ---------------------------------------------------------------- settings
-const settings = { sens: 1, vol: 0.7, music: 0.5, fov: 75, low: IS_TOUCH, voice: true, invert: false, short: false, calm: false };
+const settings = { sens: 1, vol: 0.7, music: 0.5, fov: 75, low: IS_TOUCH, voice: true, invert: false, short: false, calm: false, tips: true, snap: 0 };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('es-settings') || '{}')); } catch (_) {}
 const saveSettings = () => { try { localStorage.setItem('es-settings', JSON.stringify(settings)); } catch (_) {} };
 const stats = { best: 0, days: 0 };
@@ -159,7 +159,7 @@ function showDayTitle() {
   const el = $('daytitle');
   el.innerHTML = '';
   const a = document.createElement('div'); a.className = 'dt-day'; a.textContent = `DAY ${clock.day}`;
-  const b = document.createElement('div'); b.className = 'dt-week'; b.textContent = weekday(clock.day) + (dayEvent(world.seed, clock.day) ? ' · ' + EVENTS[dayEvent(world.seed, clock.day)].name : '');
+  const b = document.createElement('div'); b.className = 'dt-week'; b.textContent = weekday(clock.day);
   el.append(a, b);
   el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
 }
@@ -271,7 +271,7 @@ $('p-settings').onclick = () => { returnTo = 'pause'; openSettings(); };
 $('p-leave').onclick = leaveGame;
 
 function openSettings() {
-  $('s-sens').value = settings.sens; $('s-vol').value = settings.vol; $('s-music').value = settings.music; $('s-fov').value = settings.fov; $('s-low').checked = settings.low; $('s-voice').checked = settings.voice; $('s-invert').checked = settings.invert; $('s-calm').checked = settings.calm;
+  $('s-sens').value = settings.sens; $('s-vol').value = settings.vol; $('s-music').value = settings.music; $('s-fov').value = settings.fov; $('s-low').checked = settings.low; $('s-voice').checked = settings.voice; $('s-invert').checked = settings.invert; $('s-calm').checked = settings.calm; $('s-tips').checked = settings.tips !== false; $('s-snap').value = String(settings.snap || 0);
   show('settings');
 }
 $('s-sens').oninput = (e) => { settings.sens = +e.target.value; saveSettings(); };
@@ -283,11 +283,14 @@ setMusicVolume(settings.music);
 $('s-voice').onchange = (e) => { settings.voice = e.target.checked; saveSettings(); };
 $('s-invert').onchange = (e) => { settings.invert = e.target.checked; saveSettings(); };
 $('s-calm').onchange = (e) => { settings.calm = e.target.checked; saveSettings(); };
+$('death-wake').onclick = () => { if (!P.alive && P.respawnT <= 0) { respawn(); if (!IS_TOUCH) lockPointer(canvas); } };
+$('s-tips').onchange = (e) => { settings.tips = e.target.checked; saveSettings(); };
+$('s-snap').onchange = (e) => { settings.snap = +e.target.value || 0; saveSettings(); };
 $('s-music').oninput = (e) => { settings.music = +e.target.value; setMusicVolume(settings.music); saveSettings(); };
 
 initInput(canvas, {
   wantLock: () => { if (mode === 'play' && !paused && !invOpen) lockPointer(canvas); },
-  lockLost: () => { if (mode === 'play' && !chatOpen && !invOpen && !IS_TOUCH) pause(); },
+  lockLost: () => { if (mode === 'play' && !chatOpen && !invOpen && !IS_TOUCH && P.alive) pause(); },
 });
 if (IS_TOUCH) { document.body.classList.add('touch'); }
 
@@ -299,11 +302,11 @@ function roomText() { return net.on ? (net.isPublic ? `Public store ${net.room.r
 function startGame(seed, waitForState, save) {
   setDayScale(save ? +save.k || 1 : waitForState ? 1 : settings.short ? 0.5 : 1);
   world.reset(seed);
-  clock.day = 1; clock.t = 30; clock.ev = '';
+  clock.day = 1; clock.t = 30;
   world.setDay(1);
   if (save) { // carry on a saved solo store
     for (const [id, st] of save.mods || []) if (Array.isArray([id, st]) && st) world.applyState(id, Object.assign({}, st, { c: 0 }));
-    clock.day = Math.max(1, save.day | 0); clock.t = clamp(+save.t || 30, 0, CYCLE - 1);
+    clock.day = Math.max(1, save.day | 0); clock.t = clamp(+save.t || 30, 0, cycleLen(clock.day) - 1);
     world.setDay(clock.day);
   }
   remotes.forEach((r) => { scene.remove(r.model.root); if (r.heldMesh) scene.remove(r.heldMesh); }); remotes.clear();
@@ -446,7 +449,7 @@ function onWorld(list) {
 function onStaffSnap(list) { ingestStaff(list, performance.now()); }
 function onClock(p) {
   if (p.k !== undefined && setDayScale(+p.k)) refreshDayLen();
-  const d = Math.max(1, p.d | 0), t = clamp(num(p.t), 0, CYCLE);
+  const d = Math.max(1, p.d | 0), t = clamp(num(p.t), 0, cycleLen(d));
   if (d !== clock.day) { clock.day = d; world.setDay(d); clock.t = t; }
   else if (Math.abs(t - clock.t) > 1.5) clock.t = t;
   else clock.t += (t - clock.t) * 0.3;
@@ -522,6 +525,10 @@ function hostRequest(from, q) {
     if (!it.g && from !== net.id) { broadcastItems([it.id], echo); return; }
     world.edit(it, { x: num(q.x, it.x), y: clamp(num(q.y), 0, CEIL), z: num(q.z, it.z), g: false, c: null });
     broadcastItems([it.id], echo);
+  } else if (q.a === 'use') {
+    const u = it.k === 'f' && TYPES[it.t].use;
+    if (u && u !== 'flush' && !it.c && !world.isGone(it)) world.edit(it, { s: it.s ? 0 : 1 });
+    broadcastItems([it.id], echo);
   } else if (q.a === 'place') {
     if (it.c !== from) { broadcastItems([it.id], echo); return; }
     const x = num(q.x, it.x), y = clamp(num(q.y), 0, CEIL), z = num(q.z, it.z);
@@ -537,7 +544,7 @@ function request(q) {
   net.send('q', q);
 }
 // The staff give you a few seconds after the lights go out before they start.
-const staffEnv = () => ({ hostile: isHostile(clock.t, clock.ev) && !(isNight(clock.t) && clock.t < DAY_LEN + 5), event: clock.ev });
+const staffEnv = () => ({ hostile: isHostile(clock.t) && clock.t >= DAY_LEN + 5, event: '' });
 // A shove, on the host: knock the member of staff down (or, in fog, it hurts you).
 function onPushRequest(from, p) {
   if (!staffSim) return;
@@ -551,7 +558,7 @@ function onWhistle(from, p) {
   const r = remotes.get(from);
   if (d < 120) { const a = Math.atan2(x - P.x, z - P.z) - P.yaw; sfx.whistle(clamp(-Math.sin(a), -1, 1), Math.max(0.15, 1 - d / 120)); }
   if (r) { r.revealT = 8; toast(`${r.name} whistled${d < 120 ? ` (${Math.round(d)} m away)` : ''}.`); }
-  if (staffSim && isHostile(clock.t, clock.ev)) staffSim.noise(x, z, 45);
+  if (staffSim && isHostile(clock.t)) staffSim.noise(x, z, 45);
 }
 
 // ---------------------------------------------------------------- player
@@ -564,7 +571,7 @@ function hurt(d, why) {
 }
 function die(why) {
   P.hp = 0; P.alive = false; P.deadAt = performance.now();
-  P.respawnT = 7;
+  P.respawnT = 2.5; // the Wake up button unlocks after a moment
   P.using = null;
   sfx.death();
   if (P.carry) { // let go of what we carried where we stand
@@ -576,9 +583,14 @@ function die(why) {
   for (let i = waypoints.length - 1; i >= 0; i--) if (waypoints[i].death) waypoints.splice(i, 1);
   waypoints.push({ x: P.x, y: P.y + 1, z: P.z, name: 'Where you were caught', death: true });
   $('death').classList.remove('hidden');
-  const head = { hunger: 'You starved.', fall: 'You fell too far.', food: 'Something you ate finished you off.', hail: 'The hail got you.' }[why] || 'You were caught.';
+  const head = { hunger: 'You starved.', fall: 'You fell too far.', food: 'Something you ate finished you off.', glass: 'You cut yourself on broken glass.' }[why] || 'You were caught.';
   $('death-head').textContent = head;
   $('death-msg').textContent = `You survived ${P.nights} night${P.nights === 1 ? '' : 's'}.`;
+  const L = P.life || {};
+  $('death-stats').innerHTML = [['Furniture placed', L.placed | 0], ['Staff shoved', L.shoves | 0], ['Things eaten', L.eaten | 0], ['Distance walked', `${Math.round(L.dist || 0)} m`]]
+    .map(([k, v]) => `<li><span>${k}</span><b>${v}</b></li>`).join('');
+  $('death-wake').disabled = true;
+  if (document.pointerLockElement) document.exitPointerLock?.();
   net.send('x', { n: P.nights, w: why });
   $('death-best').textContent = `Day ${clock.day} · your best: ${Math.max(stats.best, P.nights)} night${Math.max(stats.best, P.nights) === 1 ? '' : 's'}`;
   P.nights = 0;
@@ -587,11 +599,43 @@ function respawn() {
   // Wake up somewhere else in the store.
   const a = Math.random() * Math.PI * 2, d = 40 + Math.random() * 60;
   spawnAt(P.x + Math.cos(a) * d, P.z + Math.sin(a) * d, 10);
-  Object.assign(P, { hp: 100, food: 70, en: 70, alive: true, vy: 0, hurtT: 99 });
+  Object.assign(P, { hp: 100, food: 70, en: 70, alive: true, vy: 0, hurtT: 99, life: {} });
   $('death').classList.add('hidden');
   announce('You wake up in another aisle', 'Your things are gone. A marker shows where you were caught.', 5);
 }
 
+const CHAT_TIPS = [
+  'Meatballs fill you up more than anything else in the cafeteria.',
+  'Staff can see straight through pallets, coffee tables and ladders. Use something solid.',
+  'A beanbag breaks a fall from any side. A bed or a sofa only from on top.',
+  'Each shove costs energy. Keep a drink for nights.',
+  'Hold F to wind up a throw. Let go of F to throw it.',
+  'Press F on a lamp to switch it off before the staff notice it.',
+  'Crouch while sprinting to slide under a gap.',
+  'Read the pillar screens to tell your friends where you are.',
+  'Nights get a little longer every day.',
+  'Food comes back on Mondays and Fridays.',
+  'A closed door stops the staff. They can\'t open it.',
+  'Broken glass in the garden rooms will hurt you if you use it.',
+];
+const life = () => P.life || (P.life = {}); // this life's numbers, for the death screen
+// A hard landing. Beds, sofas and mattresses soften it if you land on top of
+// them; a beanbag softens it from any side (more). A long drop onto a bed
+// bounces you back up.
+function landed(v) {
+  let soft = null;
+  world.forBoxes(P.x - 0.2, P.z - 0.2, P.x + 0.2, P.z + 0.2, (b) => {
+    if (!b.item || b.item.k !== 'f' || Math.abs(b.y1 - P.y) > 0.08) return;
+    const t = TYPES[b.item.t]; if (!t.soft) return;
+    if (t.soft === 'any') soft = 'any';
+    else if (!soft && b.y1 >= world.itemBox(b.item).y1 - 0.25) soft = 'top';
+  });
+  const k = soft === 'any' ? 1.66 : soft === 'top' ? 1.38 : 1;
+  const raw = (v - 13) * 9, dmg = Math.max(0, (v - 13 * k) * 9 / k);
+  if (soft && raw >= P.hp && dmg < P.hp) { ach.unlock('cushion'); toast('That would have killed you. The cushioning saved you.'); }
+  if (soft === 'top' && v > 16) { P.vy = v * 0.35; P.onGround = false; }
+  if (dmg > 0) hurt(dmg, 'fall');
+}
 function updatePlayer(dt) {
   const k = input.keys;
   const busy = paused || chatOpen || invOpen;
@@ -612,6 +656,16 @@ function updatePlayer(dt) {
   const moving = m > 0.1;
   // Crouch (C or Ctrl): low enough to get through gaps the staff can't.
   const wantCrouch = !busy && P.alive && (k.has('KeyC') || (!P.carry && (k.has('ControlLeft') || k.has('ControlRight'))));
+  // crouching while sprinting is a slide: a burst along the ground, harder when you're hurt
+  if (wantCrouch && !P.crouch && P.sprinting && P.onGround && !P.carry) {
+    const cost = 4 * (1 + (1 - P.hp / 100));
+    if (P.en >= cost) {
+      P.en -= cost; P.slideT = 0.75;
+      P.slideX = -Math.sin(P.yaw) * (fz < 0 ? 1 : 0) + Math.cos(P.yaw) * fx * 0.5; P.slideZ = -Math.cos(P.yaw) * (fz < 0 ? 1 : 0) - Math.sin(P.yaw) * fx * 0.5;
+      const l = Math.hypot(P.slideX, P.slideZ) || 1; P.slideX /= l; P.slideZ /= l;
+      sfx.slide(); ach.count('slides', 'slide', 10);
+    }
+  }
   if (wantCrouch && !P.crouch) { P.crouch = true; P.height = 1.0; }
   else if (!wantCrouch && P.crouch && bodyFits(world, P.x, P.y, P.z, P.radius - 0.02, 1.75)) { P.crouch = false; P.height = 1.75; }
   const wantSprint = (k.has('ShiftLeft') || k.has('ShiftRight')) && moving && fz < 0.3 && !P.crouch;
@@ -619,7 +673,13 @@ function updatePlayer(dt) {
   P.sprinting = sprint;
   const speed = (P.crouch ? 2.2 : sprint ? 7.4 : 4.6) * (P.carry ? 0.85 : 1);
   const sin = Math.sin(P.yaw), cos = Math.cos(P.yaw);
-  const dx = (fx * cos + fz * sin) * speed * dt, dz = (-fx * sin + fz * cos) * speed * dt;
+  let dx = (fx * cos + fz * sin) * speed * dt, dz = (-fx * sin + fz * cos) * speed * dt;
+  if (P.slideT > 0) { // sliding: fast, then slowing to a crouch
+    P.slideT -= dt;
+    const v = 3 + 7.5 * Math.max(0, P.slideT / 0.75);
+    dx = P.slideX * v * dt; dz = P.slideZ * v * dt;
+    if (!P.onGround || P.slideT <= 0) P.slideT = 0;
+  }
   if (!busy && P.alive && k.has('Space') && P.onGround) { P.vy = 7.2; P.onGround = false; P.en = Math.max(0, P.en - 1.5); }
   // walk into shelving or a bookcase to climb it
   P.canClimb = !busy && P.alive && fz < -0.3;
@@ -629,24 +689,24 @@ function updatePlayer(dt) {
   if (P.alive) { moveBody(world, P, dx, dz, dt); rideHeld(); }
   world.withHeld = false;
   P.speed = Math.hypot(P.x - ox, P.z - oz) / dt;
+  if (P.alive) life().dist = (life().dist || 0) + Math.min(1, Math.hypot(P.x - ox, P.z - oz));
   if (wasAir && P.onGround && P.landSpeed > 4) { sfx.land(); feel.dip = Math.min(0.5, P.landSpeed * 0.035); }
-  if (P.landSpeed > 13) hurt((P.landSpeed - 13) * 9, 'fall');
+  if (P.landSpeed > 13) landed(P.landSpeed);
   // footsteps
   if (P.onGround && P.speed > 0.5) { P.stepAcc += P.speed * dt; if (P.stepAcc > (sprint ? 2.2 : 1.7)) { P.stepAcc = 0; if (P.y < 0.05 && world.sectionAt(P.x, P.z) === 'garden') sfx.grassStep(); else sfx.step(!sprint); } }
   if (P.alive) {
-    // Energy: sprinting, jumping and carrying use it; standing still slowly gets it back.
-    if (sprint) P.en = Math.max(0, P.en - 3.2 * dt);
-    if (P.carry) P.en = Math.max(0, P.en - 0.25 * dt);
-    if (!moving && P.onGround && !P.carry) {
-      // resting on a bed or a sofa gets your energy back much faster
-      const rest = restingOn();
-      P.en = Math.min(100, P.en + (rest ? 3 : 0.8) * dt);
-      if (rest && !P.resting && P.en < 95) toast(`Resting on the ${TYPES[rest].name.toLowerCase()}…`);
-      P.resting = !!rest;
-    } else P.resting = false;
-    // Hunger empties in about 15 minutes, twice as fast with no energy. No food, no health.
-    P.food = Math.max(0, P.food - dt * (100 / 900) * (P.en <= 0 ? 2 : 1) * (sprint ? 1.5 : 1));
-    if (P.food <= 0) { P.hp -= dt * 1.0; if (P.hp <= 0) die('hunger'); }
+    // Energy drains all the time: slowly standing still, faster walking, fastest
+    // sprinting, and faster still when you're hurt. Only food and drink bring it back.
+    const hurtK = 1 + 0.8 * (1 - P.hp / 100);
+    const drain = sprint ? 3.2 : moving || P.slideT > 0 ? 0.12 : 0.04;
+    P.en = Math.max(0, P.en - (drain + (P.carry ? 0.15 : 0)) * hurtK * dt);
+    // Hunger runs down more slowly, and faster the less energy you have (twice as
+    // fast with none). No food, and your health goes quickly.
+    P.food = Math.max(0, P.food - dt * (100 / 1100) * (P.en <= 0 ? 2 : 1 + 0.5 * (1 - P.en / 100)) * (sprint ? 1.3 : 1));
+    if (P.food <= 0) { P.hp -= dt * 1.5; if (P.hp <= 0) die('hunger'); }
+    // a growling stomach, and a heart you can hear when you're nearly done
+    if (P.food < 10) { P.growlT = (P.growlT || 0) - dt; if (P.growlT <= 0) { P.growlT = 35; sfx.growl(); } } else P.growlT = 0;
+    if (P.hp <= 10) { P.beatT = (P.beatT || 0) - dt; if (P.beatT <= 0) { P.beatT = 0.95; sfx.heartbeat(); } }
     P.hurtT += dt;
     // a first aid kit takes a moment
     if (P.using) {
@@ -658,12 +718,6 @@ function updatePlayer(dt) {
   if (P.y < -5) { P.y = 0; } // safety
 }
 
-const RESTFUL = new Set(['bedSingle', 'bedDouble', 'bunkBed', 'mattress', 'sofa', 'armchair']);
-function restingOn() {
-  let found = null;
-  world.forBoxes(P.x - 0.1, P.z - 0.1, P.x + 0.1, P.z + 0.1, (b) => { if (b.item && RESTFUL.has(b.item.t) && Math.abs(b.y1 - P.y) < 0.12) found = b.item.t; });
-  return found;
-}
 
 // ---------------------------------------------------------------- ray picking
 // A ray against the collision boxes (and, if asked, food and rugs). Returns
@@ -738,15 +792,22 @@ function updateInteraction(dt) {
           request({ a: 'take', id: it.id });
         }
       } else {
-        text = `<b>E</b> Pick up ${TYPES[it.t].name}`;
-        if (pressedUse) pickUp(it);
+        // Hold E to pick a piece up: half a second, longer for heavy ones.
+        const t = TYPES[it.t], need = t.heavy || 0.5;
+        if (input.keys.has('KeyE')) { if (P.pickId !== it.id) { P.pickId = it.id; P.pickT = 0; } P.pickT += dt; }
+        else P.pickId = null;
+        const pct = P.pickId === it.id ? Math.min(1, P.pickT / need) : 0;
+        text = pct > 0 ? `Picking up ${t.name}… <span class="stat">${Math.round(pct * 100)}%</span>` : `<b>Hold E</b> Pick up ${t.name}${need > 1 ? ' <span class="stat">(heavy)</span>' : ''}`;
+        if (t.use) text += ` · <b>F</b> ${useWord(it)}`;
+        if (pct >= 1) { P.pickId = null; if (it.t === 'safe') ach.unlock('patience'); pickUp(it); }
+        else if (t.use && input.pressed.has('KeyF')) useItem(it);
       }
     }
     // A click shoves the member of staff in front of you, or uses the selected item.
     const sid = staffInReach();
     if (sid != null && !target) text = text || '<b>Click</b> Shove';
     if (clicked && !(IS_TOUCH && target && target.k === 'i')) {
-      if (sid != null && isHostile(clock.t, clock.ev)) shove(sid);
+      if (sid != null && isHostile(clock.t)) shove(sid);
       else useSelected();
     }
   } else {
@@ -770,6 +831,9 @@ function updateInteraction(dt) {
       sfx.click();
     }
     if (input.wheel) P.carryDist = clamp(P.carryDist - input.wheel * 0.5, 1.5, 8);
+    // hold F to wind up a throw, let go to throw it
+    if (input.keys.has('KeyF')) c.charge = Math.min(1, (c.charge || 0) + dt / 1.1);
+    else if (c.charge > 0) { const k = c.charge; c.charge = 0; throwCarry(k); return; }
     const [w, h, d] = itemDims(c.t, 0, 0, c.o);
     const hit = raycast(ex, ey, ez, dx, dy, dz, P.carryDist, false);
     const hp = [ex + dx * hit.t, ey + dy * hit.t, ez + dz * hit.t];
@@ -778,6 +842,7 @@ function updateInteraction(dt) {
     else if (hit.n && hit.n[1] < -0.5) py = hp[1] - h;               // pressed up under something
     else if (hit.n) { px += hit.n[0] * (w / 2 + 0.01); pz += hit.n[2] * (d / 2 + 0.01); py = hp[1] - h / 2; } // against a side
     else py = hp[1] - h / 2;                                         // in mid-air
+    if (settings.snap) { const g = settings.snap; px = Math.round(px / g) * g; pz = Math.round(pz / g) * g; if (!(hit.n && hit.n[1] > 0.5)) py = Math.round(py / g) * g; }
     py = clamp(py, 0, CEIL - h);
     // the piece follows your aim with a little lag, like something heavy
     const k = c.fresh ? 1 : 1 - Math.exp(-dt * 16);
@@ -792,7 +857,8 @@ function updateInteraction(dt) {
     holdBox.material.color.setHex(sticks ? 0x44ff66 : 0xffffff);
     holdBox.visible = true;
     const axisName = ['X', 'Y', 'Z'][c.axis];
-    text = `Holding ${t.name} · <b>E</b>/click let go ${sticks ? '<span class="stat">(stays put)</span>' : '<span class="stat">(falls)</span>'} · <b>R</b> rotate on <b>${axisName}</b> (<b>1 2 3</b> axis · <b>Ctrl</b> 15° · <b>Shift</b> 90°) · <b>wheel</b> closer/farther · <b>F</b> throw`;
+    if (c.charge > 0) text = `Throwing ${t.name}… <span class="stat">${Math.round(c.charge * 100)}% power</span>`;
+    else text = `Holding ${t.name} · <b>E</b>/click let go ${sticks ? '<span class="stat">(stays put)</span>' : '<span class="stat">(falls)</span>'} · <b>R</b> rotate on <b>${axisName}</b> (<b>1 2 3</b> axis · <b>Ctrl</b> 15° · <b>Shift</b> 90°) · <b>wheel</b> closer/farther · hold <b>F</b> throw`;
     if (pressedUse || clicked || input.pressed.has('KeyQ')) letGo();
   }
   if (P.using) text = `Using ${ITEMS[P.using.key].name}… ${Math.max(0, P.using.t).toFixed(1)} s`;
@@ -855,11 +921,9 @@ function letGo() {
   const c = P.carry; if (!c) return;
   const item = world.items.get(c.id);
   if (touches(c.t, c.o, c.x, c.y, c.z, item)) { placeCarry({ x: c.x, y: c.y, z: c.z, o: c.o, a: 1 }); return; }
-  // nothing touching: it drops straight down
+  // nothing touching: it drops straight down onto whatever is below
   const land = c.y - dropHeight(c.t, c.o, c.x, c.y, c.z, item);
-  const pts = []; let y = c.y, vy = 0;
-  while (y > land) { vy -= 30 * 0.025; y = Math.max(land, y + vy * 0.025); pts.push([c.x, y, c.z]); }
-  launch(c, pts, { x: c.x, y: land, z: c.z, o: c.o, a: 0 });
+  placeCarry({ x: c.x, y: land, z: c.z, o: c.o, a: 0 });
   P.carry = null;
 }
 function placeCarry(p, carry = P.carry) {
@@ -869,13 +933,35 @@ function placeCarry(p, carry = P.carry) {
   if (P.carry === carry) P.carry = null;
   if (p.a) sfx.place(); else sfx.land();
   ach.count('placed', 'build50', 50); ach.count('placed2', 'build500', 500);
+  life().placed = (life().placed | 0) + 1;
   request({ a: 'place', id, x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3), o: p.o, an: p.a ? 1 : 0 });
+}
+// Switch a lamp off or on, open or close a door, turn a TV on, flush.
+function useWord(it) {
+  const u = TYPES[it.t].use;
+  return u === 'lamp' ? (it.s ? 'switch on' : 'switch off') : u === 'door' ? (it.s ? 'close' : 'open') : u === 'tv' ? (it.s ? 'turn off' : 'turn on') : 'flush';
+}
+function useItem(it) {
+  const u = TYPES[it.t].use;
+  if (u === 'flush') { sfx.flush(); return; }
+  if (u === 'door') {
+    // don't close a door on yourself
+    const open = !it.s;
+    if (!open) { const b = world.itemBox(it); if (P.x > b.x0 - 0.3 && P.x < b.x1 + 0.3 && P.z > b.z0 - 0.3 && P.z < b.z1 + 0.3 && P.y < b.y1) { sfx.deny(); return; } }
+    sfx.door(open);
+  } else sfx.switchOn();
+  if (u === 'lamp' && !it.s) ach.count('lampsOff', 'lights', 10);
+  if (!net.isHost()) world.edit(it, { s: it.s ? 0 : 1 });
+  request({ a: 'use', id: it.id });
 }
 function shove(id) {
   if (P.eatCd > 0) return;
+  if (P.en < 4) { sfx.deny(); toast("You're too tired to shove. Eat or drink something."); P.eatCd = 0.6; return; }
+  P.en -= 4 + Math.random() * 4; // a shove takes 4 to 8 energy
   P.eatCd = 0.6;
   sfx.shove();
   ach.count('shoves', 'shove20', 20);
+  life().shoves = (life().shoves | 0) + 1;
   feel.shake = Math.max(feel.shake, 0.3);
   if (net.isHost()) onPushRequest(net.id, { id });
   else net.send('pu', { id });
@@ -913,11 +999,11 @@ function dropSelected(slot = P.sel) {
 // Throw what you're carrying: it flies in an arc and lands where it lands.
 // Without energy you can't throw far.
 const flying = [];
-function throwCarry() {
+function throwCarry(charge = 1) {
   const c = P.carry; if (!c) return;
   const [w, h, d] = itemDims(c.t, 0, 0, c.o);
   const item = world.items.get(c.id);
-  const [dx, dy, dz] = lookDir(), power = P.en > 5 ? 9 : 3.5;
+  const [dx, dy, dz] = lookDir(), power = (P.en > 5 ? 3 + 8 * charge : 3.5);
   let x = c.x, y = c.y, z = c.z, vx = dx * power, vy = dy * power + 2.5, vz = dz * power;
   const pts = [];
   for (let i = 0; i < 200; i++) {
@@ -929,7 +1015,7 @@ function throwCarry() {
   const ly = y - dropHeight(c.t, c.o, x, y, z, item);
   pts.push([x, ly, z]);
   launch(c, pts, { x, y: ly, z, o: c.o, a: 0 });
-  P.carry = null; P.en = Math.max(0, P.en - 3);
+  P.carry = null; P.en = Math.max(0, P.en - 1 - 3 * charge);
   sfx.shove();
 }
 // A piece moving on its own (thrown, or dropping after you let go). It stays
@@ -956,10 +1042,11 @@ function updateFlying(dt) {
 function applyItem(key) {
   const it = ITEMS[key];
   if (key !== 'medkit') ach.count('eaten', 'eat50', 50);
+  life().eaten = (life().eaten | 0) + 1;
   if (it.food) P.food = Math.min(100, P.food + it.food);
   if (it.en) P.en = Math.min(100, P.en + it.en);
   if (it.hp > 0) P.hp = Math.min(100, P.hp + it.hp);
-  if (it.hp < 0) { toast("That didn't taste right."); hurt(-it.hp, 'food'); }
+  if (it.hp < 0) { toast(key === 'glass' ? 'Ouch. That was broken glass.' : "That didn't taste right."); hurt(-it.hp, key === 'glass' ? 'glass' : 'food'); }
   if (it.food) sfx.eat(); else if (it.hp > 0 && !it.en) sfx.heal(); else sfx.drink();
 }
 
@@ -1055,14 +1142,11 @@ function updateHud(dt) {
   wh.classList.toggle('cool', P.whistleT > 0);
   updateMarks();
   const night = isNight(clock.t);
-  $('clock').classList.toggle('night', isHostile(clock.t, clock.ev));
+  $('clock').classList.toggle('night', isHostile(clock.t));
   $('clock-day').textContent = `Day ${clock.day} · ${weekday(clock.day)}`;
-  $('clock-time').textContent = clockText(clock.t);
+  $('clock-time').textContent = clockText(clock.t, clock.day);
   const tm = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-  $('clock-phase').textContent = night ? `Closed · opens in ${tm(CYCLE - clock.t)}` : isHostile(clock.t, clock.ev) ? (clock.ev === 'fog' ? `Fog · staff hunting · ${tm(DAY_LEN - clock.t)}` : 'Power cut · staff hunting') : hailing(clock.t, clock.ev) ? `Hailstorm · closes in ${tm(DAY_LEN - clock.t)}` : `Open · closes in ${tm(DAY_LEN - clock.t)}`;
-  $('clock').classList.toggle('red', clock.ev === 'crimson');
-  const ev = $('event');
-  if (clock.ev) { ev.textContent = EVENTS[clock.ev].name; ev.classList.remove('hidden'); } else ev.classList.add('hidden');
+  $('clock-phase').textContent = night ? `Closed · opens in ${tm(cycleLen(clock.day) - clock.t)}` : `Open · closes in ${tm(DAY_LEN - clock.t)}`;
   $('survived').textContent = `Nights survived: ${P.nights}`;
   const showRoster = input.keys.has('Tab');
   $('roster').classList.toggle('hidden', !showRoster); $('room-tag').classList.toggle('hidden', showRoster);
@@ -1071,8 +1155,10 @@ function updateHud(dt) {
   for (const d of $('chat-log').children) d.style.opacity = chatOpen || now - d._t < 12000 ? 1 : 0;
   if (!P.alive) {
     P.respawnT -= dt;
-    $('death-timer').textContent = P.respawnT > 0 ? `Waking up in ${Math.ceil(P.respawnT)}…` : '';
-    if (P.respawnT <= 0) respawn();
+    const ready = P.respawnT <= 0;
+    $('death-wake').disabled = !ready;
+    $('death-timer').textContent = ready ? 'Press Space or Wake up when you\'re ready.' : '';
+    if (ready && (input.pressed.has('Space') || input.pressed.has('Enter'))) respawn();
   }
 }
 
@@ -1081,42 +1167,32 @@ let lastTick = -1;
 function updateClock(dt) {
   if (net.isHost()) {
     clock.t += dt;
-    if (clock.t >= CYCLE) { clock.t -= CYCLE; clock.day++; world.setDay(clock.day); }
-  } else clock.t = Math.min(CYCLE - 0.001, clock.t + dt);
-  clock.ev = eventAt(world.seed, clock.day, clock.t);
+    const C = cycleLen(clock.day);
+    if (clock.t >= C) { clock.t -= C; clock.day++; world.setDay(clock.day); }
+  } else clock.t = Math.min(cycleLen(clock.day) - 0.001, clock.t + dt);
   const phase = isNight(clock.t) ? 'night' : 'day';
   if (lastPhase && phase !== lastPhase) {
     if (phase === 'night') {
-      if (P.alive && dayEvent(world.seed, clock.day) === 'fog') ach.unlock('fog');
-      if (P.alive && dayEvent(world.seed, clock.day) === 'hail' && !hail.wasHit) ach.unlock('hail');
-      hail.wasHit = false;
-      const red = clock.ev === 'crimson';
-      sfx.lightsOff(red);
-      if (red) announce(`${EVENTS.crimson.name}`, EVENTS.crimson.desc, 7);
-      else announce('The store is now closed', 'The lights are out and the staff are hunting. Get somewhere high or stay hidden.', 6);
+      sfx.lightsOff(false);
+      announce('The store is now closed', 'The lights are out and the staff are hunting. Get somewhere high or stay hidden.', 6);
       warned = false;
     } else {
       sfx.lightsOn();
       if (P.alive) {
         P.nights++; if (P.nights > stats.best) stats.best = P.nights; stats.days++; saveStats();
         ach.unlock('night1'); if (P.nights >= 7) ach.unlock('week'); if (P.nights >= 30) ach.unlock('month');
-        if (nightEvent(world.seed, clock.day - 1) === 'crimson') { ach.unlock('crimson'); if (managerChased) ach.unlock('manager'); }
       }
-      managerChased = false;
-      const e = clock.ev && EVENTS[clock.ev];
       const restock = isRestockDay(clock.day) ? ' Food and first aid have been restocked.' : '';
-      announce(`Good morning!`, e ? `${e.name}: ${e.desc}` : `The store is open.${restock}`, 7);
+      announce(`Good morning!`, `The store is open.${restock} Tonight runs ${Math.round(nightLen(clock.day))} s.`, 7);
       showDayTitle();
     }
   }
-  if (phase === 'day' && clock.t > DAY_LEN - 30 && !warned) { warned = true; sfx.chime(); announce('The store closes in 30 seconds', nightEvent(world.seed, clock.day) === 'crimson' ? 'Something feels wrong tonight. Find somewhere safe.' : 'Find somewhere safe.', 4); }
+  if (phase === 'day' && clock.t > DAY_LEN - 30 && !warned) { warned = true; sfx.chime(); announce('The store closes in 30 seconds', 'Find somewhere safe.', 4); }
   // the last five seconds before closing tick down
   const left = Math.ceil(DAY_LEN - clock.t);
   if (phase === 'day' && left <= 5 && left >= 1 && left !== lastTick) { lastTick = left; sfx.tick(6 - left); }
-  if (clock.ev === 'powercut' && Math.abs(clock.t - POWERCUT[0]) < dt * 1.5) { sfx.lightsOff(false); announce('Power cut!', 'The staff hunt in the dark until the power comes back.', 4); }
-  if (clock.ev === 'powercut' && Math.abs(clock.t - POWERCUT[1]) < dt * 1.5) sfx.lightsOn();
-  if (clock.ev === 'hail' && Math.abs(clock.t - HAIL[0]) < dt * 1.5) announce('Hailstorm!', 'Hail is coming through the garden centre skylights. Stay under cover there.', 5);
-  if (clock.ev === 'hail' && Math.abs(clock.t - HAIL[1]) < dt * 1.5) toast('The hail has stopped.');
+  // the odd tip in chat (can be turned off in Settings)
+  if (settings.tips !== false && P.alive && (tipT -= dt) <= 0) { tipT = 200 + Math.random() * 120; const d = document.createElement('div'); d.className = 'tip'; d.textContent = 'Tip: ' + CHAT_TIPS[(Math.random() * CHAT_TIPS.length) | 0]; d._t = performance.now(); $('chat-log').append(d); }
   // tips on your first day
   if (stats.days === 0 && clock.day === 1) for (const [at, tip] of TIPS) if (clock.t >= at && clock.t - dt < at) toast('Tip: ' + tip);
   // the odd announcement over the PA during the day
@@ -1203,14 +1279,15 @@ function drawStaff(dt, now) {
     v.y = v.y === undefined || Math.abs(ty - v.y) > 4 ? ty : v.y + (ty - v.y) * Math.min(1, dt * 9);
     m.root.position.set(lerp(s0.x, s1.x, u), v.y, lerp(s0.z, s1.z, u));
     m.root.rotation.y = angLerp(s0.ry, s1.ry, u);
-    const hostile = !!(s1.f & 1) || isHostile(clock.t, clock.ev);
+    const hostile = !!(s1.f & 1) || isHostile(clock.t);
     m.eyes.visible = hostile;
-    const carryingStock = m.stock && !isHostile(clock.t, clock.ev);
+    const carryingStock = m.stock && !isHostile(clock.t);
     if (m.stock) m.stock.visible = carryingStock;
     animate(m, s1.s, dt, { reach: s1.f & 2 ? now / 1000 : 0, climbing: !!(s1.f & 8) && !(s1.f & 4), down: !!(s1.f & 4), carrying: carryingStock });
     const d = Math.hypot(m.root.position.x - P.x, m.root.position.z - P.z);
     if (s1.f & 1) { anyHostile = true; if (d < nearest) { nearest = d; const a = Math.atan2(m.root.position.x - P.x, m.root.position.z - P.z) - P.yaw; nearPan = clamp(-Math.sin(a), -1, 1); } }
     if (s1.tg === net.id && d < hunter) { hunter = d; hunterLook = m.look; }
+    if (s1.tg === net.id && d < 30) lastHunted = now;
     // heavy footsteps you can hear coming
     if (hostile && d < 18 && s1.s > 1) { v.stepAcc = (v.stepAcc || 0) + s1.s * dt; if (v.stepAcc > 1.5) { v.stepAcc = 0; const a = Math.atan2(m.root.position.x - P.x, m.root.position.z - P.z) - P.yaw; sfx.staffStep(clamp(-Math.sin(a), -1, 1), 1 - d / 18); } }
   }
@@ -1266,7 +1343,7 @@ function drawRemotes(dt, now) {
 }
 
 // ---------------------------------------------------------------- frame
-let frameDt = 1 / 60, achT = 0, managerChased = false, fortNear = 0;
+let frameDt = 1 / 60, achT = 0, fortNear = 0, lastHunted = -1e9, tipT = 150;
 let last = performance.now(), sendT = 0, staffSendT = 0, clockSendT = 0, chunkT = 0;
 function frame() {
   requestAnimationFrame(frame);
@@ -1290,7 +1367,6 @@ function frame() {
   }
   updateInteraction(dt);
   updateFlying(dt);
-  updateHail(dt);
   achT -= dt;
   if (achT <= 0 && P.alive) {
     achT = 0.5;
@@ -1300,7 +1376,6 @@ function frame() {
     if (Math.hypot(P.x - P.startX, P.z - P.startZ) > 1000) ach.unlock('far');
     if (isNight(clock.t)) {
       world.forBoxes(P.x - 0.1, P.z - 0.1, P.x + 0.1, P.z + 0.1, (b) => { if (b.item && b.item.t === 'wardrobe' && b.y0 > P.y + 1.5 && b.y0 < P.y + 2.3) ach.unlock('hide'); });
-      for (const v of staffViews.values()) { const b = v.buf[v.buf.length - 1]; if (v.model.look.manager && b && b.tg === net.id) managerChased = true; }
     }
     world.forItems(P.x - 6, P.z - 6, P.x + 6, P.z + 6, (it) => { if (it.k === 'f' && it.t === 'pallet' && it.tl === 1 && !world.mods.has(it.id) && Math.hypot(it.x - P.x, it.z - P.z) < 4) fortNear++; }); // upturned pallets nobody moved: a fort
     if (fortNear > 5) ach.unlock('fort');
@@ -1327,21 +1402,23 @@ function frame() {
     net.send('p', { x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), ry: +P.yaw.toFixed(2), a: P.alive ? 1 : 0, ct: hold ? hold.t : '', cv: hold ? hold.v : 0, ho: hold ? [hold.x, hold.y, hold.z].map((n) => +n.toFixed(2)).concat(hold.o) : 0, n: P.nights, hp: Math.ceil(P.hp), sp: P.sprinting ? 1 : 0, cr: P.crouch ? 1 : 0 });
   }
   // light and camera
-  const L = lightLevel(clock.t, clock.ev, now / 1000);
-  lights.cascade = cascade(clock.t, clock.ev);
+  const L = lightLevel(clock.t, clock.day);
+  lights.cascade = cascade(clock.t, clock.day);
   if (lights.cascade && !lights.cascadeAt) { lights.cascadeAt = [P.x, P.z]; }
   if (!lights.cascade) lights.cascadeAt = null;
   if (lights.cascadeAt) { lights.cx = lights.cascadeAt[0]; lights.cz = lights.cascadeAt[1]; }
-  applyLight(scene, lights, L, clock.ev, settings.low);
-  setAmbience(isHostile(clock.t, clock.ev), L > 0.5);
-  setMusic(clock.ev === 'crimson' ? 'crimson' : isNight(clock.t) ? 'night' : clock.ev === 'fog' ? 'fog' : 'day', clock.day);
+  applyLight(scene, lights, L, settings.low);
+  setAmbience(isHostile(clock.t), L > 0.5);
+  // badly hurt: everything goes quiet and cloudy; being hunted: the chase music
+  const low = P.alive && P.hp <= 10;
+  $('lowhp').style.opacity = low ? 0.55 + 0.25 * Math.sin(now / 160) : P.alive && P.hp <= 25 ? 0.25 : 0;
+  setMusic(low ? 'low' : isNight(clock.t) && P.alive && now - lastHunted < 4000 ? 'chase' : isNight(clock.t) ? 'night' : 'day', clock.day);
   updateLamps(L);
   floor.position.set(Math.round(P.x / 4) * 4, 0, Math.round(P.z / 4) * 4);
   ceiling.position.set(Math.round(P.x / 6) * 6, CEIL, Math.round(P.z / 6) * 6);
   uniforms.uTime.value = (now / 1000) % 10000;
   fixtures.update(P.x, P.z, L, uniforms.uEmerg.value, CEIL);
-  setSkyLight(isNight(clock.t) ? 0 : 1, hailing(clock.t, clock.ev));
-  document.body.classList.toggle('crimson', clock.ev === 'crimson' && isNight(clock.t));
+  setSkyLight(isNight(clock.t) ? 0 : 1, false);
   const vig = (0.45 + 0.55 * (1 - L)).toFixed(2);
   if (darkEl.style.opacity !== vig) darkEl.style.opacity = vig;
   dust.update(dt, P.x, P.z, L);
@@ -1392,39 +1469,6 @@ function updateLamps(L) {
   });
 }
 
-// Hail through the skylights: falling stones you can see, a rattle you can
-// hear, and damage every few seconds while nothing covers your head.
-const HAIL_N = 700;
-const hail = (() => {
-  const pos = new Float32Array(HAIL_N * 3);
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const m = new THREE.PointsMaterial({ color: 0xe8f2ff, size: 0.06, transparent: true, opacity: 0.85, depthWrite: false });
-  const pts = new THREE.Points(g, m); pts.frustumCulled = false; pts.visible = false; scene.add(pts);
-  return { pts, pos, t: 0, hitT: 0 };
-})();
-function updateHail(dt) {
-  const on = hailing(clock.t, clock.ev);
-  const near = on ? world.skylightsNear(P.x, P.z, 26) : [];
-  hail.pts.visible = near.length > 0;
-  setAmbience.hail?.(near.length > 0 ? 1 : 0);
-  if (near.length) {
-    const p = hail.pos;
-    for (let i = 0; i < HAIL_N; i++) {
-      let y = p[i * 3 + 1] - 16 * dt;
-      if (y < 0.05 || Math.abs(p[i * 3] - P.x) > 26 || Math.abs(p[i * 3 + 2] - P.z) > 26) {
-        const sk = near[i % near.length];
-        p[i * 3] = sk.x0 + Math.random() * (sk.x1 - sk.x0); p[i * 3 + 2] = sk.z0 + Math.random() * (sk.z1 - sk.z0); y = CEIL - Math.random() * CEIL;
-      }
-      p[i * 3 + 1] = y;
-    }
-    hail.pts.geometry.attributes.position.needsUpdate = true;
-    if (Math.random() < dt * 8) sfx.hailTick();
-  }
-  if (on && P.alive && world.underSky(P.x, P.y + P.height, P.z)) {
-    hail.hitT -= dt;
-    if (hail.hitT <= 0) { hail.hitT = 3; hail.wasHit = true; hurt(9 + Math.floor(Math.random() * 8), 'hail'); toast('The hail is hitting you. Get under cover!'); }
-  } else hail.hitT = Math.min(hail.hitT, 1);
-}
 
 // Camera feel: head bob while walking, a wider view when sprinting, a dip on
 // landing, and a shake when you're hit.
@@ -1519,7 +1563,6 @@ function handleKeys() {
   if (p.has('KeyG') || p.has('KeyI')) toggleInventory();
   if (p.has('KeyV')) P.third = !P.third;
   if (p.has('KeyH')) whistle();
-  if (p.has('KeyF') && P.carry && P.alive) throwCarry();
   if (p.has('KeyQ') && !P.carry && P.alive && !invOpen) dropSelected();
   if (p.has('KeyZ')) setWaypoint(input.keys.has('ShiftLeft') || input.keys.has('ShiftRight'));
   if (p.has('F1')) { pause(); returnTo = 'pause'; show('how'); }
@@ -1539,7 +1582,7 @@ function whistle() {
   revealT = 6;
   sfx.whistle(0, 1);
   net.send('wh', { x: +P.x.toFixed(1), z: +P.z.toFixed(1) });
-  if (staffSim && isHostile(clock.t, clock.ev)) staffSim.noise(P.x, P.z, 45);
+  if (staffSim && isHostile(clock.t)) staffSim.noise(P.x, P.z, 45);
 }
 // Z drops a waypoint where you stand (up to 4; the oldest goes). Shift+Z clears them.
 function setWaypoint(clear) {
@@ -1601,7 +1644,7 @@ function renderMenuBackdrop(dt) {
   menuT += dt;
   const x = 12 + Math.sin(menuT * 0.05) * 30, z = 12 + menuT * 1.2;
   world.update([{ x, z, render: true }]);
-  applyLight(scene, lights, 1, '', settings.low);
+  applyLight(scene, lights, 1, settings.low);
   floor.position.set(Math.round(x / 4) * 4, 0, Math.round(z / 4) * 4);
   ceiling.position.set(Math.round(x / 6) * 6, CEIL, Math.round(z / 6) * 6);
   camera.position.set(x, 2.2, z);
@@ -1625,4 +1668,4 @@ requestAnimationFrame(frame);
 
 // Test hook for tools/test.cjs.
 window.__game = { P, clock, world, net, renderer, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
-  useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, dayEventForTest: (d) => dayEvent(world.seed, d), get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };
+  useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };

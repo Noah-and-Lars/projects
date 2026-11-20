@@ -156,8 +156,6 @@ body.touch #whistle { display: none; }
 #shirts { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
 .sw-btn { width: 22px; height: 22px; border-radius: 6px; border: 2px solid #ffffff33; padding: 0; }
 .sw-btn.on { border-color: #fff; box-shadow: 0 0 0 2px #ffd34d; }
-body.crimson #dark { background: radial-gradient(ellipse at center, rgba(90, 0, 0, 0.1) 30%, rgba(80, 0, 0, 0.75)); }
-body.crimson #clock-day { color: #ff8a8a; }
 
 #daytitle { position: absolute; top: 34%; left: 0; right: 0; text-align: center; opacity: 0; pointer-events: none; }
 #daytitle.show { animation: daytitle 4.5s ease-out; }
@@ -173,3 +171,10 @@ body.crimson #clock-day { color: #ff8a8a; }
 .ach.got { opacity: 1; border-color: #ffd34d88; background: #ffd34d14; }
 .ach b { display: block; font-size: 14px; }
 .ach small { opacity: 0.8; font-size: 12px; }
+#s-snap { margin-left: 8px; background: #2a2c31; color: var(--ink); border: 1px solid #4a4d55; border-radius: 6px; padding: 3px 6px; font: inherit; }
+#lowhp { position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 3; transition: opacity 0.3s; background: radial-gradient(ellipse at center, rgba(30, 0, 0, 0) 35%, rgba(60, 4, 4, 0.55) 70%, rgba(10, 0, 0, 0.92)); backdrop-filter: blur(1.5px) saturate(0.6); }
+#death-stats { list-style: none; padding: 0; margin: 10px auto; min-width: 260px; text-align: left; font-size: 15px; }
+#death-stats li { display: flex; justify-content: space-between; gap: 24px; padding: 3px 0; border-bottom: 1px solid #ffffff1c; }
+#death-wake { margin: 12px auto 0; padding: 10px 26px; font-size: 17px; }
+#death-wake:disabled { opacity: 0.4; }
+#chat-log .tip { color: #ffd34d; }
