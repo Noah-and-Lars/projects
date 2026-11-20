@@ -219,7 +219,7 @@ window.GAMES = [
     path: 'chess/index.html',
     thumb: 'chess/thumb.svg',
     added: '2026-10-17T17:11:00+11:00',
-    updated: '2026-11-19T18:00:00+11:00',
+    updated: '2026-11-20T23:50:00+11:00',
     stat() { const s = readSave('chessSave', true); if (!s || !s.stats) return null; const w = Object.values(s.stats).reduce((n, l) => n + ((l && l.w) || 0), 0) + ((s.online && s.online.w) || 0); const R = s.rating && s.rv === 2 && isFinite(s.rating.r) ? 'Elo ' + Math.round(s.rating.r) : s.rating ? 'Elo 2000' : ''; /* 1.5.1: everyone was reset to 2000 */ return R || w ? [R, w ? w + (w === 1 ? ' win' : ' wins') : ''].filter(Boolean).join(' · ') : null; },
   },
   {
@@ -378,6 +378,7 @@ window.GAMES = [
 
 // What's new on the home page, newest first
 window.NEWS = [
+  { date: '2026-11-20', game: 'chess', headline: 'Chess 1.8.1: new Elo rules', text: 'Chess 1.8.1: UltraBullet games no longer change your Elo on the leaderboard, Bullet games move your Elo half as much, and a draw now gives both players +25 Elo instead of nothing.' },
   { date: '2026-11-20', href: 'index.html', headline: 'Release dates on game pages', text: 'Open any game and you now see its Release date, with the year, where it used to say Added.' },
   { date: '2026-11-19', game: 'havoc-bay', imgs: ['havoc-bay/news/1.5.2-supercarrier.jpg'], headline: 'Planes are back in the fight', text: 'Havoc Bay 1.5.2: the Supercarrier is back close behind your harbor, so planes reach the battle much sooner. It has six take-off spots, so planes launched together no longer start inside each other, and the whole battle fits on the map again (you and the Supercarrier always show on the minimap).', post: '✈️ Havoc Bay 1.5.2: planes are back in the fight!\n\n🛳️ The Supercarrier sits close behind your harbor again, no more long flight in from the middle of nowhere\n🛫 Six take-off spots on the deck, so planes launched together don\u2019t spawn inside each other\n🗺️ The whole battle fits on the map again: you and the Supercarrier always show on the minimap\n\nSee you over the bay 🔵🔴\n\n#havocbay #TheArcade #Update' },
   { date: '2026-11-19', game: 'throttle-ridge', imgs: ['throttle-ridge/news/1.3-ghost.jpg', 'throttle-ridge/news/1.3-night.jpg', 'throttle-ridge/news/1.3-replay.jpg', 'throttle-ridge/news/1.3-modes.jpg'], headline: 'Throttle Ridge 1.3: ghosts, flips and new modes', text: 'Throttle Ridge 1.3: race a ghost of your best run or a friend\u2019s (share it with a ghost code), split times at every checkpoint, backflips and frontflips, and new modes: time attack with medals, trick mode, a freestyle arena, elimination, a 10-round championship with a podium, stunt challenges and a track builder. Plus rain and night races, a pit board, slow-motion crashes, photo finishes, roost, rivals who remember you, a garage with rider gear and upgrades, two engine sounds, lean assist and a replay with five cameras that saves clips.',

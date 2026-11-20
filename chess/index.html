@@ -293,7 +293,11 @@
 <div id="lb" hidden><div class="card"><h2>🏆 Chess leaderboard</h2><p class="lbsub">Everyone with an Arcade account who has played chess, ranked by their Elo. In 1.5.1 everyone started again at 2000, so players on the same Elo share a place. Local 2-player games and games against the computer aren’t rated.</p><div id="lbList"></div><div style="display:flex;gap:8px"><button class="netbtn" id="lbRefresh" style="flex:1">Refresh</button><button class="bigbtn" id="lbClose" style="flex:1">Close</button></div></div></div>
 <div id="notes">
   <details>
-    <summary>Patch notes <span>v1.8</span></summary>
+    <summary>Patch notes <span>v1.8.1</span></summary>
+    <h3>v1.8.1 <small>Elo changes</small></h3>
+    <ul><li><b>💥 UltraBullet is unrated:</b> UltraBullet games no longer change your Elo on the online leaderboard.</li>
+      <li><b>🚀 Bullet counts half:</b> Bullet games move your Elo half as much as other modes.</li>
+      <li><b>🤝 Draws give +25:</b> a draw now gives both players a flat +25 Elo instead of nothing.</li></ul>
     <h3>v1.8 <small>Move accuracy</small></h3>
     <ul><li><b>Accuracy:</b> after every game the computer looks back over all the moves and gives each player an accuracy score, like 87%. It counts your Best moves, Good moves, Inaccuracies, Mistakes and Blunders, and shows them next to your opponent’s.</li>
       <li>Inaccuracies (?!), mistakes (?) and blunders (??) are marked in the move list, so you can see where the game turned.</li>
@@ -697,7 +701,7 @@ function reviewGame(list, ms, post) {
 // =====================================================================
 //  Chess v1.0: the board, the pieces and playing the computer
 // =====================================================================
-const VERSION = '1.8';
+const VERSION = '1.8.1';
 const LEVELS = ['easy', 'casual', 'medium', 'advanced', 'hard', 'master']; // 1.3: Casual, Advanced and Master join Easy, Medium and Hard
 const $ = id => document.getElementById(id);
 
@@ -1369,7 +1373,8 @@ const Elo = (() => {
     const t = tok(), opp = Net.opp && Net.opp.name;
     if (!t || !opp || !Net.key) { done('Not rated: you need an online Arcade account', ''); return; }
     const before = save.rating ? Math.round(save.rating.r) : null, beforeN = save.rating ? save.rating.n | 0 : 0, who = oppName();
-    const body = JSON.stringify({ g: Net.key + ':' + online.gameNo, opp, res, n: hist.length });
+    if (tcGroup(online.tc || 'm90').k === 'ultra') { done('Not rated: UltraBullet games don’t change your Elo', ''); return; } // 1.8.1
+    const body = JSON.stringify({ g: Net.key + ':' + online.gameNo, opp, res, n: hist.length, tc: online.tc || 'm90' });
     const p = fetch(base() + 'chess', { method: 'POST', headers: { authorization: 'Bearer ' + t, 'content-type': 'application/json' }, body, keepalive: !!closing, cache: 'no-store' });
     if (closing) return;
     done('Updating your Elo…', '');
@@ -1387,7 +1392,7 @@ const Elo = (() => {
     }).catch(() => done('Your Elo couldn’t be updated (offline)', ''));
   }
   // 1.6.2: both players check in when a game becomes rated; the server only rates games both of them started
-  function start() { const t = tok(), opp = Net.opp && Net.opp.name; if (!t || !opp || !Net.key) return; fetch(base() + 'chess', { method: 'POST', headers: { authorization: 'Bearer ' + t, 'content-type': 'application/json' }, body: JSON.stringify({ g: Net.key + ':' + online.gameNo, opp, res: 'start', n: hist.length }), cache: 'no-store' }).catch(() => {}); }
+  function start() { const t = tok(), opp = Net.opp && Net.opp.name; if (!t || !opp || !Net.key) return; fetch(base() + 'chess', { method: 'POST', headers: { authorization: 'Bearer ' + t, 'content-type': 'application/json' }, body: JSON.stringify({ g: Net.key + ':' + online.gameNo, opp, res: 'start', n: hist.length, tc: online.tc || 'm90' }), cache: 'no-store' }).catch(() => {}); }
   return { fetch: fetchElo, report, start };
 })();
 setTimeout(() => Elo.fetch(), 800);

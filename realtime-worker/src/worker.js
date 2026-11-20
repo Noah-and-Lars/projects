@@ -892,7 +892,7 @@ export class Account extends DurableObject {
     const S = this.ctx.storage, a = await S.get('acct');
     if (!a) return j({ error: 'no_account' }, 404);
     if (route === 'p-chessget') { const c = await this.chessOf(a); return j({ r: c.r, rd: chessRd(c, now) }); }
-    if (route === 'p-chessapply') return j(await this.chessApply(a, String(body.kind || ''), body.o || {}, now, body.opp || body.from));
+    if (route === 'p-chessapply') return j(await this.chessApply(a, String(body.kind || ''), body.o || {}, now, body.opp || body.from, String(body.mode || '')));
     const from = String(body.from || ''), k = from.toLowerCase();
     if (!NAME_RE.test(from)) return j({ error: 'bad' }, 400);
     const s = await this.soc();
@@ -1065,14 +1065,15 @@ export class Account extends DurableObject {
     const g = String(body.g || ''), opp = String(body.opp || ''), res = String(body.res || '');
     if (!/^[a-z0-9:]{3,40}$/i.test(g) || !NAME_RE.test(opp) || opp.toLowerCase() === a.name.toLowerCase() || !['start', 'w', 'l', 'd', 'quit', 'left'].includes(res)) return j({ error: 'bad' }, 400);
     const pair = [a.name.toLowerCase(), opp.toLowerCase()].sort().join(':');
-    const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('cg:' + g + ':' + pair)).fetch(new Request('https://acct/cg', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-cg': '1' }, body: JSON.stringify({ me: a.name, opp, res, n: body.n | 0 }) }));
+    const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('cg:' + g + ':' + pair)).fetch(new Request('https://acct/cg', { method: 'POST', headers: { 'content-type': 'application/json', 'x-arcade-cg': '1' }, body: JSON.stringify({ me: a.name, opp, res, n: body.n | 0, tc: chessMode(body.tc) }) }));
     const x = await r.json().catch(() => ({}));
     const fresh = (await this.ctx.storage.get('chess')) || c; // the game's object may have just changed it
     return j(Object.assign({ pending: !!x.pending, d: x.d || 0, error: x.error }, me(fresh)), r.ok ? 200 : r.status);
   }
   // one rating change, told by a game's object (peer route 'p-chessapply'); o is the opponent's rating when the game was reported
-  async chessApply(a, kind, o, now, opp) {
+  async chessApply(a, kind, o, now, opp, mode) {
     const c = await this.chessOf(a), before = c.r, ro = +o.r, rdo = +o.rd;
+    if (mode === 'ultra') return { r: Math.round(c.r), d: 0 }; // 1.8.1: UltraBullet games are unrated
     // 1.6.2: limits on gains, so two accounts can't farm Elo off each other: from one opponent at most CHESS.pairWins
     // gains a day, and at most CHESS.dayGain Elo gained a day in all
     c.g = (c.g || []).filter(x => now - x[0] < 864e5);
@@ -1083,8 +1084,10 @@ export class Account extends DurableObject {
     } else {
       if (!isFinite(ro) || !isFinite(rdo) || !['win', 'loss', 'draw', 'left'].includes(kind)) return { error: 'bad' };
       const sc = kind === 'win' || kind === 'left' ? 1 : kind === 'draw' ? 0.5 : 0, g = glickoOne(c.r, chessRd(c, now), ro, Math.max(CHESS.rdMin, Math.min(CHESS.rd0, rdo)), sc);
-      if (kind === 'left') c.r = Math.max(CHESS.floor, c.r + Math.max(0, g.r - c.r) / 2); // the other player walked out: half a win
-      else { c.r = Math.max(CHESS.floor, g.r); c.rd = Math.max(CHESS.rdMin, g.rd); }
+      const half = mode === 'bullet' ? 0.5 : 1; // 1.8.1: Bullet games move your Elo half as much
+      if (kind === 'draw') c.r = c.r + CHESS.drawGain; // 1.8.1: a draw is a flat +25 for both players
+      else if (kind === 'left') c.r = Math.max(CHESS.floor, c.r + half * Math.max(0, g.r - c.r) / 2); // the other player walked out: half a win
+      else { c.r = Math.max(CHESS.floor, c.r + half * (g.r - c.r)); c.rd = Math.max(CHESS.rdMin, g.rd); }
     }
     if (c.r > before) { const room = Math.max(0, CHESS.dayGain - today); if (fromOpp >= CHESS.pairWins) c.r = before; else c.r = Math.min(c.r, before + room); }
     c.g.push([now, String(opp || '').toLowerCase(), Math.round(c.r - before)]); if (c.g.length > 200) c.g.splice(0, c.g.length - 200);
@@ -1099,6 +1102,7 @@ export class Account extends DurableObject {
       let st = await S.get('cg');
       if (!st || now - st.at > 6 * 3600e3) st = { at: now, rep: {}, done: {}, out: {}, snap: null, start: {} };
       st.start = st.start || {}; st.me2 = st.me2 || [me, opp];
+      if (b.tc && !st.tc) st.tc = String(b.tc); // 1.8.1: the game's mode (ultra / bullet / other)
       // 1.6.2: both players say 'start' when the game becomes rated (after the second move). A game only one of them
       // started (a made-up game) never gains anyone Elo; a loss or leaving still counts.
       if (String(b.res) === 'start') { if (!st.start[me]) st.start[me] = now; await S.put('cg', st); return j({ pending: true, d: 0 }); }
@@ -1121,7 +1125,7 @@ export class Account extends DurableObject {
       for (const [k, o] of [[me, opp], [opp, me]]) {
         if (st.done[k] || !st.rep[k]) continue;
         const kind = kindFor(k, o); if (!kind) continue;
-        const x = await peerCall(this.env, k, 'p-chessapply', { from: o, kind, o: st.snap[o], opp: o });
+        const x = await peerCall(this.env, k, 'p-chessapply', { from: o, kind, o: st.snap[o], opp: o, mode: st.tc || '' });
         if (x.status === 200 && !x.error) { st.done[k] = 1; st.out[k] = { r: x.r, d: x.d }; }
       }
       // 1.6.2: someone who started the game and then goes quiet (closed the tab, left, lost the connection) is the one
@@ -1139,10 +1143,10 @@ export class Account extends DurableObject {
       const r = st.rep[o].res;
       if (!['w', 'left', 'd'].includes(r) && r !== 'quit') continue;
       if (r === 'quit') continue; // both left: the one who reported already lost
-      const x = await peerCall(this.env, k, 'p-chessapply', { from: o, kind: 'quit', o: st.snap[o], opp: o });
+      const x = await peerCall(this.env, k, 'p-chessapply', { from: o, kind: 'quit', o: st.snap[o], opp: o, mode: st.tc || '' });
       if (x.status === 200 && !x.error) { st.done[k] = 1; st.out[k] = { r: x.r, d: x.d }; st.rep[k] = { res: 'quit', n: 0, at: now, auto: 1 }; }
       if (!st.done[o] && (r === 'w' || r === 'left') && st.start[o]) {
-        const y = await peerCall(this.env, o, 'p-chessapply', { from: k, kind: 'left', o: st.snap[k], opp: k });
+        const y = await peerCall(this.env, o, 'p-chessapply', { from: k, kind: 'left', o: st.snap[k], opp: k, mode: st.tc || '' });
         if (y.status === 200 && !y.error) { st.done[o] = 1; st.out[o] = { r: y.r, d: y.d }; }
       }
     }
@@ -1169,7 +1173,9 @@ export class Account extends DurableObject {
 const RENAME_NAMES = ['lars'], RENAME_BEFORE = 1794280371000;
 const mustRename = a => RENAME_NAMES.includes(String(a.name || '').toLowerCase()) && (a.created || 0) < RENAME_BEFORE;
 // Chess Elo (1.6.1): Glicko like chess.com, the same numbers Chess 1.5.1 used in the browser
-const CHESS = { start: 2000, rd0: 350, rdMin: 30, c: 18, floor: 0, pairWins: 3, dayGain: 300, quietMs: 100e3 }; // 1.6.2: limits
+const CHESS = { start: 2000, rd0: 350, rdMin: 30, c: 18, floor: 0, pairWins: 3, dayGain: 300, quietMs: 100e3, drawGain: 25 };
+// 1.8.1: a game's time control as the game mode the Elo rules care about
+const chessMode = tc => { tc = String(tc || ''); return ['15+0', '30+0', '0+1'].includes(tc) ? 'ultra' : ['60+0', '60+1', '120+1'].includes(tc) ? 'bullet' : tc ? 'other' : ''; }; // 1.6.2: limits
 const ELO_FIXED = [String.fromCharCode(101,112,115,116,101,105,110,104,97,116,101,110,108,103,103,97), 1000]; // the owner's request (2026-11-13): starts at 1000
 const CGQ = Math.log(10) / 400, cgRD = rd => 1 / Math.sqrt(1 + 3 * CGQ * CGQ * rd * rd / (Math.PI * Math.PI));
 const chessRd = (c, t) => { const days = c.at ? Math.max(0, (t - c.at) / 864e5) : 0; return Math.min(CHESS.rd0, Math.sqrt(c.rd * c.rd + CHESS.c * CHESS.c * days)); };
