@@ -628,6 +628,10 @@ const CHAT_TIPS = [
   'Food comes back on Mondays and Fridays.',
   'A closed door stops the staff. They can\'t open it.',
   'Broken glass in the garden rooms will hurt you if you use it.',
+  'Light strips that touch each other change colour together.',
+  'A head torch lights the way while it\'s in your hand. Click to switch it on.',
+  'A giant plush bear breaks a fall from any side.',
+  'Gift boxes have something inside. Press F to open one.',
 ];
 const life = () => P.life || (P.life = {}); // this life's numbers, for the death screen
 // A hard landing. Beds, sofas and mattresses soften it if you land on top of

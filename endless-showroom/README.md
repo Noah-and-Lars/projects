@@ -99,7 +99,7 @@ turn that off).
 | Badly hurt | At 10 health or less you hear your heartbeat, your vision clouds over and the music goes quiet. |
 | Inventory | 16 slots (G). Slots 1 to 8 are the hotbar. Click to use, and right-click (or Q) to put an item down, to stock your base. |
 | First aid | +30 health, takes 2.5 seconds to use. |
-| Falling | Landing faster than 13 m/s (about a 4 m drop) hurts. Landing **on top of** a bed, sofa, armchair, ottoman or mattress softens it a lot; a **beanbag** softens it from any side, even more. A long drop onto a bed bounces you. |
+| Falling | Landing faster than 13 m/s (about a 4 m drop) hurts. Landing **on top of** a bed, sofa, armchair, ottoman or mattress softens it a lot; a **beanbag** or a **giant plush bear** softens it from any side, even more. A long drop onto a bed bounces you. |
 | Death | You lose your inventory and what you carry. The screen shows what you did that life (furniture placed, staff shoved, things eaten, distance walked); press **Wake up** (or Space) to wake 40 to 100 m away. A red marker shows where you were caught. |
 
 | Food | Hunger | Energy | Health |
@@ -161,8 +161,16 @@ turn that off).
   Carry one at night to see where you're going, or press **F** on one to
   switch it off so it doesn't give you away.
 - **Doors** open and close with **F**. The staff can't open them.
-- **Screens**: TVs and arcade cabinets switch on with F; a lit screen glows
-  in the dark. Toilets flush.
+- **Screens**: TVs, box TVs and arcade cabinets switch on with F; a lit
+  screen glows in the dark. Toilets flush, microwaves and toasters ding.
+- **Light strips** glow in six colours (F to switch on and change colour).
+  Strips dropped touching each other link up: change one and they all change.
+- **Record players** play a little tune you can hear nearby.
+- **Gift boxes** open (F) into something: usually food, sometimes a first aid
+  kit or a head torch. **Foam dice** roll (and tell everyone the number), and
+  the big red button does... something.
+- **Head torch**: an inventory item. Select it and click to switch it on; it
+  lights the way while it's in your hand, and friends see its light.
 - **Slide**: crouch while sprinting to slide along the floor.
 
 ## Controls
@@ -210,12 +218,12 @@ first aid kit left on it (and an achievement for finding it).
 
 | Section | What's there |
 | --- | --- |
-| Showroom | Room displays with three walls and a coloured back wall, picked by weight from 29 room types: living rooms (classic, modern with a corner sofa, TV lounge, study), dining room, three kinds of kitchen, bedrooms (master, guest, kids', teen, nursery, a bunk bed showcase, a walk-in wardrobe), bathroom, home office (sometimes with the heavy safe), library, bar, games room (billiards and arcade cabinets), music room, entrance hall and a door display (doors you can open and close), lighting display, rug gallery, and the rare mannequin showcase and information desk |
+| Showroom | Room displays with three walls and a coloured back wall, picked by weight from 35 room types (pictures, lamps, appliances and toys dressing each one): living rooms (classic, modern with a corner sofa, TV lounge, study), dining room, three kinds of kitchen, bedrooms (master, guest, kids', teen, nursery, a bunk bed showcase, a walk-in wardrobe), bathroom, home office (sometimes with the heavy safe), library, bar, games room (billiards and arcade cabinets), music room, entrance hall and a door display (doors you can open and close), lighting display, rug gallery, a picture gallery, a toy shop (plush bears, toys, dice, sometimes a gift box), a café, a storage display, kitchen appliances, a party room (light strips, a record player, gift boxes), and the rare mannequin showcase and information desk |
 | Warehouse | **Streets** of 2 to 5 chunks in a row, their 4.4 m climbable racks running the whole length, with pallets, crates, boxes and ladders in the aisles |
 | Furniture | Rows of one kind of furniture (lamps and bunk beds included) |
 | Market Hall | Low tables of lamps, plants and boxes, the odd snack, and sometimes a snack bar (ice cream, fizzy drinks, crisps) |
 | Cafeteria | Rare (about 5% of chunks) and worth finding: a hall filling the whole chunk, with a long serving counter heaped with about fifty things to eat and drink, a first aid kit, and 16 tables |
-| Garden Centre | Under open skylights, picked from 6 layouts: a garden with a tree, a patio with a parasol, a backyard round a fire pit, a pergola lounge, a hedge garden, and a greenhouse with broken glass on the floor |
+| Garden Centre | Under open skylights, picked from 7 layouts: a garden with a tree, a picnic area, a patio with a parasol, a backyard round a fire pit, a pergola lounge, a hedge garden, and a greenhouse with broken glass on the floor |
 | Stock Room | Crates, boxes and lockers, and sometimes an office floor of desks and filing cabinets |
 
 Some furniture and market plots have a **mezzanine**: a deck 3 m up on four
@@ -227,17 +235,20 @@ or an **abandoned fort** (a ring of upturned pallets round a lamp, a platform,
 and maybe some food left behind, 1.5%). About a third of chunk edges have
 full-height walls with doorways. The chunks around the centre have none.
 
-There are 64 kinds of furniture and 23 kinds of food, drink and first aid
-(and broken glass). By day, some of the staff carry boxes of stock about.
+There are about 120 kinds of furniture and things to pick up (seating,
+tables, shelving, storage, beds, a dozen kinds of lamp and light strips,
+appliances, pictures and mirrors, rugs and mats, toys, plush bears, dice,
+gift boxes, tools and ladders) and 23 kinds of food, drink and first aid,
+plus a head torch and broken glass. By day, some of the staff carry boxes of stock about.
 
 ## Achievements
 
-19 achievements are saved on your device, with a toast when one unlocks and
+21 achievements are saved on your device, with a toast when one unlocks and
 a list on the menu. Some examples: survive your first night, or 7 or 30
 nights in a row; place 50 or 500 pieces; shove 20 staff; find a cafeteria, an
 abandoned fort or the lost-property pillar; hide in a wardrobe at night; have
 a bed, sofa or beanbag save you from a fatal fall; pick up the store safe;
-switch off 10 lamps; slide 10 times; walk 1 km.
+switch off 10 lamps; open a gift box; slide 10 times; walk 1 km.
 
 ## Look
 

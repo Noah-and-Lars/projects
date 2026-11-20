@@ -216,6 +216,20 @@ fs.mkdirSync(out, { recursive: true });
   const grid = await g(() => ({ p: __game.world.pillarAt(12, 12), n1: Math.round(__game.nightLen(1)), n10: Math.round(__game.nightLen(10)) }));
   console.log((grid.p && grid.p.type === 'standard' && grid.n1 === 300 && grid.n10 === 336 ? 'ok   ' : 'FAIL ') + `grid pillar ${grid.p && grid.p.label}; nights ${grid.n1} s then ${grid.n10} s by day 10`);
 
+  // Two touching light strips change colour together; a gift box opens into something.
+  const things = await g(() => {
+    const w = __game.world, P = __game.P;
+    const a = w.applyState('test:s1', { t: 'lightStrip', k: 'f', v: 0, x: P.x + 2, y: 0, z: P.z, r: 0 });
+    const b = w.applyState('test:s2', { t: 'lightStrip', k: 'f', v: 0, x: P.x + 3.2, y: 0, z: P.z, r: 0 });
+    const gift = w.applyState('test:g1', { t: 'giftBox', k: 'f', v: 0, x: P.x - 2, y: 0, z: P.z, r: 0 });
+    if (!a || !b || !gift) return null;
+    __game.useItemForTest('test:s1');
+    __game.useItemForTest('test:g1');
+    const inside = [...w.items.values()].find((i) => i.id.startsWith('gift:test:g1'));
+    return { strips: [w.items.get('test:s1').s, w.items.get('test:s2').s], giftGone: w.isGone(w.items.get('test:g1')), inside: inside && inside.t };
+  });
+  console.log((things && things.strips[0] > 0 && things.strips[0] === things.strips[1] && things.giftGone && things.inside ? 'ok   ' : 'FAIL ') + 'linked light strips change together, and a gift box opens into something (' + JSON.stringify(things) + ')');
+
   // You can walk up a mezzanine's stairs.
   const stairs = await g(() => {
     const w = __game.world, P = __game.P, focus = [];
