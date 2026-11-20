@@ -58,32 +58,60 @@ export function makeShopper(look, shirtPick = -1) {
 // A member of staff: tall, faceless, in a teal work vest with a blank badge.
 // Eyes glow when they're hunting.
 let glowTex = null;
-// They come in four heights and four builds, with different skin tones; all
-// featureless, all in the same teal work vest.
+// They come in four heights and four builds (staffLook: size 0 tall .. 3 very
+// short, width 0 slim .. 3 broad), with different skin tones and small
+// differences in uniform; all featureless, all in the store's teal work vest.
 const STAFF_SKIN = [0xd8d2c8, 0xe9c9a8, 0xc69c78, 0x9a6b4c, 0x6b4a36, 0xf0d9c4];
+const VESTS = [0x1f6f6b, 0x1a6170, 0x26786a, 0x1c5c58];
+const SHIRTS_STAFF = [0xece8e0, 0xdfe6ee, 0xd8d2c8, 0xe8e0c8];
+const TROUSERS = [0x2a2a30, 0x37302a, 0x23283a, 0x30333a];
 export function makeStaff(id) {
   const look = staffLook(id);
+  // extra details from a second hash of the id (the sim doesn't need them)
+  let h2 = Math.imul(id + 7, 2246822519) >>> 0;
+  const pick = (n) => { const v = h2 % n; h2 = Math.floor(h2 / n); return v; };
+  const vestI = pick(4), shirtI = pick(4), trouserI = pick(4), extra = pick(8), sleeves = pick(3) === 0;
   const root = new THREE.Group();
   const body = new THREE.Group(); root.add(body);
-  // The Floor Manager (Crimson Nights only) wears a dark suit and a red tie.
-  const skin = STAFF_SKIN[look.skin], vest = look.manager ? 0x23252b : 0x1f6f6b, shirt = look.manager ? 0x2c2f36 : 0xece8e0, trousers = look.manager ? 0x1c1d22 : 0x2a2a30;
+  // The Floor Manager wears a dark suit and a red tie.
+  const skin = STAFF_SKIN[look.skin], vest = look.manager ? 0x23252b : VESTS[vestI], shirt = look.manager ? 0x2c2f36 : SHIRTS_STAFF[shirtI], trousers = look.manager ? 0x1c1d22 : TROUSERS[trouserI];
   SKINS.add(skin);
-  const leg = (x) => part((g) => { g.box(0, -0.48, 0, 0.18, 0.96, 0.2, trousers); g.box(0, -0.94, 0.05, 0.2, 0.08, 0.3, 0x111111); }, x, 0.98, 0);
+  // build: limb thickness and body depth (the whole body is also scaled to its height and width class)
+  const w = look.manager ? 1 : look.width, thick = [0.86, 1, 1.12, 1.24][w], dep = [0.9, 1, 1.15, 1.3][w];
+  const leg = (x) => part((g) => {
+    g.box(0, -0.48, 0, 0.18 * thick, 0.96, 0.2 * thick, trousers);
+    g.box(0, -0.94, 0.05, 0.2 * thick, 0.08, 0.3, 0x111111); g.box(0, -0.9, 0.06, 0.19 * thick, 0.02, 0.26, 0x2a2a2a);
+  }, x, 0.98, 0);
   const legL = leg(-0.11), legR = leg(0.11);
   const torso = part((g) => {
-    g.box(0, 0.36, 0, 0.46, 0.74, 0.24, shirt);
-    g.box(0, 0.33, 0.005, 0.48, 0.66, 0.26, vest);
-    g.box(-0.12, 0.5, 0.135, 0.12, 0.08, 0.01, look.manager ? 0xd4af37 : 0xf5f5f5); // badge
-    g.box(0, look.manager ? 0.45 : 0.68, 0.13, look.manager ? 0.06 : 0.02, look.manager ? 0.5 : 0.22, 0.01, look.manager ? 0xb01e1e : 0x9b2c2c);
+    g.box(0, 0.36, 0, 0.46, 0.74, 0.24 * dep, shirt);
+    g.box(0, 0.33, 0.005, 0.48, 0.66, 0.26 * dep, vest);
+    if (w >= 2 && !look.manager) g.box(0, 0.16, 0.13 * dep + 0.02, 0.4, 0.26, 0.06 * dep, vest); // a bit of a belly
+    g.box(0, 0.02, 0, 0.47, 0.05, 0.25 * dep, 0x1a1a1a); // belt
+    g.box(-0.12, 0.5, 0.135 * dep + 0.005, 0.12, 0.08, 0.01, look.manager ? 0xd4af37 : 0xf5f5f5); // badge
+    g.box(0, look.manager ? 0.45 : 0.68, 0.13 * dep + 0.005, look.manager ? 0.06 : 0.02, look.manager ? 0.5 : 0.22, 0.01, look.manager ? 0xb01e1e : 0x9b2c2c);
     if (look.manager) { g.box(-0.1, 0.66, 0.135, 0.08, 0.16, 0.01, 0xece8e0); g.box(0.1, 0.66, 0.135, 0.08, 0.16, 0.01, 0xece8e0); }
+    else if (extra === 1) { g.box(0, 0.12, 0.135 * dep + 0.01, 0.38, 0.4, 0.01, 0xd9cfba); g.box(0, 0.33, 0.135 * dep + 0.012, 0.2, 0.03, 0.01, 0xd9cfba); } // apron
+    else if (extra === 2) { g.box(0.12, 0.42, 0.135 * dep + 0.008, 0.06, 0.1, 0.012, 0x2a2a2e); g.box(0.12, 0.49, 0.135 * dep + 0.01, 0.02, 0.05, 0.01, 0xd64545); } // pen in a pocket
+    else if (extra === 3) { g.box(0, 0.62, 0.13 * dep + 0.008, 0.015, 0.3, 0.008, 0x2e6fd6); g.box(0, 0.44, 0.13 * dep + 0.01, 0.07, 0.09, 0.01, 0xf2f2f2); } // lanyard
   }, 0, 0.96, 0);
-  const arm = (x) => part((g) => { g.box(0, -0.34, 0, 0.13, 0.7, 0.15, shirt); g.box(0, -0.76, 0, 0.12, 0.16, 0.13, skin); }, x, 1.66, 0);
+  const arm = (x) => part((g) => {
+    if (sleeves && !look.manager) { g.box(0, -0.18, 0, 0.13 * thick, 0.38, 0.15 * thick, shirt); g.box(0, -0.53, 0, 0.115 * thick, 0.32, 0.13 * thick, skin); }
+    else g.box(0, -0.34, 0, 0.13 * thick, 0.7, 0.15 * thick, shirt);
+    g.box(0, -0.76, 0, 0.12 * thick, 0.16, 0.13 * thick, skin);
+  }, x, 1.66, 0);
   const armL = arm(-0.31), armR = arm(0.31);
   if (look.manager) { // a clipboard
     const cb = new GeoBuilder(); cb.mat = SURF.plastic; cb.box(0, -0.7, 0.12, 0.24, 0.32, 0.02, 0x8a6a3a); cb.box(0, -0.68, 0.132, 0.2, 0.26, 0.005, 0xf2f2f2);
     armR.add(new THREE.Mesh(cb.build(), mat));
   }
-  const head = part((g) => { g.box(0, 0.08, 0, 0.1, 0.12, 0.1, skin); g.cyl(0, 0.12, 0, 0.15, 0.32, skin, 10, 0.13); g.cyl(0, 0.44, 0, 0.13, 0.04, skin, 10, 0.08); }, 0, 1.7, 0);
+  const cap = !look.manager && extra === 5;
+  const head = part((g) => {
+    g.box(0, 0.08, 0, 0.1 * thick, 0.12, 0.1 * thick, skin); g.cyl(0, 0.12, 0, 0.15, 0.32, skin, 10, 0.13); g.cyl(0, 0.44, 0, 0.13, 0.04, skin, 10, 0.08);
+    if (cap) { g.cyl(0, 0.38, 0, 0.145, 0.1, vest, 10, 0.12); g.box(0, 0.39, 0.15, 0.22, 0.02, 0.14, vest); }
+  }, 0, 1.7, 0);
+  // the shortest ones have bigger heads for their size, the tallest smaller
+  head.scale.setScalar(look.manager ? 1 : [0.94, 1, 1.08, 1.18][look.size]);
   const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff2a2a, fog: false });
   const eyes = new THREE.Group();
   for (const x of [-0.06, 0.06]) { const e = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.025, 0.01), eyeMat); e.position.set(x, 0.32, 0.148); eyes.add(e); }
