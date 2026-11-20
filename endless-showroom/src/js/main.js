@@ -6,7 +6,7 @@
 // host of a room with nobody else in it.
 import * as THREE from 'three';
 import { World, CHUNK, CEIL, setLampGlow, setSkyLight , ROOMS, GARDEN_ROOMS } from './world.js';
-import { TYPES, ITEMS, FOOD_KEYS, itemDims, itemMatrix, itemParts, itemQuat, cleanQuat, furnitureGeometry, itemGeometry } from './furniture.js';
+import { TYPES, ITEMS, FOOD_KEYS, TV_CHANNELS, itemDims, itemMatrix, itemParts, itemQuat, cleanQuat, furnitureGeometry, itemGeometry } from './furniture.js';
 import { moveBody, bodyFits } from './physics.js';
 import { StaffSim } from './staff.js';
 import { createNet, myName, cleanName, myShirt } from './net.js';
@@ -540,7 +540,7 @@ function hostRequest(from, q) {
       broadcastItems([it.id, nid], echo);
       return;
     }
-    if (u === 'strip' && !it.c && !world.isGone(it)) world.edit(it, { s: q.s == null ? (it.s ? 0 : 1) : Math.max(0, Math.min(6, q.s | 0)) });
+    if ((u === 'strip' || u === 'tv') && !it.c && !world.isGone(it)) world.edit(it, { s: q.s == null ? (it.s ? 0 : 1) : Math.max(0, Math.min(u === 'tv' ? TV_CHANNELS : 6, q.s | 0)) });
     else if (u && u !== 'flush' && u !== 'gift' && !it.c && !world.isGone(it)) world.edit(it, { s: it.s ? 0 : 1 });
     broadcastItems([it.id], echo);
   } else if (q.a === 'place') {
@@ -1014,8 +1014,10 @@ function useItem(it) {
     sfx.door(open);
   } else sfx.switchOn();
   if (u === 'lamp' && !it.s) ach.count('lampsOff', 'lights', 10);
-  if (!net.isHost()) world.edit(it, { s: it.s ? 0 : 1 });
-  request({ a: 'use', id: it.id });
+  // a TV comes on to whatever channel it lands on
+  const next = it.s ? 0 : u === 'tv' ? 1 + ((Math.random() * TV_CHANNELS) | 0) : 1;
+  if (!net.isHost()) world.edit(it, { s: next });
+  request({ a: 'use', id: it.id, s: next });
 }
 function shove(id) {
   if (P.eatCd > 0) return;

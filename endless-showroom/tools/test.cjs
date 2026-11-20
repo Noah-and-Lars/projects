@@ -262,8 +262,8 @@ fs.mkdirSync(out, { recursive: true });
     __game.setClock(400, 3);
     __game.spawnAt(P.x, P.z, 10);
     let spot = null;
-    for (let k = 0; k < 80 && !spot; k++) {
-      const x = P.x + (Math.random() - 0.5) * 40, z = P.z + (Math.random() - 0.5) * 40;
+    for (let k = 0; k < 400 && !spot; k++) { // the store is dense: look widely for open floor
+      const x = P.x + (Math.random() - 0.5) * (40 + k / 8), z = P.z + (Math.random() - 0.5) * (40 + k / 8);
       if (w.fits({ x0: x - 3, x1: x + 3, z0: z - 3, z1: z + 3, y0: 0.02, y1: 3.5 })) spot = [x, z];
     }
     if (!spot) return null;
@@ -298,8 +298,8 @@ fs.mkdirSync(out, { recursive: true });
     // move it to open floor, so nothing next to it can act as a step
     __game.spawnAt(P.x, P.z, 10);
     let spot = null;
-    for (let k = 0; k < 60 && !spot; k++) {
-      const x = P.x + (Math.random() - 0.5) * 30, z = P.z + (Math.random() - 0.5) * 30;
+    for (let k = 0; k < 400 && !spot; k++) {
+      const x = P.x + (Math.random() - 0.5) * (30 + k / 8), z = P.z + (Math.random() - 0.5) * (30 + k / 8);
       if (w.fits({ x0: x - 2.5, x1: x + 2.5, z0: z - 2.5, z1: z + 2.5, y0: 0.05, y1: 3 })) spot = [x, z];
     }
     if (!spot) return null;

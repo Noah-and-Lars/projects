@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import { hashInts, rng } from './rng.js';
 import { restockEpoch } from './env.js';
 import { GeoBuilder } from './geo.js';
-import { TYPES, ITEMS, STOCK, furnitureGeometry, itemGeometry, itemDims, itemMatrix, itemParts, cleanQuat, hasState } from './furniture.js';
+import { TYPES, ITEMS, STOCK, furnitureGeometry, itemGeometry, itemDims, itemMatrix, itemParts, cleanQuat, hasState, TV_CHANNELS } from './furniture.js';
 import { SURF, staticMaterial, furnitureMaterial, shadowMaterial, shadowGeometry, ShadowBuilder } from './mats.js';
 
 export const CHUNK = 24, CEIL = 6.5, HALF = 12;
@@ -119,7 +119,7 @@ class ChunkGen {
   furn(type, x, z, rot, y = 0) {
     const it = { t: type, k: 'f', v: this.r.int(16), x: x + this.ox, y, z: z + this.oz, r: ((rot % 4) + 4) % 4 };
     // some screens are showing something
-    if (type === 'tv') it.s = this.r.chance(0.2) ? 1 : 0;
+    if (type === 'tv' || type === 'wallTV' || type === 'curvedTV' || type === 'miniTV' || type === 'boxTV') it.s = this.r.chance(0.2) ? 1 + this.r.int(TV_CHANNELS) : 0;
     else if (type === 'arcadeCabinet') it.s = this.r.chance(0.6) ? 1 : 0;
     this.items.push(it);
     return it;
@@ -315,7 +315,7 @@ class ChunkGen {
       ['bookshelf', 1.4, 1.4], ['diningTable', 2.6, 2.4], ['dresser', 1.7, 1.5], ['desk', 2.0, 1.8], ['shelfCube', 2.2, 1.6], ['counter', 1.5, 1.6], ['floorLamp', 1.2, 1.2], ['bunkBed', 1.6, 2.6], ['tv', 1.6, 1.2], ['beanbag', 1.3, 1.3], ['filingCabinet', 1.8, 2.2],
       ['queenBed', 2.6, 3.2], ['loveseat', 2.0, 1.8], ['roundTable', 1.8, 1.8], ['modernShelf', 1.4, 1.4], ['metalLamp', 1.2, 1.2], ['plushBear', 1.2, 1.2],
       ['closet', 2.2, 1.6], ['cafeChair', 1.0, 1.0], ['standingDesk', 2.0, 1.8], ['arcLamp', 1.8, 1.4], ['boxTV', 1.2, 1.2], ['fancyShelf', 1.4, 1.4],
-      ['sofaModule', 1.2, 1.6], ['drawerUnit', 1.0, 1.0], ['picnicTable', 2.4, 2.4], ['trashCan', 1.0, 1.0], ['flowerPot', 1.0, 1.0],
+      ['sofaModule', 1.2, 1.6], ['drawerUnit', 1.0, 1.0], ['curvedTV', 1.8, 1.2], ['miniTV', 1.0, 1.0], ['boxTV', 1.2, 1.2], ['picnicTable', 2.4, 2.4], ['trashCan', 1.0, 1.0], ['flowerPot', 1.0, 1.0],
     ]);
     const [type, su, sv] = pick;
     const nu = Math.max(1, Math.floor((Q - 0.6) / su)), nv = Math.max(1, Math.floor((Q - 2.0) / sv));
@@ -630,18 +630,18 @@ export const GARDEN_ROOMS = [
 // The smaller things in each room: pictures, lamps, appliances, toys.
 const pic = (g, f, r, u) => g.ff(f, r.pick(['painting', 'painting', 'tallPainting', 'wallArt']), u, 0.15, 0); // leaning on the back wall
 const ROOM_EXTRAS = {
-  'living room': (g, f, r) => { pic(g, f, r, 6.6); g.ff(f, 'flowerPot', 9.0, 2.2, 0); if (r.chance(0.3)) { g.ff(f, 'sideTable', 8.9, 4.0, 0); g.ff(f, 'recordPlayer', 8.9, 4.0, 0, 0.55); } },
+  'living room': (g, f, r) => { if (r.chance(0.4)) g.ff(f, 'wallTV', 4.8, 0.17, 0, 1.2); pic(g, f, r, 6.6); g.ff(f, 'flowerPot', 9.0, 2.2, 0); if (r.chance(0.3)) { g.ff(f, 'sideTable', 8.9, 4.0, 0); g.ff(f, 'recordPlayer', 8.9, 4.0, 0, 0.55); } },
   'modern living room': (g, f, r) => { g.ff(f, 'arcLamp', 3.0, 4.6, 0); g.ff(f, 'wallArt', 3.6, 0.15, 0); if (r.chance(0.5)) g.ff(f, 'sofaModule', 6.8, 4.4, 2); },
-  'tv lounge': (g, f, r) => { if (r.chance(0.4)) g.ff(f, 'boxTV', 7.4, 0.4, 0); g.ff(f, 'puzzleCube', 4.6, 3.2, 0); },
+  'tv lounge': (g, f, r) => { if (r.chance(0.4)) g.ff(f, 'boxTV', 7.4, 0.4, 0); else g.ff(f, 'curvedTV', 7.6, 0.45, 0); g.ff(f, 'puzzleCube', 4.6, 3.2, 0); },
   'study': (g, f, r) => { g.ff(f, 'smallBookcase', 4.0, 0.25, 0); g.ff(f, 'deskLamp', 5.5, 0.4, 0, 0.75); pic(g, f, r, 7.6); g.ff(f, 'lantern', 3.3, 2.8, 0, 0.55); },
   'dining room': (g, f, r) => { pic(g, f, r, 3.2); pic(g, f, r, 6.4); g.ff(f, 'candle', 4.8, 3.2, 0, 0.75); g.ff(f, 'flowerPot', 9.0, 5.6, 0); },
   'kitchen': (g, f, r) => { g.ff(f, 'microwave', 1.4, 0.35, 0, 0.9); g.ff(f, 'toaster', 2.4, 0.35, 0, 0.9); g.ff(f, 'trashCan', 7.4, 0.4, 0); },
   'island kitchen': (g, f, r) => { g.ff(f, 'toaster', 1.0, 0.35, 0, 0.9); g.ff(f, 'microwave', 3.8, 0.35, 0, 0.9); g.ff(f, 'trashCan', 9.0, 2.0, 0); },
   'compact kitchen': (g, f, r) => { g.ff(f, 'microwave', 1.0, 0.35, 0, 0.9); g.ff(f, 'milkCrate', 6.0, 0.4, 0); },
   'master bedroom': (g, f, r) => { pic(g, f, r, 2.2); g.ff(f, 'roundMirror', 7.2, 0.15, 0); g.ff(f, 'drawerUnit', 0.5, 4.0, 1); },
-  'guest bedroom': (g, f, r) => { pic(g, f, r, 4.6); g.ff(f, 'candle', 6.3, 0.45, 0, 0.85); },
-  'kids room': (g, f, r) => { g.ff(f, 'plushBear', 8.6, 1.0, 3); g.ff(f, 'playTable', 2.6, 4.6, 0); g.ff(f, 'toyRobot', 2.4, 4.6, 0, 0.5); g.ff(f, 'toyCar', 4.4, 3.4, r.int(4)); if (r.chance(0.5)) g.ff(f, 'foamDice', 6.8, 4.6, 0); },
-  'teen room': (g, f, r) => { g.ff(f, 'wallShelf', 6.6, 0.26, 0, 1.4); g.ff(f, 'lightStrip', 4.4, 0.16, 0, 1.6).s = 1 + r.int(6); g.ff(f, 'puzzleCube', 3.85, 0.6, 0, 0.75); },
+  'guest bedroom': (g, f, r) => { g.ff(f, 'miniTvStand', 8.6, 3.2, 3); g.ff(f, 'miniTV', 8.6, 3.2, 3, 0.45); pic(g, f, r, 4.6); g.ff(f, 'candle', 6.3, 0.45, 0, 0.85); },
+  'kids room': (g, f, r) => { if (r.chance(0.5)) g.ff(f, 'curvedTV', 6.4, 0.35, 0, 0); g.ff(f, 'plushBear', 8.6, 1.0, 3); g.ff(f, 'playTable', 2.6, 4.6, 0); g.ff(f, 'toyRobot', 2.4, 4.6, 0, 0.5); g.ff(f, 'toyCar', 4.4, 3.4, r.int(4)); if (r.chance(0.5)) g.ff(f, 'foamDice', 6.8, 4.6, 0); },
+  'teen room': (g, f, r) => { g.ff(f, 'wallTV', 7.6, 0.17, 0, 1.3); g.ff(f, 'miniTV', 8.4, 0.32, 0, 1.0); g.ff(f, 'wallShelf', 6.6, 0.26, 0, 1.4); g.ff(f, 'lightStrip', 4.4, 0.16, 0, 1.6).s = 1 + r.int(6); g.ff(f, 'puzzleCube', 3.85, 0.6, 0, 0.75); },
   'nursery': (g, f, r) => { g.ff(f, 'plushBear', 6.4, 4.6, 2); g.ff(f, 'flowerPot', 0.6, 0.6, 0); },
   'walk-in wardrobe': (g, f, r) => { g.ff(f, 'closet', 6.0, 4.6, 2); g.ff(f, 'wideMirror', 4.6, 0.15, 0); },
   'bathroom': (g, f, r) => { g.ff(f, 'wideMirror', 5.4, 0.15, 0, 1.0); g.ff(f, 'trashCan', 2.4, 0.4, 0); g.ff(f, 'welcomeMat', 6.4, 2.6, 0); },
@@ -657,6 +657,16 @@ const ROOM_EXTRAS = {
   'information desk': (g, f, r) => { g.ff(f, 'showcaseSign', 1.2, 3.6, 0); g.ff(f, 'bigButton', 4.0, 2.4, 0, 1.1); },
 };
 ROOMS.push(
+  { name: 'tv showcase', w: 2, build(g, f, r) {
+    // every kind of television, most of them on
+    const on = () => (r.chance(0.7) ? 1 + r.int(TV_CHANNELS) : 0);
+    g.ff(f, 'wallTV', 2.4, 0.17, 0, 1.3).s = on(); g.ff(f, 'wallTV', 7.2, 0.17, 0, 1.3).s = on();
+    g.ff(f, 'tvStand', 2.4, 0.35, 0); g.ff(f, 'tv', 2.4, 0.35, 0, 0.5).s = on();
+    g.ff(f, 'tvStand', 7.2, 0.35, 0); g.ff(f, 'curvedTV', 7.2, 0.35, 0, 0.5).s = on();
+    for (const [u, v] of [[1.6, 3.2], [4.8, 3.2], [8.0, 3.2]]) { g.ff(f, 'modernTable', u, v, 0); g.ff(f, r.pick(['boxTV', 'miniTV']), u, v, 0, 0.74).s = on(); }
+    g.ff(f, 'miniTvStand', 4.8, 0.3, 0); g.ff(f, 'miniTV', 4.8, 0.3, 0, 0.45).s = on();
+    g.ff(f, 'loveseat', 4.8, 5.2, 2); g.ff(f, 'showcaseSign', 0.6, 5.0, 0);
+  } },
   { name: 'picture gallery', w: 2, build(g, f, r) {
     for (let i = 0; i < 6; i++) g.ff(f, r.pick(['painting', 'tallPainting', 'wallArt']), 0.8 + i * 1.6, 0.15, 0);
     g.ff(f, 'roundMirror', 0.15, 3.0, 1); g.ff(f, 'wideMirror', 9.45, 3.0, 3); g.ff(f, 'longBench', 4.8, 3.6, 0); g.ff(f, 'flowerPot', 0.6, 5.6, 0);
@@ -917,7 +927,7 @@ export class World {
   _addItem(id, s) {
     // unknown kinds (an old save, a newer screen) are skipped
     if (s.k === 'f' ? !Object.prototype.hasOwnProperty.call(TYPES, s.t) : !Object.prototype.hasOwnProperty.call(ITEMS, s.t)) return null;
-    const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: ((s.tl | 0) % 3 + 3) % 3, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: Math.max(0, Math.min(7, s.s | 0)), mesh: null, cells: null };
+    const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: ((s.tl | 0) % 3 + 3) % 3, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: Math.max(0, Math.min(15, s.s | 0)), mesh: null, cells: null };
     if (it.k === 'f' && !Object.prototype.hasOwnProperty.call(TYPES, it.t)) return null;
     if (it.k === 'i' && !Object.prototype.hasOwnProperty.call(ITEMS, it.t)) return null;
     this.items.set(id, it);
@@ -1115,7 +1125,7 @@ export class World {
   applyState(id, s) {
     if (!s || typeof s !== 'object') return null;
     const fin = (v, lo, hi) => { v = +v; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : 0; };
-    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: fin(s.x, -1e6, 1e6), y: fin(s.y, 0, CEIL), z: fin(s.z, -1e6, 1e6), r: (s.r | 0) & 3, tl: ((s.tl | 0) % 3 + 3) % 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: Math.max(0, Math.min(7, s.s | 0)) };
+    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: fin(s.x, -1e6, 1e6), y: fin(s.y, 0, CEIL), z: fin(s.z, -1e6, 1e6), r: (s.r | 0) & 3, tl: ((s.tl | 0) % 3 + 3) % 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: Math.max(0, Math.min(15, s.s | 0)) };
     if (st.k === 'f' ? !Object.prototype.hasOwnProperty.call(TYPES, st.t) : !Object.prototype.hasOwnProperty.call(ITEMS, st.t)) return null;
     this.mods.set(id, st);
     let it = this.items.get(id);

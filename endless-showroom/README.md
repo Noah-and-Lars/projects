@@ -163,8 +163,12 @@ turn that off).
   Carry one at night to see where you're going, or press **F** on one to
   switch it off so it doesn't give you away.
 - **Doors** open and close with **F**. The staff can't open them.
-- **Screens**: TVs, box TVs and arcade cabinets switch on with F; a lit
-  screen glows in the dark. Toilets flush, microwaves and toasters ding.
+- **Screens**: five kinds of TV (flat-screen, wall-mounted, curved, box and
+  mini) and arcade cabinets switch on with F. A TV comes on to one of 12
+  channels (a summer field, colour bars, the city at night, a boat at sea, the
+  weather, the news, football, a sunset, an aquarium, mountains, space, a
+  cooking show), and about one in five is already on when you find it. A lit
+  screen glows in the dark. A wall TV stays up when you put it against a wall. Toilets flush, microwaves and toasters ding.
 - **Light strips** glow in six colours (F to switch on and change colour).
   Strips dropped touching each other link up: change one and they all change.
 - **Record players** play a little tune you can hear nearby.
@@ -222,7 +226,7 @@ first aid kit left on it (and an achievement for finding it).
 
 | Section | What's there |
 | --- | --- |
-| Showroom | Room displays with three walls and a coloured back wall, picked by weight from 35 room types (pictures, lamps, appliances and toys dressing each one): living rooms (classic, modern with a corner sofa, TV lounge, study), dining room, three kinds of kitchen, bedrooms (master, guest, kids', teen, nursery, a bunk bed showcase, a walk-in wardrobe), bathroom, home office (sometimes with the heavy safe), library, bar, games room (billiards and arcade cabinets), music room, entrance hall and a door display (doors you can open and close), lighting display, rug gallery, a picture gallery, a toy shop (plush bears, toys, dice, sometimes a gift box), a café, a storage display, kitchen appliances, a party room (light strips, a record player, gift boxes), and the rare mannequin showcase and information desk |
+| Showroom | Room displays with three walls and a coloured back wall, picked by weight from 36 room types (pictures, lamps, appliances and toys dressing each one): living rooms (classic, modern with a corner sofa, TV lounge, study), dining room, three kinds of kitchen, bedrooms (master, guest, kids', teen, nursery, a bunk bed showcase, a walk-in wardrobe), bathroom, home office (sometimes with the heavy safe), library, bar, games room (billiards and arcade cabinets), music room, entrance hall and a door display (doors you can open and close), lighting display, rug gallery, a TV showcase (every kind of TV), a picture gallery, a toy shop (plush bears, toys, dice, sometimes a gift box), a café, a storage display, kitchen appliances, a party room (light strips, a record player, gift boxes), and the rare mannequin showcase and information desk |
 | Warehouse | **Streets** of 2 to 5 chunks in a row, their 4.4 m climbable racks running the whole length, with pallets, crates, boxes and ladders in the aisles |
 | Furniture | Rows of one kind of furniture (lamps and bunk beds included) |
 | Market Hall | Low tables of lamps, plants and boxes, the odd snack, and sometimes a snack bar (ice cream, fizzy drinks, crisps) |
@@ -239,7 +243,7 @@ or an **abandoned fort** (a ring of upturned pallets round a lamp, a platform,
 and maybe some food left behind, 1.5%). About a third of chunk edges have
 full-height walls with doorways. The chunks around the centre have none.
 
-There are over 110 kinds of furniture and things to pick up (seating,
+There are over 115 kinds of furniture and things to pick up (seating,
 tables, shelving, storage, beds, a dozen kinds of lamp and light strips,
 appliances, pictures and mirrors, rugs and mats, toys, plush bears, dice,
 gift boxes, tools and ladders) and 23 kinds of food, drink and first aid,
