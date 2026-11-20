@@ -303,7 +303,7 @@ fs.mkdirSync(out, { recursive: true });
       if (w.fits({ x0: x - 2.5, x1: x + 2.5, z0: z - 2.5, z1: z + 2.5, y0: 0.05, y1: 3 })) spot = [x, z];
     }
     if (!spot) return null;
-    const st = w.stateOf(best); st.x = spot[0]; st.z = spot[1]; st.y = 0; st.tl = 0; w.applyState(best.id, st);
+    const st = w.stateOf(best); st.x = spot[0]; st.z = spot[1]; st.y = 0; st.tl = 0; delete st.o; w.applyState(best.id, st); // squared up (an earlier test may have turned it)
     P.x = best.x; P.z = best.z; P.y = 2.1; P.vy = 0;
     const s = [...__game.staff.staff.values()][0];
     if (s) { s.x = best.x + 1.0; s.z = best.z; s.y = 0; }

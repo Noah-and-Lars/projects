@@ -12,7 +12,8 @@ import { StaffSim } from './staff.js';
 import { createNet, myName, cleanName, myShirt } from './net.js';
 import { input, initInput, initTouch, lockPointer, endFrame, pollGamepad } from './input.js';
 import { makeShopper, makeStaff, animate, setHeld, nameTag, nameHash, SHIRT_COLORS } from './models.js';
-import { initAudio, sfx, setAmbience, setVolume, setMusic, setMusicVolume } from './audio.js';
+import { initAudio, sfx, setAmbience, setVolume, setMusic, setMusicVolume, musicState } from './audio.js';
+import * as audioMod from './audio.js';
 import { DAY_LEN, DAY_SCALE, setDayScale, cycleLen, nightLen, cascade, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
 import { clamp, lerp, angLerp } from './rng.js';
 import * as ach from './achievements.js';
@@ -288,6 +289,8 @@ $('s-tips').onchange = (e) => { settings.tips = e.target.checked; saveSettings()
 $('s-snap').onchange = (e) => { settings.snap = +e.target.value || 0; saveSettings(); };
 $('s-music').oninput = (e) => { settings.music = +e.target.value; setMusicVolume(settings.music); saveSettings(); };
 
+// Ctrl+W can't be stopped by a page, so while you're in a store the browser asks first.
+addEventListener('beforeunload', (e) => { if (mode === 'play') { saveSolo?.(); e.preventDefault(); e.returnValue = ''; } });
 initInput(canvas, {
   wantLock: () => { if (mode === 'play' && !paused && !invOpen) lockPointer(canvas); },
   lockLost: () => { if (mode === 'play' && !chatOpen && !invOpen && !IS_TOUCH && P.alive) pause(); },
@@ -598,7 +601,8 @@ function die(why) {
   $('death-head').textContent = head;
   $('death-msg').textContent = `You survived ${P.nights} night${P.nights === 1 ? '' : 's'}.`;
   const L = P.life || {};
-  $('death-stats').innerHTML = [['Furniture placed', L.placed | 0], ['Staff shoved', L.shoves | 0], ['Things eaten', L.eaten | 0], ['Distance walked', `${Math.round(L.dist || 0)} m`]]
+  const fav = L.ate ? Object.entries(L.ate).sort((a, b) => b[1] - a[1])[0] : null;
+  $('death-stats').innerHTML = [['Furniture placed', L.placed | 0], ['Staff shoved', L.shoves | 0], ['Things eaten', L.eaten | 0], ['Favourite food', fav ? `${ITEMS[fav[0]].name} (${fav[1]})` : '—'], ['Distance walked', `${Math.round(L.dist || 0)} m`], ['Highest point', `${(L.high || 0).toFixed(1)} m`]]
     .map(([k, v]) => `<li><span>${k}</span><b>${v}</b></li>`).join('');
   $('death-wake').disabled = true;
   if (document.pointerLockElement) document.exitPointerLock?.();
@@ -647,7 +651,7 @@ function landed(v) {
     else if (!soft && b.y1 >= world.itemBox(b.item).y1 - 0.25) soft = 'top';
   });
   const k = soft === 'any' ? 1.66 : soft === 'top' ? 1.38 : 1;
-  const raw = (v - 13) * 9, dmg = Math.max(0, (v - 13 * k) * 9 / k);
+  const raw = (v - 13) * 9, dmg = plush ? 0 : Math.max(0, (v - 13 * k) * 9 / k); // a giant plush bear takes the whole fall
   if (soft && raw >= P.hp && dmg < P.hp) { ach.unlock('cushion'); if (plush) ach.unlock('bear'); toast('That would have killed you. The cushioning saved you.'); }
   if (soft === 'top' && v > 16) { P.vy = v * 0.35; P.onGround = false; }
   if (dmg > 0) hurt(dmg, 'fall');
@@ -705,7 +709,7 @@ function updatePlayer(dt) {
   if (P.alive) { moveBody(world, P, dx, dz, dt); rideHeld(); }
   world.withHeld = false;
   P.speed = Math.hypot(P.x - ox, P.z - oz) / dt;
-  if (P.alive) life().dist = (life().dist || 0) + Math.min(1, Math.hypot(P.x - ox, P.z - oz));
+  if (P.alive) { life().dist = (life().dist || 0) + Math.min(1, Math.hypot(P.x - ox, P.z - oz)); if (P.onGround && P.y > (life().high || 0)) life().high = P.y; }
   if (wasAir && P.onGround && P.landSpeed > 4) { sfx.land(); feel.dip = Math.min(0.5, P.landSpeed * 0.035); }
   if (P.landSpeed > 13) landed(P.landSpeed);
   // footsteps
@@ -813,7 +817,8 @@ function updateInteraction(dt) {
         if (input.keys.has('KeyE')) { if (P.pickId !== it.id) { P.pickId = it.id; P.pickT = 0; } P.pickT += dt; }
         else P.pickId = null;
         const pct = P.pickId === it.id ? Math.min(1, P.pickT / need) : 0;
-        text = pct > 0 ? `Picking up ${t.name}… <span class="stat">${Math.round(pct * 100)}%</span>` : `<b>Hold E</b> Pick up ${t.name}${need > 1 ? ' <span class="stat">(heavy)</span>' : ''}`;
+        const left = need - (P.pickId === it.id ? P.pickT : 0);
+        text = pct > 0 ? `Picking up ${t.name}… <span class="stat">${Math.round(pct * 100)}%${need > 10 ? ` · ${Math.floor(left / 60)}:${String(Math.ceil(left % 60)).padStart(2, '0')} left` : ''}</span>` : `<b>Hold E</b> Pick up ${t.name}${need > 60 ? ' <span class="stat">(very heavy: takes about 5½ minutes)</span>' : need > 1 ? ' <span class="stat">(heavy)</span>' : ''}`;
         if (t.use) text += ` · <b>F</b> ${useWord(it)}`;
         if (pct >= 1) { P.pickId = null; if (it.t === 'safe') ach.unlock('patience'); pickUp(it); }
         else if (t.use && input.pressed.has('KeyF')) useItem(it);
@@ -833,7 +838,8 @@ function updateInteraction(dt) {
     // it up. Let go touching anything and it stays put (click); let go in
     // mid-air and it drops.
     const c = P.carry, t = TYPES[c.t];
-    const ctrl = input.keys.has('ControlLeft') || input.keys.has('ControlRight');
+    // Ctrl (or Alt: Ctrl+W can't be stopped from closing the tab) turns in small steps
+    const ctrl = input.keys.has('ControlLeft') || input.keys.has('ControlRight') || input.keys.has('AltLeft') || input.keys.has('AltRight');
     const shift = input.keys.has('ShiftLeft') || input.keys.has('ShiftRight');
     for (let i = 1; i <= 3; i++) if (input.pressed.has('Digit' + i)) c.axis = i - 1;
     if (input.pressed.has('KeyT')) c.axis = (c.axis + 1) % 3;
@@ -861,20 +867,22 @@ function updateInteraction(dt) {
     if (settings.snap) { const g = settings.snap; px = Math.round(px / g) * g; pz = Math.round(pz / g) * g; if (!(hit.n && hit.n[1] > 0.5)) py = Math.round(py / g) * g; }
     py = clamp(py, 0, CEIL - h);
     // the piece follows your aim with a little lag, like something heavy
-    const k = c.fresh ? 1 : 1 - Math.exp(-dt * 16);
+    const k = c.fresh ? 1 : 1 - Math.exp(-dt * 24); // stiff, smooth follow
     c.fresh = false;
     c.x += (px - c.x) * k; c.y += (py - c.y) * k; c.z += (pz - c.z) * k;
     c.dq.slerp(c.q, 1 - Math.exp(-dt * 22));
     const item = world.items.get(c.id);
     const sticks = touches(c.t, c.o, c.x, c.y, c.z, item);
     c.sticks = sticks;
+    // you can't let go of it on top of someone (a player or a member of staff)
+    c.blocked = onSomeone(c.t, c.o, c.x, c.y, c.z);
     placement = { x: c.x, y: c.y, z: c.z, o: c.o, ok: true, sticks };
     holdBox.box.min.set(c.x - w / 2, c.y, c.z - d / 2); holdBox.box.max.set(c.x + w / 2, c.y + h, c.z + d / 2);
-    holdBox.material.color.setHex(sticks ? 0x44ff66 : 0xffffff);
+    holdBox.material.color.setHex(c.blocked ? 0xff4444 : sticks ? 0x44ff66 : 0xffffff);
     holdBox.visible = true;
     const axisName = ['X', 'Y', 'Z'][c.axis];
     if (c.charge > 0) text = `Throwing ${t.name}… <span class="stat">${Math.round(c.charge * 100)}% power</span>`;
-    else text = `Holding ${t.name} · <b>E</b>/click let go ${sticks ? '<span class="stat">(stays put)</span>' : '<span class="stat">(falls)</span>'} · <b>R</b> rotate on <b>${axisName}</b> (<b>1 2 3</b> axis · <b>Ctrl</b> 15° · <b>Shift</b> 90°) · <b>wheel</b> closer/farther · hold <b>F</b> throw`;
+    else text = `Holding ${t.name} · <b>E</b>/click let go ${c.blocked ? '<span class="stat">(not on someone)</span>' : sticks ? '<span class="stat">(stays put)</span>' : '<span class="stat">(falls)</span>'} · <b>R</b> rotate on <b>${axisName}</b> (<b>1 2 3</b> axis · <b>Ctrl</b> 15° · <b>Shift</b> 90°) · <b>wheel</b> closer/farther · hold <b>F</b> throw`;
     if (pressedUse || clicked || input.pressed.has('KeyQ')) letGo();
   }
   if (P.using) text = `Using ${ITEMS[P.using.key].name}… ${Math.max(0, P.using.t).toFixed(1)} s`;
@@ -924,6 +932,16 @@ function touches(t, o, x, y, z, skip) {
   }
   return false;
 }
+// Is a piece at this pose overlapping a player (you or a friend) or a member of staff?
+function onSomeone(t, o, x, y, z) {
+  const bodies = [{ x: P.x, y: P.y, z: P.z, h: P.height }];
+  for (const r of remotes.values()) if (r.st && r.st.a) bodies.push({ x: r.model.root.position.x, y: r.model.root.position.y, z: r.model.root.position.z, h: 1.75 });
+  for (const v of staffViews.values()) bodies.push({ x: v.model.root.position.x, y: v.model.root.position.y, z: v.model.root.position.z, h: 1.9 });
+  for (const b of poseBoxes(t, o, x, y, z)) for (const q of bodies) {
+    if (b.x1 > q.x - 0.3 && b.x0 < q.x + 0.3 && b.z1 > q.z - 0.3 && b.z0 < q.z + 0.3 && b.y1 > q.y + 0.05 && b.y0 < q.y + q.h) return true;
+  }
+  return false;
+}
 // How far a piece let go in mid-air falls before something holds it up.
 function dropHeight(t, o, x, y, z, skip) {
   let gap = y;
@@ -935,6 +953,7 @@ function dropHeight(t, o, x, y, z, skip) {
 }
 function letGo() {
   const c = P.carry; if (!c) return;
+  if (c.blocked) { sfx.deny(); return; }
   const item = world.items.get(c.id);
   if (touches(c.t, c.o, c.x, c.y, c.z, item)) { placeCarry({ x: c.x, y: c.y, z: c.z, o: c.o, a: 1 }); return; }
   // nothing touching: it drops straight down onto whatever is below
@@ -1089,6 +1108,7 @@ function applyItem(key) {
   const it = ITEMS[key];
   if (key !== 'medkit') ach.count('eaten', 'eat50', 50);
   life().eaten = (life().eaten | 0) + 1;
+  { const a = life().ate || (life().ate = {}); a[key] = (a[key] | 0) + 1; }
   if (it.food) P.food = Math.min(100, P.food + it.food);
   if (it.en) P.en = Math.min(100, P.en + it.en);
   if (it.hp > 0) P.hp = Math.min(100, P.hp + it.hp);
@@ -1734,5 +1754,5 @@ resize();
 requestAnimationFrame(frame);
 
 // Test hook for tools/test.cjs.
-window.__game = { P, clock, world, net, renderer, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
+window.__game = { P, clock, world, net, renderer, TYPES, ITEMS, get music() { return musicState(); }, get notes() { return audioMod.noteCount; }, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
   useItemForTest: (id) => { const it = world.items.get(id); if (it) useItem(it); }, nightLen, roomNames: () => ROOMS.map((r) => [r.name, 'showroom']).concat(GARDEN_ROOMS.map((r) => [r.name, 'garden'])), useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };

@@ -101,6 +101,19 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   await B.waitForTimeout(1500);
   check(lampId && await A.evaluate((id) => { const it = __game.world.items.get(id); return !!(it && it.s); }, lampId) && await B.evaluate((id) => !!__game.world.items.get(id).s, lampId), 'a lamp switched off by the guest is off on both screens');
 
+  // Bravo opens a gift box: it's gone on both screens and something is left in its place.
+  const giftId = await A.evaluate(() => { const P = __game.P; __game.world.applyState('mp:gift', { t: 'giftBox', k: 'f', v: 0, x: P.x + 3, y: 0, z: P.z, r: 0 }); return 'mp:gift'; });
+  await A.waitForTimeout(1200);
+  await B.evaluate(() => { const it = __game.world.items.get('mp:gift'); if (!it) __game.world.applyState('mp:gift', { t: 'giftBox', k: 'f', v: 0, x: 0, y: 0, z: 0, r: 0 }); __game.useItemForTest('mp:gift'); });
+  await B.waitForTimeout(1500);
+  const giftA = await A.evaluate(() => ({ gone: __game.world.isGone(__game.world.items.get('mp:gift')), inside: ([...__game.world.items.values()].find((i) => i.id.startsWith('gift:mp:gift')) || {}).t }));
+  const giftB = await B.evaluate(() => ({ gone: __game.world.isGone(__game.world.items.get('mp:gift')), inside: ([...__game.world.items.values()].find((i) => i.id.startsWith('gift:mp:gift')) || {}).t }));
+  check(giftA.gone && giftB.gone && giftA.inside && giftA.inside === giftB.inside, `a gift box opened by the guest is gone on both screens and left a ${giftB.inside}`);
+  // Bravo switches a head torch on: Alpha sees its light
+  await B.evaluate(() => { const P = __game.P; P.inv[0] = 'torch'; P.sel = 0; P.torchOn = true; });
+  await A.waitForTimeout(1500);
+  check(await A.evaluate(() => { const r = [...__game.remotes.values()][0]; return !!(r && r.st && r.st.tc); }), "the guest's head torch shows on the host's screen");
+
   // Bravo (guest) picks something up: goes through the host.
   const gid = await B.evaluate(() => {
     const P = __game.P, w = __game.world; let best = null, bd = 1e9;

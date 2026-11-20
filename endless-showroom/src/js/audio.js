@@ -38,6 +38,7 @@ export function setAmbience(night, lightsOn) {
 }
 
 function tone(freq, dur, type = 'sine', gain = 0.2, when = 0, slide = 0) {
+  noteCount++;
   if (!ctx) return;
   const t = ctx.currentTime + when;
   const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(freq, t);
@@ -216,6 +217,8 @@ function schedule() {
 
 export function setMusicVolume(v) { musicVol = v; if (musicGain) musicGain.gain.setTargetAtTime(musicVol * 0.6, ctx.currentTime, 0.3); }
 // mode: 'day' | 'night' | 'chase' (being hunted) | 'low' (badly hurt) | '' (silence); day = the day number (sets the weekday tune)
+export const musicState = () => musicMode;
+export let noteCount = 0;
 export function setMusic(mode, day) {
   if (!ctx) return;
   if (!musicGain) { musicGain = ctx.createGain(); musicGain.gain.value = musicVol * 0.6; musicGain.connect(master); musicTimer = setInterval(schedule, 90); }

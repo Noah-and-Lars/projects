@@ -99,8 +99,8 @@ turn that off).
 | Badly hurt | At 10 health or less you hear your heartbeat, your vision clouds over and the music goes quiet. |
 | Inventory | 16 slots (G). Slots 1 to 8 are the hotbar. Click to use, and right-click (or Q) to put an item down, to stock your base. |
 | First aid | +30 health, takes 2.5 seconds to use. |
-| Falling | Landing faster than 13 m/s (about a 4 m drop) hurts. Landing **on top of** a bed, sofa, armchair, ottoman or mattress softens it a lot; a **beanbag** or a **giant plush bear** softens it from any side, even more. A long drop onto a bed bounces you. |
-| Death | You lose your inventory and what you carry. The screen shows what you did that life (furniture placed, staff shoved, things eaten, distance walked); press **Wake up** (or Space) to wake 40 to 100 m away. A red marker shows where you were caught. |
+| Falling | Landing faster than 13 m/s (about a 4 m drop) hurts. Landing **on top of** a bed, sofa, armchair, ottoman or mattress softens it a lot; a **beanbag** softens it from any side, even more, and a **giant plush bear** takes the whole fall. A long drop onto a bed bounces you. |
+| Death | You lose your inventory and what you carry. The screen shows what you did that life (furniture placed, staff shoved, things eaten, your favourite food, distance walked, your highest point); press **Wake up** (or Space) to wake 40 to 100 m away. A red marker shows where you were caught. |
 
 | Food | Hunger | Energy | Health |
 | --- | --- | --- | --- |
@@ -132,13 +132,13 @@ turn that off).
 
 - **Grab** any piece of furniture by **holding E** for half a second (heavy
   pieces like crates, fridges, bathtubs and the billiards table take longer;
-  the store safe takes eight seconds). It floats in front of you where you
+  the store safe takes about five and a half minutes). It floats in front of you where you
   aim, swinging after your view with a little lag, and everyone online sees
   it there. It passes through things while you hold it, so you can push it
   into a wall or into another piece.
 - **Rotate** it with **R**, about the axis you pick with **1**, **2** or
   **3** (or **T** to cycle): 1 tips it toward you, 2 spins it upright, 3
-  rolls it side to side. A press turns it 45°; hold **Ctrl** for 15° or
+  rolls it side to side. A press turns it 45°; hold **Ctrl** (or **Alt**) for 15° or
   **Shift** for 90°. **Ctrl+Shift+R** squares it back up. Any angle works, so
   you can lean a bookcase into a ramp or stand a pallet on end as a wall.
 - **Let go** with E, a click or Q. If the piece is **touching anything** (the
@@ -147,7 +147,9 @@ turn that off).
   stairs you can take away: hold the next piece so it touches the last one.
   Let go **in mid-air** and it drops onto whatever is below, and anything
   that dropped falls again if you take away what holds it up. The outline is
-  green when it'll stay put and white when it'll drop.
+  green when it'll stay put, white when it'll drop, and red when it's
+  overlapping someone (you, a friend or a member of staff): you can't let go of
+  it there.
 - The **mouse wheel** moves it closer or farther. **Hold F** to wind up a
   throw and let go of F to throw it: the longer you hold, the further it
   goes. Settings can snap held pieces to a 25 cm, 50 cm or 1 m grid.
@@ -172,6 +174,8 @@ turn that off).
 - **Head torch**: an inventory item. Select it and click to switch it on; it
   lights the way while it's in your hand, and friends see its light.
 - **Slide**: crouch while sprinting to slide along the floor.
+- Browsers don't let a page stop **Ctrl+W** closing the tab, so while you're
+  in a store the browser asks before leaving (and a solo store is saved).
 
 ## Controls
 
@@ -181,7 +185,7 @@ turn that off).
 | Sprint / jump / crouch | Shift / Space / C (or Ctrl when not holding anything) | Run / Jump / Crouch |
 | Grab furniture, take food, let go | E | Grab |
 | Let go, use selected item, shove | left click | Use |
-| Rotate held piece (45°, Ctrl 15°, Shift 90°) | R or right click | Rotate |
+| Rotate held piece (45°, Ctrl or Alt 15°, Shift 90°) | R or right click | Rotate |
 | Rotation axis while holding | 1 / 2 / 3, or T to cycle | Axis |
 | Square the held piece up | Ctrl+Shift+R | |
 | Held piece closer or farther | mouse wheel | |
