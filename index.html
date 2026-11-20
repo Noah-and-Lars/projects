@@ -270,6 +270,7 @@ const ago = iso => {
   return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d < 7 ? d + ' days ago' : d < 30 ? (Math.round(d / 7) === 1 ? '1 week ago' : Math.round(d / 7) + ' weeks ago') : new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 };
 const fmtDate = s => new Date(s.length === 10 ? s + 'T12:00' : s).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+const fmtDateYear = s => new Date(s.length === 10 ? s + 'T12:00' : s).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 const shortControls = c => (c || '').replace(/Keyboard \+ mouse/i, 'Keyboard & mouse').replace(/, touch.*$/i, ' + more');
 // a heading for news items that don't have one: "Krill Dive 1.4: versus lobbies…" -> "Krill Dive 1.4"
 const headOf = n => n.headline || ((m => m && m[1].length <= 42 ? m[1] : '')(/^([^:.]+):/.exec(n.text || '')) || (byId[n.game] ? byId[n.game].title + ' update' : 'The Arcade'));
@@ -585,7 +586,7 @@ function openSheet(id) {
         <div><dt>Your best</dt><dd class="f-best"></dd></div>
         <div><dt>Category</dt><dd class="f-cat"></dd></div>
         <div><dt>Plays with</dt><dd class="f-ctl"></dd></div>
-        <div><dt>Added</dt><dd class="f-add"></dd></div>
+        <div><dt>Release date</dt><dd class="f-add"></dd></div>
         <div><dt>Updated</dt><dd class="f-upd"></dd></div>
       </dl>
       ${(g.keys || []).length ? '<div class="span"><h3>Controls</h3><ul class="keys"></ul></div>' : ''}
@@ -595,7 +596,7 @@ function openSheet(id) {
   txt(s, '.eyebrow', g.category + ' · Updated ' + ago(g.updated));
   txt(s, 'h2', g.title); txt(s, '.lead', g.tagline); txt(s, '.about', g.description);
   txt(s, '.f-best', stat || '–'); txt(s, '.f-cat', g.category); txt(s, '.f-ctl', g.controls);
-  txt(s, '.f-add', fmtDate(g.added)); txt(s, '.f-upd', ago(g.updated));
+  txt(s, '.f-add', fmtDateYear(g.added)); txt(s, '.f-upd', ago(g.updated));
   s.querySelector('#sheetLive').dataset.g = g.id;
   s.querySelector('a.btn').href = playUrl(g);
   if (tr) s.querySelector('[data-trailer]').onclick = () => openTrailer(g);
