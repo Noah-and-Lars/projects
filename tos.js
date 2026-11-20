@@ -2,7 +2,7 @@
 // tick the box and agree. Agreeing is remembered in this browser under TOS_KEY; change TOS_VERSION to ask everyone
 // again after the terms change.
 (function () {
-  var TOS_VERSION = '2026-11-16b', TOS_KEY = 'arcade-tos-agreed';
+  var TOS_VERSION = '2026-11-21', TOS_KEY = 'arcade-tos-agreed';
   // 2026-11-16: window.arcadeShowTerms() reopens the terms any time (the "Terms of Service" link in the home page footer);
   // only the automatic first-visit pop-up is skipped once agreed, on a watch or with ?notos=1
   var agreed = false;
@@ -50,29 +50,37 @@
       ['We may add to, modify, rebalance, reset, suspend or remove any game on the Site, and any feature, level, map, item, mode, rule, score, save, achievement or setting within it, at any time, without notice and for any reason.',
        'Updates may alter gameplay, reset or remove progress, scores or in-game currency, or cause earlier versions to stop working online. The availability of a game at any time does not guarantee its continued availability.',
        'In-game currency, items, levels and other progress have no real-world value, cannot be exchanged for money or anything else of value, and may be lost at any time.']],
-    ['6. Termination of Site/Online Service',
+    // 2026-11-21: Game Updates + Discontinued Games
+    ['6. Game Updates',
+      ['Games on the Site are updated from time to time. Updates may come from requests and suggestions made by users, or from features, changes and fixes chosen by the developers. Making a request or suggestion does not mean that it will be added, and we may decline or ignore any request without giving a reason.',
+       'Any game may stop receiving updates at any time, for any reason or no reason, with or without notice. No user is entitled to any update, feature, fix or change to any game, or to any explanation of why a game is or is not being updated.']],
+    ['7. Discontinued Games',
+      ['A game may be labelled "Discontinued" on the Site. A discontinued game will no longer receive feature updates, will no longer accept or act on update requests, and will no longer receive support.',
+       'A discontinued game may still receive critical security patches, critical bug fixes, or server updates needed to keep it and the Site\'s servers working. Receiving such a patch or update does not mean that the game is no longer discontinued, or that any further updates will follow.',
+       'A discontinued game may still be changed or removed from the Site at any time, as described in these Terms.']],
+    ['8. Termination of Site/Online Service',
       ['We may change, update, redesign, suspend, take down, relocate, discontinue or permanently terminate the Site, or any part of it, at any time, for any reason or no reason, with or without notice.',
        'This includes removing pages, games, the Global chat or any online feature, changing the Site\'s address, or ending the Site entirely. No user is entitled to any notice, explanation, refund or compensation in such an event.',
        'Online features depend on services provided by third parties. Those services may become unavailable, limited or discontinued at any time, and we are not responsible for any such interruption.']],
-    ['7. Data and Privacy',
+    ['9. Data and Privacy',
       ['You may create a free Arcade account with a username and password; no email address is required. If you do, your username, a hashed (scrambled) form of your password, and your game saves, scores and settings are stored with a third-party online service (Cloudflare) so that your progress is available on other devices. Your username is public, as it is your name in the games and in chat, so you should not use your real name. You are responsible for keeping your recovery code safe; without it, a forgotten password cannot be reset. Accounts and the progress saved in them may be removed at any time, for example if the Site is shut down.',
        'If you use a local account instead, your names, settings, saves and scores are stored only in your own browser\'s storage. Clearing your browser data, using a different browser or device, or a game update may delete them, and they cannot be recovered.',
        'When you use online features, the information you send (such as your player name, chat messages and in-game actions) is transmitted through an online service so that other users can see it. You should not send anything you would not want other people to see.',
-       'To keep the Site safe and to investigate rule-breaking, we keep records about online accounts that only the Site\'s administrators can see: when your account signs in, on which device (a random ID stored in your browser, not a hardware ID) and from which internet (IP) address and approximate location (city and country), what type of browser and device you use, together with technical details about it (such as screen size, time zone, language, graphics card and how it draws a test image, and where your browser shares them, your connection type and battery level) that we combine into a fingerprint to recognise the same device, how long you play each game, which pages of the Site you open and for how long, the website that first sent you here, who you exchange private messages with and how many (not what they say), the messages you send in the Global chat (kept even after they are removed from the chat), and changes to your account such as renames and bans. In serious situations, such as threats, bullying, scams or someone being at risk, an administrator may read your private messages; each time, the reason is recorded. We do not collect your email address or real name.']],
-    ['8. Accounts',
+       'To keep the Site safe and to investigate rule-breaking, we keep records about online accounts that only the Site\'s administrators can see: when your account signs in, on which device (a random ID stored in your browser, not a hardware ID), what type of browser and device you use, together with technical details about it (such as screen size, time zone, language, graphics card and how it draws a test image, and where your browser shares them, your connection type and battery level) that we combine into a fingerprint to recognise the same device, how long you play each game, which pages of the Site you open and for how long, the website that first sent you here, who you exchange private messages with and how many (not what they say), the messages you send in the Global chat (kept even after they are removed from the chat), and changes to your account such as renames and bans. In serious situations, such as threats, bullying, scams or someone being at risk, an administrator may read your private messages; each time, the reason is recorded. We do not collect your email address or real name.']],
+    ['10. Accounts',
       ['We may change any account name or account status (including roles, badges, ranks, verification, mutes and bans) at any time, for any reason or no reason, without notice and without giving a reason.',
        'We may delete any account and remove it from the Site at any time, for any reason or no reason, without notice and without giving a reason. When an account is deleted, its saves, scores, friends, messages and all other associated data may be permanently lost and cannot be recovered.']],
-    ['9. Disclaimer of Warranties',
+    ['11. Disclaimer of Warranties',
       ['The Site and all content on it are provided free of charge, for entertainment, on an "as is" and "as available" basis, without warranties of any kind, whether express or implied. We do not warrant that the Site will be safe, secure, error-free or continuously available, or that any defects will be corrected.',
        'Your use of the Site is at your own risk.']],
-    ['10. Limitation of Liability',
+    ['12. Limitation of Liability',
       ['To the fullest extent permitted by law, we shall not be liable for any loss or damage of any kind arising from your use of, or inability to use, the Site. This includes, without limitation, lost progress or saved data, anything said or done by any user (including you), any change to or removal of the Site or any game, and the suspension or termination of the Site.']],
-    ['11. Changes to These Terms',
+    ['13. Changes to These Terms',
       ['We may amend these Terms at any time. When the Terms change, the Site may ask you to agree to them again. Your continued use of the Site after any change constitutes your acceptance of the amended Terms.']],
-    ['12. General',
+    ['14. General',
       ['If any provision of these Terms is found to be unenforceable, the remaining provisions remain in full force and effect. Our failure to enforce any provision does not waive our right to enforce it later. These Terms constitute the entire agreement between you and us regarding your use of the Site.']],
     // 2026-11-16: shown in capitals in a red box, like the notice at the top (third item = red)
-    ['13. USER\'S FAILURE TO READ THE TERMS OF SERVICE',
+    ['15. USER\'S FAILURE TO READ THE TERMS OF SERVICE',
       ['ANY COMPLAINTS, CLAIMS, DISPUTES, LOSSES OR PROBLEMS OF ANY KIND ARISING FROM, OR IN CONNECTION WITH, A USER\'S FAILURE TO READ THESE TERMS OF SERVICE ARE THE SOLE RESPONSIBILITY AND LIABILITY OF THAT USER. NEITHER THE SITE NOR ITS CREATORS ACCEPT ANY RESPONSIBILITY OR LIABILITY FOR THEM.',
        'IT IS YOUR RESPONSIBILITY TO READ THESE TERMS IN FULL, CAREFULLY AND FROM BEGINNING TO END, BEFORE YOU ACCESS OR USE THE SITE, AND TO MAKE SURE THAT YOU UNDERSTAND THEM. IF ANY PART OF THESE TERMS IS UNCLEAR TO YOU, YOU SHOULD NOT USE THE SITE UNTIL IT IS CLEAR.',
        'BY TICKING THE BOX AND SELECTING "AGREE AND CONTINUE", OR BY ACCESSING OR USING THE SITE IN ANY WAY, YOU CONFIRM THAT YOU HAVE READ AND UNDERSTOOD THESE TERMS IN FULL. YOU AGREE THAT YOU CANNOT RELY ON A FAILURE TO READ, SKIM OR UNDERSTAND ANY PART OF THESE TERMS AS AN EXCUSE, DEFENCE OR GROUND FOR ANY COMPLAINT OR CLAIM, AND THAT THESE TERMS APPLY TO YOU IN FULL WHETHER OR NOT YOU HAVE READ THEM.',
@@ -107,7 +115,7 @@
     var notice = '<div class="tnotice"><h3>' + esc(NOTICE[0]) + '</h3>' + NOTICE[1].map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '</div>';
     var body = notice + TERMS.map(function (s) { if (s[2]) return '<div class="tnotice"><h3>' + esc(s[0]) + '</h3>' + s[1].map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '</div>'; return '<h3>' + esc(s[0]) + '</h3>' + s[1].map(function (p) { return /^IF YOU CIRCUMVENT/.test(p) ? '<div class="tnotice tred"><p>' + esc(p) + '</p></div>' : '<p>' + esc(p) + '</p>'; }).join(''); }).join('');
     d.innerHTML = '<div class="tbox"><div class="thead"><small>The Arcade</small><h2 id="tosTitle">Terms of Service</h2>' +
-      '<p>Please read these Terms carefully before using the Site. Last updated 16 November 2026.</p></div>' +
+      '<p>Please read these Terms carefully before using the Site. Last updated 21 November 2026.</p></div>' +
       '<div class="tbody" tabindex="0">' + body + '</div>' +
       '<div class="tfoot"><label id="tosLabel" class="off"><input type="checkbox" id="tosCheck" disabled><span>I have read and agree to the Terms of Service. I acknowledge that I am solely responsible for everything I post on the Site, that games may be changed or removed at any time, and that the Site may be changed, taken down or terminated at any time.</span></label>' +
       '<span class="thint" id="tosHint">Scroll to the bottom of the terms to continue.</span><button id="tosOk" disabled>Agree and continue</button></div></div>';
