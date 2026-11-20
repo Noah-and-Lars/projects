@@ -235,7 +235,7 @@ or an **abandoned fort** (a ring of upturned pallets round a lamp, a platform,
 and maybe some food left behind, 1.5%). About a third of chunk edges have
 full-height walls with doorways. The chunks around the centre have none.
 
-There are about 120 kinds of furniture and things to pick up (seating,
+There are over 110 kinds of furniture and things to pick up (seating,
 tables, shelving, storage, beds, a dozen kinds of lamp and light strips,
 appliances, pictures and mirrors, rugs and mats, toys, plush bears, dice,
 gift boxes, tools and ladders) and 23 kinds of food, drink and first aid,
