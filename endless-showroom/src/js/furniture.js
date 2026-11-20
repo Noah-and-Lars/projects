@@ -518,7 +518,335 @@ export const TYPES = {
     for (const z of [-0.45, 0, 0.45]) g.box(0, 0.105, z, 1.2, 0.035, 0.1, shade(c, 0.9));
     for (let i = 0; i < 5; i++) g.box(-0.55 + i * 0.275, 0.012, 0, 0.1, 0.024, 1.0, c);
   } },
+
+  // ---- more seating ----
+  cafeChair: { m: 'wood', name: 'Café Chair', w: 0.45, d: 0.48, h: 0.82, hp: 35, cols: [0x2f2f33, 0xc89a64, 0x5a7a5f, 0xb5523b], build(g, c) {
+    for (const sx of [-1, 1]) { g.box(sx * 0.19, 0.22, 0.19, 0.03, 0.44, 0.03, c); g.box(sx * 0.19, 0.41, -0.2, 0.03, 0.82, 0.03, c); }
+    g.box(0, 0.45, 0, 0.44, 0.04, 0.44, shade(c, 1.1)); g.box(0, 0.472, 0.02, 0.4, 0.008, 0.38, 0xd8cdbb);
+    for (const y of [0.6, 0.72]) g.box(0, y, -0.205, 0.38, 0.05, 0.02, c);
+    g.box(0, 0.15, 0, 0.36, 0.02, 0.02, c); g.box(0, 0.15, 0.19, 0.36, 0.02, 0.02, c);
+  } },
+  loveseat: { m: 'fabric', soft: 'top', name: 'Loveseat', w: 1.4, d: 0.85, h: 0.8, hp: 120, cols: FABRIC, build(g, c) {
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.box(sx * 0.63, 0.04, sz * 0.34, 0.05, 0.08, 0.05, 0x6e4a2f);
+    g.box(0, 0.16, 0, 1.4, 0.18, 0.82, shade(c, 0.88)); g.box(0, 0.57, -0.32, 1.4, 0.46, 0.2, c);
+    for (const sx of [-1, 1]) { g.box(sx * 0.62, 0.41, 0.02, 0.16, 0.5, 0.82, c); g.box(sx * 0.62, 0.67, 0.02, 0.18, 0.03, 0.84, shade(c, 1.06)); }
+    for (const x of [-0.28, 0.28]) { g.box(x, 0.32, 0.07, 0.54, 0.14, 0.68, shade(c, 1.07)); g.box(x, 0.56, -0.19, 0.52, 0.34, 0.12, shade(c, 1.03)); }
+  } },
+  sofaModule: { m: 'fabric', soft: 'top', name: 'Sofa Seat', w: 0.9, d: 0.9, h: 0.8, hp: 80, cols: FABRIC, build(g, c) {
+    g.box(0, 0.06, 0, 0.88, 0.12, 0.86, DARK); g.box(0, 0.22, 0, 0.9, 0.2, 0.9, shade(c, 0.88));
+    g.box(0, 0.38, 0.06, 0.86, 0.13, 0.76, shade(c, 1.07)); g.box(0, 0.385, 0.442, 0.84, 0.02, 0.005, shade(c, 0.8));
+    g.box(0, 0.58, -0.35, 0.9, 0.44, 0.2, c); g.box(0, 0.58, -0.22, 0.82, 0.32, 0.08, shade(c, 1.03));
+  } },
+  sofaCornerModule: { m: 'fabric', soft: 'top', name: 'Corner Seat', w: 0.9, d: 0.9, h: 0.8, hp: 90, cols: FABRIC, build(g, c) {
+    g.box(0, 0.06, 0, 0.88, 0.12, 0.86, DARK); g.box(0, 0.22, 0, 0.9, 0.2, 0.9, shade(c, 0.88));
+    g.box(0.1, 0.38, 0.06, 0.66, 0.13, 0.76, shade(c, 1.07));
+    g.box(0, 0.58, -0.35, 0.9, 0.44, 0.2, c); g.box(-0.35, 0.58, 0.1, 0.2, 0.44, 0.7, c);
+    g.box(0.05, 0.58, -0.22, 0.66, 0.32, 0.08, shade(c, 1.03)); g.box(-0.22, 0.58, 0.12, 0.08, 0.32, 0.6, shade(c, 1.03));
+  } },
+  longBench: { m: 'wood', name: 'Long Bench', w: 2.4, d: 0.45, h: 0.45, hp: 90, cols: WOOD, build(g, c) {
+    for (const x of [-1.05, 0, 1.05]) { g.box(x, 0.2, 0, 0.08, 0.4, 0.38, shade(c, 0.85)); g.box(x, 0.03, 0, 0.12, 0.06, 0.42, shade(c, 0.75)); }
+    for (const z of [-0.15, 0, 0.15]) g.box(0, 0.425, z, 2.4, 0.05, 0.13, shade(c, 0.97 + Math.abs(z)));
+  } },
+  picnicTable: { m: 'wood', name: 'Picnic Table', w: 1.8, d: 1.5, h: 0.75, hp: 160, cols: [0xb08355, 0x8a5a36, 0x6f8a5b],
+    parts: [[-0.9, 0, -0.75, 0.9, 0.45, -0.45], [-0.9, 0, 0.45, 0.9, 0.45, 0.75], [-0.9, 0.7, -0.4, 0.9, 0.75, 0.4]], build(g, c) {
+    for (const z of [-0.3, -0.1, 0.1, 0.3]) g.box(0, 0.725, z, 1.8, 0.05, 0.18, shade(c, 1.02 - Math.abs(z) * 0.2));
+    for (const sz of [-1, 1]) for (const z of [0.53, 0.67]) g.box(0, 0.425, sz * z, 1.8, 0.05, 0.13, shade(c, 0.95));
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) g.box(sx * 0.65, 0.36, sz * 0.38, 0.08, 0.72, 0.08, shade(c, 0.8));
+      g.box(sx * 0.65, 0.38, 0, 0.08, 0.06, 1.5, shade(c, 0.78)); g.box(sx * 0.65, 0.67, 0, 0.08, 0.05, 0.8, shade(c, 0.78));
+    }
+  } },
+  roundTable: { m: 'wood', name: 'Round Table', w: 1.0, d: 1.0, h: 0.75, hp: 80, cols: WOOD, build(g, c) {
+    g.cyl(0, 0, 0, 0.26, 0.04, shade(c, 0.8), 16); g.cyl(0, 0.04, 0, 0.05, 0.66, shade(c, 0.85), 10);
+    g.cyl(0, 0.7, 0, 0.5, 0.05, c, 20); g.cyl(0, 0.745, 0, 0.48, 0.004, shade(c, 1.06), 20);
+  } },
+  modernTable: { m: 'paint', name: 'Modern Table', w: 1.4, d: 0.8, h: 0.74, hp: 90, cols: [WHITE, 0x2f2f33, 0xc89a64, 0x8a9e9a], build(g, c) {
+    for (const sx of [-1, 1]) { g.box(sx * 0.62, 0.36, 0, 0.05, 0.72, 0.7, DARK); g.box(sx * 0.62, 0.02, 0, 0.07, 0.04, 0.74, DARK); }
+    g.box(0, 0.715, 0, 1.4, 0.05, 0.8, c); g.box(0, 0.67, 0, 1.2, 0.03, 0.04, DARK);
+  } },
+  barTable: { m: 'wood', name: 'High Table', w: 0.7, d: 0.7, h: 1.05, hp: 60, cols: [0x2f2f33, 0xc89a64, WHITE, 0x5b3b25], build(g, c) {
+    g.cyl(0, 0, 0, 0.3, 0.03, METAL, 14); g.cyl(0, 0.03, 0, 0.035, 0.98, METAL, 8); g.cyl(0, 0.3, 0, 0.18, 0.02, METAL, 12);
+    g.box(0, 1.03, 0, 0.7, 0.04, 0.7, c);
+  } },
+  standingDesk: { m: 'wood', name: 'Standing Desk', w: 1.4, d: 0.7, h: 1.1, hp: 90, cols: WOOD, build(g, c) {
+    for (const sx of [-1, 1]) { g.box(sx * 0.58, 0.02, 0, 0.08, 0.04, 0.66, DARK); g.box(sx * 0.58, 0.32, 0, 0.07, 0.6, 0.07, DARK); g.box(sx * 0.58, 0.8, 0, 0.055, 0.5, 0.055, METAL); }
+    g.box(0, 1.08, 0, 1.4, 0.04, 0.7, c); g.box(0, 1.03, -0.05, 1.18, 0.05, 0.08, DARK);
+    g.box(0.5, 1.035, 0.33, 0.12, 0.03, 0.03, 0x34495e);
+  } },
+  playTable: { m: 'plastic', name: 'Kids\' Table', w: 1.0, d: 0.6, h: 0.5, hp: 40, cols: [0x2ecc71, 0xe74c3c, 0x3498db, 0xf1c40f], build(g, c) {
+    legs4(g, 1.0, 0.6, 0.46, 0.07, shade(c, 0.8), 0.04); g.box(0, 0.48, 0, 1.0, 0.04, 0.6, c);
+    g.box(-0.25, 0.505, 0.05, 0.2, 0.01, 0.14, 0xf2f2f2); g.box(0.2, 0.51, -0.08, 0.06, 0.02, 0.06, 0xe74c3c); g.box(0.3, 0.51, 0.08, 0.06, 0.02, 0.06, 0x3498db);
+  } },
+  // ---- more shelving and storage ----
+  smallBookcase: { climb: true, m: 'wood', name: 'Small Bookcase', w: 0.8, d: 0.3, h: 1.0, hp: 70, cols: WOOD, build(g, c) {
+    g.box(0, 0.5, -0.14, 0.8, 1.0, 0.02, shade(c, 0.85));
+    for (const sx of [-1, 1]) g.box(sx * 0.385, 0.5, 0, 0.03, 1.0, 0.3, c);
+    for (const y of [0.02, 0.5, 0.985]) g.box(0, y, 0, 0.8, 0.03, 0.3, c);
+    const books = [0x9a4b3f, 0x34495e, 0x6f8a5b, 0xc98c3d, 0x8b6c9e, 0xd8cdbb];
+    for (const y of [0.035, 0.515]) for (let i = 0; i < 9; i++) { const h = 0.3 + ((i * 7) % 5) * 0.03; g.box(-0.33 + i * 0.075, y + h / 2, 0.01, 0.06, h, 0.22, books[(i + (y > 0.3 ? 2 : 0)) % 6]); }
+  } },
+  wallShelf: { m: 'wood', name: 'Wall Shelf', w: 1.0, d: 0.25, h: 0.3, hp: 30, cols: WOOD, build(g, c) {
+    g.box(0, 0.28, 0, 1.0, 0.04, 0.25, c); for (const sx of [-1, 1]) g.box(sx * 0.4, 0.13, -0.08, 0.04, 0.26, 0.08, DARK);
+    g.box(-0.3, 0.37, 0, 0.12, 0.14, 0.12, 0xd8cdbb); g.cyl(0.05, 0.3, 0.02, 0.05, 0.12, 0x9a5b3a, 10); g.box(0.3, 0.355, 0, 0.22, 0.11, 0.16, 0x34495e);
+  } },
+  woodenShelf: { climb: true, m: 'wood', name: 'Open Shelf', w: 1.0, d: 0.35, h: 1.6, hp: 80, cols: WOOD, build(g, c) {
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.box(sx * 0.47, 0.8, sz * 0.15, 0.04, 1.6, 0.04, shade(c, 0.85));
+    for (const y of [0.1, 0.55, 1.0, 1.45]) g.box(0, y, 0, 1.0, 0.03, 0.35, c);
+    g.box(-0.25, 0.65, 0, 0.3, 0.17, 0.25, 0xc8a26e); g.cyl(0.25, 1.015, 0, 0.08, 0.2, 0xd8d2c4, 10); g.box(0.2, 0.175, 0, 0.4, 0.12, 0.28, 0x8fa7b8);
+  } },
+  modernShelf: { climb: true, m: 'paint', name: 'Tall White Shelf', w: 0.8, d: 0.4, h: 1.8, hp: 90, cols: [WHITE, 0x2f2f33, 0xd8cdbb], build(g, c) {
+    g.box(0, 0.9, -0.19, 0.8, 1.8, 0.02, shade(c, 0.94));
+    for (const sx of [-1, 1]) g.box(sx * 0.385, 0.9, 0, 0.03, 1.8, 0.4, c);
+    for (let i = 0; i <= 5; i++) g.box(0, 0.02 + i * 0.355, 0, 0.8, 0.03, 0.4, c);
+    g.box(-0.18, 0.19, 0.02, 0.28, 0.3, 0.3, 0xc8a26e); g.box(0.18, 0.19, 0.02, 0.28, 0.3, 0.3, 0x8fa7b8);
+    g.cyl(0, 0.745, 0, 0.07, 0.22, 0x9a5b3a, 10); g.box(0, 1.19, 0, 0.18, 0.18, 0.18, 0x34495e);
+  } },
+  fancyShelf: { m: 'wood', name: 'Glass Cabinet', w: 0.9, d: 0.45, h: 1.9, hp: 110, cols: [0x5b3b25, WHITE, 0x2f2f33], build(g, c) {
+    g.box(0, 0.08, 0, 0.9, 0.16, 0.45, c); g.box(0, 1.86, 0, 0.9, 0.08, 0.45, c); g.box(0, 0.98, -0.21, 0.86, 1.66, 0.03, shade(c, 0.85));
+    for (const sx of [-1, 1]) g.box(sx * 0.43, 0.98, 0, 0.04, 1.7, 0.45, c);
+    for (const y of [0.6, 1.05, 1.5]) g.box(0, y, 0, 0.82, 0.015, 0.4, GLASS);
+    g.box(0, 0.98, 0.215, 0.82, 1.62, 0.01, GLASS); g.box(0, 0.98, 0.222, 0.03, 1.62, 0.006, c);
+    g.cyl(-0.2, 0.61, 0, 0.06, 0.16, 0xd4af37, 10); g.cyl(0.18, 1.06, 0, 0.07, 0.12, 0xd8d2c4, 10); g.box(0, 1.57, 0, 0.3, 0.12, 0.2, 0x8a5a36);
+  } },
+  metalCart: { m: 'metal', name: 'Utility Trolley', w: 0.9, d: 0.5, h: 1.0, hp: 80, cols: [0xbfc4c9, 0x2f2f33, 0x5d7a96], build(g, c) {
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) { g.box(sx * 0.42, 0.53, sz * 0.22, 0.03, 0.9, 0.03, c); g.cyl(sx * 0.4, 0, sz * 0.2, 0.04, 0.07, DARK, 8); }
+    for (const y of [0.15, 0.5, 0.85]) { g.box(0, y, 0, 0.9, 0.025, 0.5, c); g.box(0, y + 0.04, 0.235, 0.9, 0.06, 0.015, shade(c, 0.9)); }
+    g.box(0, 0.97, -0.22, 0.86, 0.03, 0.03, DARK); g.box(-0.2, 0.95, 0, 0.3, 0.1, 0.3, 0xc8a26e);
+  } },
+  metalWardrobe: { m: 'steel', heavy: 1.2, name: 'Steel Wardrobe', w: 0.9, d: 0.55, h: 1.9, hp: 220, cols: [0x7f8c8d, 0x5d7a96, 0x8a9a5b, 0xc9ced3], build(g, c) {
+    g.box(0, 0.95, 0, 0.9, 1.9, 0.53, c); g.box(0, 0.03, 0, 0.9, 0.06, 0.55, DARK);
+    g.box(0, 1.0, 0.267, 0.006, 1.8, 0.004, shade(c, 0.6));
+    for (const sx of [-1, 1]) { g.box(sx * 0.06, 1.05, 0.268, 0.02, 0.2, 0.012, METAL); for (let i = 0; i < 4; i++) g.box(sx * 0.22, 1.65 + i * 0.045, 0.267, 0.2, 0.012, 0.004, shade(c, 0.7)); }
+  } },
+  closet: { m: 'wood', heavy: 1.2, name: 'Double Closet', w: 1.6, d: 0.6, h: 2.1, hp: 240, cols: WOOD,
+    parts: [[-0.8, 0, -0.3, 0.8, 2.1, -0.25], [-0.8, 0, -0.3, -0.75, 2.1, 0.3], [0.75, 0, -0.3, 0.8, 2.1, 0.3], [-0.8, 2.03, -0.3, 0.8, 2.1, 0.3], [-0.8, 0, -0.3, 0.8, 0.08, 0.3]],
+    build(g, c) {
+      g.box(0, 1.05, -0.275, 1.6, 2.1, 0.05, c); g.box(-0.775, 1.05, 0, 0.05, 2.1, 0.6, c); g.box(0.775, 1.05, 0, 0.05, 2.1, 0.6, c);
+      g.box(0, 2.065, 0, 1.6, 0.07, 0.6, c); g.box(0, 0.04, 0, 1.6, 0.08, 0.6, shade(c, 0.7));
+      g.box(0, 1.8, -0.05, 1.5, 0.025, 0.025, METAL); g.box(0, 1.95, -0.05, 1.5, 0.02, 0.45, shade(c, 0.9));
+      const cloth = [0x9a4b3f, 0xd8cdbb, 0x34495e, 0x6f8a5b, 0xc98c3d, 0x3d3d48, 0x8b6c9e];
+      for (let i = 0; i < 7; i++) g.box(-0.6 + i * 0.2, 1.42 - (i % 3) * 0.1, -0.05, 0.05, 0.7 + (i % 3) * 0.2, 0.36, cloth[i]);
+      // doors standing open, flat against the sides
+      for (const sx of [-1, 1]) { g.box(sx * 0.785, 1.05, 0.28, 0.03, 1.95, 0.04, shade(c, 1.05)); }
+    } },
+  drawerUnit: { m: 'wood', name: 'Drawer Unit', w: 0.5, d: 0.45, h: 0.7, hp: 60, cols: [WHITE, 0x2f2f33, 0xc89a64, 0x5d7a96], build(g, c) {
+    g.box(0, 0.36, 0, 0.5, 0.68, 0.44, c); for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.cyl(sx * 0.2, 0, sz * 0.17, 0.02, 0.02, DARK, 6);
+    for (let i = 0; i < 4; i++) { g.box(0, 0.12 + i * 0.165, 0.222, 0.46, 0.15, 0.006, shade(c, 1.05)); g.box(0, 0.12 + i * 0.165, 0.222, 0.14, 0.02, 0.012, METAL); }
+  } },
+  smallCabinet: { m: 'wood', name: 'Small Cabinet', w: 0.6, d: 0.4, h: 0.8, hp: 60, cols: WOOD, build(g, c) {
+    legs4(g, 0.6, 0.4, 0.1, 0.04, DARK, 0.04); g.box(0, 0.45, 0, 0.6, 0.7, 0.39, c); g.box(0, 0.81, 0, 0.6, 0.02, 0.4, shade(c, 1.08));
+    g.box(0, 0.45, 0.196, 0.004, 0.62, 0.004, shade(c, 0.6)); for (const sx of [-1, 1]) g.box(sx * 0.04, 0.55, 0.196, 0.015, 0.1, 0.008, METAL);
+  } },
+  milkCrate: { m: 'plastic', name: 'Plastic Crate', w: 0.45, d: 0.35, h: 0.3, hp: 30, cols: [0xe74c3c, 0x3498db, 0xf1c40f, 0x2ecc71, 0xe67e22, 0x2f2f33], build(g, c) {
+    g.box(0, 0.015, 0, 0.45, 0.03, 0.35, c);
+    for (const sz of [-1, 1]) { g.box(0, 0.28, sz * 0.165, 0.45, 0.04, 0.02, c); g.box(0, 0.1, sz * 0.165, 0.45, 0.04, 0.02, c); for (let i = 0; i < 5; i++) g.box(-0.2 + i * 0.1, 0.15, sz * 0.165, 0.025, 0.28, 0.02, c); }
+    for (const sx of [-1, 1]) { g.box(sx * 0.215, 0.28, 0, 0.02, 0.04, 0.35, c); g.box(sx * 0.215, 0.1, 0, 0.02, 0.04, 0.35, c); for (let i = 0; i < 4; i++) g.box(sx * 0.215, 0.15, -0.12 + i * 0.08, 0.02, 0.28, 0.025, c); g.box(sx * 0.215, 0.24, 0, 0.022, 0.03, 0.12, shade(c, 0.6)); }
+  } },
+  smallBox: { m: 'card', name: 'Small Box', w: 0.4, d: 0.35, h: 0.3, hp: 20, cols: [0xc8a26e, 0xb8915c, 0xd2b07d], build(g, c) {
+    g.box(0, 0.15, 0, 0.4, 0.3, 0.35, c); g.box(0, 0.301, 0, 0.4, 0.004, 0.06, 0xd8cfa8); g.box(0, 0.15, 0.176, 0.12, 0.08, 0.002, 0xe8e2d6);
+  } },
+  tinyBox: { m: 'card', name: 'Tiny Box', w: 0.25, d: 0.25, h: 0.2, hp: 15, cols: [0xc8a26e, 0xd2b07d, 0xb8915c], build(g, c) {
+    g.box(0, 0.1, 0, 0.25, 0.2, 0.25, c); g.box(0, 0.201, 0, 0.25, 0.004, 0.04, 0xd8cfa8); g.box(0, 0.201, 0, 0.04, 0.004, 0.25, 0xd8cfa8);
+  } },
+  trashCan: { m: 'plastic', name: 'Bin', w: 0.45, d: 0.45, h: 0.75, hp: 40, cols: [0x5f6a72, 0x2f2f33, 0x3d7a4a, 0x2e6da4],
+    parts: [[-0.225, 0, -0.225, 0.225, 0.04, 0.225], [-0.225, 0, -0.225, 0.225, 0.75, -0.2], [-0.225, 0, 0.2, 0.225, 0.75, 0.225], [-0.225, 0, -0.225, -0.2, 0.75, 0.225], [0.2, 0, -0.225, 0.225, 0.75, 0.225]],
+    build(g, c) {
+      g.box(0, 0.02, 0, 0.42, 0.04, 0.42, shade(c, 0.8));
+      for (const sz of [-1, 1]) g.box(0, 0.36, sz * 0.21, 0.42, 0.72, 0.025, c);
+      for (const sx of [-1, 1]) g.box(sx * 0.21, 0.36, 0, 0.025, 0.72, 0.42, c);
+      for (const sz of [-1, 1]) g.box(0, 0.735, sz * 0.21, 0.45, 0.03, 0.03, shade(c, 1.15));
+      for (const sx of [-1, 1]) g.box(sx * 0.21, 0.735, 0, 0.03, 0.03, 0.45, shade(c, 1.15));
+      g.box(0, 0.06, 0, 0.36, 0.04, 0.36, 0x2a2a2e); g.box(0, 0.4, 0.224, 0.12, 0.12, 0.002, 0xf2f2f2);
+    } },
+  queenBed: { m: 'fabric', soft: 'top', name: 'Queen Bed', w: 1.8, d: 2.2, h: 1.1, hp: 190, cols: [WHITE, 0xd8cdbb, 0x5a6f8c, 0x9a4b3f, 0x3d3d48],
+    parts: [[-0.9, 0, -1.04, 0.9, 0.52, 1.1], [-0.9, 0, -1.1, 0.9, 1.1, -1.04]], build(g, c) {
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.box(sx * 0.84, 0.05, sz * 1.02, 0.07, 0.1, 0.07, 0x55575c);
+    g.box(0, 0.2, 0.03, 1.8, 0.22, 2.14, 0xd8d2c4); g.box(0, 0.4, 0.03, 1.74, 0.2, 2.1, WHITE);
+    g.box(0, 0.51, 0.32, 1.77, 0.04, 1.5, c); g.box(0, 0.4, 1.07, 1.77, 0.2, 0.02, c); g.box(0.885, 0.4, 0.32, 0.02, 0.2, 1.48, c); g.box(-0.885, 0.4, 0.32, 0.02, 0.2, 1.48, c);
+    g.box(0, 0.532, 0.85, 1.78, 0.012, 0.36, shade(c, 0.78));
+    for (const x of [-0.45, 0.45]) { g.box(x, 0.55, -0.8, 0.7, 0.12, 0.34, WHITE); g.box(x, 0.6, -0.62, 0.5, 0.18, 0.08, shade(c, 1.1)); }
+    g.box(0, 0.6, -1.07, 1.8, 1.0, 0.06, 0xd8d2c4); for (let i = 0; i < 6; i++) g.box(-0.75 + i * 0.3, 0.75, -1.035, 0.26, 0.6, 0.02, shade(0xd8d2c4, 0.92));
+  } },
+  // ---- more lights ----
+  metalLamp: { m: 'metal', lamp: true, use: 'lamp', name: 'Industrial Lamp', w: 0.45, d: 0.45, h: 1.7, hp: 40, cols: [0x2f2f33, 0x5d7a96, 0xb5523b, 0xbfc4c9], build(g, c) {
+    g.cyl(0, 0, 0, 0.2, 0.04, c, 14); g.cyl(0, 0.04, 0, 0.018, 1.5, METAL, 8);
+    g.box(0.05, 1.53, 0, 0.14, 0.03, 0.03, METAL); g.cyl(0.08, 1.48, 0, 0.14, 0.2, c, 14, 0.05); g.cyl(0.08, 1.48, 0, 0.08, 0.012, 0xfff4d6, 10);
+  } },
+  arcLamp: { m: 'metal', lamp: true, use: 'lamp', name: 'Arc Lamp', w: 1.2, d: 0.5, h: 2.0, hp: 45, cols: [0xbfc4c9, 0x2f2f33, 0xd4af37], build(g, c) {
+    g.box(-0.45, 0.05, 0, 0.3, 0.1, 0.3, 0x8f8a82); g.cyl(-0.45, 0.1, 0, 0.02, 1.0, c, 8);
+    // the arm: a quarter circle of short pieces from the pole top over to the shade
+    for (let i = 0; i <= 16; i++) { const a = Math.PI - (i / 16) * (Math.PI / 2); g.box(0.42 + Math.cos(a) * 0.87, 1.1 + Math.sin(a) * 0.82, 0, 0.05, 0.05, 0.03, c); }
+    g.box(0.42, 1.86, 0, 0.03, 0.1, 0.03, c); g.cyl(0.42, 1.6, 0, 0.22, 0.2, c, 16, 0.07); g.cyl(0.42, 1.6, 0, 0.12, 0.012, 0xfff4d6, 12);
+  } },
+  deskLamp: { m: 'metal', lamp: true, use: 'lamp', name: 'Desk Lamp', w: 0.25, d: 0.25, h: 0.45, hp: 15, cols: [0x2f2f33, WHITE, 0xc0392b, 0x2e86c1], build(g, c) {
+    g.cyl(-0.03, 0, 0, 0.09, 0.025, c, 12); g.box(-0.03, 0.18, 0, 0.02, 0.32, 0.02, METAL); g.box(0.02, 0.35, 0, 0.12, 0.02, 0.02, METAL);
+    g.cyl(0.06, 0.28, 0, 0.065, 0.09, c, 12, 0.03); g.cyl(0.06, 0.28, 0, 0.04, 0.008, 0xfff4d6, 10);
+  } },
+  lantern: { m: 'metal', lamp: true, use: 'lamp', name: 'Lantern', w: 0.25, d: 0.25, h: 0.4, hp: 15, cols: [0x2f2f33, 0x8a5a36, 0xd4af37], build(g, c) {
+    g.box(0, 0.02, 0, 0.22, 0.04, 0.22, c); g.box(0, 0.17, 0, 0.17, 0.26, 0.17, 0xfff2c4);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.box(sx * 0.095, 0.17, sz * 0.095, 0.02, 0.28, 0.02, c);
+    g.cyl(0, 0.3, 0, 0.12, 0.05, c, 8, 0.04); g.box(0, 0.37, 0, 0.1, 0.02, 0.015, c);
+    const prev = g.matOf; g.matOf = () => SURF.glow; g.cyl(0, 0.06, 0, 0.025, 0.1, 0xffc35a, 8); g.matOf = prev;
+  } },
+  candle: { m: 'paint', lamp: true, use: 'lamp', name: 'Candle', w: 0.12, d: 0.12, h: 0.25, hp: 5, cols: [0xf3eedf, 0xc0392b, 0x8fa7b8], build(g, c) {
+    g.cyl(0, 0, 0, 0.06, 0.015, 0xd4af37, 12); g.cyl(0, 0.015, 0, 0.035, 0.17, c, 10); g.box(0, 0.195, 0, 0.006, 0.02, 0.006, DARK);
+    const prev = g.matOf; g.matOf = () => SURF.glow; g.cyl(0, 0.2, 0, 0.014, 0.045, 0xffc35a, 6, 0.002); g.matOf = prev;
+  } },
+  workLight: { m: 'metal', lamp: true, use: 'lamp', name: 'Work Light', w: 0.6, d: 0.6, h: 1.8, hp: 50, cols: [0xf1c40f, 0xe67e22, 0x2f2f33], build(g, c) {
+    for (let i = 0; i < 3; i++) { const a = i * 2.094; for (let k = 0; k < 4; k++) { const t = (k + 0.5) / 4; g.box(Math.cos(a) * 0.27 * (1 - t), 0.1 + t * 0.7, Math.sin(a) * 0.27 * (1 - t), 0.035, 0.22, 0.035, DARK); } g.box(Math.cos(a) * 0.26, 0.02, Math.sin(a) * 0.26, 0.05, 0.04, 0.05, DARK); }
+    g.cyl(0, 0.75, 0, 0.022, 0.85, DARK, 8); g.box(0, 1.6, 0, 0.52, 0.03, 0.04, DARK);
+    for (const sx of [-1, 1]) { g.box(sx * 0.15, 1.69, 0, 0.24, 0.18, 0.12, c); g.box(sx * 0.15, 1.69, 0.062, 0.2, 0.14, 0.005, 0xfff4d6); }
+  } },
+  gardenLamp: { m: 'metal', lamp: true, use: 'lamp', name: 'Garden Lamp', w: 0.3, d: 0.3, h: 2.2, hp: 60, cols: [0x2f2f33, 0x3d5a40, 0x5b3b25], build(g, c) {
+    g.box(0, 0.08, 0, 0.3, 0.16, 0.3, c); g.cyl(0, 0.16, 0, 0.045, 1.64, c, 10);
+    g.box(0, 1.94, 0, 0.22, 0.28, 0.22, 0xfff2c4); for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.box(sx * 0.11, 1.94, sz * 0.11, 0.025, 0.3, 0.025, c);
+    g.cyl(0, 2.08, 0, 0.15, 0.12, c, 4, 0.02);
+  } },
+  lightStrip: { m: 'plastic', use: 'strip', name: 'Light Strip', w: 1.2, d: 0.05, h: 0.04, hp: 10, cols: [0xe8e8e8, 0x2f2f33], build(g, c, s) {
+    g.box(0, 0.012, 0, 1.2, 0.024, 0.05, c);
+    if (!s) { g.box(0, 0.028, 0, 1.16, 0.012, 0.03, 0x55575c); return; }
+    const prev = g.matOf; g.matOf = () => SURF.glow;
+    g.box(0, 0.03, 0, 1.16, 0.016, 0.034, STRIP_COLORS[(s - 1) % STRIP_COLORS.length]);
+    g.matOf = prev;
+  } },
+  // ---- appliances and electronics ----
+  boxTV: { m: 'plastic', use: 'tv', name: 'Box TV', w: 0.7, d: 0.55, h: 0.55, hp: 70, cols: [0x5a5550, 0xd8d2c4, 0x2f2f33], build(g, c, s) {
+    g.box(0, 0.27, -0.03, 0.7, 0.5, 0.46, c); g.box(0, 0.25, -0.24, 0.5, 0.38, 0.06, shade(c, 0.85));
+    g.box(0, 0.3, 0.215, 0.62, 0.44, 0.04, shade(c, 0.8)); screen(g, -0.05, 0.31, 0.236, 0.44, 0.34, s);
+    g.cyl(0.25, 0.38, 0.232, 0.025, 0.012, DARK, 8); g.cyl(0.25, 0.32, 0.232, 0.025, 0.012, DARK, 8);
+    for (let i = 0; i < 4; i++) g.box(0.25, 0.15 + i * 0.03, 0.236, 0.06, 0.008, 0.004, shade(c, 0.6));
+    g.box(0, 0.01, 0, 0.6, 0.02, 0.4, DARK);
+  } },
+  microwave: { m: 'plastic', use: 'ding', name: 'Microwave', w: 0.5, d: 0.38, h: 0.3, hp: 40, cols: [WHITE, 0x2f2f33, 0xbfc4c9], build(g, c) {
+    g.box(0, 0.155, 0, 0.5, 0.29, 0.37, c); for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.box(sx * 0.21, 0.005, sz * 0.15, 0.04, 0.01, 0.04, DARK);
+    g.box(-0.07, 0.155, 0.186, 0.32, 0.22, 0.004, 0x1a1c20); g.box(-0.07, 0.155, 0.189, 0.26, 0.16, 0.002, 0x55575c);
+    g.box(0.17, 0.22, 0.187, 0.1, 0.04, 0.004, 0x2a3a2a); for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) g.box(0.145 + j * 0.05, 0.16 - i * 0.035, 0.187, 0.035, 0.022, 0.004, shade(c, 0.85));
+  } },
+  toaster: { m: 'metal', use: 'ding', name: 'Toaster', w: 0.3, d: 0.18, h: 0.2, hp: 25, cols: [0xbfc4c9, WHITE, 0xc0392b, 0x2f2f33], build(g, c) {
+    g.box(0, 0.1, 0, 0.28, 0.19, 0.18, c); g.box(0, 0.006, 0, 0.28, 0.012, 0.16, DARK);
+    for (const z of [-0.035, 0.035]) g.box(0, 0.192, z, 0.2, 0.004, 0.025, 0x1a1c20);
+    g.box(0.144, 0.14, 0, 0.012, 0.03, 0.05, DARK); g.cyl(0.144, 0.06, 0.05, 0.012, 0.01, DARK, 8);
+  } },
+  recordPlayer: { m: 'wood', use: 'music', name: 'Record Player', w: 0.45, d: 0.35, h: 0.15, hp: 30, cols: WOOD, build(g, c, s) {
+    g.box(0, 0.05, 0, 0.45, 0.1, 0.35, c); g.box(0, 0.101, 0, 0.43, 0.004, 0.33, 0x2a2420);
+    g.cyl(-0.05, 0.103, 0, 0.13, 0.012, 0x55575c, 18);
+    if (s) { g.cyl(-0.05, 0.115, 0, 0.12, 0.005, 0x111111, 18); g.cyl(-0.05, 0.12, 0, 0.04, 0.003, 0xc0392b, 10); g.box(0.08, 0.125, -0.01, 0.17, 0.008, 0.012, METAL); }
+    else g.box(0.15, 0.125, -0.04, 0.012, 0.008, 0.17, METAL);
+    g.cyl(0.17, 0.103, -0.11, 0.025, 0.03, METAL, 8); g.box(0.17, 0.106, 0.12, 0.06, 0.012, 0.03, DARK);
+    g.box(0, 0.05, 0.176, 0.4, 0.04, 0.004, shade(c, 0.8));
+  } },
+  // ---- decor (stands on the floor or leans on anything) ----
+  painting: { m: 'paint', name: 'Painting', w: 0.9, d: 0.05, h: 0.7, hp: 15, cols: [0x2e86c1, 0xc0392b, 0x27ae60, 0xf39c12, 0x8e44ad, 0x34495e], build(g, c) {
+    g.box(0, 0.35, 0, 0.9, 0.7, 0.04, 0x5b3b25); g.box(0, 0.35, 0.021, 0.8, 0.6, 0.004, 0xf2ead8);
+    const v = c % 7, f = 0.024;
+    g.box(0, 0.16, f, 0.8, 0.22, 0.003, shade(c, 0.75)); g.box(-0.18 + v * 0.03, 0.47, f, 0.2, 0.2, 0.003, c);
+    g.box(0.2, 0.42 - v * 0.01, f + 0.001, 0.28, 0.1, 0.003, shade(c, 1.3)); g.box(0.05, 0.28, f + 0.001, 0.5, 0.04, 0.003, 0xf2f2f2);
+  } },
+  tallPainting: { m: 'paint', name: 'Tall Painting', w: 0.6, d: 0.05, h: 1.0, hp: 15, cols: [0x27ae60, 0xd35400, 0x2e86c1, 0xb7950b], build(g, c) {
+    g.box(0, 0.5, 0, 0.6, 1.0, 0.04, 0x2f2f33); g.box(0, 0.5, 0.021, 0.52, 0.92, 0.004, 0xe9e3d3);
+    const f = 0.024; g.box(0, 0.25, f, 0.52, 0.42, 0.003, shade(c, 0.7));
+    for (let i = 0; i < 5; i++) g.box(0, 0.6 + i * 0.03, f, 0.08 + Math.sin((i + 0.5) / 5 * Math.PI) * 0.18, 0.03, 0.003, c);
+    g.box(-0.1, 0.84, f, 0.24, 0.04, 0.003, shade(c, 1.25));
+  } },
+  wallArt: { m: 'paint', name: 'Wall Art', w: 1.0, d: 0.05, h: 0.6, hp: 15, cols: [0xd8cdbb, 0x2f2f33, 0x8a9e9a], build(g, c) {
+    g.box(0, 0.3, 0, 1.0, 0.6, 0.04, c); const f = 0.022;
+    g.box(-0.28, 0.32, f, 0.3, 0.42, 0.004, 0xc98c3d); g.box(0.08, 0.22, f, 0.32, 0.22, 0.004, 0x5a6f8c); g.box(0.3, 0.42, f, 0.26, 0.2, 0.004, 0x9a4b3f);
+    g.box(0.08, 0.44, f + 0.001, 0.04, 0.28, 0.004, 0xf2f2f2);
+  } },
+  roundMirror: { m: 'metal', name: 'Round Mirror', w: 0.7, d: 0.06, h: 0.7, hp: 20, cols: [0xd4af37, 0x2f2f33, 0xc89a64], build(g, c) {
+    for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8; g.box(Math.cos(a) * 0.3, 0.35 + Math.sin(a) * 0.3, 0, 0.14, 0.14, 0.05, c); }
+    for (let i = 0; i < 4; i++) { const k = Math.cos((i + 0.5) / 4 * Math.PI / 2); g.box(0, 0.35, 0.012, 0.56 * k, 0.56 * Math.sqrt(Math.max(0, 1 - k * k)) + 0.02, 0.02, 0xd9e6ee); }
+    g.box(0, 0.35, 0.012, 0.4, 0.4, 0.02, 0xd9e6ee); g.box(-0.1, 0.44, 0.024, 0.06, 0.14, 0.002, 0xf2fbff);
+  } },
+  wideMirror: { m: 'wood', name: 'Wide Mirror', w: 1.4, d: 0.06, h: 0.8, hp: 25, cols: [WHITE, 0x2f2f33, 0x5b3b25, 0xd4af37], build(g, c) {
+    g.box(0, 0.4, 0, 1.4, 0.8, 0.05, c); g.box(0, 0.4, 0.026, 1.3, 0.7, 0.004, 0xd9e6ee);
+    g.box(-0.4, 0.5, 0.029, 0.12, 0.4, 0.002, 0xf2fbff); g.box(-0.25, 0.45, 0.029, 0.05, 0.3, 0.002, 0xf2fbff);
+  } },
+  flowerPot: { m: 'paint', name: 'Flower Pot', w: 0.35, d: 0.35, h: 0.5, hp: 15, cols: [0xe88aa8, 0xf4d03f, 0xf3f1ec, 0xc0392b], build(g, c) {
+    g.cyl(0, 0, 0, 0.12, 0.22, 0xb7704a, 12, 0.16); g.cyl(0, 0.22, 0, 0.17, 0.03, 0xa0603e, 12); g.cyl(0, 0.24, 0, 0.145, 0.012, 0x4a3420, 12);
+    for (let i = 0; i < 7; i++) { const a = i * 0.9, rr = 0.03 + (i % 3) * 0.035, x = Math.cos(a) * rr, z = Math.sin(a) * rr, h = 0.12 + (i % 4) * 0.035;
+      g.box(x, 0.25 + h / 2, z, 0.012, h, 0.012, LEAF[i % 3]); g.box(x, 0.25 + h, z, 0.06, 0.04, 0.06, c); g.box(x, 0.257 + h, z, 0.025, 0.045, 0.025, 0xf1c40f); }
+    for (let i = 0; i < 4; i++) g.box(Math.cos(i * 1.6) * 0.08, 0.27, Math.sin(i * 1.6) * 0.08, 0.1, 0.03, 0.05, LEAF[i % 3]);
+  } },
+  welcomeMat: { m: 'fabric', name: 'Doormat', w: 0.8, d: 0.5, h: 0.02, hp: 10, flat: true, cols: [0x8a6a44, 0x3d3d48, 0x9a4b3f], build(g, c) {
+    g.box(0, 0.007, 0, 0.8, 0.014, 0.5, c); g.box(0, 0.015, 0, 0.68, 0.003, 0.38, shade(c, 0.75));
+    for (let i = 0; i < 5; i++) g.box(-0.2 + i * 0.1, 0.0175, 0, 0.06, 0.002, 0.12, shade(c, 1.3));
+  } },
+  roundRug: { m: 'fabric', name: 'Round Rug', w: 1.8, d: 1.8, h: 0.02, hp: 20, flat: true, cols: [0xd8cdbb, 0x5a6f8c, 0xb5523b, 0x6f8a5b], build(g, c) {
+    g.cyl(0, 0, 0, 0.9, 0.012, c, 24); g.cyl(0, 0.012, 0, 0.72, 0.002, shade(c, 0.82), 24); g.cyl(0, 0.0135, 0, 0.5, 0.002, shade(c, 1.12), 20); g.cyl(0, 0.015, 0, 0.2, 0.002, shade(c, 0.75), 14);
+  } },
+  longRug: { m: 'fabric', name: 'Runner Rug', w: 3.0, d: 0.8, h: 0.02, hp: 20, flat: true, cols: [0x9a4b3f, 0x34495e, 0xd8cdbb, 0x6f8a5b], build(g, c) {
+    g.box(0, 0.006, 0, 2.9, 0.012, 0.8, c); g.box(0, 0.013, 0, 2.7, 0.002, 0.6, shade(c, 1.15));
+    for (let i = 0; i < 7; i++) g.box(-1.2 + i * 0.4, 0.0145, 0, 0.18, 0.002, 0.18, shade(c, 0.7));
+    for (const sx of [-1, 1]) for (let i = 0; i < 8; i++) g.box(sx * 1.475, 0.004, -0.35 + i * 0.1, 0.05, 0.008, 0.02, 0xf2ead8);
+  } },
+  showcaseSign: { m: 'metal', name: 'Display Sign', w: 0.6, d: 0.4, h: 1.4, hp: 30, cols: [0x2e6da4, 0xc0392b, 0x27ae60, 0xf39c12], build(g, c) {
+    g.box(0, 0.02, 0, 0.5, 0.04, 0.38, DARK); g.box(0, 0.47, 0, 0.04, 0.9, 0.04, METAL);
+    g.box(0, 1.15, 0, 0.6, 0.5, 0.03, c); g.box(0, 1.15, 0.016, 0.54, 0.44, 0.003, WHITE);
+    g.box(0, 1.3, 0.019, 0.42, 0.06, 0.003, c); for (let i = 0; i < 3; i++) g.box(-0.06, 1.18 - i * 0.07, 0.019, 0.3, 0.025, 0.003, 0x8a8f96);
+    g.box(0.16, 1.02, 0.019, 0.14, 0.08, 0.003, 0xf1c40f);
+  } },
+  // ---- toys ----
+  plushBear: { m: 'fabric', soft: 'any', plush: true, name: 'Giant Plush Bear', w: 0.6, d: 0.5, h: 0.75, hp: 30, cols: [0x8a5a36, 0xd8b88c, 0xf3f1ec, 0x5a4a3a], build(g, c) {
+    const dk = shade(c, 0.85), lt = shade(c, 1.2);
+    g.box(0, 0.25, -0.04, 0.42, 0.38, 0.32, c); g.box(0, 0.26, 0.12, 0.26, 0.26, 0.04, lt);
+    for (const sx of [-1, 1]) { g.box(sx * 0.16, 0.07, 0.1, 0.14, 0.14, 0.26, dk); g.box(sx * 0.16, 0.07, 0.235, 0.1, 0.1, 0.01, lt); g.box(sx * 0.255, 0.3, 0, 0.09, 0.24, 0.12, dk); }
+    g.box(0, 0.55, -0.02, 0.32, 0.28, 0.28, c); g.box(0, 0.51, 0.14, 0.13, 0.1, 0.06, lt); g.box(0, 0.54, 0.171, 0.05, 0.035, 0.01, 0x1a1a1e);
+    for (const sx of [-1, 1]) { g.box(sx * 0.13, 0.7, -0.02, 0.1, 0.1, 0.07, dk); g.box(sx * 0.07, 0.6, 0.122, 0.035, 0.035, 0.01, 0x1a1a1e); }
+    g.box(0, 0.4, 0.13, 0.2, 0.04, 0.04, 0xc0392b);
+  } },
+  toyRobot: { m: 'plastic', name: 'Toy Robot', w: 0.25, d: 0.2, h: 0.35, hp: 10, cols: [0xbfc4c9, 0xc0392b, 0x2e86c1, 0xf1c40f], build(g, c) {
+    for (const sx of [-1, 1]) { g.box(sx * 0.05, 0.05, 0, 0.06, 0.1, 0.08, shade(c, 0.8)); g.box(sx * 0.1, 0.17, 0, 0.04, 0.12, 0.05, shade(c, 0.85)); }
+    g.box(0, 0.17, 0, 0.16, 0.14, 0.1, c); g.box(0, 0.18, 0.051, 0.08, 0.06, 0.004, 0x1d3550); g.box(0, 0.285, 0, 0.12, 0.09, 0.09, shade(c, 1.1));
+    for (const sx of [-1, 1]) g.box(sx * 0.03, 0.295, 0.046, 0.025, 0.02, 0.004, 0xf1c40f);
+    g.box(0, 0.33, 0, 0.01, 0.02, 0.01, DARK); g.box(0, 0.34, 0, 0.025, 0.02, 0.025, 0xe74c3c);
+  } },
+  toyCar: { m: 'plastic', name: 'Toy Car', w: 0.3, d: 0.15, h: 0.15, hp: 10, cols: [0xe74c3c, 0x2e86c1, 0xf1c40f, 0x27ae60], build(g, c) {
+    g.box(0, 0.06, 0, 0.3, 0.06, 0.14, c); g.box(-0.02, 0.11, 0, 0.15, 0.05, 0.12, shade(c, 1.1)); g.box(-0.02, 0.11, 0, 0.13, 0.04, 0.124, 0x8fa7b8);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.box(sx * 0.09, 0.03, sz * 0.062, 0.06, 0.06, 0.026, DARK);
+    g.box(0.148, 0.065, 0.04, 0.004, 0.015, 0.025, 0xfff4d6); g.box(0.148, 0.065, -0.04, 0.004, 0.015, 0.025, 0xfff4d6);
+  } },
+  puzzleCube: { m: 'plastic', name: 'Puzzle Cube', w: 0.12, d: 0.12, h: 0.12, hp: 5, cols: [0x111111], build(g) {
+    g.box(0, 0.06, 0, 0.12, 0.12, 0.12, 0x111111);
+    const C = [0xe74c3c, 0xf1c40f, 0x2ecc71, 0x2e86c1, 0xf39c12, 0xf3f1ec], s = 0.034, o = 0.038;
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      g.box(i * o, 0.06 + j * o, 0.0605, s, s, 0.002, C[(i + j + 3) % 6]); g.box(0.0605, 0.06 + j * o, i * o, 0.002, s, s, C[(i * 2 + j + 7) % 6]);
+      g.box(i * o, 0.1205, j * o, s, 0.002, s, C[(i - j + 9) % 6]);
+    }
+  } },
+  foamDice: { m: 'fabric', use: 'roll', name: 'Foam Dice', w: 0.35, d: 0.35, h: 0.35, hp: 15, cols: [WHITE, 0xe74c3c, 0x2e86c1, 0xf1c40f], build(g, c) {
+    g.box(0, 0.175, 0, 0.35, 0.31, 0.31, c); g.box(0, 0.175, 0, 0.31, 0.35, 0.31, c); g.box(0, 0.175, 0, 0.31, 0.31, 0.35, c); g.box(0, 0.175, 0, 0.33, 0.33, 0.33, c);
+    const pip = c === WHITE ? 0x1a1a1e : WHITE, p = (x, y, z, sx, sy, sz) => g.box(x, y, z, sx, sy, sz, pip);
+    p(0, 0.351, 0, 0.06, 0.004, 0.06); // one on top
+    for (const [u, v] of [[-0.08, -0.08], [0.08, 0.08], [-0.08, 0.08], [0.08, -0.08]]) p(u, 0.175 + v, 0.176, 0.05, 0.05, 0.004); // four in front
+    for (const k of [-0.09, 0, 0.09]) p(0.176, 0.175 + k, k, 0.004, 0.05, 0.05); // three on the side
+  } },
+  giftBox: { m: 'card', use: 'gift', name: 'Gift Box', w: 0.4, d: 0.4, h: 0.35, hp: 15, cols: [0xc0392b, 0x2e86c1, 0x8e44ad, 0x27ae60], build(g, c) {
+    const rib = c === 0x27ae60 ? 0xc0392b : 0xf1c40f;
+    g.box(0, 0.15, 0, 0.38, 0.3, 0.38, c); g.box(0, 0.31, 0, 0.4, 0.06, 0.4, shade(c, 1.1));
+    g.box(0, 0.17, 0, 0.06, 0.32, 0.392, rib); g.box(0, 0.17, 0, 0.392, 0.32, 0.06, rib); g.box(0, 0.342, 0, 0.402, 0.004, 0.06, rib); g.box(0, 0.342, 0, 0.06, 0.004, 0.402, rib);
+    for (const sx of [-1, 1]) g.box(sx * 0.06, 0.37, 0, 0.1, 0.05, 0.04, rib);
+  } },
+  bigButton: { m: 'plastic', use: 'button', name: 'Big Red Button', w: 0.25, d: 0.25, h: 0.12, hp: 10, cols: [0x2f2f33, 0xf1c40f], build(g, c) {
+    g.cyl(0, 0, 0, 0.12, 0.05, c, 16); g.cyl(0, 0.05, 0, 0.095, 0.015, shade(c, 1.3), 16); g.cyl(0, 0.065, 0, 0.08, 0.05, 0xd62c2c, 16, 0.07);
+  } },
+  toolbox: { m: 'steel', name: 'Toolbox', w: 0.5, d: 0.25, h: 0.25, hp: 40, cols: [0xc0392b, 0x2e86c1, 0x2f2f33], build(g, c) {
+    g.box(0, 0.1, 0, 0.5, 0.2, 0.24, c); g.box(0, 0.21, 0, 0.48, 0.03, 0.22, shade(c, 1.1)); g.box(0, 0.2, 0.121, 0.5, 0.006, 0.004, shade(c, 0.6));
+    for (const sx of [-1, 1]) { g.box(sx * 0.12, 0.235, 0, 0.02, 0.03, 0.02, DARK); g.box(sx * 0.18, 0.16, 0.122, 0.04, 0.03, 0.006, METAL); }
+    g.box(0, 0.24, 0, 0.26, 0.02, 0.03, DARK);
+  } },
+  stepLadder: { m: 'metal', climb: true, see: true, name: 'Step Ladder', w: 0.5, d: 0.7, h: 1.5, hp: 50, cols: [0xbfc4c9, 0xf1c40f, 0xe67e22], build(g, c) {
+    // an A-frame: each leg is a run of short segments leaning in to the top
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      for (let k = 0; k < 6; k++) { const t = (k + 0.5) / 6; g.box(sx * 0.22, t * 1.45, sz * (0.33 - t * 0.24), 0.04, 0.26, 0.04, c); }
+      g.box(sx * 0.22, 0.02, sz * 0.33, 0.06, 0.04, 0.06, DARK);
+    }
+    for (let i = 0; i < 4; i++) { const y = 0.3 + i * 0.3, z = 0.33 - (y / 1.45) * 0.24; g.box(0, y, z, 0.44, 0.03, 0.1, shade(c, 0.9)); }
+    g.box(0, 1.47, 0, 0.48, 0.05, 0.24, shade(c, 0.85)); g.box(0, 0.6, 0, 0.02, 0.02, 0.44, DARK);
+  } },
 };
+// Light strip colours: warm white, red, orange, green, blue, purple.
+export const STRIP_COLORS = [0xfff1d6, 0xff3b3b, 0xff9a2e, 0x3dff7a, 0x3d8bff, 0xb04dff];
 
 // Food, drinks and first aid: picked up into your inventory, then used.
 // food = hunger, en = energy, hp = health (negative hurts), use = seconds it
@@ -548,6 +876,8 @@ export const ITEMS = {
   // A hazard, not food: it hurts if you pick it up and use it.
   glass: { name: 'Broken Glass', hp: -33, hazard: true, color: 0xcfe3ea, w: 0.16, d: 0.12, h: 0.02 },
   medkit: { name: 'First Aid Kit', hp: 30, use: 2.5, color: 0xd63031, w: 0.3, d: 0.2, h: 0.14 },
+  // A tool, not food: worn, not eaten.
+  torch: { name: 'Head Torch', tool: true, color: 0x2f2f33, w: 0.18, d: 0.14, h: 0.06 },
 };
 // What each kind of place stocks.
 export const STOCK = {
@@ -559,7 +889,7 @@ export const STOCK = {
   play: ['apple', 'apple', 'cookie'],
   any: ['chips', 'water', 'soda', 'apple', 'cookie', 'pizza', 'beans'],
 };
-export const FOOD_KEYS = Object.keys(ITEMS).filter((k) => k !== 'medkit' && !ITEMS[k].hazard);
+export const FOOD_KEYS = Object.keys(ITEMS).filter((k) => k !== 'medkit' && !ITEMS[k].hazard && !ITEMS[k].tool);
 
 const shadeHex = (hex, k) => shade(hex, k);
 function shade(hex, k) {
@@ -578,14 +908,18 @@ const PART_SURF = {
   0x111111: SURF.plastic, 0xf7f7f2: SURF.plastic, 0xf7f7f5: SURF.plastic, 0x55575c: SURF.steel, 0x6b6f75: SURF.steel,
   0x8a8f96: SURF.steel, 0xd4af37: SURF.metal, 0x8a6440: SURF.wood, 0x1a1c20: SURF.plastic, 0x3a3c40: SURF.steel,
   0x1d1f24: SURF.plastic, 0xfff4d6: SURF.plastic, 0xece8e0: SURF.plastic, 0x2a2420: SURF.concrete,
+  0xd9e6ee: SURF.metal, 0xf2fbff: SURF.metal, 0xfff2c4: SURF.plastic, 0xf2ead8: SURF.paint, 0xe9e3d3: SURF.paint,
+  0xd62c2c: SURF.plastic,
 };
 
 const geoCache = new Map();
 // state: a piece's switch (item.s): 1 = a door standing open, a TV or arcade
-// machine switched on. Other pieces look the same either way.
-export const hasState = (type) => { const u = TYPES[type] && TYPES[type].use; return u === 'door' || u === 'tv'; };
+// machine switched on, a record on the turntable; a light strip's colour
+// (0 = off, 1..6). Other pieces look the same either way.
+export const hasState = (type) => { const u = TYPES[type] && TYPES[type].use; return u === 'door' || u === 'tv' || u === 'strip' || u === 'music'; };
 export function furnitureGeometry(type, variant, state = 0) {
-  const st = state && hasState(type) ? 1 : 0;
+  // light strips have 7 states (off + 6 colours); everything else is on or off
+  const st = state && hasState(type) ? (TYPES[type].use === 'strip' ? Math.max(0, Math.min(6, state | 0)) : 1) : 0;
   const key = type + ':' + variant + ':' + st;
   let g = geoCache.get(key);
   if (!g) {
@@ -629,6 +963,10 @@ export function itemGeometry(kind) {
       case 'lemon': b.cyl(0, 0, 0, 0.022, 0.035, c, 10, 0.036); b.cyl(0, 0.035, 0, 0.036, 0.035, c, 10, 0.022); b.cyl(0, 0.07, 0, 0.008, 0.008, shadeHex(c, 0.8), 6); break;
       case 'lemonSlice': b.cyl(0, 0, 0, 0.035, 0.012, c, 12); b.cyl(0, 0.012, 0, 0.028, 0.002, 0xfdf3c0, 12); break;
       case 'crackers': b.box(0, 0.1, 0, 0.14, 0.2, 0.05, c); b.box(0, 0.12, 0.026, 0.09, 0.06, 0.002, 0xf39c12); b.box(0, 0.18, 0.026, 0.1, 0.02, 0.002, 0xf2f2f2); break;
+      case 'torch': // an elastic headband with a little lamp on the front
+        for (const sx of [-1, 1]) b.box(sx * 0.075, 0.012, 0, 0.02, 0.024, 0.12, 0x34495e);
+        b.box(0, 0.012, -0.06, 0.15, 0.024, 0.02, 0x34495e); b.box(0, 0.012, 0.06, 0.15, 0.024, 0.02, 0x34495e);
+        b.box(0, 0.03, 0.07, 0.07, 0.05, 0.04, c); b.cyl(0, 0.03, 0.09, 0.022, 0.006, 0xfff4d6, 10); b.box(0.03, 0.058, 0.07, 0.012, 0.008, 0.012, 0xc0392b); break;
       case 'glass': b.box(0, 0.004, 0, 0.12, 0.008, 0.06, c); b.box(0.04, 0.005, 0.03, 0.06, 0.01, 0.05, shadeHex(c, 1.08)); b.box(-0.05, 0.004, -0.03, 0.05, 0.008, 0.04, shadeHex(c, 0.95)); b.box(0.01, 0.012, -0.01, 0.03, 0.016, 0.02, 0xf2fbff); break;
       default: b.box(0, it.h / 2, 0, it.w, it.h, it.d, c);
     }
