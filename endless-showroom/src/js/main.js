@@ -1372,6 +1372,7 @@ function frame() {
     achT = 0.5;
     const sec = world.sectionAt(P.x, P.z);
     if (sec === 'food') ach.unlock('cafe');
+    { const pl = world.pillarAt(P.x, P.z); if (pl && pl.type === 'lost' && Math.hypot(pl.x - P.x, pl.z - P.z) < 5) ach.unlock('landmark'); }
     if (P.y >= 4.3) ach.unlock('high');
     if (Math.hypot(P.x - P.startX, P.z - P.startZ) > 1000) ach.unlock('far');
     if (isNight(clock.t)) {

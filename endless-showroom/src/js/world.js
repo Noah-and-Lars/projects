@@ -39,16 +39,39 @@ const SECTIONS = {
   garden: { label: 'GARDEN CENTRE', color: '#4f8a2b' },
 };
 
+// Warehouses come in streets: two to five chunks in a row along x, their
+// racks running the whole length.
+function inStreet(seed, cx, cz) {
+  const seg = Math.floor(cx / 6), hs = hashInts(seed, cz, seg, 51);
+  if (hs % 100 >= 24) return false;
+  const start = (hs >>> 8) % 3, len = 2 + ((hs >>> 12) % 4), off = cx - seg * 6;
+  return off >= start && off < start + len;
+}
 function sectionOf(seed, cx, cz) {
   if (cx === 0 && cz === 0) return 'display';
+  if (Math.abs(cx) > 1 || Math.abs(cz) > 1 ? inStreet(seed, cx, cz) : false) return 'warehouse';
   const h = hashInts(seed, cx, cz, 11) % 100;
-  if (h < 37) return 'showroom';
-  if (h < 58) return 'warehouse';
-  if (h < 69) return 'display';
-  if (h < 75) return 'garden';
-  if (h < 87) return 'market';
-  if (h < 91) return 'food'; // cafeterias are rare, and worth finding
+  if (h < 48) return 'showroom';
+  if (h < 60) return 'display';
+  if (h < 69) return 'garden';
+  if (h < 82) return 'market';
+  if (h < 87) return 'food'; // a cafeteria fills a whole chunk: rare, and worth finding
   return 'storage';
+}
+
+// The big structural pillars stand every fourth chunk in each direction, in
+// the middle of the chunk, each with a screen giving its grid reference.
+// Most are plain; some are being worked on, some are cracked, a few are
+// overgrown, and one in a few hundred is the store's lost-property corner.
+export const isGridChunk = (cx, cz) => (cx & 3) === 0 && (cz & 3) === 0;
+export function pillarOf(seed, cx, cz) {
+  if (!isGridChunk(cx, cz)) return null;
+  const h = hashInts(seed, cx, cz, 61), roll = h % 10000;
+  const type = cx === 0 && cz === 0 ? 'standard' : roll < 7900 ? 'standard' : roll < 9200 ? 'scaffold' : roll < 9790 ? 'cracked' : roll < 9970 ? 'overgrown' : 'lost';
+  const glitch = ((h >>> 14) % 100) < (type === 'cracked' ? 70 : 15);
+  const gx = cx / 4, gz = cz / 4;
+  const label = (gx >= 0 ? 'E' : 'W') + Math.abs(gx) + ' · ' + (gz >= 0 ? 'S' : 'N') + Math.abs(gz);
+  return { type, glitch, label };
 }
 
 // Canonical frame for a quadrant: (u, v) in [0, Q], back at v = 0, open
@@ -82,6 +105,7 @@ class ChunkGen {
     this.items = [];
     this.r = rng(hashInts(world.seed, cx, cz, 1));
     this.section = sectionOf(world.seed, cx, cz);
+    this.pillar = pillarOf(world.seed, cx, cz);
     this.skylights = [];
     if (this.section === 'garden') this.skylights.push({ x0: this.ox + 2, z0: this.oz + 2, x1: this.ox + CHUNK - 2, z1: this.oz + CHUNK - 2 });
   }
@@ -93,7 +117,12 @@ class ChunkGen {
   }
   deco(x0, z0, x1, z1, y0, y1, hex) { this.g.boxMin(x0, y0, z0, x1 - x0, y1 - y0, z1 - z0, hex); }
   furn(type, x, z, rot, y = 0) {
-    this.items.push({ t: type, k: 'f', v: this.r.int(16), x: x + this.ox, y, z: z + this.oz, r: ((rot % 4) + 4) % 4 });
+    const it = { t: type, k: 'f', v: this.r.int(16), x: x + this.ox, y, z: z + this.oz, r: ((rot % 4) + 4) % 4 };
+    // some screens are showing something
+    if (type === 'tv') it.s = this.r.chance(0.2) ? 1 : 0;
+    else if (type === 'arcadeCabinet') it.s = this.r.chance(0.6) ? 1 : 0;
+    this.items.push(it);
+    return it;
   }
   food(kind, x, z, y) { this.items.push({ t: kind, k: 'i', v: 0, x: x + this.ox, y, z: z + this.oz, r: this.r.int(4) }); }
   randomFood(x, z, y, stock = STOCK.any) {
@@ -107,8 +136,9 @@ class ChunkGen {
 
   run() {
     const { r } = this;
-    // Pillars on a 12 m grid.
+    // Pillars on a 12 m grid (a big grid pillar replaces the middle one).
     for (const px of [0, HALF]) for (const pz of [0, HALF]) {
+      if (this.pillar && px === HALF && pz === HALF) continue;
       this.solid(px - 0.45, pz - 0.45, px + 0.45, pz + 0.45, 0, CEIL, PILLAR);
       this.deco(px - 0.47, pz - 0.47, px + 0.47, pz + 0.47, 0, 0.18, WALL_BASE);
       this.deco(px - 0.46, pz - 0.46, px + 0.46, pz + 0.46, 2.3, 2.6, parseInt(SECTIONS[this.section].color.slice(1), 16));
@@ -116,7 +146,7 @@ class ChunkGen {
     // Full-height walls along the chunk's north (z = 0) and west (x = 0) edges.
     const nearSpawn = Math.abs(this.cx) <= 1 && Math.abs(this.cz) <= 1;
     for (const axis of [0, 1]) {
-      if (nearSpawn || hashInts(this.w.seed, this.cx, this.cz, 20 + axis) % 100 >= 32) continue;
+      if (nearSpawn || this.section === 'warehouse' || this.section === 'food' || hashInts(this.w.seed, this.cx, this.cz, 20 + axis) % 100 >= 32) continue;
       const er = rng(hashInts(this.w.seed, this.cx, this.cz, 30 + axis));
       const gaps = [];
       const g1 = er.range(1.5, 7.5), g2 = er.range(13.5, 19.5);
@@ -134,6 +164,10 @@ class ChunkGen {
         else { this.solid(-0.15, a, 0.15, b, 0, CEIL, WALL); this.deco(-0.17, a, 0.17, b, 0, 0.15, WALL_BASE); }
       }
     }
+    if (this.pillar) this.gridPillar();
+    // whole-chunk layouts: a cafeteria hall, or a stretch of a warehouse street
+    if (this.section === 'food') { this.bigCafeteria(); return this; }
+    if (this.section === 'warehouse') { this.street(); return this; }
     for (const qx of [0, HALF]) for (const qz of [0, HALF]) {
       const f = frame(qx + QPAD, qz + QPAD, r.int(4));
       const roll = r();
@@ -143,97 +177,125 @@ class ChunkGen {
       else if (roll < 0.14 && this.section === 'storage') this.q_office(f);
       else if (roll < 0.06 && (this.section === 'display' || this.section === 'market' || this.section === 'warehouse')) this.q_mezzanine(f);
       else if (roll < 0.35 && this.section === 'market') this.q_snack(f);
+      else if (this.section === 'showroom' || this.section === 'garden') this.room(f, this.section === 'garden' ? GARDEN_ROOMS : ROOMS);
       else this['q_' + this.section](f);
     }
     return this;
   }
 
-  // ---- Sections ----
-  q_showroom(f) {
-    const { r } = this;
-    // A three-walled room display, its back wall painted a feature colour.
-    const feature = r.pick([0x9fb39a, 0xc98f74, 0x5d7189, 0xe2cf96, 0xb7b2ab, 0x8a9e9a, 0xd9b4a8, 0x6f7f5c, PARTITION, PARTITION]);
-    this.fs(f, 0, 0, Q, 0.12, 0, 2.6, feature);
-    { const [a, b, c, d] = f.rect(0, 0, Q, 0.16); this.deco(a, b, c, d, 2.6, 2.7, 0x8a857b); }
-    this.fs(f, 0, 0.12, 0.12, 6.2, 0, 2.6, PARTITION);
-    this.fs(f, Q - 0.12, 0.12, Q, 6.2, 0, 2.6, PARTITION);
-    const theme = r.int(6);
-    if (theme === 0) { // living room
-      this.ff(f, 'rug', 4.8, 3.0, 0); this.ff(f, 'sofa', 4.8, 0.75, 0); this.ff(f, 'coffeeTable', 4.8, 2.4, 0);
-      this.ff(f, 'armchair', 1.4, 2.8, 1); this.ff(f, 'tvStand', 4.8, 5.0, 2); this.ff(f, 'tv', 4.8, 5.0, 2, 0.5); this.ff(f, 'bookshelf', 8.6, 0.4, 0);
-      this.ff(f, 'sideTable', 2.0, 0.6, 0); this.ff(f, 'tableLamp', 2.0, 0.6, 0, 0.55);
-      this.ff(f, 'floorLamp', 2.8, 0.5, 0); this.ff(f, 'plant', 0.7, 0.7, 0); if (r.chance(0.6)) this.ff(f, 'armchair', 8.2, 3.0, 3);
-    } else if (theme === 1) { // bedroom
-      this.ff(f, 'bedDouble', 4.8, 1.25, 0); this.ff(f, 'cabinet', 3.4, 0.4, 0); this.ff(f, 'tableLamp', 3.4, 0.4, 0, 1.0); this.ff(f, 'floorLamp', 6.3, 0.5, 0);
-      this.ff(f, 'wardrobe', 8.4, 0.58, 0); this.ff(f, 'dresser', 1.2, 0.45, 0); this.ff(f, 'rug', 4.8, 3.6, 0);
-      this.ff(f, 'plant', 0.7, 4.8, 0); if (r.chance(0.5)) this.ff(f, 'armchair', 8.3, 3.4, 3);
-    } else if (theme === 2) { // kitchen
-      for (let i = 0; i < 4; i++) this.ff(f, 'counter', 0.8 + i * 1.22, 0.42, 0);
-      this.ff(f, 'fridge', 5.75, 0.5, 0); this.ff(f, 'diningTable', 5.6, 4.4, 0);
-      this.ff(f, 'chair', 5.1, 3.6, 0); this.ff(f, 'chair', 6.1, 3.6, 0); this.ff(f, 'chair', 5.1, 5.2, 2); this.ff(f, 'chair', 6.1, 5.2, 2);
-      this.ff(f, 'cabinet', 8.6, 0.4, 0); this.ff(f, 'stool', 2.0, 1.4, 0); this.ff(f, 'stool', 3.0, 1.4, 0);
-      for (let i = 0, n = r.int(2); i < n; i++) this.fd(f, STOCK.kitchen, 0.6 + i * 1.2 + r.range(0, 0.6), 0.4, 0.9);
-    } else if (theme === 3) { // workspace
-      this.ff(f, 'desk', 2.6, 0.45, 0); this.ff(f, 'chair', 2.6, 1.3, 2); this.ff(f, 'desk', 6.6, 0.45, 0); this.ff(f, 'chair', 6.6, 1.3, 2);
-      this.ff(f, 'bookshelf', 0.32, 2.6, 1); this.ff(f, 'bookshelf', 0.32, 3.6, 1); this.ff(f, 'cabinet', 9.3, 2.8, 3);
-      this.ff(f, 'plant', 8.9, 0.6, 0); this.ff(f, 'lockers', 9.3, 4.6, 3); this.ff(f, 'rug', 4.6, 3.4, 0); this.ff(f, 'filingCabinet', 4.6, 0.35, 0);
-      this.ff(f, 'tableLamp', 3.0, 0.4, 0, 0.75);
-    } else if (theme === 5) { // bathroom
-      this.ff(f, 'bathtub', 1.2, 0.5, 0); this.ff(f, 'toilet', 3.4, 0.45, 0); this.ff(f, 'cabinet', 4.6, 0.3, 0);
-      this.ff(f, 'cabinet', 5.5, 0.3, 0); this.ff(f, 'plant', 8.9, 0.6, 0); this.ff(f, 'rug', 3.0, 2.2, 0); this.ff(f, 'shelfCube', 7.8, 0.3, 0);
-      this.ff(f, 'tableLamp', 4.6, 0.3, 0, 1.0);
-    } else { // kids room
-      this.ff(f, 'bunkBed', 0.75, 1.1, 0); this.ff(f, 'bunkBed', 3.0, 1.1, 0); this.ff(f, 'shelfCube', 6.4, 0.32, 0);
-      this.ff(f, 'mattress', 7.6, 3.4, 0); this.ff(f, 'rug', 4.6, 4.0, 1); this.ff(f, 'box', 5.2, 2.2, 0); this.ff(f, 'beanbag', 6.0, 2.6, 1);
-      this.ff(f, 'stool', 3.4, 4.2, 0); this.ff(f, 'plant', 9.0, 0.6, 0); this.ff(f, 'tableLamp', 6.0, 0.3, 0, 1.5);
-      if (r.chance(0.4)) for (let i = 0, n = 1 + r.int(2); i < n; i++) this.fd(f, STOCK.play, 4.0 + i * 0.4, 4.2, 0);
+  // ---- Whole-chunk layouts ----
+  // A big grid pillar in the middle of the chunk, 2.4 m square, with a screen
+  // on each face (drawn with the visuals) and dressing for its type.
+  gridPillar() {
+    const { r } = this, P = this.pillar, c = HALF, w = 1.2;
+    const CONC = PILLAR, BAND = 0x5a6370;
+    if (P.type === 'cracked') {
+      // a chunk knocked out of one face, the steel showing
+      this.solid(c - w, c - w, c + w, c + w, 0, 1.2, CONC); this.solid(c - w, c - w, c + w, c + w, 2.3, CEIL, CONC);
+      this.solid(c - w, c - w + 0.5, c + w, c + w, 1.2, 2.3, CONC);
+      for (let i = 0; i < 4; i++) this.deco(c - w + 0.3 + i * 0.55, c - w + 0.1, c - w + 0.36 + i * 0.55, c - w + 0.5, 1.15, 2.35, 0x6b4a3a);
+      this.deco(c - w + 0.1, c - w + 0.42, c + w - 0.1, c - w + 0.5, 1.2, 2.3, 0x9a9590);
+      for (let i = 0; i < 5; i++) { const x = c + r.range(-1.6, 1.6), z = c - w - r.range(0.2, 1.0); this.deco(x - 0.12, z - 0.1, x + 0.12, z + 0.1, 0, 0.1, 0xb9b4ab); }
+    } else this.solid(c - w, c - w, c + w, c + w, 0, CEIL, CONC);
+    this.deco(c - w - 0.03, c - w - 0.03, c + w + 0.03, c + w + 0.03, 0, 0.22, WALL_BASE);
+    this.deco(c - w - 0.02, c - w - 0.02, c + w + 0.02, c + w + 0.02, 2.9, 3.1, P.type === 'lost' ? 0xc9a227 : BAND);
+    // screen housings on all four faces (the pictures go on with the visuals)
+    for (const [x0, z0, x1, z1] of [[c - 0.55, c + w, c + 0.55, c + w + 0.08], [c - 0.55, c - w - 0.08, c + 0.55, c - w], [c + w, c - 0.55, c + w + 0.08, c + 0.55], [c - w - 0.08, c - 0.55, c - w, c + 0.55]]) this.deco(x0, z0, x1, z1, 1.55, 2.25, 0x1b1d22);
+    if (P.type === 'scaffold') {
+      // being worked on: a rack of tools, a ladder against it, pallets and crates in the aisles
+      this.furn('ladder', c, c + w + 0.35, 0); this.furn('wireRack', c, c - w - 0.4, 2);
+      for (let j = 0; j < 3; j++) this.furn('pallet', c + w + 0.9, c, 1, j * 0.15);
+      this.furn('crate', c - w - 0.7, c, 0); this.furn('box', c - w - 0.7, c, 0, 1.0);
+      this.deco(c - w - 0.06, c - w - 0.06, c + w + 0.06, c + w + 0.06, 3.6, 3.75, 0xe0a526);
+    } else if (P.type === 'overgrown') {
+      for (const [x, z] of [[c, c + w + 0.5], [c, c - w - 0.5], [c + w + 0.5, c], [c - w - 0.5, c]]) this.furn(r.chance(0.5) ? 'planter' : 'hedge', x, z, r.int(4));
+      for (let i = 0; i < 14; i++) { const side = r.int(4), t = r.range(-w, w), y = r.range(0.3, 5.5), sz = r.range(0.25, 0.6); const x = side < 2 ? c + t : c + (side === 2 ? w : -w), z = side < 2 ? c + (side === 0 ? w : -w) : c + t; this.deco(x - sz / 2, z - sz / 2, x + sz / 2, z + sz / 2, y, y + sz, r.pick([0x3f7a3a, 0x4f8f45, 0x2f6a2f])); }
+      for (let i = 0; i < 2; i++) this.furn('plant', c + r.range(-2, 2), c + w + 1.0, 0);
+    } else if (P.type === 'lost') {
+      // the lost-property corner: boxes of things nobody came back for, and a few treats
+      this.furn('toyChest', c, c + w + 0.45, 0); this.furn('crate', c + w + 0.6, c - 0.4, 0); this.furn('box', c + w + 0.6, c + 0.5, 0);
+      this.furn('box', c - w - 0.5, c, 0); this.furn('box', c - w - 0.5, c, 0, 0.5); this.furn('floorLamp', c - w - 0.4, c + w + 0.4, 0);
+      this.food('chocolate', c - 0.3, c + w + 0.45, 0.6); this.food('medkit', c + 0.3, c + w + 0.45, 0.6); this.food('cinnamon', c, c + w + 0.45, 0.6);
     }
   }
 
-  q_warehouse(f) {
-    const { r } = this;
-    const deep = 1.2, top = 4.4;
-    const rows = [0.7, 4.8, 8.9];
-    for (const v of rows) {
-      const [x0, z0, x1, z1] = f.rect(0.2, v - deep / 2, Q - 0.2, v + deep / 2);
+  // A cafeteria hall across the whole chunk: one long serving counter heaped
+  // with food (about fifty things and a first aid kit) and rows of tables.
+  bigCafeteria() {
+    const { r } = this, RED = 0x9c3d2e;
+    for (const [x0, x1] of [[1.2, 11.2], [12.8, 22.8]]) {
+      this.solid(x0, 1.0, x1, 1.9, 0, 1.0, RED);
+      this.deco(x0 - 0.05, 0.95, x1 + 0.05, 1.95, 1.0, 1.05, 0xe8e2d6);
+      this.deco(x0, 0.2, x1, 0.3, 0, 2.4, 0xd9cfc0); // the back wall of the servery
+      this.deco(x0, 0.3, x1, 0.6, 1.4, 1.5, 0xb7b2ab); // a shelf above
+      const n = 24 + r.int(5);
+      for (let i = 0; i < n; i++) this.food(r.pick(STOCK.cafeteria), x0 + 0.3 + (i / n) * (x1 - x0 - 0.6) + r.range(-0.05, 0.05), r.range(1.2, 1.7), 1.05);
+    }
+    this.food('medkit', r.chance(0.5) ? 2.0 : 22.0, 1.45, 1.05);
+    for (const x of [2.6, 6.8, 17.2, 21.4]) for (const z of [4.6, 8.4, 15.6, 19.4]) {
+      this.furn('diningTable', x, z, 0);
+      this.furn('chair', x - 0.5, z - 0.8, 0); this.furn('chair', x + 0.5, z - 0.8, 0);
+      this.furn('chair', x - 0.5, z + 0.8, 2); if (r.chance(0.75)) this.furn('chair', x + 0.5, z + 0.8, 2);
+      if (r.chance(0.15)) this.food(r.pick(STOCK.cafeteria), x + r.range(-0.4, 0.4), z, 0.77);
+    }
+    this.furn('plant', 11.2, 22.6, 0); this.furn('plant', 12.8, 22.6, 0); this.furn('stool', 9.0, 2.6, 0); this.furn('stool', 15.0, 2.6, 0);
+  }
+
+  // A stretch of a warehouse street: six rows of high racking along x, run
+  // end to end with the neighbouring chunks of the street, pallets, crates and
+  // ladders in the aisles.
+  street() {
+    const { r } = this, top = 4.4, deep = 1.2;
+    for (const zc of [2.0, 5.6, 9.2, 14.8, 18.4, 22.0]) {
+      const z0 = zc - deep / 2, z1 = zc + deep / 2, x0 = 0.05, x1 = CHUNK - 0.05;
       this.boxes.push({ x0: x0 + this.ox, x1: x1 + this.ox, z0: z0 + this.oz, z1: z1 + this.oz, y0: 0, y1: top, climb: true });
       this.sh.rect(x0, z0, x1, z1, 0.004, 0.3);
-      const alongX = x1 - x0 > z1 - z0;
-      const len = alongX ? x1 - x0 : z1 - z0;
-      const n = Math.round(len / 2.3);
-      // uprights
-      for (let i = 0; i <= n; i++) {
-        const t = i / n;
-        for (const s of [0, 1]) {
-          const px = alongX ? x0 + t * (len - 0.1) : (s ? x1 - 0.1 : x0);
-          const pz = alongX ? (s ? z1 - 0.1 : z0) : z0 + t * (len - 0.1);
-          this.deco(px, pz, px + 0.1, pz + 0.1, 0, top, RACK);
-        }
-      }
-      // shelves and goods
+      for (let i = 0; i <= 10; i++) for (const zz of [z0, z1 - 0.1]) { const px = x0 + i * ((x1 - x0 - 0.1) / 10); this.deco(px, zz, px + 0.1, zz + 0.1, 0, top, RACK); }
       for (const y of [0.15, 1.55, 2.95, 4.3]) {
         this.deco(x0, z0, x1, z1, y - 0.08, y, RACK_BEAM);
         if (y > 4) continue;
         let p = 0.15;
-        while (p < len - 0.6) {
+        while (p < x1 - x0 - 0.6) {
           const bw = r.range(0.5, 1.2), bh = r.range(0.4, 1.2);
-          if (r.chance(0.82)) {
-            const col = r.pick([0xc8a26e, 0xb8915c, 0xd2b07d, 0xe7e1d3, 0x9cb3c4]);
-            if (alongX) this.deco(x0 + p, z0 + 0.1, x0 + p + bw, z1 - 0.1, y, y + bh, col);
-            else this.deco(x0 + 0.1, z0 + p, x1 - 0.1, z0 + p + bw, y, y + bh, col);
-          }
+          if (r.chance(0.82)) this.deco(x0 + p, z0 + 0.1, x0 + p + bw, z1 - 0.1, y, y + bh, r.pick([0xc8a26e, 0xb8915c, 0xd2b07d, 0xe7e1d3, 0x9cb3c4]));
           p += bw + 0.08;
         }
       }
     }
-    // loose stock in the aisles: pallets (great for building), crates, boxes
-    const n = 3 + r.int(4);
+    // loose stock in the aisles (the aisles run along x at z 3.8, 7.4, 16.6, 20.2)
+    const n = 6 + r.int(6);
     for (let i = 0; i < n; i++) {
-      const v = r.pick([2.75, 6.85]), u = 0.9 + (i / n) * (Q - 1.8) + r.range(-0.2, 0.2), k = r();
-      if (k < 0.45) { const st = 1 + r.int(3); for (let j = 0; j < st; j++) this.ff(f, 'pallet', u, v, 1, j * 0.15); }
-      else this.ff(f, k < 0.75 ? 'box' : 'crate', u, v, r.int(4));
+      const z = r.pick([3.8, 7.4, 16.6, 20.2]), x = 1 + r() * (CHUNK - 2), k = r();
+      if (Math.abs(x - HALF) < 1.2 && this.pillar) continue;
+      if (k < 0.4) { const st = 1 + r.int(3); for (let j = 0; j < st; j++) this.furn('pallet', x, z, 1, j * 0.15); }
+      else if (k < 0.55) this.furn('ladder', x, z, 1);
+      else this.furn(k < 0.8 ? 'box' : 'crate', x, z, r.int(4));
     }
-    if (r.chance(0.25)) { const [x, z] = f.pt(r.range(1, Q - 1), r.pick([2.2, 6.3])); this.randomFood(x, z, 0); }
+    if (r.chance(0.3)) this.randomFood(1 + r() * 22, r.pick([3.8, 16.6]), 0);
+  }
+
+  // ---- Rooms ----
+  // The three walls of a room display, its back wall painted a feature colour.
+  walls(f) {
+    const feature = this.r.pick([0x9fb39a, 0xc98f74, 0x5d7189, 0xe2cf96, 0xb7b2ab, 0x8a9e9a, 0xd9b4a8, 0x6f7f5c, PARTITION, PARTITION]);
+    this.fs(f, 0, 0, Q, 0.12, 0, 2.6, feature);
+    { const [a, b, c, d] = f.rect(0, 0, Q, 0.16); this.deco(a, b, c, d, 2.6, 2.7, 0x8a857b); }
+    this.fs(f, 0, 0.12, 0.12, 6.2, 0, 2.6, PARTITION);
+    this.fs(f, Q - 0.12, 0.12, Q, 6.2, 0, 2.6, PARTITION);
+  }
+  // Pick a room by weight and build it.
+  room(f, list) {
+    const forced = this.w.forceRoom && list.find((rm) => rm.name === this.w.forceRoom);
+    let rm = forced;
+    if (!rm) {
+      let total = 0; for (const x of list) total += x.w;
+      let t = this.r() * total;
+      for (const x of list) { t -= x.w; if (t <= 0) { rm = x; break; } }
+      rm = rm || list[0];
+    }
+    if (!rm.open) this.walls(f);
+    this.roomName = rm.name;
+    rm.build(this, f, this.r);
   }
 
   q_display(f) {
@@ -268,23 +330,6 @@ class ChunkGen {
       }
     }
     for (let i = 0; i < 2; i++) this.ff(f, r.pick(['plant', 'floorLamp', 'box', 'stool']), r.range(0.6, Q - 0.6), r.pick([3.2, 7.6]), r.int(4));
-  }
-
-  // Cafeterias: long serving counters piled with food, and seating.
-  q_food(f) {
-    const { r } = this;
-    this.fs(f, 0.3, 0.3, Q - 0.3, 1.1, 0, 1.0, 0x9c3d2e);
-    const [a, b, c, d] = f.rect(0.25, 0.25, Q - 0.25, 1.15);
-    this.deco(a, b, c, d, 1.0, 1.05, 0xe8e2d6);
-    const n = 7 + r.int(4);
-    for (let i = 0; i < n; i++) this.fd(f, STOCK.cafeteria, 0.6 + (i / n) * (Q - 1.2), r.range(0.5, 0.9), 1.05);
-    if (r.chance(0.3)) { const [x, z] = f.pt(Q - 0.7, 0.7); this.food('medkit', x, z, 1.05); }
-    for (const u of [2.4, 7.2]) for (const v of [3.6, 7.4]) {
-      this.ff(f, 'diningTable', u, v, 0);
-      this.ff(f, 'chair', u - 0.5, v - 0.8, 0); this.ff(f, 'chair', u + 0.5, v - 0.8, 0);
-      this.ff(f, 'chair', u - 0.5, v + 0.8, 2); if (r.chance(0.7)) this.ff(f, 'chair', u + 0.5, v + 0.8, 2);
-      if (r.chance(0.3)) this.fd(f, STOCK.cafeteria, u + r.range(-0.4, 0.4), v, 0.77);
-    }
   }
 
   // Somebody's old fort: walls of upturned pallets and crates around a lamp,
@@ -401,6 +446,171 @@ class ChunkGen {
   }
 }
 
+// ---- Room types ----
+// Each is a quadrant (Q x Q, back wall at v = 0, open towards +v). w is how
+// common it is. Showrooms pick from ROOMS, garden centres from GARDEN_ROOMS.
+const lamp = (g, f, u, v, y = 0) => g.ff(f, 'tableLamp', u, v, 0, y);
+export const ROOMS = [
+  { name: 'living room', w: 8, build(g, f, r) {
+    g.ff(f, 'rug', 4.8, 3.0, 0); g.ff(f, 'sofa', 4.8, 0.75, 0); g.ff(f, 'coffeeTable', 4.8, 2.4, 0);
+    g.ff(f, 'armchair', 1.4, 2.8, 1); g.ff(f, 'tvStand', 4.8, 5.0, 2); g.ff(f, 'tv', 4.8, 5.0, 2, 0.5); g.ff(f, 'bookshelf', 8.6, 0.4, 0);
+    g.ff(f, 'sideTable', 2.0, 0.6, 0); lamp(g, f, 2.0, 0.6, 0.55); g.ff(f, 'floorLamp', 2.8, 0.5, 0); g.ff(f, 'plant', 0.7, 0.7, 0);
+    if (r.chance(0.6)) g.ff(f, 'armchair', 8.2, 3.0, 3);
+  } },
+  { name: 'modern living room', w: 6, build(g, f, r) {
+    g.ff(f, 'cornerSofa', 1.6, 1.6, 0); g.ff(f, 'rug', 4.4, 3.4, 0); g.ff(f, 'coffeeTable', 4.0, 3.2, 1); g.ff(f, 'ottoman', 5.6, 2.4, 0);
+    g.ff(f, 'tvStand', 8.9, 3.4, 3); g.ff(f, 'tv', 8.9, 3.4, 3, 0.5); g.ff(f, 'floorLamp', 8.8, 0.6, 0); g.ff(f, 'plant', 6.6, 0.6, 0); g.ff(f, 'shelfCube', 4.8, 0.32, 0);
+  } },
+  { name: 'tv lounge', w: 5, build(g, f, r) {
+    g.ff(f, 'tvStand', 4.8, 0.35, 0); g.ff(f, 'tv', 4.8, 0.35, 0, 0.5); g.ff(f, 'rug', 4.8, 3.2, 0);
+    g.ff(f, 'sofa', 4.8, 4.6, 2); g.ff(f, 'beanbag', 2.4, 2.6, 1); g.ff(f, 'beanbag', 7.2, 2.6, 3); g.ff(f, 'sideTable', 2.8, 4.6, 0); lamp(g, f, 2.8, 4.6, 0.55);
+    g.ff(f, 'floorLamp', 8.8, 0.6, 0); g.ff(f, 'plant', 0.7, 0.6, 0);
+  } },
+  { name: 'study', w: 3, build(g, f, r) {
+    for (const u of [0.6, 1.6, 2.6]) g.ff(f, 'bookshelf', u, 0.4, 0);
+    g.ff(f, 'desk', 6.0, 0.45, 0); g.ff(f, 'officeChair', 6.0, 1.3, 2); lamp(g, f, 6.5, 0.4, 0.75); g.ff(f, 'armchair', 2.2, 2.8, 0); g.ff(f, 'sideTable', 3.3, 2.8, 0);
+    g.ff(f, 'rug', 4.8, 3.0, 0); g.ff(f, 'floorLamp', 8.8, 0.5, 0); g.ff(f, 'plant', 8.8, 3.0, 0);
+  } },
+  { name: 'dining room', w: 6, build(g, f, r) {
+    g.ff(f, 'rug', 4.8, 3.2, 0); g.ff(f, 'diningTable', 4.8, 3.2, 0);
+    for (const du of [-0.5, 0.5]) { g.ff(f, 'chair', 4.8 + du, 2.4, 0); g.ff(f, 'chair', 4.8 + du, 4.0, 2); }
+    g.ff(f, 'chair', 3.7, 3.2, 1); g.ff(f, 'chair', 5.9, 3.2, 3); g.ff(f, 'cabinet', 1.4, 0.3, 0); g.ff(f, 'cabinet', 8.2, 0.3, 0); g.ff(f, 'standingMirror', 4.8, 0.3, 0);
+    g.ff(f, 'plant', 0.6, 5.6, 0); if (r.chance(0.3)) g.fd(f, STOCK.kitchen, 4.6, 3.2, 0.75);
+  } },
+  { name: 'kitchen', w: 4, build(g, f, r) {
+    for (let i = 0; i < 3; i++) g.ff(f, 'counter', 0.8 + i * 1.22, 0.42, 0);
+    g.ff(f, 'stove', 4.5, 0.42, 0); g.ff(f, 'fridge', 5.75, 0.5, 0); g.ff(f, 'diningTable', 5.6, 4.4, 0);
+    g.ff(f, 'chair', 5.1, 3.6, 0); g.ff(f, 'chair', 6.1, 3.6, 0); g.ff(f, 'chair', 5.1, 5.2, 2); g.ff(f, 'chair', 6.1, 5.2, 2);
+    g.ff(f, 'cabinet', 8.6, 0.4, 0); for (let i = 0, n = r.int(3); i < n; i++) g.fd(f, STOCK.kitchen, 0.6 + i * 1.2 + r.range(0, 0.6), 0.4, 0.9);
+  } },
+  { name: 'island kitchen', w: 3, build(g, f, r) {
+    for (let i = 0; i < 5; i++) g.ff(f, i === 2 ? 'stove' : i === 4 ? 'sink' : 'counter', 1.0 + i * 1.25, 0.42, 0);
+    g.ff(f, 'fridge', 8.5, 0.5, 0); g.ff(f, 'kitchenIsland', 4.4, 3.0, 0);
+    for (const u of [3.6, 4.4, 5.2]) g.ff(f, 'barStool', u, 3.95, 2);
+    if (r.chance(0.6)) g.fd(f, STOCK.kitchen, 4.0 + r.range(0, 0.8), 3.0, 0.9);
+    g.ff(f, 'plant', 0.6, 5.6, 0);
+  } },
+  { name: 'compact kitchen', w: 3, build(g, f, r) {
+    g.ff(f, 'counter', 1.0, 0.42, 0); g.ff(f, 'stove', 2.25, 0.42, 0); g.ff(f, 'sink', 3.5, 0.42, 0); g.ff(f, 'fridge', 4.75, 0.5, 0);
+    g.ff(f, 'diningTable', 7.2, 3.0, 1); g.ff(f, 'stool', 6.6, 2.4, 0); g.ff(f, 'stool', 7.8, 3.6, 0);
+    for (let i = 0, n = 1 + r.int(2); i < n; i++) g.fd(f, STOCK.kitchen, 0.8 + i * 0.5, 0.4, 0.9);
+  } },
+  { name: 'master bedroom', w: 6, build(g, f, r) {
+    g.ff(f, 'bedDouble', 4.8, 1.25, 0); g.ff(f, 'nightstand', 3.5, 0.35, 0); lamp(g, f, 3.5, 0.35, 0.6); g.ff(f, 'nightstand', 6.1, 0.35, 0); lamp(g, f, 6.1, 0.35, 0.6);
+    g.ff(f, 'wardrobe', 8.4, 0.58, 0); g.ff(f, 'dresser', 1.2, 0.45, 0); g.ff(f, 'rug', 4.8, 3.6, 0); g.ff(f, 'standingMirror', 0.5, 2.6, 1);
+    g.ff(f, 'plant', 0.7, 4.8, 0); if (r.chance(0.5)) g.ff(f, 'armchair', 8.3, 3.4, 3);
+  } },
+  { name: 'guest bedroom', w: 4, build(g, f, r) {
+    g.ff(f, 'bedSingle', 2.0, 1.1, 0); g.ff(f, 'nightstand', 3.1, 0.35, 0); lamp(g, f, 3.1, 0.35, 0.6); g.ff(f, 'dresser', 6.0, 0.45, 0);
+    g.ff(f, 'wardrobe', 8.4, 0.58, 0); g.ff(f, 'rug', 3.0, 3.2, 1); g.ff(f, 'coatRack', 8.9, 3.0, 0); g.ff(f, 'plant', 0.7, 4.6, 0);
+  } },
+  { name: 'kids room', w: 4, build(g, f, r) {
+    g.ff(f, 'bunkBed', 0.75, 1.1, 0); g.ff(f, 'shelfCube', 3.4, 0.32, 0); g.ff(f, 'toyChest', 5.0, 0.4, 0); g.ff(f, 'mattress', 7.6, 3.4, 0);
+    g.ff(f, 'rug', 4.6, 4.0, 1); g.ff(f, 'beanbag', 6.0, 2.6, 1); g.ff(f, 'stool', 3.4, 4.2, 0); lamp(g, f, 3.4, 0.32, 1.5);
+    if (r.chance(0.5)) for (let i = 0, n = 1 + r.int(2); i < n; i++) g.fd(f, ['crackers', 'apple', 'cookie', 'pizza'].filter((k) => k in ITEMS), 4.0 + i * 0.4, 4.2, 0);
+  } },
+  { name: 'teen room', w: 3, build(g, f, r) {
+    g.ff(f, 'bedSingle', 1.0, 1.1, 0); g.ff(f, 'desk', 4.4, 0.45, 0); g.ff(f, 'officeChair', 4.4, 1.3, 2); g.ff(f, 'tv', 4.4, 0.35, 0, 0.75);
+    g.ff(f, 'beanbag', 6.8, 2.8, 2); g.ff(f, 'shelfCube', 8.4, 0.32, 0); g.ff(f, 'rug', 5.6, 3.2, 0); g.ff(f, 'floorLamp', 8.9, 2.0, 0);
+  } },
+  { name: 'nursery', w: 2, build(g, f, r) {
+    g.ff(f, 'crib', 2.2, 0.6, 0); g.ff(f, 'crib', 4.6, 0.6, 0); g.ff(f, 'dresser', 7.2, 0.45, 0); g.ff(f, 'armchair', 7.6, 3.2, 3);
+    g.ff(f, 'rug', 4.0, 3.2, 0); g.ff(f, 'toyChest', 2.0, 3.6, 1); lamp(g, f, 7.2, 0.45, 0.85);
+  } },
+  { name: 'bunk bed showcase', w: 2, build(g, f, r) {
+    for (const u of [0.75, 2.6, 4.45, 6.3, 8.15]) g.ff(f, 'bunkBed', u, 1.1, 0);
+    g.ff(f, 'rug', 4.8, 4.0, 0); g.ff(f, 'box', 3.0, 3.6, 0); g.ff(f, 'box', 6.4, 3.8, 0);
+  } },
+  { name: 'walk-in wardrobe', w: 2, build(g, f, r) {
+    for (const u of [0.7, 2.0, 3.3]) g.ff(f, 'wardrobe', u, 0.58, 0);
+    g.ff(f, 'wardrobe', 0.58, 3.0, 1); g.ff(f, 'shoeRack', 6.0, 0.3, 0); g.ff(f, 'standingMirror', 8.6, 0.4, 0); g.ff(f, 'ottoman', 5.4, 2.8, 0); g.ff(f, 'coatRack', 8.8, 3.0, 0);
+  } },
+  { name: 'bathroom', w: 5, build(g, f, r) {
+    g.ff(f, 'bathtub', 1.2, 0.5, 0); g.ff(f, 'toilet', 3.4, 0.45, 0); g.ff(f, 'sink', 4.8, 0.32, 0); g.ff(f, 'sink', 5.9, 0.32, 0);
+    g.ff(f, 'standingMirror', 7.2, 0.3, 0); g.ff(f, 'plant', 8.9, 0.6, 0); g.ff(f, 'rug', 3.0, 2.2, 0); g.ff(f, 'shelfCube', 8.6, 2.6, 3);
+  } },
+  { name: 'home office', w: 4, build(g, f, r) {
+    g.ff(f, 'desk', 2.6, 0.45, 0); g.ff(f, 'officeChair', 2.6, 1.3, 2); g.ff(f, 'desk', 6.6, 0.45, 0); g.ff(f, 'officeChair', 6.6, 1.3, 2);
+    g.ff(f, 'whiteboard', 0.3, 3.0, 1); g.ff(f, 'filingCabinet', 9.2, 2.6, 3); g.ff(f, 'lockers', 9.2, 4.4, 3); g.ff(f, 'rug', 4.6, 3.4, 0);
+    lamp(g, f, 3.0, 0.4, 0.75); if (r.chance(0.08)) g.ff(f, 'safe', 4.6, 0.4, 0);
+  } },
+  { name: 'library', w: 3, build(g, f, r) {
+    for (let i = 0; i < 8; i++) g.ff(f, 'bookshelf', 0.6 + i * 1.18, 0.4, 0);
+    g.ff(f, 'bookshelf', 0.4, 2.4, 1); g.ff(f, 'bookshelf', 9.2, 2.4, 3); g.ff(f, 'diningTable', 4.8, 3.4, 0);
+    for (const u of [4.3, 5.3]) { g.ff(f, 'chair', u, 2.6, 0); g.ff(f, 'chair', u, 4.2, 2); } lamp(g, f, 4.8, 3.4, 0.75); g.ff(f, 'armchair', 1.8, 4.6, 1);
+  } },
+  { name: 'bar', w: 2, build(g, f, r) {
+    g.ff(f, 'barCounter', 4.8, 1.4, 0); for (const u of [3.4, 4.3, 5.2, 6.1]) g.ff(f, 'barStool', u, 2.2, 2);
+    g.ff(f, 'cabinet', 2.0, 0.3, 0); g.ff(f, 'fridge', 7.4, 0.5, 0); g.ff(f, 'shelfCube', 4.8, 0.32, 0);
+    g.ff(f, 'patioTable', 2.2, 4.6, 0); g.ff(f, 'patioTable', 7.4, 4.6, 0); g.ff(f, 'barStool', 1.6, 4.6, 0); g.ff(f, 'barStool', 6.8, 4.6, 0);
+    if (r.chance(0.5)) g.fd(f, ['soda', 'bigsoda', 'water', 'chips'], 4.4, 1.4, 1.05);
+  } },
+  { name: 'games room', w: 2, build(g, f, r) {
+    g.ff(f, 'billiardsTable', 4.0, 3.2, 1); g.ff(f, 'arcadeCabinet', 7.4, 0.45, 0); g.ff(f, 'arcadeCabinet', 8.4, 0.45, 0);
+    g.ff(f, 'coatRack', 0.6, 0.6, 0); g.ff(f, 'barStool', 8.6, 3.0, 0); g.ff(f, 'barStool', 8.6, 4.2, 0); g.ff(f, 'floorLamp', 1.0, 5.4, 0);
+  } },
+  { name: 'music room', w: 1.5, build(g, f, r) {
+    g.ff(f, 'piano', 3.0, 0.4, 0); g.ff(f, 'stool', 3.0, 1.2, 0); g.ff(f, 'sofa', 6.4, 4.2, 2); g.ff(f, 'rug', 4.8, 3.0, 0);
+    g.ff(f, 'bookshelf', 8.6, 0.4, 0); g.ff(f, 'floorLamp', 0.6, 0.6, 0); g.ff(f, 'plant', 0.6, 4.6, 0);
+  } },
+  { name: 'entrance hall', w: 3, build(g, f, r) {
+    g.ff(f, 'door', 2.4, 0.18, 0); g.ff(f, 'door', 7.2, 0.18, 0); g.ff(f, 'coatRack', 4.2, 0.4, 0); g.ff(f, 'shoeRack', 5.4, 0.3, 0);
+    g.ff(f, 'standingMirror', 0.4, 2.4, 1); g.ff(f, 'bench', 8.9, 2.6, 3); g.ff(f, 'rug', 4.8, 2.6, 0); g.ff(f, 'plant', 0.6, 5.4, 0);
+  } },
+  { name: 'door display', w: 1.5, build(g, f, r) {
+    for (let i = 0; i < 6; i++) g.ff(f, 'door', 0.9 + i * 1.55, 0.2 + (i % 2) * 2.2, 0);
+    g.ff(f, 'plant', 8.9, 5.0, 0);
+  } },
+  { name: 'lighting display', w: 2, build(g, f, r) {
+    for (let i = 0; i < 6; i++) g.ff(f, 'floorLamp', 0.8 + i * 1.6, 0.6, 0);
+    for (let i = 0; i < 3; i++) { g.ff(f, 'sideTable', 2.0 + i * 2.8, 3.2, 0); lamp(g, f, 2.0 + i * 2.8, 3.2, 0.55); }
+    g.ff(f, 'rug', 4.8, 4.8, 0);
+  } },
+  { name: 'rug gallery', w: 2, build(g, f, r) {
+    for (let i = 0; i < 2; i++) for (let j = 0; j < 3; j++) g.ff(f, 'rug', 2.4 + i * 4.8, 1.2 + j * 1.8, j % 2);
+    g.ff(f, 'ottoman', 4.8, 5.6, 0);
+  } },
+  { name: 'mannequin showcase', w: 0.5, build(g, f, r) {
+    for (let i = 0; i < 5; i++) g.ff(f, 'mannequin', 1.2 + i * 1.8, 0.8 + (i % 2) * 0.8, 0);
+    g.ff(f, 'standingMirror', 0.4, 3.4, 1); g.ff(f, 'coatRack', 9.0, 3.4, 0); g.ff(f, 'shoeRack', 4.8, 3.6, 2);
+  } },
+  { name: 'information desk', w: 1, build(g, f, r) {
+    g.fs(f, 2.8, 2.0, 6.8, 2.8, 0, 1.05, 0x34495e); const [a, b, c, d] = f.rect(2.75, 1.95, 6.85, 2.85); g.deco(a, b, c, d, 1.05, 1.1, 0xe8e2d6);
+    for (const u of [2.6, 4.0, 5.6, 7.0]) g.ff(f, 'barStool', u, 3.6, 2); g.ff(f, 'officeChair', 4.8, 1.3, 0); g.ff(f, 'whiteboard', 4.8, 0.3, 0); g.ff(f, 'plant', 0.6, 0.6, 0);
+  } },
+];
+
+export const GARDEN_ROOMS = [
+  { name: 'garden', w: 4, open: true, build(g, f) { g.q_garden(f); } },
+  { name: 'patio', w: 5, open: true, build(g, f, r) {
+    { const [a, b, c, d] = f.rect(0.4, 0.4, Q - 0.4, Q - 0.4); g.deco(a, b, c, d, 0, 0.03, 0xb8b0a2); }
+    g.ff(f, 'patioTable', 3.2, 3.2, 0); g.ff(f, 'patioUmbrella', 3.2, 3.2, 0); for (const [u, v, k] of [[2.4, 3.2, 1], [4.0, 3.2, 3], [3.2, 2.4, 0], [3.2, 4.0, 2]]) g.ff(f, 'chair', u, v, k);
+    g.ff(f, 'planter', 7.6, 1.0, 0); g.ff(f, 'planter', 7.6, 7.6, 0); g.ff(f, 'bench', 7.0, 4.6, 3); g.ff(f, 'hedge', 0.8, 8.6, 0); g.ff(f, 'hedge', 2.4, 8.6, 0);
+  } },
+  { name: 'backyard', w: 4, open: true, build(g, f, r) {
+    { const [a, b, c, d] = f.rect(0, 0, Q, Q); g.deco(a, b, c, d, 0, 0.02, 0x5e8a3a); }
+    g.ff(f, 'firePit', 4.8, 4.8, 0); for (const [u, v, k] of [[4.8, 3.2, 0], [4.8, 6.4, 2], [3.2, 4.8, 1], [6.4, 4.8, 3]]) g.ff(f, 'bench', u, v, k);
+    for (let i = 0; i < 5; i++) g.ff(f, 'hedge', 0.8 + i * 2.0, 0.6, 0); g.ff(f, 'planter', 8.6, 8.6, 0); g.ff(f, 'patioUmbrella', 1.6, 8.0, 0);
+  } },
+  { name: 'pergola lounge', w: 3, open: true, build(g, f, r) {
+    { const [a, b, c, d] = f.rect(1.6, 1.6, 8.0, 8.0); g.deco(a, b, c, d, 0, 0.03, 0xa89a86); }
+    g.ff(f, 'pergola', 4.8, 4.8, 0); g.ff(f, 'sofa', 4.8, 4.0, 0); g.ff(f, 'coffeeTable', 4.8, 5.2, 0); g.ff(f, 'planter', 1.0, 1.0, 0); g.ff(f, 'planter', 8.6, 1.0, 0);
+    g.ff(f, 'floorLamp', 8.4, 8.4, 0);
+  } },
+  { name: 'greenhouse', w: 2, open: true, build(g, f, r) {
+    { const [a, b, c, d] = f.rect(0, 0, Q, Q); g.deco(a, b, c, d, 0, 0.02, 0x7a6a52); }
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) g.ff(f, 'planter', 1.6 + i * 3.2, 2.0 + j * 4.2, 1);
+    for (let i = 0; i < 4; i++) g.ff(f, 'plant', 0.7 + i * 2.6, 9.0, 0);
+    // a broken pane: glass on the floor
+    if ('glass' in ITEMS) for (let i = 0; i < 4; i++) g.fd(f, ['glass'], 4.0 + r.range(-1.5, 1.5), 4.0 + r.range(-1.2, 1.2), 0);
+  } },
+  { name: 'hedge garden', w: 2, open: true, build(g, f, r) {
+    { const [a, b, c, d] = f.rect(0, 0, Q, Q); g.deco(a, b, c, d, 0, 0.02, 0x5e8a3a); }
+    for (let i = 0; i < 4; i++) { g.ff(f, 'hedge', 1.0 + i * 1.6, 2.0, 0); g.ff(f, 'hedge', 3.4 + i * 1.6, 6.2, 0); }
+    g.ff(f, 'bench', 8.2, 4.0, 3); g.ff(f, 'planter', 1.0, 8.6, 0);
+  } },
+];
+
 // The sky through a skylight: a gradient that follows the time of day.
 let _skyMat = null;
 function skyMaterial() {
@@ -427,6 +637,26 @@ function glowMaterial() {
   return _glowMat;
 }
 export function setLampGlow(k) { glowMaterial().opacity = k; }
+
+// A pillar screen: a grid reference in green on black, or snow and NO SIGNAL.
+function screenTexture(label, type) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 154;
+  const x = c.getContext('2d');
+  x.fillStyle = '#05080a'; x.fillRect(0, 0, 256, 154);
+  if (label) {
+    x.fillStyle = type === 'lost' ? '#ffd34d' : '#5cff9d'; x.font = 'bold 20px monospace'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText('GRID REFERENCE', 128, 32); x.font = 'bold 46px monospace'; x.fillText(label, 128, 86, 240);
+    x.font = '16px monospace'; x.fillText(type === 'lost' ? 'LOST PROPERTY' : type === 'scaffold' ? 'MAINTENANCE IN PROGRESS' : type === 'cracked' ? 'STRUCTURE CHECK DUE' : 'KEEP CLEAR', 128, 130);
+    x.fillStyle = 'rgba(255,255,255,0.05)'; for (let y = 0; y < 154; y += 3) x.fillRect(0, y, 256, 1);
+  } else {
+    const img = x.getImageData(0, 0, 256, 154);
+    for (let i = 0; i < img.data.length; i += 4) { const v = Math.random() * 180; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+    x.putImageData(img, 0, 0);
+    x.fillStyle = '#000a'; x.fillRect(48, 56, 160, 42); x.fillStyle = '#fff'; x.font = 'bold 24px monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('NO SIGNAL', 128, 78);
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
 
 // Canvas text for the hanging aisle signs.
 function signTexture(label, color, line2) {
@@ -548,6 +778,14 @@ export class World {
     sign.position.set(ch.cx * CHUNK + 6, 4.9, ch.cz * CHUNK + 0.6);
     this.group.add(sign);
     ch.sign = sign;
+    // the grid pillar's screens: its reference, or static when the screen's broken
+    if (ch.gen.pillar) {
+      const P = ch.gen.pillar, smat = new THREE.MeshBasicMaterial({ map: screenTexture(P.glitch ? null : P.label, P.type), fog: true, toneMapped: false });
+      const pl = new THREE.PlaneGeometry(1.0, 0.6), cx = ch.cx * CHUNK + HALF, cz = ch.cz * CHUNK + HALF, d = 1.2 + 0.085;
+      const grp = new THREE.Group();
+      for (const [x, z, ry] of [[0, d, 0], [0, -d, Math.PI], [d, 0, Math.PI / 2], [-d, 0, -Math.PI / 2]]) { const m3 = new THREE.Mesh(pl, smat); m3.position.set(cx + x, 1.9, cz + z); m3.rotation.y = ry; grp.add(m3); }
+      this.group.add(grp); ch.screens = grp;
+    }
     for (const sk of ch.skylights) {
       const m2 = new THREE.Mesh(new THREE.PlaneGeometry(sk.x1 - sk.x0, sk.z1 - sk.z0), skyMaterial());
       m2.rotation.x = Math.PI / 2; m2.position.set((sk.x0 + sk.x1) / 2, CEIL - 0.03, (sk.z0 + sk.z1) / 2);
@@ -559,6 +797,7 @@ export class World {
     if (ch.mesh) { this.group.remove(ch.mesh); ch.mesh.geometry.dispose(); ch.mesh = null; }
     if (ch.shadow) { this.group.remove(ch.shadow); ch.shadow.geometry.dispose(); ch.shadow = null; }
     if (ch.sky) { for (const m of ch.sky) { this.group.remove(m); m.geometry.dispose(); } ch.sky = null; }
+    if (ch.screens) { this.group.remove(ch.screens); const m = ch.screens.children[0]; m.material.map.dispose(); m.material.dispose(); m.geometry.dispose(); ch.screens = null; }
     if (ch.sign) { this.group.remove(ch.sign); const m = ch.sign.children[0]; m.material.map.dispose(); m.material.dispose(); m.geometry.dispose(); ch.sign = null; }
   }
 
@@ -576,11 +815,18 @@ export class World {
     return !covered;
   }
 
+  // The grid pillar of the chunk at (x, z), with where it stands, or null.
+  pillarAt(x, z) {
+    const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK), p = pillarOf(this.seed, cx, cz);
+    return p ? { ...p, x: cx * CHUNK + HALF, z: cz * CHUNK + HALF } : null;
+  }
   staticMeshes() { const out = []; for (const ch of this.chunks.values()) if (ch.mesh) out.push(ch.mesh); return out; }
   sectionAt(x, z) { return sectionOf(this.seed, Math.floor(x / CHUNK), Math.floor(z / CHUNK)); }
 
   // ---- Items ----
   _addItem(id, s) {
+    // unknown kinds (an old save, a newer screen) are skipped
+    if (s.k === 'f' ? !Object.prototype.hasOwnProperty.call(TYPES, s.t) : !Object.prototype.hasOwnProperty.call(ITEMS, s.t)) return null;
     const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: ((s.tl | 0) % 3 + 3) % 3, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: s.s ? 1 : 0, mesh: null, cells: null };
     if (it.k === 'f' && !Object.prototype.hasOwnProperty.call(TYPES, it.t)) return null;
     if (it.k === 'i' && !Object.prototype.hasOwnProperty.call(ITEMS, it.t)) return null;
