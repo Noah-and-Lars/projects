@@ -13,7 +13,7 @@
 // glow orange.
 import * as THREE from 'three';
 
-export const SURF = { paint: 0, wood: 1, fabric: 2, metal: 3, card: 4, plastic: 5, concrete: 6, floor: 7, skin: 8, steel: 9 };
+export const SURF = { paint: 0, wood: 1, fabric: 2, metal: 3, card: 4, plastic: 5, concrete: 6, floor: 7, skin: 8, steel: 9, glow: 10 };
 export const FIX = { spacing: 6, len: 2.4, wid: 0.5 };
 
 export const uniforms = {
@@ -124,6 +124,7 @@ else if (esM == 6) { esDet = esD.a; esStr = 0.16; esRough = 0.9; }
 else if (esM == 7) { esDet = esD.a; esStr = 0.1; esRough = 0.22; }
 else if (esM == 8) { esDet = 0.5; esStr = 0.0; esRough = 0.6; }
 else if (esM == 9) { esDet = esD.a; esStr = 0.1; esRough = 0.42; esMetal = 0.4; }
+else if (esM == 10) { esDet = 0.5; esStr = 0.0; esRough = 0.3; }
 diffuseColor.rgb *= 1.0 + (esDet - 0.5) * 2.0 * esStr;
 // a touch of occlusion where things meet the floor
 if (esM != 7) diffuseColor.rgb *= mix(0.66, 1.0, smoothstep(0.0, 0.45, vWP.y));
@@ -162,6 +163,7 @@ const FRAG_LIGHTS = /* glsl */`
     esAcc += col * att * ndl * (diffuseColor.rgb * (1.0 - metalnessFactor) * 0.3183 + esF0 * spec * 0.25);
   }
   outgoingLight += esAcc * uGain;
+  if (esM == 10) outgoingLight += diffuseColor.rgb * 0.85; // lit screens and embers
 }
 `;
 

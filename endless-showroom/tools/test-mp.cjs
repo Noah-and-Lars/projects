@@ -96,6 +96,11 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   check(posB && posA[4] === posB[4] && posA[4] !== 'null', 'placed rotation matches on both screens (' + (posB && posB[4]) + ')');
   check(posB && Math.abs(posA[0] - posB[0]) < 0.01 && Math.abs(posA[2] - posB[2]) < 0.01 && !posB[3], `placed item matches on both screens (${posA.slice(0, 3).map((v) => v.toFixed(2))})`);
 
+  // Bravo switches a lamp off: both screens agree.
+  const lampId = await B.evaluate(() => { const w = __game.world, P = __game.P; const l = [...w.items.values()].filter((i) => i.t === 'floorLamp' || i.t === 'tableLamp').sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z))[0]; if (l) __game.useItemForTest(l.id); return l && l.id; });
+  await B.waitForTimeout(1500);
+  check(lampId && await A.evaluate((id) => { const it = __game.world.items.get(id); return !!(it && it.s); }, lampId) && await B.evaluate((id) => !!__game.world.items.get(id).s, lampId), 'a lamp switched off by the guest is off on both screens');
+
   // Bravo (guest) picks something up: goes through the host.
   const gid = await B.evaluate(() => {
     const P = __game.P, w = __game.world; let best = null, bd = 1e9;

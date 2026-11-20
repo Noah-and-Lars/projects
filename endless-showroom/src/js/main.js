@@ -5,7 +5,7 @@
 // changes to furniture and food (world.js). Solo play is simply being the
 // host of a room with nobody else in it.
 import * as THREE from 'three';
-import { World, CHUNK, CEIL, setLampGlow, setSkyLight } from './world.js';
+import { World, CHUNK, CEIL, setLampGlow, setSkyLight , ROOMS, GARDEN_ROOMS } from './world.js';
 import { TYPES, ITEMS, itemDims, itemMatrix, itemParts, itemQuat, cleanQuat, furnitureGeometry, itemGeometry } from './furniture.js';
 import { moveBody, bodyFits } from './physics.js';
 import { StaffSim } from './staff.js';
@@ -1513,6 +1513,7 @@ function placeCamera(dt) {
     myModel.root.visible = false;
     myModel.body.rotation.x = 0;
   }
+  if (window.__cam) { const c = window.__cam; camera.position.set(c[0], c[1], c[2]); camera.rotation.set(c[4], c[3], 0, 'YXZ'); } // tests: a fixed camera
   // the piece we're holding
   if (P.carry && P.alive) {
     const c = P.carry, key = c.t + ':' + c.v;
@@ -1669,4 +1670,4 @@ requestAnimationFrame(frame);
 
 // Test hook for tools/test.cjs.
 window.__game = { P, clock, world, net, renderer, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
-  nightLen, useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };
+  useItemForTest: (id) => { const it = world.items.get(id); if (it) useItem(it); }, nightLen, roomNames: () => ROOMS.map((r) => [r.name, 'showroom']).concat(GARDEN_ROOMS.map((r) => [r.name, 'garden'])), useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };

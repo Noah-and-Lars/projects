@@ -42,25 +42,18 @@ Don't edit `index.html` by hand. It's generated from `src/`.
 | | |
 | --- | --- |
 | Day | 6 minutes, 08:00 to 22:00 on the clock. The staff are harmless. The last 5 seconds tick down. |
-| Night | 5 minutes, 22:00 to 08:00. The overhead lights cut out with a clunk, and only the emergency fittings (orange) and lamps stay lit. |
+| Night | 5 minutes on the first night, and **4 seconds longer every night after** (day 10: 5 min 36 s; day 60: about 9 minutes). 22:00 to 08:00 on the clock. The overhead lights cut out with a clunk, and only the emergency fittings (orange) and lamps stay lit. |
 | Week | Days run Monday to Sunday. **Food and first aid restock at the start of every Monday and Friday**, not daily. |
 
-Each weekday has its own gentle tune. Night has a low drone, a Crimson
-Night a pulsing beat, and a Fog Day a slow, sad theme. The music, like
-everything else, is generated as it plays. Twice a day the PA chimes and
+There are no special days: just day and night, every day.
+
+Each weekday has its own gentle tune, and the odd Friday plays a livelier
+take on it. Night has a low drone; being hunted brings in a pulsing chase
+beat; when you're badly hurt everything goes slow and muffled. The music,
+like everything else, is generated as it plays. Twice a day the PA chimes and
 reads out a (not very reassuring) announcement. On your very first day, tips
-explain the basics.
-
-### Events
-
-They're decided by the room's seed and the day, so every screen agrees.
-
-| Event | When | What happens |
-| --- | --- | --- |
-| **Crimson Night** | Every 10th night, and a 1 in 20 chance on any other | Red emergency lighting and a shriek as the lights go. More staff, twice as fast, climbing about 2.2 m at a time. They hit faster but softer, and stay down for less time when shoved. |
-| **Fog Day** | Every 15th day, and a 1 in 100 chance on any other | Very short view. The staff hunt in daylight, slowly, but they hit for about 40 and can't be shoved (trying hurts you). |
-| **Power Cut** | 3% of days | The lights fail for 90 seconds in the afternoon, and the staff hunt in the dark. |
-| **Hailstorm** | 4% of days | From 12:40 to 19:40, hail falls through the open skylights over the garden centres. It hurts every 3 seconds if nothing is over your head. |
+explain the basics, and now and then a tip shows in the chat (Settings can
+turn that off).
 
 ## The staff
 
@@ -75,7 +68,7 @@ They're decided by the room's seed and the day, so every screen agrees.
   come to look where you were seen.
 - **Break their line of sight** and they lose you after 5 seconds. They go
   and look where they last saw you, then give up.
-- **They climb** about 1.15 m at a time (Crimson Night: 2.2 m). They also
+- **They climb** about 1.15 m at a time. They also
   scale climbable furniture: shelving racks, bookcases, cube shelves, bunk
   beds and pallets. Their paths go over and around anything you build, so a
   staircase of furniture leads them right up to you. Build high, then take
@@ -85,14 +78,15 @@ They're decided by the room's seed and the day, so every screen agrees.
   night. So a wardrobe on open floor is safe, but not one with a dresser
   next to it that they can stand on.
 - **Shove** one (click when it's in front of you) to knock it down for about
-  2.5 seconds. That's your chance to run.
+  2.5 seconds. That's your chance to run. Each shove costs 4 to 8 energy,
+  and with less than 4 you're too tired to shove at all.
+- **They see through gaps**: pallets, coffee tables, side tables, ladders,
+  wire racks and slides don't hide you. Build with solid pieces.
+- **They can't open doors.** A closed door is a wall to them.
 - **They come in four heights and four builds.** Smaller ones are faster and
   fit through lower gaps. A crouching player fits through gaps none of them
   can.
 - **More come as the days go on**: 3 per player at first, growing to 12.
-- **The Floor Manager** walks the aisles on Crimson Nights only: one near
-  each shopper. Taller, in a dark suit with a clipboard. It's slower, but it
-  sees 60 m, hits for 22 to 28, and can't be shoved.
 - You can hear them coming: heavy footsteps, louder as they get closer.
 
 ## Survival
@@ -100,12 +94,13 @@ They're decided by the room's seed and the day, so every screen agrees.
 | | |
 | --- | --- |
 | Health | 100. **It only comes back from food and first aid.** No regenerating. |
-| Hunger | Empties in about 15 minutes, faster while sprinting, twice as fast with no energy. At zero you lose health. |
-| Energy | Sprinting, jumping, carrying and whistling use it, and standing still slowly gets it back (lying on a bed or a sofa gets it back nearly four times as fast). With none you can't sprint, throws fall short, and you get hungry faster. |
+| Energy | **Drains all the time**: slowly standing still, faster walking, fastest sprinting, and faster still the more hurt you are. Jumping, carrying, sliding, whistling, throwing and shoving cost extra. **Only food and drink bring it back.** With none you can't sprint, slide or shove, throws fall short, and you get hungry twice as fast. |
+| Hunger | Runs down more slowly than energy, faster the less energy you have. At zero you lose health quickly, and your stomach growls below 10. |
+| Badly hurt | At 10 health or less you hear your heartbeat, your vision clouds over and the music goes quiet. |
 | Inventory | 16 slots (G). Slots 1 to 8 are the hotbar. Click to use, and right-click (or Q) to put an item down, to stock your base. |
 | First aid | +30 health, takes 2.5 seconds to use. |
-| Falling | Landing faster than 13 m/s (about a 4 m drop) hurts. |
-| Death | You lose your inventory and what you carry, and wake up 40 to 100 m away. A red marker shows where you were caught. |
+| Falling | Landing faster than 13 m/s (about a 4 m drop) hurts. Landing **on top of** a bed, sofa, armchair, ottoman or mattress softens it a lot; a **beanbag** softens it from any side, even more. A long drop onto a bed bounces you. |
+| Death | You lose your inventory and what you carry. The screen shows what you did that life (furniture placed, staff shoved, things eaten, distance walked); press **Wake up** (or Space) to wake 40 to 100 m away. A red marker shows where you were caught. |
 
 | Food | Hunger | Energy | Health |
 | --- | --- | --- | --- |
@@ -126,11 +121,18 @@ They're decided by the room's seed and the day, so every screen agrees.
 | Fizz Cola | | +17 | |
 | Big Fizz (2 L) | | +23 | −5 |
 | Water | | +12 | +3 |
+| Cinnamon Swirl | +14 | +15 | |
+| Lemon | +10 | +10 | +4 |
+| Lemon Slice | +5 | +5 | +2 |
+| Fish-Shaped Crackers | +18 | +2 | |
+| Broken Glass | | | −33 (don't) |
 | First Aid Kit | | | +30 (2.5 s) |
 
 ## Building
 
-- **Grab** any piece of furniture (E). It floats in front of you where you
+- **Grab** any piece of furniture by **holding E** for half a second (heavy
+  pieces like crates, fridges, bathtubs and the billiards table take longer;
+  the store safe takes eight seconds). It floats in front of you where you
   aim, swinging after your view with a little lag, and everyone online sees
   it there. It passes through things while you hold it, so you can push it
   into a wall or into another piece.
@@ -146,7 +148,9 @@ They're decided by the room's seed and the day, so every screen agrees.
   Let go **in mid-air** and it drops onto whatever is below, and anything
   that dropped falls again if you take away what holds it up. The outline is
   green when it'll stay put and white when it'll drop.
-- The **mouse wheel** moves it closer or farther, and **F** throws it.
+- The **mouse wheel** moves it closer or farther. **Hold F** to wind up a
+  throw and let go of F to throw it: the longer you hold, the further it
+  goes. Settings can snap held pieces to a 25 cm, 50 cm or 1 m grid.
 - **Ride** what you hold: put a piece under your feet and raise it, and you
   go up with it (jumping helps). Someone else can lift you the same way.
 - **Walk-in wardrobes** are hollow. Step in and block the front for a
@@ -154,7 +158,12 @@ They're decided by the room's seed and the day, so every screen agrees.
 - **Climb** shelving, bookcases, cube shelves, bunk beds and pallets by
   walking into them.
 - **Lamps** (floor and table) light up the dark and glow like beacons.
-  Carry one at night to see where you're going.
+  Carry one at night to see where you're going, or press **F** on one to
+  switch it off so it doesn't give you away.
+- **Doors** open and close with **F**. The staff can't open them.
+- **Screens**: TVs and arcade cabinets switch on with F; a lit screen glows
+  in the dark. Toilets flush.
+- **Slide**: crouch while sprinting to slide along the floor.
 
 ## Controls
 
@@ -188,37 +197,47 @@ In online rooms, chat appears over the speaker's head as well as in the log.
 
 The floor is split into 24 m chunks, each generated from the room's seed.
 Each chunk has pillars on a 12 m grid, a hanging aisle sign, one section, and
-four 12 m plots:
+four 12 m plots (some layouts take the whole chunk).
+
+**Grid pillars.** Every fourth chunk in each direction has a big 2.4 m
+structural pillar in the middle, with a screen on every face showing its grid
+reference (`E2 · S5`). About one screen in seven shows static instead. Most
+pillars are plain; about 13% are being worked on (a ladder, a tool rack,
+pallets and crates round them), 6% are cracked (a chunk knocked out, steel
+showing, the screen usually broken), under 2% are overgrown, and one in a few
+hundred is the store's **lost-property pillar**, with a little food and a
+first aid kit left on it (and an achievement for finding it).
 
 | Section | What's there |
 | --- | --- |
-| Showroom | Room displays with three walls and a coloured back wall: living rooms (TVs), bedrooms (walk-in wardrobes, table lamps), kitchens (a little food), workspaces, kids' rooms (apples, beanbags), bathrooms (bathtubs). Some plots are kids' play areas with climbable slides. |
-| Warehouse | 4.4 m climbable pallet racks, and lots of loose pallets, crates and boxes |
+| Showroom | Room displays with three walls and a coloured back wall, picked by weight from 29 room types: living rooms (classic, modern with a corner sofa, TV lounge, study), dining room, three kinds of kitchen, bedrooms (master, guest, kids', teen, nursery, a bunk bed showcase, a walk-in wardrobe), bathroom, home office (sometimes with the heavy safe), library, bar, games room (billiards and arcade cabinets), music room, entrance hall and a door display (doors you can open and close), lighting display, rug gallery, and the rare mannequin showcase and information desk |
+| Warehouse | **Streets** of 2 to 5 chunks in a row, their 4.4 m climbable racks running the whole length, with pallets, crates, boxes and ladders in the aisles |
 | Furniture | Rows of one kind of furniture (lamps and bunk beds included) |
 | Market Hall | Low tables of lamps, plants and boxes, the odd snack, and sometimes a snack bar (ice cream, fizzy drinks, crisps) |
-| Cafeteria | Rare (4%) and worth finding: long counters piled with food, seating, sometimes a first aid kit |
-| Garden Centre | Grass, planters, a tree, patio sets, all under open skylights |
+| Cafeteria | Rare (about 5% of chunks) and worth finding: a hall filling the whole chunk, with a long serving counter heaped with about fifty things to eat and drink, a first aid kit, and 16 tables |
+| Garden Centre | Under open skylights, picked from 6 layouts: a garden with a tree, a patio with a parasol, a backyard round a fire pit, a pergola lounge, a hedge garden, and a greenhouse with broken glass on the floor |
 | Stock Room | Crates, boxes and lockers, and sometimes an office floor of desks and filing cabinets |
 
-Some furniture, market and warehouse plots have a **mezzanine**: a deck 3 m
-up on four posts, with railings and a staircase. It's a ready-made high
-point, if you can keep the stairs clear.
+Some furniture and market plots have a **mezzanine**: a deck 3 m up on four
+posts, with railings and a staircase. It's a ready-made high point, if you can
+keep the stairs clear.
 
 Any plot can instead be a **first aid station** (a kiosk with four kits, 2.5%)
 or an **abandoned fort** (a ring of upturned pallets round a lamp, a platform,
 and maybe some food left behind, 1.5%). About a third of chunk edges have
 full-height walls with doorways. The chunks around the centre have none.
 
-There are 35 kinds of furniture and 18 kinds of food, drink and first aid.
-By day, some of the staff carry boxes of stock about.
+There are 64 kinds of furniture and 23 kinds of food, drink and first aid
+(and broken glass). By day, some of the staff carry boxes of stock about.
 
 ## Achievements
 
-18 achievements are saved on your device, with a toast when one unlocks and
-a list on the menu. Some examples: survive your first night, 7 or 30 nights
-in a row, a Crimson Night, a Fog Day, or a Hailstorm without being hit; place
-50 or 500 pieces; shove 20 staff; find a cafeteria or an abandoned fort; hide
-in a wardrobe at night; walk 1 km.
+19 achievements are saved on your device, with a toast when one unlocks and
+a list on the menu. Some examples: survive your first night, or 7 or 30
+nights in a row; place 50 or 500 pieces; shove 20 staff; find a cafeteria, an
+abandoned fort or the lost-property pillar; hide in a wardrobe at night; have
+a bed, sofa or beanbag save you from a fatal fall; pick up the store safe;
+switch off 10 lamps; slide 10 times; walk 1 km.
 
 ## Look
 
@@ -331,8 +350,8 @@ cd tools && npm install && npm run build
 | `tools/build.mjs` | Builds the single-file `index.html` |
 | `tools/test.cjs` | Solo smoke test (see below) |
 | `tools/test-mp.cjs`, `tools/mock-rt.js` | Two-player test with a stand-in realtime server |
-| `tools/shots.cjs` | Screenshots of the look: day, close-up, night, lamps, staff, Crimson Night, Fog Day, Floor Manager, hail, third person |
-| `tools/soak.cjs` | Runs through every day and night transition and event, checking for errors |
+| `tools/shots.cjs` | Screenshots of the look: day, close-up, night, lamps, staff, third person, a grid pillar, a cafeteria hall, a warehouse street |
+| `tools/soak.cjs` | Runs through every day and night transition, including an old store's long nights, checking for errors |
 
 ### Testing
 
@@ -348,9 +367,11 @@ node tools/test-mp.cjs <screenshot-dir>
 
 - picking up, carrying and placing; third person; night arriving;
 - eating, rotating a held piece, letting go in mid-air (it drops) and
-  touching something (it stays), shoving staff down,
-  standing room inside a wardrobe, throwing, dropping food, crouching, hail
-  hurting you under a skylight, and the Monday and Friday restock days;
+  touching something (it stays), shoving staff down, standing room inside a
+  wardrobe, throwing, dropping food, crouching, a beanbag softening a fall,
+  a tap of E not picking things up but holding it doing so, the grid pillar
+  at the centre and nights growing longer, and the Monday and Friday restock
+  days;
 - that the staff can't reach you on a wardrobe, or on two stacked crates,
   but can on the floor, and climb up to you once there's a step beside the
   crates;
@@ -360,8 +381,8 @@ The test machine has no GPU, so the game runs slowly there. The checks wait
 on game time rather than wall-clock time.
 
 `soak.cjs` jumps the clock through every kind of transition (dawn, closing
-time, Crimson Night, Fog Day, power cut, hailstorm, a whole week) and fails
-on any page error.
+time, a whole week, and day 60's nine-minute night) and fails on any page
+error.
 
 `test-mp.cjs` opens two pages that share `mock-rt.js` (BroadcastChannel in
 place of the realtime server). It checks:
@@ -370,6 +391,7 @@ place of the realtime server). It checks:
   earlier changes;
 - carrying and placing furniture on the host and the guest, the other player
   seeing a held piece float where you aim, and its rotation matching;
+- a lamp switched off by the guest being off on both screens;
 - the host's staff, clock and hits reaching the guest;
 - chat arriving with a bubble over the speaker;
 - the guest taking over as host, with the store's changes kept and anything
@@ -381,7 +403,8 @@ place of the realtime server). It checks:
 - No persistent bases between sessions: a room's store lasts as long as
   someone is in it.
 - Staff don't pile on top of each other, and there are no special staff.
-- Furniture snaps to quarter turns (no diagonal ramps).
+- Dropped furniture falls straight down; nothing topples, slides or rolls.
+- Lit screens glow, but lamps don't cast shadows.
 - Touch controls have only been checked in an emulated iPhone.
 - If frames run slow for a few seconds, the game draws at a lower resolution
   until they're quick again.

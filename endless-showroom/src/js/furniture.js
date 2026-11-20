@@ -21,6 +21,11 @@ const GLASS = 0xc9d6df, CLOTH = 0x2f7d4a, EMBER = 0xe8742a, SCREEN_OFF = 0x0b1a2
 function screen(g, x, y, z, w, h, on, game) {
   g.box(x, y, z, w, h, 0.003, SCREEN_OFF);
   if (!on) { g.box(x - w * 0.25, y + h * 0.22, z + 0.002, w * 0.2, h * 0.05, 0.001, 0x1d3550); return; }
+  // a lit picture glows, even in the dark
+  const prev = g.matOf; g.matOf = () => SURF.glow;
+  try { screenPicture(g, x, y, z, w, h, game); } finally { g.matOf = prev; }
+}
+function screenPicture(g, x, y, z, w, h, game) {
   const f = z + 0.0025, d = 0.001;
   if (game) { // a bright little game screen
     g.box(x, y, f, w * 0.96, h * 0.94, d, 0x101428);
@@ -567,7 +572,7 @@ const PART_SURF = {
   [METAL]: SURF.metal, [DARK]: SURF.plastic, 0xa47c55: SURF.wood, 0x6e4a2f: SURF.wood, 0x8f8a82: SURF.concrete,
   0x8fa7b8: SURF.fabric, 0xc9a56a: SURF.card, 0xd8cfa8: SURF.card,
   0xd8d2c4: SURF.plastic, 0x9a5b3a: SURF.plastic, 0x5b3b25: SURF.wood,
-  [GLASS]: SURF.plastic, [CLOTH]: SURF.fabric, [EMBER]: SURF.paint, [SCREEN_OFF]: SURF.plastic, 0x1d3550: SURF.plastic,
+  [GLASS]: SURF.plastic, [CLOTH]: SURF.fabric, [EMBER]: SURF.glow, [SCREEN_OFF]: SURF.plastic, 0x1d3550: SURF.plastic,
   0x101428: SURF.plastic, 0x6fb3e0: SURF.plastic, 0x5d9e4a: SURF.plastic, 0xfff2a8: SURF.plastic, 0xe8f4fb: SURF.plastic,
   [LEAF[0]]: SURF.fabric, [LEAF[1]]: SURF.fabric, [LEAF[2]]: SURF.fabric, 0x4a3420: SURF.card, 0x5b4a2a: SURF.wood,
   0x111111: SURF.plastic, 0xf7f7f2: SURF.plastic, 0xf7f7f5: SURF.plastic, 0x55575c: SURF.steel, 0x6b6f75: SURF.steel,
