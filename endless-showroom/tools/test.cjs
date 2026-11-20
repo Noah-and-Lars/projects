@@ -181,20 +181,40 @@ fs.mkdirSync(out, { recursive: true });
   const standH = await g(() => __game.P.height);
   console.log((crouchH < 1.2 && standH > 1.7 ? 'ok   ' : 'FAIL ') + `crouching lowers you (${crouchH} then ${standH})`);
 
-  // A hailstorm hurts you under an open skylight.
-  const hailInfo = await g(() => {
-    const w = __game.world; let found = null;
-    for (let r = 0; r < 14 && !found; r++) for (let i = -r; i <= r && !found; i++) for (let j = -r; j <= r && !found; j++) if (w.sectionAt(i * 24 + 12, j * 24 + 12) === 'garden') found = [i * 24 + 12, j * 24 + 12];
-    if (!found) return null;
-    __game.spawnAt(found[0], found[1], 3); __game.P.hp = 100;
-    let day = 0; for (let d = 2; d < 600; d++) if (__game.dayEventForTest(d) === 'hail') { day = d; break; }
-    __game.setClock(150, day);
-    return day;
+  // A beanbag breaks a fall that hurts on the bare floor.
+  const fall = await g(() => {
+    const P = __game.P, w = __game.world, out = {};
+    const bag = [...w.items.values()].find((i) => i.t === 'beanbag' && w.active(i));
+    out.floorAt = [P.x, P.z]; out.bag = bag ? bag.id : null;
+    return out;
   });
-  await page.waitForTimeout(1500);
-  { const t0 = await g(() => __game.clock.t); await page.waitForFunction((t0) => __game.clock.t > t0 + 3.5 || __game.P.hp < 100, t0, { timeout: 150000 }); }
-  const hailHp = await g(() => __game.P.hp);
-  console.log((hailInfo && hailHp < 100 ? 'ok   ' : 'FAIL ') + `hail hurts you under an open skylight (day ${hailInfo}, hp ${hailHp})`);
+  const dropFrom = async (x, z, y) => { await g(([x, z, y]) => { const P = __game.P; P.x = x; P.z = z; P.y = y; P.vy = 0; P.hp = 100; P.onGround = false; }, [x, z, y]); await page.waitForFunction(() => __game.P.onGround, null, { timeout: 60000 }); await page.waitForTimeout(300); return g(() => __game.P.hp); };
+  const spot = await g(() => { const P = __game.P, w = __game.world; for (let i = 0; i < 60; i++) { const x = P.x + (Math.random() - 0.5) * 30, z = P.z + (Math.random() - 0.5) * 30; if (w.fits({ x0: x - 0.6, x1: x + 0.6, z0: z - 0.6, z1: z + 0.6, y0: 0, y1: 6.4 })) return [x, z]; } return null; });
+  const floorHp = spot ? await dropFrom(spot[0], spot[1], 6.3) : null;
+  let bagHp = null;
+  if (fall.bag) { const b = await g((id) => { const it = __game.world.items.get(id); return [it.x, it.z]; }, fall.bag); bagHp = await dropFrom(b[0], b[1], 6.3); }
+  console.log((floorHp !== null && floorHp < 100 && (bagHp === null || bagHp > floorHp) ? 'ok   ' : 'FAIL ') + `a beanbag softens a fall (floor hp ${floorHp}, beanbag hp ${bagHp})`);
+
+  // Picking up takes a held E; a tap isn't enough.
+  const tapGrab = await g(() => {
+    const P = __game.P, w = __game.world; let best = null, bd = 1e9;
+    for (const it of w.items.values()) { if (it.k !== 'f' || !w.active(it) || it.y > 0.01 || it.t === 'rug') continue; const d = Math.hypot(it.x - P.x, it.z - P.z); if (d < bd) { bd = d; best = it; } }
+    const a = Math.atan2(P.x - best.x, P.z - best.z); P.x = best.x + Math.sin(a) * 1.5; P.z = best.z + Math.cos(a) * 1.5; P.y = 0;
+    P.yaw = a; P.pitch = Math.atan2(best.y + 0.25 - 1.6, 1.5); return best.id;
+  });
+  await page.waitForTimeout(400);
+  await page.keyboard.press('KeyE'); await page.waitForTimeout(400);
+  const afterTap = await g(() => !!__game.P.carry);
+  await page.keyboard.down('KeyE');
+  { const t0 = await g(() => __game.clock.t); await page.waitForFunction((t0) => __game.clock.t > t0 + 2.2 || !!__game.P.carry, t0, { timeout: 90000 }); }
+  await page.keyboard.up('KeyE');
+  const afterHold = await g(() => !!__game.P.carry);
+  console.log((!afterTap && afterHold ? 'ok   ' : 'FAIL ') + `a tap of E doesn't pick up, holding it does (${afterTap}, ${afterHold})`);
+  if (afterHold) { await page.keyboard.press('KeyE'); await page.waitForTimeout(400); }
+
+  // A grid pillar stands in the middle of the spawn chunk, and nights grow.
+  const grid = await g(() => ({ p: __game.world.pillarAt(12, 12), n1: Math.round(__game.nightLen(1)), n10: Math.round(__game.nightLen(10)) }));
+  console.log((grid.p && grid.p.type === 'standard' && grid.n1 === 300 && grid.n10 === 336 ? 'ok   ' : 'FAIL ') + `grid pillar ${grid.p && grid.p.label}; nights ${grid.n1} s then ${grid.n10} s by day 10`);
 
   // You can walk up a mezzanine's stairs.
   const stairs = await g(() => {

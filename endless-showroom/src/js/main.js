@@ -1669,4 +1669,4 @@ requestAnimationFrame(frame);
 
 // Test hook for tools/test.cjs.
 window.__game = { P, clock, world, net, renderer, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
-  useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };
+  nightLen, useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; } };
