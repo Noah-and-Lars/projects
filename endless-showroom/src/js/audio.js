@@ -80,6 +80,8 @@ export const sfx = {
   switchOn() { tone(1400, 0.03, 'square', 0.05); burst(0.04, 3000, 0.06, 3); },
   door(open) { burst(0.25, open ? 500 : 350, 0.2, 0.8); tone(open ? 180 : 120, 0.2, 'triangle', 0.06); },
   flush() { burst(1.6, 900, 0.18, 0.4, 'bandpass'); burst(1.2, 300, 0.12, 0.6, 'lowpass', 0, 0.5); },
+  ding() { tone(1568, 0.6, 'sine', 0.12); tone(2093, 0.5, 'sine', 0.06, 0.02); },
+  recordNote(m, vol) { tone(440 * Math.pow(2, (m - 69) / 12), 0.28, 'triangle', 0.06 * vol); if (Math.random() < 0.3) burst(0.05, 5000, 0.01 * vol, 2); },
   slide() { burst(0.45, 700, 0.16, 0.6, 'bandpass'); },
   death() { tone(220, 1.2, 'sawtooth', 0.15, 0, 0.25); burst(0.8, 200, 0.3, 0.5, 'lowpass'); },
   chat() { tone(1200, 0.05, 'sine', 0.06); },

@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import { hashInts, rng } from './rng.js';
 import { restockEpoch } from './env.js';
 import { GeoBuilder } from './geo.js';
-import { TYPES, ITEMS, STOCK, furnitureGeometry, itemGeometry, itemDims, itemMatrix, itemParts, cleanQuat } from './furniture.js';
+import { TYPES, ITEMS, STOCK, furnitureGeometry, itemGeometry, itemDims, itemMatrix, itemParts, cleanQuat, hasState } from './furniture.js';
 import { SURF, staticMaterial, furnitureMaterial, shadowMaterial, shadowGeometry, ShadowBuilder } from './mats.js';
 
 export const CHUNK = 24, CEIL = 6.5, HALF = 12;
@@ -130,7 +130,7 @@ class ChunkGen {
     else this.food(this.r.pick(stock), x, z, y);
   }
   // Furniture and food in a quadrant frame.
-  ff(f, type, u, v, rot, y = 0) { const [x, z] = f.pt(u, v); this.furn(type, x, z, rot + f.k, y); }
+  ff(f, type, u, v, rot, y = 0) { const [x, z] = f.pt(u, v); return this.furn(type, x, z, rot + f.k, y); }
   fd(f, stock, u, v, y) { const [x, z] = f.pt(u, v); this.food(this.r.pick(stock), x, z, y); }
   fs(f, u0, v0, u1, v1, y0, y1, hex) { const [a, b, c, d] = f.rect(u0, v0, u1, v1); this.solid(a, b, c, d, y0, y1, hex); }
 
@@ -206,6 +206,7 @@ class ChunkGen {
       this.furn('ladder', c, c + w + 0.35, 0); this.furn('wireRack', c, c - w - 0.4, 2);
       for (let j = 0; j < 3; j++) this.furn('pallet', c + w + 0.9, c, 1, j * 0.15);
       this.furn('crate', c - w - 0.7, c, 0); this.furn('box', c - w - 0.7, c, 0, 1.0);
+      this.furn('workLight', c + w + 0.6, c + w + 0.6, 0); this.furn('toolbox', c - w - 0.6, c + w + 0.5, 0); this.furn('stepLadder', c + w + 0.6, c - w - 0.6, 0);
       this.deco(c - w - 0.06, c - w - 0.06, c + w + 0.06, c + w + 0.06, 3.6, 3.75, 0xe0a526);
     } else if (P.type === 'overgrown') {
       for (const [x, z] of [[c, c + w + 0.5], [c, c - w - 0.5], [c + w + 0.5, c], [c - w - 0.5, c]]) this.furn(r.chance(0.5) ? 'planter' : 'hedge', x, z, r.int(4));
@@ -215,6 +216,7 @@ class ChunkGen {
       // the lost-property corner: boxes of things nobody came back for, and a few treats
       this.furn('toyChest', c, c + w + 0.45, 0); this.furn('crate', c + w + 0.6, c - 0.4, 0); this.furn('box', c + w + 0.6, c + 0.5, 0);
       this.furn('box', c - w - 0.5, c, 0); this.furn('box', c - w - 0.5, c, 0, 0.5); this.furn('floorLamp', c - w - 0.4, c + w + 0.4, 0);
+      this.food('torch', c + w + 0.6, c - 0.4, 1.0); this.furn('giftBox', c - w - 0.5, c - w - 0.5, 0);
       this.food('chocolate', c - 0.3, c + w + 0.45, 0.6); this.food('medkit', c + 0.3, c + w + 0.45, 0.6); this.food('cinnamon', c, c + w + 0.45, 0.6);
     }
   }
@@ -238,7 +240,7 @@ class ChunkGen {
       this.furn('chair', x - 0.5, z + 0.8, 2); if (r.chance(0.75)) this.furn('chair', x + 0.5, z + 0.8, 2);
       if (r.chance(0.15)) this.food(r.pick(STOCK.cafeteria), x + r.range(-0.4, 0.4), z, 0.77);
     }
-    this.furn('plant', 11.2, 22.6, 0); this.furn('plant', 12.8, 22.6, 0); this.furn('stool', 9.0, 2.6, 0); this.furn('stool', 15.0, 2.6, 0);
+    this.furn('plant', 11.2, 22.6, 0); this.furn('plant', 12.8, 22.6, 0); this.furn('trashCan', 0.6, 22.6, 0); this.furn('trashCan', 23.4, 22.6, 0); this.furn('stool', 9.0, 2.6, 0); this.furn('stool', 15.0, 2.6, 0);
   }
 
   // A stretch of a warehouse street: six rows of high racking along x, run
@@ -267,9 +269,14 @@ class ChunkGen {
     for (let i = 0; i < n; i++) {
       const z = r.pick([3.8, 7.4, 16.6, 20.2]), x = 1 + r() * (CHUNK - 2), k = r();
       if (Math.abs(x - HALF) < 1.2 && this.pillar) continue;
-      if (k < 0.4) { const st = 1 + r.int(3); for (let j = 0; j < st; j++) this.furn('pallet', x, z, 1, j * 0.15); }
-      else if (k < 0.55) this.furn('ladder', x, z, 1);
-      else this.furn(k < 0.8 ? 'box' : 'crate', x, z, r.int(4));
+      if (k < 0.35) { const st = 1 + r.int(3); for (let j = 0; j < st; j++) this.furn('pallet', x, z, 1, j * 0.15); }
+      else if (k < 0.45) this.furn(r.chance(0.5) ? 'ladder' : 'stepLadder', x, z, 1);
+      else if (k < 0.52) this.furn('metalCart', x, z, 1);
+      else if (k < 0.58) this.furn('workLight', x, z, r.int(4));
+      else if (k < 0.66) { this.furn('milkCrate', x, z, r.int(4)); if (r.chance(0.5)) this.furn('milkCrate', x, z, r.int(4), 0.3); }
+      else if (k < 0.7) this.furn('toolbox', x, z, r.int(4));
+      else if (k < 0.71) this.furn('safe', x, z, r.int(4));
+      else this.furn(k < 0.85 ? r.pick(['box', 'smallBox', 'tinyBox']) : 'crate', x, z, r.int(4));
     }
     if (r.chance(0.3)) this.randomFood(1 + r() * 22, r.pick([3.8, 16.6]), 0);
   }
@@ -296,6 +303,8 @@ class ChunkGen {
     if (!rm.open) this.walls(f);
     this.roomName = rm.name;
     rm.build(this, f, this.r);
+    const extra = ROOM_EXTRAS[rm.name];
+    if (extra) extra(this, f, this.r);
   }
 
   q_display(f) {
@@ -303,6 +312,9 @@ class ChunkGen {
     const pick = r.pick([
       ['sofa', 2.8, 2.4], ['armchair', 1.7, 1.8], ['bedSingle', 1.8, 3.0], ['bedDouble', 2.4, 3.1], ['wardrobe', 1.9, 1.6],
       ['bookshelf', 1.4, 1.4], ['diningTable', 2.6, 2.4], ['dresser', 1.7, 1.5], ['desk', 2.0, 1.8], ['shelfCube', 2.2, 1.6], ['counter', 1.5, 1.6], ['floorLamp', 1.2, 1.2], ['bunkBed', 1.6, 2.6], ['tv', 1.6, 1.2], ['beanbag', 1.3, 1.3], ['filingCabinet', 1.8, 2.2],
+      ['queenBed', 2.6, 3.2], ['loveseat', 2.0, 1.8], ['roundTable', 1.8, 1.8], ['modernShelf', 1.4, 1.4], ['metalLamp', 1.2, 1.2], ['plushBear', 1.2, 1.2],
+      ['closet', 2.2, 1.6], ['cafeChair', 1.0, 1.0], ['standingDesk', 2.0, 1.8], ['arcLamp', 1.8, 1.4], ['boxTV', 1.2, 1.2], ['fancyShelf', 1.4, 1.4],
+      ['sofaModule', 1.2, 1.6], ['drawerUnit', 1.0, 1.0], ['picnicTable', 2.4, 2.4], ['trashCan', 1.0, 1.0], ['flowerPot', 1.0, 1.0],
     ]);
     const [type, su, sv] = pick;
     const nu = Math.max(1, Math.floor((Q - 0.6) / su)), nv = Math.max(1, Math.floor((Q - 2.0) / sv));
@@ -326,7 +338,7 @@ class ChunkGen {
       for (let k = 0; k < n; k++) {
         const u = u0 + 0.35 + k * 0.7, v = v0 + 0.6;
         if (r.chance(0.08)) this.fd(f, STOCK.any, u, v, 0.86);
-        else this.ff(f, r.pick(['tableLamp', 'tableLamp', 'plant', 'box']), u, v, r.int(4), 0.86);
+        else this.ff(f, r.pick(['tableLamp', 'deskLamp', 'lantern', 'candle', 'flowerPot', 'plant', 'box', 'smallBox', 'puzzleCube', 'toaster', 'toyRobot', 'toyCar']), u, v, r.int(4), 0.86);
       }
     }
     for (let i = 0; i < 2; i++) this.ff(f, r.pick(['plant', 'floorLamp', 'box', 'stool']), r.range(0.6, Q - 0.6), r.pick([3.2, 7.6]), r.int(4));
@@ -389,7 +401,7 @@ class ChunkGen {
       if (r.chance(0.4)) this.ff(f, 'tableLamp', u - 0.4, v - 0.1, 0, 0.75);
     }
     for (let i = 0; i < 4; i++) this.ff(f, 'filingCabinet', 0.6 + i * 0.6, 9.0, 2);
-    this.ff(f, 'plant', 8.9, 9.0, 0); this.ff(f, 'lockers', 7.6, 9.0, 2);
+    this.ff(f, 'plant', 8.9, 9.0, 0); this.ff(f, 'lockers', 7.6, 9.0, 2); this.ff(f, 'trashCan', 9.0, 5.4, 0); if (r.chance(0.5)) this.ff(f, 'standingDesk', 8.4, 3.0, 3);
     if (r.chance(0.5)) this.fd(f, ['water', 'soda', 'cookie', 'chips'], 1.4, 1.4, 0.75);
   }
 
@@ -439,9 +451,12 @@ class ChunkGen {
     const n = 6 + r.int(6);
     for (let i = 0; i < n; i++) {
       const u = 0.8 + r.int(8) * 1.1, v = 0.8 + r.int(8) * 1.1;
-      this.ff(f, r.chance(0.5) ? 'crate' : 'box', u, v, 0);
+      this.ff(f, r.pick(['crate', 'crate', 'box', 'box', 'smallBox', 'tinyBox', 'milkCrate', 'toolbox']), u, v, 0);
     }
     if (r.chance(0.4)) this.ff(f, 'lockers', 0.4, 4.8, 1);
+    if (r.chance(0.3)) this.ff(f, 'metalWardrobe', 9.0, 4.8, 3);
+    if (r.chance(0.25)) this.ff(f, 'metalCart', 4.8, 9.0, 0);
+    if (r.chance(0.06)) { const [x, z] = f.pt(r.range(1, 8), r.range(1, 8)); this.food('torch', x, z, 0); }
     if (r.chance(0.2)) { const [x, z] = f.pt(r.range(1, 8), r.range(1, 8)); this.randomFood(x, z, 0); }
   }
 }
@@ -610,6 +625,80 @@ export const GARDEN_ROOMS = [
     g.ff(f, 'bench', 8.2, 4.0, 3); g.ff(f, 'planter', 1.0, 8.6, 0);
   } },
 ];
+
+// The smaller things in each room: pictures, lamps, appliances, toys.
+const pic = (g, f, r, u) => g.ff(f, r.pick(['painting', 'painting', 'tallPainting', 'wallArt']), u, 0.15, 0); // leaning on the back wall
+const ROOM_EXTRAS = {
+  'living room': (g, f, r) => { pic(g, f, r, 6.6); g.ff(f, 'flowerPot', 9.0, 2.2, 0); if (r.chance(0.3)) g.ff(f, 'recordPlayer', 2.0, 0.6, 0, 0.55); },
+  'modern living room': (g, f, r) => { g.ff(f, 'arcLamp', 3.0, 4.6, 0); g.ff(f, 'wallArt', 3.6, 0.15, 0); if (r.chance(0.5)) g.ff(f, 'sofaModule', 6.8, 4.4, 2); },
+  'tv lounge': (g, f, r) => { if (r.chance(0.4)) g.ff(f, 'boxTV', 7.4, 0.4, 0); g.ff(f, 'puzzleCube', 4.6, 3.2, 0); },
+  'study': (g, f, r) => { g.ff(f, 'smallBookcase', 4.0, 0.25, 0); g.ff(f, 'deskLamp', 5.5, 0.4, 0, 0.75); pic(g, f, r, 7.6); g.ff(f, 'lantern', 3.3, 2.8, 0, 0.55); },
+  'dining room': (g, f, r) => { pic(g, f, r, 3.2); pic(g, f, r, 6.4); g.ff(f, 'candle', 4.8, 3.2, 0, 0.75); g.ff(f, 'flowerPot', 9.0, 5.6, 0); },
+  'kitchen': (g, f, r) => { g.ff(f, 'microwave', 1.4, 0.35, 0, 0.9); g.ff(f, 'toaster', 2.4, 0.35, 0, 0.9); g.ff(f, 'trashCan', 7.4, 0.4, 0); },
+  'island kitchen': (g, f, r) => { g.ff(f, 'toaster', 1.0, 0.35, 0, 0.9); g.ff(f, 'microwave', 3.8, 0.35, 0, 0.9); g.ff(f, 'trashCan', 9.0, 2.0, 0); },
+  'compact kitchen': (g, f, r) => { g.ff(f, 'microwave', 1.0, 0.35, 0, 0.9); g.ff(f, 'milkCrate', 6.0, 0.4, 0); },
+  'master bedroom': (g, f, r) => { pic(g, f, r, 2.2); g.ff(f, 'roundMirror', 7.2, 0.15, 0); g.ff(f, 'drawerUnit', 0.5, 4.0, 1); },
+  'guest bedroom': (g, f, r) => { pic(g, f, r, 4.6); g.ff(f, 'candle', 3.1, 0.35, 0, 0.55); },
+  'kids room': (g, f, r) => { g.ff(f, 'plushBear', 8.6, 1.0, 3); g.ff(f, 'playTable', 2.6, 4.6, 0); g.ff(f, 'toyRobot', 2.4, 4.6, 0, 0.5); g.ff(f, 'toyCar', 4.4, 3.4, r.int(4)); if (r.chance(0.5)) g.ff(f, 'foamDice', 6.8, 4.6, 0); },
+  'teen room': (g, f, r) => { g.ff(f, 'wallShelf', 6.6, 0.15, 0, 1.4); g.ff(f, 'lightStrip', 4.4, 0.12, 0, 1.6).s = 1 + r.int(6); g.ff(f, 'puzzleCube', 4.0, 0.4, 0, 0.75); },
+  'nursery': (g, f, r) => { g.ff(f, 'plushBear', 6.4, 4.6, 2); g.ff(f, 'flowerPot', 0.6, 0.6, 0); },
+  'walk-in wardrobe': (g, f, r) => { g.ff(f, 'closet', 6.0, 4.6, 2); g.ff(f, 'wideMirror', 4.6, 0.15, 0); },
+  'bathroom': (g, f, r) => { g.ff(f, 'wideMirror', 5.4, 0.15, 0, 1.0); g.ff(f, 'trashCan', 2.4, 0.4, 0); g.ff(f, 'welcomeMat', 6.4, 2.6, 0); },
+  'home office': (g, f, r) => { g.ff(f, 'standingDesk', 4.6, 4.6, 2); g.ff(f, 'deskLamp', 6.2, 0.4, 0, 0.75); g.ff(f, 'trashCan', 1.0, 0.5, 0); g.ff(f, 'metalCart', 8.2, 0.4, 0); },
+  'library': (g, f, r) => { g.ff(f, 'woodenShelf', 0.5, 4.6, 1); g.ff(f, 'lantern', 4.4, 3.4, 0, 0.75); g.ff(f, 'smallBookcase', 9.2, 4.6, 3); },
+  'bar': (g, f, r) => { const c = 1 + r.int(6); for (const u of [3.8, 5.8]) g.ff(f, 'lightStrip', u, 1.1, 0, 1.1).s = c; g.ff(f, 'barTable', 4.8, 4.6, 0); g.ff(f, 'recordPlayer', 2.0, 0.3, 0, 1.0); },
+  'games room': (g, f, r) => { g.ff(f, 'foamDice', 2.0, 1.4, r.int(4)); g.ff(f, 'bigButton', 8.6, 3.6, 0, 0.78); g.ff(f, 'boxTV', 1.4, 0.4, 0); for (const u of [3.4, 4.6, 5.8]) g.ff(f, 'lightStrip', u, 0.12, 0, 2.2).s = 1 + r.int(6); },
+  'music room': (g, f, r) => { g.ff(f, 'recordPlayer', 8.6, 0.4, 0, 1.6); pic(g, f, r, 5.6); },
+  'entrance hall': (g, f, r) => { g.ff(f, 'welcomeMat', 2.4, 0.8, 0); g.ff(f, 'welcomeMat', 7.2, 0.8, 0); g.ff(f, 'roundMirror', 4.8, 0.15, 0, 0.9); g.ff(f, 'flowerPot', 9.0, 0.6, 0); },
+  'lighting display': (g, f, r) => { g.ff(f, 'metalLamp', 0.8, 5.6, 0); g.ff(f, 'arcLamp', 3.0, 5.6, 0); g.ff(f, 'workLight', 5.6, 5.6, 0); g.ff(f, 'gardenLamp', 8.6, 5.6, 0); g.ff(f, 'lantern', 2.0, 3.2, 0, 0.55); g.ff(f, 'candle', 4.8, 3.2, 0, 0.55); g.ff(f, 'deskLamp', 7.6, 3.2, 0, 0.55); for (let i = 0; i < 4; i++) g.ff(f, 'lightStrip', 1.6 + i * 2.1, 0.12, 0, 2.0).s = 1 + i; },
+  'rug gallery': (g, f, r) => { g.ff(f, 'roundRug', 2.4, 6.6, 0); g.ff(f, 'longRug', 7.0, 6.6, 0); },
+  'mannequin showcase': (g, f, r) => { g.ff(f, 'showcaseSign', 4.8, 5.2, 0); },
+  'information desk': (g, f, r) => { g.ff(f, 'showcaseSign', 1.2, 3.6, 0); g.ff(f, 'bigButton', 4.0, 2.4, 0, 1.1); },
+};
+ROOMS.push(
+  { name: 'picture gallery', w: 2, build(g, f, r) {
+    for (let i = 0; i < 6; i++) g.ff(f, r.pick(['painting', 'tallPainting', 'wallArt']), 0.8 + i * 1.6, 0.15, 0);
+    g.ff(f, 'roundMirror', 0.15, 3.0, 1); g.ff(f, 'wideMirror', 9.45, 3.0, 3); g.ff(f, 'longBench', 4.8, 3.6, 0); g.ff(f, 'flowerPot', 0.6, 5.6, 0);
+  } },
+  { name: 'toy shop', w: 2, build(g, f, r) {
+    for (let i = 0; i < 3; i++) g.ff(f, 'plushBear', 1.2 + i * 1.2, 0.5, 0);
+    g.ff(f, 'smallBookcase', 6.0, 0.25, 0); g.ff(f, 'smallBookcase', 7.0, 0.25, 0);
+    for (const [u, v] of [[2.4, 3.2], [6.0, 3.2]]) { g.ff(f, 'playTable', u, v, 0); g.ff(f, r.pick(['toyRobot', 'toyCar', 'puzzleCube']), u - 0.2, v, 0, 0.5); g.ff(f, r.pick(['toyRobot', 'toyCar', 'puzzleCube']), u + 0.25, v, 0, 0.5); }
+    g.ff(f, 'foamDice', 8.6, 3.6, 0); g.ff(f, 'foamDice', 8.6, 4.1, 1); if (r.chance(0.35)) g.ff(f, 'giftBox', 4.4, 5.2, 0);
+    g.ff(f, 'toyChest', 0.7, 4.4, 1);
+  } },
+  { name: 'café', w: 2, build(g, f, r) {
+    for (const [u, v] of [[2.0, 2.0], [5.0, 2.0], [8.0, 2.0], [3.4, 5.0], [6.6, 5.0]]) {
+      g.ff(f, 'roundTable', u, v, 0); g.ff(f, 'cafeChair', u - 0.7, v, 1); g.ff(f, 'cafeChair', u + 0.7, v, 3);
+      if (r.chance(0.2)) g.fd(f, ['cinnamon', 'donut', 'cookie', 'water', 'soda'].filter((k) => k in ITEMS), u, v, 0.75);
+    }
+    g.ff(f, 'flowerPot', 0.5, 0.5, 0); g.ff(f, 'flowerPot', 9.1, 0.5, 0); g.ff(f, 'barTable', 8.6, 5.0, 0);
+  } },
+  { name: 'storage display', w: 2, build(g, f, r) {
+    g.ff(f, 'closet', 1.0, 0.4, 0); g.ff(f, 'metalWardrobe', 2.6, 0.4, 0); g.ff(f, 'modernShelf', 3.7, 0.3, 0); g.ff(f, 'fancyShelf', 4.7, 0.35, 0);
+    g.ff(f, 'woodenShelf', 5.9, 0.3, 0); g.ff(f, 'smallCabinet', 7.0, 0.3, 0); g.ff(f, 'drawerUnit', 7.8, 0.3, 0); g.ff(f, 'smallBookcase', 8.8, 0.25, 0);
+    for (let i = 0; i < 4; i++) g.ff(f, 'milkCrate', 2.0 + i * 0.6, 3.4, 0); g.ff(f, 'milkCrate', 2.3, 3.4, 0, 0.3); g.ff(f, 'metalCart', 6.4, 3.4, 0);
+  } },
+  { name: 'kitchen appliances', w: 1.5, build(g, f, r) {
+    for (let i = 0; i < 3; i++) { g.ff(f, 'modernTable', 1.8 + i * 3.0, 2.0, 0); g.ff(f, 'microwave', 1.5 + i * 3.0, 2.0, 0, 0.74); g.ff(f, 'toaster', 2.2 + i * 3.0, 2.0, 0, 0.74); }
+    g.ff(f, 'fridge', 1.0, 0.5, 0); g.ff(f, 'fridge', 1.9, 0.5, 0); g.ff(f, 'stove', 3.2, 0.42, 0); g.ff(f, 'stove', 4.0, 0.42, 0); g.ff(f, 'showcaseSign', 8.6, 4.6, 0);
+  } },
+  { name: 'party room', w: 1, build(g, f, r) {
+    for (let i = 0; i < 4; i++) g.ff(f, 'lightStrip', 1.4 + i * 2.2, 0.12, 0, 2.2).s = 1 + ((i + r.int(6)) % 6);
+    g.ff(f, 'roundTable', 3.0, 3.4, 0); g.ff(f, 'roundTable', 6.6, 3.4, 0); g.ff(f, 'recordPlayer', 3.0, 3.4, 0, 0.75); g.ff(f, 'bigButton', 6.6, 3.4, 0, 0.75);
+    for (let i = 0, n = 1 + r.int(2); i < n; i++) g.ff(f, 'giftBox', 4.4 + i * 0.6, 5.4, r.int(4));
+    g.ff(f, 'loveseat', 4.8, 0.6, 0); g.ff(f, 'beanbag', 8.6, 5.2, 3);
+  } },
+);
+GARDEN_ROOMS[1].build = ((orig) => function (g, f, r) { orig(g, f, r); g.ff(f, 'gardenLamp', 0.6, 0.6, 0); g.ff(f, 'flowerPot', 5.6, 0.6, 0); })(GARDEN_ROOMS[1].build);
+GARDEN_ROOMS.push(
+  { name: 'picnic area', w: 3, open: true, build(g, f, r) {
+    { const [a, b, c, d] = f.rect(0, 0, Q, Q); g.deco(a, b, c, d, 0, 0.02, 0x5e8a3a); }
+    g.ff(f, 'picnicTable', 2.6, 2.8, 0); g.ff(f, 'picnicTable', 6.8, 2.8, 0); g.ff(f, 'picnicTable', 4.8, 6.6, 1);
+    g.ff(f, 'gardenLamp', 0.6, 0.6, 0); g.ff(f, 'gardenLamp', 9.0, 9.0, 0); g.ff(f, 'trashCan', 9.0, 0.6, 0); g.ff(f, 'lantern', 2.6, 2.8, 0, 0.75);
+    if (r.chance(0.3)) g.fd(f, ['apple', 'banana', 'water', 'lemon'].filter((k) => k in ITEMS), 6.8, 2.8, 0.75);
+  } },
+);
 
 // The sky through a skylight: a gradient that follows the time of day.
 let _skyMat = null;
@@ -827,7 +916,7 @@ export class World {
   _addItem(id, s) {
     // unknown kinds (an old save, a newer screen) are skipped
     if (s.k === 'f' ? !Object.prototype.hasOwnProperty.call(TYPES, s.t) : !Object.prototype.hasOwnProperty.call(ITEMS, s.t)) return null;
-    const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: ((s.tl | 0) % 3 + 3) % 3, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: s.s ? 1 : 0, mesh: null, cells: null };
+    const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: ((s.tl | 0) % 3 + 3) % 3, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: Math.max(0, Math.min(7, s.s | 0)), mesh: null, cells: null };
     if (it.k === 'f' && !Object.prototype.hasOwnProperty.call(TYPES, it.t)) return null;
     if (it.k === 'i' && !Object.prototype.hasOwnProperty.call(ITEMS, it.t)) return null;
     this.items.set(id, it);
@@ -896,7 +985,7 @@ export class World {
     for (const it of this.items.values()) {
       if (!this.active(it) || Math.abs(it.x - this.focusX) > R || Math.abs(it.z - this.focusZ) > R) continue;
       // doors and screens have a second model (open / showing a picture)
-      const key = it.k === 'f' ? it.t + ':' + (it.v % TYPES[it.t].cols.length) + ':' + (it.s && (TYPES[it.t].use === 'door' || TYPES[it.t].use === 'tv') ? 1 : 0) : 'item:' + it.t;
+      const key = it.k === 'f' ? it.t + ':' + (it.v % TYPES[it.t].cols.length) + ':' + (hasState(it.t) ? it.s | 0 : 0) : 'item:' + it.t;
       let g = groups.get(key); if (!g) groups.set(key, g = []);
       g.push(it);
     }
@@ -1020,12 +1109,12 @@ export class World {
   }
 
   // ---- Shared state (net.js keeps every screen's mods the same) ----
-  stateOf(it) { const s = { t: it.t, k: it.k, v: it.v, x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), r: it.r, tl: it.tl | 0, hp: Math.round(it.hp), g: it.g ? 1 : 0, c: it.c || 0, d: it.d }; if (it.o) s.o = it.o; if (it.a) s.a = 1; if (it.s) s.s = 1; return s; }
+  stateOf(it) { const s = { t: it.t, k: it.k, v: it.v, x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), r: it.r, tl: it.tl | 0, hp: Math.round(it.hp), g: it.g ? 1 : 0, c: it.c || 0, d: it.d }; if (it.o) s.o = it.o; if (it.a) s.a = 1; if (it.s) s.s = it.s; return s; }
 
   applyState(id, s) {
     if (!s || typeof s !== 'object') return null;
     const fin = (v, lo, hi) => { v = +v; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : 0; };
-    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: fin(s.x, -1e6, 1e6), y: fin(s.y, 0, CEIL), z: fin(s.z, -1e6, 1e6), r: (s.r | 0) & 3, tl: ((s.tl | 0) % 3 + 3) % 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: s.s ? 1 : 0 };
+    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: fin(s.x, -1e6, 1e6), y: fin(s.y, 0, CEIL), z: fin(s.z, -1e6, 1e6), r: (s.r | 0) & 3, tl: ((s.tl | 0) % 3 + 3) % 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: Math.max(0, Math.min(7, s.s | 0)) };
     if (st.k === 'f' ? !Object.prototype.hasOwnProperty.call(TYPES, st.t) : !Object.prototype.hasOwnProperty.call(ITEMS, st.t)) return null;
     this.mods.set(id, st);
     let it = this.items.get(id);

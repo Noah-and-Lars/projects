@@ -20,6 +20,8 @@ export const ACH = [
   { id: 'patience', name: 'Worth the Wait', desc: 'Pick up the store safe. It takes a while.' },
   { id: 'landmark', name: 'Rare Find', desc: 'Find the rarest pillar in the store.' },
   { id: 'lights', name: 'Lights Out', desc: 'Switch off 10 lamps.' },
+  { id: 'bear', name: 'Bear Hug', desc: 'Have a giant plush bear save you from a fall that would have killed you.' },
+  { id: 'gift', name: 'For Me?', desc: 'Open a gift box.' },
 ];
 
 let state = { got: {}, n: {} };

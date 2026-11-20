@@ -6,7 +6,7 @@
 // host of a room with nobody else in it.
 import * as THREE from 'three';
 import { World, CHUNK, CEIL, setLampGlow, setSkyLight , ROOMS, GARDEN_ROOMS } from './world.js';
-import { TYPES, ITEMS, itemDims, itemMatrix, itemParts, itemQuat, cleanQuat, furnitureGeometry, itemGeometry } from './furniture.js';
+import { TYPES, ITEMS, FOOD_KEYS, itemDims, itemMatrix, itemParts, itemQuat, cleanQuat, furnitureGeometry, itemGeometry } from './furniture.js';
 import { moveBody, bodyFits } from './physics.js';
 import { StaffSim } from './staff.js';
 import { createNet, myName, cleanName, myShirt } from './net.js';
@@ -408,7 +408,7 @@ const num = (v, d = 0) => (Number.isFinite(+v) ? clamp(+v, -1e6, 1e6) : d);
 const has = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 function onPlayer(id, p) {
   const r = remotes.get(id); if (!r) return;
-  const st = { t: performance.now(), x: num(p.x), y: clamp(num(p.y), 0, CEIL), z: num(p.z), ry: num(p.ry), a: p.a ? 1 : 0, ct: has(TYPES, p.ct) ? p.ct : '', cv: p.cv | 0, n: p.n | 0, hp: clamp(num(p.hp, 100), 0, 100), sp: p.sp ? 1 : 0, cr: p.cr ? 1 : 0, ho: null };
+  const st = { t: performance.now(), x: num(p.x), y: clamp(num(p.y), 0, CEIL), z: num(p.z), ry: num(p.ry), a: p.a ? 1 : 0, ct: has(TYPES, p.ct) ? p.ct : '', cv: p.cv | 0, n: p.n | 0, hp: clamp(num(p.hp, 100), 0, 100), sp: p.sp ? 1 : 0, cr: p.cr ? 1 : 0, tc: p.tc ? 1 : 0, ho: null };
   if (st.ct && Array.isArray(p.ho) && p.ho.length === 7) {
     const o = cleanQuat(p.ho.slice(3)), hx = num(p.ho[0]), hz = num(p.ho[2]);
     if (o && Math.hypot(hx - st.x, hz - st.z) < 12) st.ho = { x: hx, y: clamp(num(p.ho[1]), 0, CEIL), z: hz, o };
@@ -527,7 +527,18 @@ function hostRequest(from, q) {
     broadcastItems([it.id], echo);
   } else if (q.a === 'use') {
     const u = it.k === 'f' && TYPES[it.t].use;
-    if (u && u !== 'flush' && !it.c && !world.isGone(it)) world.edit(it, { s: it.s ? 0 : 1 });
+    if (u === 'gift' && !it.c && !world.isGone(it)) {
+      // a gift box opens into something: usually food, sometimes a kit or a torch
+      world.edit(it, { g: true });
+      const roll = Math.random(), t = roll < 0.15 ? 'medkit' : roll < 0.25 ? 'torch' : FOOD_KEYS[(Math.random() * FOOD_KEYS.length) | 0];
+      const nid = 'gift:' + it.id + ':' + Date.now().toString(36);
+      const b = world.itemBox(it);
+      world.applyState(nid, { t, k: 'i', v: 0, x: it.x, y: b.y0, z: it.z, r: 0 });
+      broadcastItems([it.id, nid], echo);
+      return;
+    }
+    if (u === 'strip' && !it.c && !world.isGone(it)) world.edit(it, { s: q.s == null ? (it.s ? 0 : 1) : Math.max(0, Math.min(6, q.s | 0)) });
+    else if (u && u !== 'flush' && u !== 'gift' && !it.c && !world.isGone(it)) world.edit(it, { s: it.s ? 0 : 1 });
     broadcastItems([it.id], echo);
   } else if (q.a === 'place') {
     if (it.c !== from) { broadcastItems([it.id], echo); return; }
@@ -623,16 +634,17 @@ const life = () => P.life || (P.life = {}); // this life's numbers, for the deat
 // them; a beanbag softens it from any side (more). A long drop onto a bed
 // bounces you back up.
 function landed(v) {
-  let soft = null;
+  let soft = null, plush = false;
   world.forBoxes(P.x - 0.2, P.z - 0.2, P.x + 0.2, P.z + 0.2, (b) => {
     if (!b.item || b.item.k !== 'f' || Math.abs(b.y1 - P.y) > 0.08) return;
     const t = TYPES[b.item.t]; if (!t.soft) return;
+    if (t.plush) plush = true;
     if (t.soft === 'any') soft = 'any';
     else if (!soft && b.y1 >= world.itemBox(b.item).y1 - 0.25) soft = 'top';
   });
   const k = soft === 'any' ? 1.66 : soft === 'top' ? 1.38 : 1;
   const raw = (v - 13) * 9, dmg = Math.max(0, (v - 13 * k) * 9 / k);
-  if (soft && raw >= P.hp && dmg < P.hp) { ach.unlock('cushion'); toast('That would have killed you. The cushioning saved you.'); }
+  if (soft && raw >= P.hp && dmg < P.hp) { ach.unlock('cushion'); if (plush) ach.unlock('bear'); toast('That would have killed you. The cushioning saved you.'); }
   if (soft === 'top' && v > 16) { P.vy = v * 0.35; P.onGround = false; }
   if (dmg > 0) hurt(dmg, 'fall');
 }
@@ -939,11 +951,39 @@ function placeCarry(p, carry = P.carry) {
 // Switch a lamp off or on, open or close a door, turn a TV on, flush.
 function useWord(it) {
   const u = TYPES[it.t].use;
-  return u === 'lamp' ? (it.s ? 'switch on' : 'switch off') : u === 'door' ? (it.s ? 'close' : 'open') : u === 'tv' ? (it.s ? 'turn off' : 'turn on') : 'flush';
+  return u === 'lamp' ? (it.s ? 'switch on' : 'switch off') : u === 'door' ? (it.s ? 'close' : 'open') : u === 'tv' ? (it.s ? 'turn off' : 'turn on')
+    : u === 'strip' ? (it.s >= 6 ? 'switch off' : it.s ? 'change colour' : 'switch on') : u === 'music' ? (it.s ? 'stop the record' : 'play a record')
+    : u === 'roll' ? 'roll' : u === 'gift' ? 'open' : u === 'button' ? 'press' : u === 'ding' ? 'switch on' : 'flush';
 }
+// Light strips dropped touching each other are linked: changing one changes
+// them all (strips placed earlier only join once one of them is used).
+function linkedStrips(it) {
+  const out = [it], seen = new Set([it.id]);
+  for (let i = 0; i < out.length && out.length < 40; i++) {
+    const b = world.itemBox(out[i]), g = 0.06;
+    world.forItems(b.x0 - g, b.z0 - g, b.x1 + g, b.z1 + g, (o) => {
+      if (seen.has(o.id) || o.t !== 'lightStrip' || !world.active(o)) return;
+      const c = world.itemBox(o);
+      if (c.x0 > b.x1 + g || c.x1 < b.x0 - g || c.z0 > b.z1 + g || c.z1 < b.z0 - g || c.y0 > b.y1 + g || c.y1 < b.y0 - g) return;
+      seen.add(o.id); out.push(o);
+    });
+  }
+  return out;
+}
+const BUTTON_LINES = ['Nothing happens.', 'Somewhere, a light flickers.', 'A distant chime answers.', 'The button feels very satisfied.', 'You hear the PA clear its throat. Then nothing.', 'That was easy.'];
 function useItem(it) {
   const u = TYPES[it.t].use;
   if (u === 'flush') { sfx.flush(); return; }
+  if (u === 'ding') { sfx.ding(); return; }
+  if (u === 'button') { sfx.click(); setTimeout(() => sfx.ding(), 250); toast(BUTTON_LINES[(Math.random() * BUTTON_LINES.length) | 0]); return; }
+  if (u === 'roll') { sfx.land(); const n = 1 + ((Math.random() * 6) | 0); toast(`You rolled a ${n}.`); const m = `rolled a ${n} on the foam dice`; net.send('c', { m }); chatLine(myName(), m); return; }
+  if (u === 'strip') {
+    const next = it.s >= 6 ? 0 : (it.s | 0) + 1;
+    sfx.switchOn();
+    for (const o of linkedStrips(it)) { if (!net.isHost()) world.edit(o, { s: next }); request({ a: 'use', id: o.id, s: next }); }
+    return;
+  }
+  if (u === 'gift') { sfx.pick(); if (!net.isHost()) world.edit(it, { g: true }); request({ a: 'use', id: it.id }); ach.unlock('gift'); return; }
   if (u === 'door') {
     // don't close a door on yourself
     const open = !it.s;
@@ -977,6 +1017,8 @@ function useSelected(slot = P.sel) {
   const key = P.inv[slot];
   if (!key || P.eatCd > 0 || P.using) return;
   const it = ITEMS[key];
+  // a head torch isn't used up: clicking switches it on and off while it's in your hand
+  if (it.tool) { P.torchOn = !P.torchOn; sfx.switchOn(); toast(P.torchOn ? 'Head torch on.' : 'Head torch off.'); return; }
   if (it.hp > 0 && !it.food && !it.en && P.hp >= 100) { toast("You're not hurt."); return; }
   P.eatCd = 0.5;
   P.inv[slot] = null; P.invId[slot] = null; buildHotbar();
@@ -1367,6 +1409,7 @@ function frame() {
   }
   updateInteraction(dt);
   updateFlying(dt);
+  updateRecords(dt);
   achT -= dt;
   if (achT <= 0 && P.alive) {
     achT = 0.5;
@@ -1400,7 +1443,7 @@ function frame() {
   if (now >= sendT && net.on) {
     sendT = now + 100;
     const hold = myHold();
-    net.send('p', { x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), ry: +P.yaw.toFixed(2), a: P.alive ? 1 : 0, ct: hold ? hold.t : '', cv: hold ? hold.v : 0, ho: hold ? [hold.x, hold.y, hold.z].map((n) => +n.toFixed(2)).concat(hold.o) : 0, n: P.nights, hp: Math.ceil(P.hp), sp: P.sprinting ? 1 : 0, cr: P.crouch ? 1 : 0 });
+    net.send('p', { x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), ry: +P.yaw.toFixed(2), a: P.alive ? 1 : 0, ct: hold ? hold.t : '', cv: hold ? hold.v : 0, ho: hold ? [hold.x, hold.y, hold.z].map((n) => +n.toFixed(2)).concat(hold.o) : 0, n: P.nights, hp: Math.ceil(P.hp), sp: P.sprinting ? 1 : 0, cr: P.crouch ? 1 : 0, tc: torchLit() ? 1 : 0 });
   }
   // light and camera
   const L = lightLevel(clock.t, clock.day);
@@ -1455,6 +1498,8 @@ function updateLamps(L) {
     lampList = [];
     const mine = myHold();
     if (mine && TYPES[mine.t].lamp) lampList.push({ mine: true });
+    if (torchLit()) lampList.push({ head: true });
+    for (const r of remotes.values()) if (r.st && r.st.a && r.st.tc) { const p = r.model.root.position; lampList.push({ x: p.x, y: p.y + 1.7, z: p.z }); }
     for (const r of remotes.values()) if (r.hold && TYPES[r.hold.t].lamp) lampList.push({ x: r.hold.x, y: r.hold.y + itemDims(r.hold.t, 0, 0, r.hold.o)[1] * 0.85, z: r.hold.z });
     for (const it of world.lampsNear(P.x, P.z, 30, 6)) lampList.push({ x: it.x, y: it.y + itemDims(it.t, it.r, it.tl)[1] + 0.08, z: it.z });
     lampList = lampList.slice(0, lampLights.length);
@@ -1465,6 +1510,7 @@ function updateLamps(L) {
     const e = lampList[i];
     if (!e || k <= 0) { l.intensity = 0; return; }
     if (e.mine) { const h = myHold(); if (h) l.position.set(h.x, h.y + itemDims(h.t, 0, 0, h.o)[1] * 0.85, h.z); }
+    else if (e.head) l.position.set(P.x - Math.sin(P.yaw) * 0.6, P.y + P.eyeH + 0.1, P.z - Math.cos(P.yaw) * 0.6);
     else l.position.set(e.x, e.y, e.z);
     l.intensity = 9 * k;
   });
@@ -1524,6 +1570,21 @@ function placeCamera(dt) {
 }
 
 // What we're holding (or what we just let go of, still in the air), for others to see.
+// A record player that's playing: a little tune, louder the closer you are.
+const RECORD_TUNE = [64, 67, 71, 69, 67, 64, 62, 64, 60, 64, 67, 72, 71, 67, 69, 0];
+let recordT = 0, recordStep = 0, recordNear = 99, recordScan = 0;
+function updateRecords(dt) {
+  if ((recordScan -= dt) <= 0) {
+    recordScan = 0.5; recordNear = 99;
+    world.forItems(P.x - 14, P.z - 14, P.x + 14, P.z + 14, (it) => { if (it.t === 'recordPlayer' && it.s && world.active(it)) recordNear = Math.min(recordNear, Math.hypot(it.x - P.x, it.z - P.z)); });
+  }
+  if (recordNear > 14 || (recordT -= dt) > 0) return;
+  recordT = 0.3;
+  const n = RECORD_TUNE[recordStep++ % RECORD_TUNE.length];
+  if (n) sfx.recordNote(n, Math.max(0, 1 - recordNear / 14));
+}
+// The head torch shines while it's the selected hotbar item and switched on.
+const torchLit = () => P.alive && P.torchOn && P.inv[P.sel] === 'torch';
 function myHold() {
   if (P.carry && P.alive) return { t: P.carry.t, v: P.carry.v, x: P.carry.x, y: P.carry.y, z: P.carry.z, o: P.carry.o };
   const f = flying[flying.length - 1];
