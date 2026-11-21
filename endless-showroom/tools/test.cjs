@@ -101,7 +101,7 @@ fs.mkdirSync(out, { recursive: true });
     if (pl && !pl.sticks && pl.y > 0.5) { rel = pl; break; }
   }
   await page.keyboard.press('KeyE');
-  await page.waitForFunction((id) => !__game.world.items.get(id).c, air, { timeout: 30000 }).catch(() => {});
+  await page.waitForFunction((id) => !__game.world.items.get(id).c && !__game.flying.length, air, { timeout: 300000 }).catch(() => {}); // a fall is game time: slow on a software renderer
   const fell = await g((id) => { const it = __game.world.items.get(id); return { y: it.y, a: it.a, o: !!it.o, c: it.c }; }, air);
   console.log((carried && rel && fell.y < rel.y - 0.05 && !fell.a && fell.o && !fell.c ? 'ok   ' : 'FAIL ') + 'let go in mid-air, it drops (' + JSON.stringify({ from: rel && +rel.y.toFixed(2), ...fell }) + ')');
   // let go while it touches something: it stays exactly there, fixed
@@ -110,7 +110,7 @@ fs.mkdirSync(out, { recursive: true });
   await page.waitForFunction(() => { const c = __game.P.carry, p = __game.placement; if (!c || !p) return false; const ok = window.__lastY !== undefined && Math.abs(window.__lastY - p.y) < 0.005; window.__lastY = p.y; return ok; }, null, { timeout: 30000, polling: 500 }).catch(() => {});
   const at = await g(() => __game.placement);
   await page.keyboard.press('KeyE');
-  await page.waitForFunction((id) => !__game.world.items.get(id).c, air, { timeout: 30000 }).catch(() => {});
+  await page.waitForFunction((id) => !__game.world.items.get(id).c && !__game.flying.length, air, { timeout: 300000 }).catch(() => {}); // a fall is game time: slow on a software renderer
   const fixed = await g((id) => { const it = __game.world.items.get(id); return { y: it.y, a: it.a, c: it.c }; }, air);
   console.log((at && at.sticks && fixed.a && !fixed.c && Math.abs(fixed.y - at.y) < 0.2 ? 'ok   ' : 'FAIL ') + 'let go touching something, it stays put (' + JSON.stringify(fixed) + ')');
   await page.screenshot({ path: path.join(out, '07b-midair.png') });
@@ -156,7 +156,7 @@ fs.mkdirSync(out, { recursive: true });
   await g(() => { __game.P.yaw += Math.PI; __game.P.pitch = 0.2; __game.P.en = 100; });
   { const t0 = await g(() => __game.clock.t); await page.waitForFunction((t0) => __game.clock.t > t0 + 1, t0, { timeout: 60000 }); } // it swings round in front
   await page.keyboard.press('KeyF');
-  { const t0 = await g(() => __game.clock.t); await page.waitForFunction((t0) => __game.clock.t > t0 + 2.5, t0, { timeout: 120000 }); }
+  { const t0 = await g(() => __game.clock.t); await page.waitForFunction((t0) => __game.clock.t > t0 + 0.5 && !__game.flying.length, t0, { timeout: 300000 }); }
   const landed = await g((t) => { const it = t && __game.world.items.get(t[0]); return it ? { moved: +Math.hypot(it.x - t[1], it.z - t[2]).toFixed(2), c: it.c, carry: !!__game.P.carry } : null; }, thrown);
   console.log((landed && landed.moved > 2 && !landed.c && !landed.carry ? 'ok   ' : 'FAIL ') + 'a thrown piece lands away from you (' + JSON.stringify(landed) + ')');
 
