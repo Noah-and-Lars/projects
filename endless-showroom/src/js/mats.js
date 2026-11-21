@@ -245,6 +245,7 @@ export function makeFixtures(scene) {
   let cx = 1e9, cz = 1e9, lastKey = '';
   const day = new THREE.Color(1.6, 1.55, 1.42), emerg = new THREE.Color(1.5, 0.45, 0.12), redEm = new THREE.Color(1.6, 0.05, 0.03), off = new THREE.Color(0.09, 0.09, 0.1);
   return {
+    meshes: [rim, mesh],
     update(x, z, level, emergLevel, ceil) {
       const ncx = Math.floor(x / FIX.spacing), ncz = Math.floor(z / FIX.spacing);
       const cut = uniforms.uCutR.value;

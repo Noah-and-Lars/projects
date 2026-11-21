@@ -57,12 +57,14 @@ export function lightLevel(t, day) {
   return N;
 }
 
-const DAY_FOG = new THREE.Color(0xd8d3c8), NIGHT_FOG = new THREE.Color(0x050608);
+// A cool grey haze by day that swallows the distance (and the tops of the
+// pillars), near-black murk at night.
+const DAY_FOG = new THREE.Color(0xbfc3c6), NIGHT_FOG = new THREE.Color(0x030405);
 export function applyLight(scene, lights, L, low) {
   const fog = scene.fog;
   fog.color.copy(NIGHT_FOG).lerp(DAY_FOG, L);
-  fog.near = 2 + 8 * L;
-  fog.far = low ? 18 + 32 * L : 22 + 50 * L;
+  fog.near = 1 + 5 * L;
+  fog.far = low ? 16 + 30 * L : 18 + 44 * L;
   scene.background.copy(fog.color);
   // Most of the light comes from the ceiling fittings (mats.js). The
   // hemisphere and environment are the bounce light; colours are linear,

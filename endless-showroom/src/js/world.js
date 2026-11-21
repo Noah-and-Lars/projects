@@ -16,7 +16,9 @@ import { GeoBuilder } from './geo.js';
 import { TYPES, ITEMS, STOCK, furnitureGeometry, itemGeometry, itemDims, itemMatrix, itemParts, cleanQuat, hasState, TV_CHANNELS, STRIP_COLORS } from './furniture.js';
 import { SURF, staticMaterial, furnitureMaterial, shadowMaterial, shadowGeometry, ShadowBuilder } from './mats.js';
 
-export const CHUNK = 24, CEIL = 6.5, HALF = 12;
+// There is no roof: the pillars run up into the fog. CEIL is only the height
+// limit for things (and you); STORE_H is the height of the walls.
+export const CHUNK = 24, CEIL = 400, STORE_H = 6.5, HALF = 12;
 const CELL = 4; // item spatial hash cell
 const RENDER_R = 2, DATA_R = 2; // data around other players reaches past where staff spawn
 const Q = 9.6, QPAD = 1.2; // usable quadrant size and aisle padding
@@ -107,7 +109,6 @@ class ChunkGen {
     this.section = sectionOf(world.seed, cx, cz);
     this.pillar = pillarOf(world.seed, cx, cz);
     this.skylights = [];
-    if (this.section === 'garden') this.skylights.push({ x0: this.ox + 2, z0: this.oz + 2, x1: this.ox + CHUNK - 2, z1: this.oz + CHUNK - 2 });
   }
   // Static solid, in chunk-local coordinates.
   solid(x0, z0, x1, z1, y0, y1, hex, draw = true) {
@@ -161,8 +162,8 @@ class ChunkGen {
       if (s < CHUNK - 0.45) out.push([s, CHUNK - 0.45]);
       for (const [a, b] of out) {
         if (b - a < 0.2) continue;
-        if (axis === 0) { this.solid(a, -0.15, b, 0.15, 0, CEIL, WALL); this.deco(a, -0.17, b, 0.17, 0, 0.15, WALL_BASE); }
-        else { this.solid(-0.15, a, 0.15, b, 0, CEIL, WALL); this.deco(-0.17, a, 0.17, b, 0, 0.15, WALL_BASE); }
+        if (axis === 0) { this.solid(a, -0.15, b, 0.15, 0, STORE_H, WALL); this.deco(a, -0.17, b, 0.17, 0, 0.15, WALL_BASE); }
+        else { this.solid(-0.15, a, 0.15, b, 0, STORE_H, WALL); this.deco(-0.17, a, 0.17, b, 0, 0.15, WALL_BASE); }
       }
     }
     if (this.pillar) this.gridPillar();
@@ -635,8 +636,8 @@ const ROOM_EXTRAS = {
   'modern living room': (g, f, r) => { g.ff(f, 'modernLamp', 6.4, 0.5, 0); g.ff(f, 'arcLamp', 3.0, 4.6, 0); g.ff(f, 'wallArt', 3.6, 0.15, 0); if (r.chance(0.5)) g.ff(f, 'sofaModule', 6.8, 4.4, 2); },
   'tv lounge': (g, f, r) => { if (r.chance(0.4)) g.ff(f, 'boxTV', 7.4, 0.4, 0); else g.ff(f, 'curvedTV', 7.6, 0.2, 0, 1.2); g.ff(f, 'thinLight', 0.4, 4.6, 1); g.ff(f, 'puzzleCube', 4.6, 3.2, 0); },
   'study': (g, f, r) => { g.ff(f, 'warmTableLamp', 3.3, 2.8, 0, 0.55); g.ff(f, 'smallBookcase', 4.0, 0.25, 0); g.ff(f, 'deskLamp', 5.5, 0.4, 0, 0.75); pic(g, f, r, 7.6); g.ff(f, 'lantern', 3.3, 2.8, 0, 0.55); },
-  'dining room': (g, f, r) => { g.ff(f, 'ceilingLamp', 4.8, 3.2, 0, CEIL - 1.2); pic(g, f, r, 3.2); pic(g, f, r, 6.4); g.ff(f, 'candle', 4.8, 3.2, 0, 0.75); g.ff(f, 'flowerPot', 9.0, 5.6, 0); },
-  'kitchen': (g, f, r) => { g.ff(f, 'ceilingLamp', 5.6, 4.4, 0, CEIL - 1.2); g.ff(f, 'microwave', 1.4, 0.35, 0, 0.9); g.ff(f, 'toaster', 2.4, 0.35, 0, 0.9); g.ff(f, 'trashCan', 7.4, 0.4, 0); },
+  'dining room': (g, f, r) => { g.ff(f, 'ceilingLamp', 4.8, 3.2, 0, STORE_H - 1.2); pic(g, f, r, 3.2); pic(g, f, r, 6.4); g.ff(f, 'candle', 4.8, 3.2, 0, 0.75); g.ff(f, 'flowerPot', 9.0, 5.6, 0); },
+  'kitchen': (g, f, r) => { g.ff(f, 'ceilingLamp', 5.6, 4.4, 0, STORE_H - 1.2); g.ff(f, 'microwave', 1.4, 0.35, 0, 0.9); g.ff(f, 'toaster', 2.4, 0.35, 0, 0.9); g.ff(f, 'trashCan', 7.4, 0.4, 0); },
   'island kitchen': (g, f, r) => { g.ff(f, 'toaster', 1.0, 0.35, 0, 0.9); g.ff(f, 'microwave', 3.8, 0.35, 0, 0.9); g.ff(f, 'trashCan', 9.0, 2.0, 0); },
   'compact kitchen': (g, f, r) => { g.ff(f, 'microwave', 1.0, 0.35, 0, 0.9); g.ff(f, 'milkCrate', 6.0, 0.4, 0); },
   'master bedroom': (g, f, r) => { g.ff(f, 'warmTableLamp', 1.2, 0.45, 0, 0.85); g.ff(f, 'nightLight', 6.6, 0.15, 0); pic(g, f, r, 2.2); g.ff(f, 'roundMirror', 7.2, 0.15, 0); g.ff(f, 'drawerUnit', 0.5, 4.0, 1); },
@@ -654,7 +655,7 @@ const ROOM_EXTRAS = {
   'entrance hall': (g, f, r) => { g.ff(f, 'welcomeMat', 2.4, 0.8, 0); g.ff(f, 'welcomeMat', 7.2, 0.8, 0); g.ff(f, 'roundMirror', 4.8, 0.15, 0, 0.9); g.ff(f, 'flowerPot', 9.0, 0.6, 0); },
   'lighting display': (g, f, r) => {
     for (const [u, k] of [[1.6, 'tripleLamp'], [4.8, 'modernLamp'], [8.0, 'thinLight']]) g.ff(f, k, u, 2.2, 0);
-    g.ff(f, 'ceilingLamp', 3.2, 3.2, 0, CEIL - 1.2); g.ff(f, 'ceilingLamp', 6.4, 3.2, 0, CEIL - 1.2); g.ff(f, 'wallLight', 0.23, 3.0, 1, 1.7); g.ff(f, 'wallLight', 9.37, 3.0, 3, 1.7);
+    g.ff(f, 'ceilingLamp', 3.2, 3.2, 0, STORE_H - 1.2); g.ff(f, 'ceilingLamp', 6.4, 3.2, 0, STORE_H - 1.2); g.ff(f, 'wallLight', 0.23, 3.0, 1, 1.7); g.ff(f, 'wallLight', 9.37, 3.0, 3, 1.7);
     g.ff(f, 'smallWorkLight', 0.6, 5.0, 1); g.ff(f, 'nightLight', 9.2, 5.6, 3); g.ff(f, 'metalLamp', 0.8, 5.6, 0); g.ff(f, 'arcLamp', 3.0, 5.6, 0); g.ff(f, 'workLight', 5.6, 5.6, 0); g.ff(f, 'gardenLamp', 8.6, 5.6, 0); for (const [u, k] of [[2.0, 'lantern'], [4.8, 'candle'], [7.6, 'deskLamp']]) { g.ff(f, 'sideTable', u, 4.2, 0); g.ff(f, k, u, 4.2, 0, 0.55); } for (let i = 0; i < 4; i++) g.ff(f, 'lightStrip', 1.6 + i * 2.1, 0.12, 0, 2.0).s = 1 + i; },
   'rug gallery': (g, f, r) => { g.ff(f, 'roundRug', 2.4, 6.6, 0); g.ff(f, 'longRug', 7.0, 6.6, 0); },
   'mannequin showcase': (g, f, r) => { g.ff(f, 'showcaseSign', 4.8, 5.2, 0); },
@@ -880,6 +881,9 @@ export class World {
     const front = new THREE.Mesh(plane, mat), back = new THREE.Mesh(plane, mat);
     front.position.z = 0.01; back.position.z = -0.01; back.rotation.y = Math.PI;
     sign.add(front, back);
+    // it hangs from two cables that disappear up into the fog
+    const cable = new THREE.Mesh(new THREE.BoxGeometry(0.03, 120, 0.03), new THREE.MeshBasicMaterial({ color: 0x3a3c40, fog: true }));
+    for (const dx of [-1.3, 1.3]) { const c = cable.clone(); c.position.set(dx, 60.6, 0); sign.add(c); }
     sign.position.set(ch.cx * CHUNK + 6, 4.9, ch.cz * CHUNK + 0.6);
     this.group.add(sign);
     ch.sign = sign;

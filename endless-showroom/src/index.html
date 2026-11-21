@@ -61,33 +61,44 @@
 
 <div id="lowhp"></div>
 <div id="death" class="hidden">
-  <h2 id="death-head">You were caught.</h2>
-  <p id="death-msg"></p>
-  <p id="death-best" class="msg small"></p>
-  <ul id="death-stats"></ul>
-  <p id="death-timer"></p>
-  <button id="death-wake" class="btn" disabled>Wake up</button>
+  <div class="slip">
+    <div class="slip-head">Incident report <span>Customer services</span></div>
+    <h2 id="death-head">You were caught.</h2>
+    <p id="death-msg"></p>
+    <ul id="death-stats"></ul>
+    <p id="death-best" class="slip-small"></p>
+    <p id="death-timer" class="slip-small"></p>
+    <button id="death-wake" class="btn" disabled>Wake up</button>
+    <div class="slip-foot">Please keep this slip for your records.</div>
+  </div>
 </div>
 
 <!-- Menus -->
 <div id="menu" class="screen">
-  <div class="panel">
+  <div class="panel menu-panel">
     <div class="logo"><span class="logo-a">ENDLESS</span><span class="logo-b">SHOWROOM</span></div>
-    <p class="tag">An endless furniture store. Friendly staff by day. Not by night.</p>
-    <label class="name-row">Your name <input id="name-in" maxlength="16" autocomplete="off"></label>
-    <div class="shirt-row"><span>Shirt</span><div id="shirts"></div></div>
-    <div class="shirt-row" id="daylen" title="For stores you start: solo, or a room you create"><span>Days</span><button data-v="normal" class="seg">Normal (6+5 min)</button><button data-v="short" class="seg">Short (3+2.5 min)</button></div>
-    <div class="btns">
-      <button id="b-online" class="primary">Play Online</button>
-      <button id="b-create">Create Private Room</button>
-      <div class="join-row"><input id="code-in" maxlength="6" placeholder="CODE" autocomplete="off"><button id="b-join">Join</button></div>
-      <button id="b-continue" class="hidden">Continue Solo</button>
-      <button id="b-solo">New Solo Store</button>
+    <p class="tag">Open 08:00 to 22:00. Customers are asked not to remain in the store after closing.</p>
+    <div class="menu-sec">
+      <div class="menu-label">Play</div>
+      <div class="btns">
+        <button id="b-online" class="primary">Play Online</button>
+        <button id="b-continue" class="hidden">Continue Solo</button>
+        <button id="b-solo">New Solo Store</button>
+        <button id="b-create">Create Private Room</button>
+        <div class="join-row"><input id="code-in" maxlength="6" placeholder="ROOM CODE" autocomplete="off"><button id="b-join">Join</button></div>
+      </div>
+      <p id="menu-msg" class="msg"></p>
     </div>
-    <p id="menu-msg" class="msg"></p>
+    <div class="menu-sec">
+      <div class="menu-label">You</div>
+      <label class="name-row"><span>Name</span><input id="name-in" maxlength="16" autocomplete="off"></label>
+      <div class="shirt-row"><span>Shirt</span><div id="shirts"></div></div>
+      <div class="shirt-row" id="daylen" title="For stores you start: solo, or a room you create"><span>Days</span><button data-v="normal" class="seg">Normal</button><button data-v="short" class="seg">Short</button></div>
+    </div>
     <div class="row-links"><button id="b-how" class="link">How to play</button><button id="b-ach" class="link">Achievements</button><button id="b-settings" class="link">Settings</button></div>
     <p class="best" id="best"></p>
   </div>
+  <div class="menu-foot">Closed &middot; please make your way to the nearest exit</div>
 </div>
 
 <div id="how" class="screen hidden">

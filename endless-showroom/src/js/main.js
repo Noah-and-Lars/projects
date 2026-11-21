@@ -104,12 +104,45 @@ const ceilTex = tileTexture((x, s) => {
 ceilTex.repeat.set(300 / 6, 300 / 6);
 const ceilMat = new THREE.MeshBasicMaterial({ map: ceilTex, color: 0xffffff });
 const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), ceilMat);
-ceiling.rotation.x = Math.PI / 2; ceiling.position.y = CEIL;
-scene.add(ceiling);
+ceiling.rotation.x = Math.PI / 2; ceiling.position.y = 6.5; // not added: there is no roof
 const lights = { hemi, amb, ceil: ceilMat.color };
-uniforms.uCeil.value = CEIL;
-uniforms.uGain.value = 2.0;
+// The store's light comes down out of the fog from fittings you can't see.
+uniforms.uCeil.value = 8;
+uniforms.uGain.value = 2.7;
 const fixtures = makeFixtures(scene);
+for (const m of fixtures.meshes) m.visible = false;
+// Fog up where the roof should be: slow drifting layers of murk.
+const sky = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const x = c.getContext('2d');
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let k = 0; k < 70; k++) {
+    const px = rnd() * 256, py = rnd() * 256, r = 20 + rnd() * 60;
+    for (const [ox, oy] of [[0, 0], [256, 0], [-256, 0], [0, 256], [0, -256]]) {
+      const gr = x.createRadialGradient(px + ox, py + oy, 0, px + ox, py + oy, r);
+      gr.addColorStop(0, `rgba(255,255,255,${0.12 + rnd() * 0.18})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = gr; x.fillRect(px + ox - r, py + oy - r, r * 2, r * 2);
+    }
+  }
+  const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(5, 5);
+  const layers = [9, 13, 18, 25, 34].map((h, i) => {
+    const t = tex.clone(); t.needsUpdate = true; t.repeat.set(4 + i, 4 + i);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, opacity: 0.5, side: THREE.DoubleSide, fog: true }));
+    m.rotation.x = Math.PI / 2; m.position.y = h; m.renderOrder = 3; m.userData = { h, sp: 0.004 + i * 0.002, dir: i % 2 ? 1 : -1 };
+    scene.add(m); return m;
+  });
+  return {
+    update(dt, x, z, L) {
+      for (const m of layers) {
+        m.position.x = x; m.position.z = z;
+        // the layer follows you, but its pattern stays put in the world (and drifts slowly)
+        const t = m.material.map, u = m.userData; u.drift = (u.drift || 0) + u.sp * u.dir * dt;
+        t.offset.set(((x / 240) * t.repeat.x + u.drift) % 1, ((z / 240) * t.repeat.y + u.drift * 0.6) % 1);
+        m.material.color.setScalar(0.25 + 0.75 * L); m.material.opacity = 0.32 + 0.18 * L;
+      }
+    },
+  };
+})();
 const dust = makeDust(scene);
 
 // ---------------------------------------------------------------- world
@@ -852,7 +885,7 @@ function updateInteraction(dt) {
       c.o = cleanQuat([c.q.x, c.q.y, c.q.z, c.q.w]);
       sfx.click();
     }
-    if (input.wheel) P.carryDist = clamp(P.carryDist - input.wheel * 0.5, 1.5, 8);
+    if (input.wheel) P.carryDist = clamp(P.carryDist - input.wheel * 0.4, 1.5, 4.5);
     // hold F to wind up a throw, let go to throw it
     if (input.keys.has('KeyF')) c.charge = Math.min(1, (c.charge || 0) + dt / 1.1);
     else if (c.charge > 0) { const k = c.charge; c.charge = 0; throwCarry(k); return; }
@@ -892,7 +925,7 @@ function pickUp(it) {
   const q = itemQuat(it.r, it.tl, it.o);
   const [w, h, d] = itemDims(it.t, it.r, it.tl, it.o);
   const [ex, ey, ez] = eye();
-  P.carryDist = clamp(Math.hypot(it.x - ex, it.y + h / 2 - ey, it.z - ez), 1.5, 8);
+  P.carryDist = clamp(Math.hypot(it.x - ex, it.y + h / 2 - ey, it.z - ez), 1.5, 4.5);
   P.carry = { id: it.id, t: it.t, v: it.v, q, dq: q.clone(), o: cleanQuat([q.x, q.y, q.z, q.w]), axis: 1, x: it.x, y: it.y, z: it.z, sticks: true, fresh: false };
   sfx.pick();
   if (!net.isHost()) { world.edit(it, { c: net.id }); }
@@ -1487,9 +1520,8 @@ function frame() {
   setMusic(low ? 'low' : isNight(clock.t) && P.alive && now - lastHunted < 4000 ? 'chase' : isNight(clock.t) ? 'night' : 'day', clock.day);
   updateLamps(L);
   floor.position.set(Math.round(P.x / 4) * 4, 0, Math.round(P.z / 4) * 4);
-  ceiling.position.set(Math.round(P.x / 6) * 6, CEIL, Math.round(P.z / 6) * 6);
   uniforms.uTime.value = (now / 1000) % 10000;
-  fixtures.update(P.x, P.z, L, uniforms.uEmerg.value, CEIL);
+  sky.update(dt, P.x, P.z, L);
   setSkyLight(isNight(clock.t) ? 0 : 1, false);
   const vig = (0.45 + 0.55 * (1 - L)).toFixed(2);
   if (darkEl.style.opacity !== vig) darkEl.style.opacity = vig;
@@ -1731,23 +1763,33 @@ chatIn.addEventListener('keydown', (e) => {
 
 // ---------------------------------------------------------------- menu backdrop
 let menuInit = false, menuT = 0;
+// Behind the menu: night in the store, the camera slowly circling one of the
+// big grid pillars and looking up it into the fog.
 function renderMenuBackdrop(dt) {
   if (!menuInit) { menuInit = true; world.reset(1234567); }
   menuT += dt;
-  const x = 12 + Math.sin(menuT * 0.05) * 30, z = 12 + menuT * 1.2;
+  const px = HALF_C, pz = HALF_C, a = 0.6 + menuT * 0.035, r = 4.6;
+  const x = px + Math.sin(a) * r, z = pz + Math.cos(a) * r;
   world.update([{ x, z, render: true }]);
-  applyLight(scene, lights, 1, settings.low);
+  // clear the floor round the pillar so nothing blocks the view
+  world.forItems(px - 7, pz - 7, px + 7, pz + 7, (it) => { if (!it.g && Math.hypot(it.x - px, it.z - pz) < 7) world.edit(it, it.k === 'f' ? { g: true } : { g: true, d: world.epoch }); });
+  const L = 0.1;
+  lights.cascade = null;
+  applyLight(scene, lights, L, settings.low);
   floor.position.set(Math.round(x / 4) * 4, 0, Math.round(z / 4) * 4);
-  ceiling.position.set(Math.round(x / 6) * 6, CEIL, Math.round(z / 6) * 6);
-  camera.position.set(x, 2.2, z);
-  camera.rotation.set(-0.12, Math.PI + Math.sin(menuT * 0.07) * 0.6, 0, 'YXZ');
-  for (const l of lampLights) l.intensity = 0;
-  setLampGlow(0); setSkyLight(1, false);
-  fixtures.update(x, z, 1, 0, CEIL);
-  dust.update(dt, x, z, 1);
+  sky.update(dt, x, z, L);
+  camera.position.set(x, 1.5, z);
+  // face the pillar, tilted up so it rises out of sight into the murk
+  camera.rotation.set(0.74 + Math.sin(menuT * 0.11) * 0.04, a + 0.42, 0, 'YXZ'); // the pillar sits to the right of the menu
+  // a single lamp glowing somewhere at the pillar's foot
+  lampLights.forEach((l, i) => { l.intensity = 0; });
+  lampLights[0].position.set(px + 2.2, 0.9, pz + 2.0); lampLights[0].color.setHex(0xffc27a); lampLights[0].intensity = 5;
+  setLampGlow(0.6); setSkyLight(0, false);
+  dust.update(dt, x, z, L);
   world.flushItems();
   renderer.render(scene, camera);
 }
+const HALF_C = 12; // the grid pillar in the middle of chunk 0, 0
 
 function resize() {
   const w = innerWidth, h = innerHeight;
