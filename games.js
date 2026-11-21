@@ -802,7 +802,9 @@ window.ArcadeOnline = (() => {
 
 // Site-wide notice (2026-11-05): a popup on the home, game and chat pages. Closing it is remembered per id in
 // localStorage ('arcade-notice-closed'). To take it down, set SITE_NOTICE to null; to show a new one, change the id.
-const SITE_NOTICE = { // 2026-11-10: Social launch (popup only, no banner; not shown on social.html itself)
+// 2026-11-21: the "Social is here" popup was taken down at the owner's request (kept below as SITE_NOTICE_SOCIAL).
+const SITE_NOTICE = null;
+const SITE_NOTICE_SOCIAL = { // 2026-11-10: Social launch (popup only, no banner; not shown on social.html itself)
   id: 'social-launch-2026-11-10',
   tag: 'New',
   title: 'Social is here! 🎬',
