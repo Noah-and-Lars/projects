@@ -12,6 +12,7 @@ import { StaffSim } from './staff.js';
 import { createNet, myName, cleanName, myShirt } from './net.js';
 import { input, initInput, initTouch, lockPointer, endFrame, pollGamepad } from './input.js';
 import { makeShopper, makeStaff, animate, setHeld, nameTag, nameHash, SHIRT_COLORS } from './models.js';
+import { makeBody, stepBody, bodyPose, bodyMatrix } from './fall.js';
 import { initAudio, sfx, setAmbience, setVolume, setMusic, setMusicVolume, musicState } from './audio.js';
 import * as audioMod from './audio.js';
 import { DAY_LEN, DAY_SCALE, setDayScale, cycleLen, nightLen, cascade, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
@@ -912,7 +913,10 @@ function updateInteraction(dt) {
     // the piece follows your aim with a little lag, like something heavy
     const k = c.fresh ? 1 : 1 - Math.exp(-dt * 24); // stiff, smooth follow
     c.fresh = false;
+    const ox = c.x, oy = c.y, oz = c.z;
     c.x += (px - c.x) * k; c.y += (py - c.y) * k; c.z += (pz - c.z) * k;
+    // how fast your hands are moving it (it keeps that when you let go)
+    if (dt > 0) { const kv = Math.min(1, dt * 12); c.vel = c.vel || [0, 0, 0]; c.vel[0] += ((c.x - ox) / dt - c.vel[0]) * kv; c.vel[1] += ((c.y - oy) / dt - c.vel[1]) * kv; c.vel[2] += ((c.z - oz) / dt - c.vel[2]) * kv; }
     c.dq.slerp(c.q, 1 - Math.exp(-dt * 22));
     const item = world.items.get(c.id);
     const sticks = touches(c.t, c.o, c.x, c.y, c.z, item);
@@ -985,23 +989,14 @@ function onSomeone(t, o, x, y, z) {
   }
   return false;
 }
-// How far a piece let go in mid-air falls before something holds it up.
-function dropHeight(t, o, x, y, z, skip) {
-  let gap = y;
-  for (const b of poseBoxes(t, o, x, y, z)) {
-    const s = world.supportHeight(b.x0, b.z0, b.x1, b.z1, b.y0 + 0.01, skip);
-    gap = Math.min(gap, b.y0 - s);
-  }
-  return Math.max(0, gap);
-}
 function letGo() {
   const c = P.carry; if (!c) return;
   if (c.blocked) { sfx.deny(); return; }
   const item = world.items.get(c.id);
   if (touches(c.t, c.o, c.x, c.y, c.z, item)) { placeCarry({ x: c.x, y: c.y, z: c.z, o: c.o, a: 1 }); return; }
-  // nothing touching: it drops straight down onto whatever is below
-  const land = c.y - dropHeight(c.t, c.o, c.x, c.y, c.z, item);
-  placeCarry({ x: c.x, y: land, z: c.z, o: c.o, a: 0 });
+  // nothing touching: it falls on its own, keeping how your hands were moving it
+  const hv = c.vel || [0, 0, 0], sp = Math.hypot(hv[0], hv[1], hv[2]), lim = sp > 7 ? 7 / sp : 1;
+  launchBody(c, new THREE.Vector3(hv[0] * lim, hv[1] * lim, hv[2] * lim), new THREE.Vector3((Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6));
   P.carry = null;
 }
 function placeCarry(p, carry = P.carry) {
@@ -1112,41 +1107,45 @@ function dropSelected(slot = P.sel) {
 const flying = [];
 function throwCarry(charge = 1) {
   const c = P.carry; if (!c) return;
-  const [w, h, d] = itemDims(c.t, 0, 0, c.o);
-  const item = world.items.get(c.id);
   const [dx, dy, dz] = lookDir(), power = (P.en > 5 ? 3 + 8 * charge : 3.5);
-  let x = c.x, y = c.y, z = c.z, vx = dx * power, vy = dy * power + 2.5, vz = dz * power;
-  const pts = [];
-  for (let i = 0; i < 200; i++) {
-    const nx = x + vx * 0.025, ny = y + vy * 0.025, nz = z + vz * 0.025; vy -= 20 * 0.025;
-    const b = { x0: nx - w / 2, x1: nx + w / 2, z0: nz - d / 2, z1: nz + d / 2, y0: Math.max(0, ny), y1: Math.max(0, ny) + h };
-    if (ny <= 0 || (i > 2 && !world.fits(b, item))) break;
-    x = nx; y = ny; z = nz; pts.push([x, y, z]);
-  }
-  const ly = y - dropHeight(c.t, c.o, x, y, z, item);
-  pts.push([x, ly, z]);
-  launch(c, pts, { x, y: ly, z, o: c.o, a: 0 });
+  const hv = c.vel || [0, 0, 0];
+  const vel = new THREE.Vector3(dx * power + hv[0] * 0.5, dy * power + 2.5 + hv[1] * 0.5, dz * power + hv[2] * 0.5);
+  // it leaves your hands turning end over end a little
+  const spin = new THREE.Vector3(-dz, 0, dx).multiplyScalar(-(1.5 + 3 * charge) * (0.6 + Math.random() * 0.8)).add(new THREE.Vector3(0, (Math.random() - 0.5) * 2, 0));
+  launchBody(c, vel, spin);
   P.carry = null; P.en = Math.max(0, P.en - 1 - 3 * charge);
   sfx.shove();
 }
-// A piece moving on its own (thrown, or dropping after you let go). It stays
-// ours until it lands, so nobody grabs it in mid-air.
-function launch(c, pts, land) {
+// A piece moving on its own (thrown, or falling after you let go), as a rigid
+// body (fall.js). It stays ours until it comes to rest, so nobody grabs it in
+// mid-air; everyone else sees it fall as our "held" piece.
+function launchBody(c, vel, spin) {
+  const t = TYPES[c.t];
   const mesh = new THREE.Mesh(furnitureGeometry(c.t, c.v), furnitureMaterialRef);
   mesh.matrixAutoUpdate = false; scene.add(mesh);
-  itemMatrix(mesh.matrix, c.t, c.x, c.y, c.z, 0, 0, 1, c.o);
-  flying.push({ mesh, pts, i: 0, carry: c, land, pos: [c.x, c.y, c.z] });
+  const q = itemQuat(0, 0, c.o), h = itemDims(c.t, 0, 0, c.o)[1];
+  const body = makeBody(t.w, t.h, t.d, new THREE.Vector3(c.x, c.y + h / 2, c.z), q, vel, spin);
+  bodyMatrix(body, mesh.matrix);
+  flying.push({ mesh, body, carry: c, pos: [c.x, c.y, c.z], hitT: 0 });
 }
 function updateFlying(dt) {
   for (let k = flying.length - 1; k >= 0; k--) {
-    const f = flying[k];
-    f.i += dt / 0.025;
-    const p = f.pts[Math.min(f.pts.length - 1, Math.floor(f.i))];
-    if (p) { f.pos = p; itemMatrix(f.mesh.matrix, f.carry.t, p[0], p[1], p[2], 0, 0, 1, f.carry.o); }
-    if (f.i >= f.pts.length) {
+    const f = flying[k], b = f.body, item = world.items.get(f.carry.id);
+    // the solid boxes it could reach this frame
+    const r = Math.hypot(b.he.x, b.he.y, b.he.z) + b.v.length() * dt + 0.3;
+    const boxes = [];
+    world.forBoxes(b.p.x - r, b.p.z - r, b.p.x + r, b.p.z + r, (o) => { if (o.held || (item && o.item === item)) return; if (o.y1 > b.p.y - r && o.y0 < b.p.y + r) boxes.push(o); });
+    const impact = stepBody(b, Math.min(dt, 0.05), boxes, CEIL);
+    f.hitT -= dt;
+    if (impact > 1.6 && f.hitT <= 0) { sfx.land(); f.hitT = 0.12; }
+    bodyMatrix(b, f.mesh.matrix);
+    const pose = bodyPose(b);
+    f.pos = [pose.x, pose.y, pose.z]; f.carry.o = cleanQuat(pose.o);
+    if (b.done) {
       scene.remove(f.mesh);
       flying.splice(k, 1);
-      placeCarry(f.land, f.carry);
+      const o = cleanQuat(pose.o);
+      placeCarry({ x: pose.x, y: pose.y, z: pose.z, o, a: 0 }, f.carry);
     }
   }
 }

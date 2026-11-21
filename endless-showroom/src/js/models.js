@@ -138,10 +138,16 @@ export function makeStaff(id) {
 }
 
 // Walk cycle; speed in m/s.
+// The speed is smoothed first: the one-frame stops where a walker reaches a
+// waypoint shouldn't jolt the legs. Stopping eases the legs back together
+// rather than snapping them.
 export function animate(m, speed, dt, opts = {}) {
-  const amp = Math.min(1, speed / 5);
-  if (speed > 0.2) m.phase += dt * (4 + speed * 1.3);
-  else m.phase *= 0.9;
+  m.spd = m.spd === undefined ? speed : m.spd + (speed - m.spd) * Math.min(1, dt * 7);
+  const v = m.spd;
+  const amp = Math.min(1, v / 3.6);
+  if (v > 0.12) m.phase += dt * (4 + v * 1.3);
+  else { const rest = Math.round(m.phase / Math.PI) * Math.PI; m.phase += (rest - m.phase) * Math.min(1, dt * 6); }
+  if (m.phase > 1000) m.phase -= 318 * Math.PI; // keep it small (an even multiple of pi, so no jump)
   const s = Math.sin(m.phase) * 0.8 * amp;
   m.legL.rotation.x = s; m.legR.rotation.x = -s;
   if (opts.climbing) { m.armL.rotation.x = -2.8 + Math.sin(m.phase * 2) * 0.4; m.armR.rotation.x = -2.8 - Math.sin(m.phase * 2) * 0.4; m.phase += dt * 6; }

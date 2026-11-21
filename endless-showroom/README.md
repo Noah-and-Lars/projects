@@ -145,14 +145,21 @@ turn that off).
   floor, a wall, a pillar or other furniture) it stays exactly
   there, fixed, with a thunk. That's how you build floating floors and
   stairs you can take away: hold the next piece so it touches the last one.
-  Let go **in mid-air** and it drops onto whatever is below, and anything
-  that dropped falls again if you take away what holds it up. The outline is
+  Let go **in mid-air** and it falls with its own physics: it keeps the way
+  your hands were moving it, tumbles, bounces and slides, and knocks against
+  the floor, walls, pillars, racks and other furniture. A chair dropped on one
+  corner tips over, a wardrobe let go leaning too far falls flat on its back,
+  a box hanging mostly over a table edge stays on the table and one hanging
+  mostly off it doesn't. Wherever it comes to rest, in whatever pose, is where
+  it stays (unanchored), and anything that fell drops again if you take away
+  what holds it up. The outline is
   green when it'll stay put, white when it'll drop, and red when it's
   overlapping someone (you, a friend or a member of staff): you can't let go of
   it there.
 - The **mouse wheel** moves it closer or farther (1.5 to 4.5 m from you). **Hold F** to wind up a
   throw and let go of F to throw it: the longer you hold, the further it
-  goes. Settings can snap held pieces to a 25 cm, 50 cm or 1 m grid.
+  goes. It leaves your hands turning end over end and lands, bounces and
+  tumbles by the same physics. Settings can snap held pieces to a 25 cm, 50 cm or 1 m grid.
 - **Ride** what you hold: put a piece under your feet and raise it, and you
   go up with it (jumping helps). Someone else can lift you the same way.
 - **Walk-in wardrobes** are hollow. Step in and block the front for a
@@ -386,6 +393,7 @@ cd tools && npm install && npm run build
 | `furniture.js` | Furniture (with hollow collision parts, free rotation cut into collision strips) and food definitions and models; what each place stocks |
 | `staff.js` | Staff AI (host only): spawning, senses, path finding over standing surfaces with climbing, attacks, shoves, sizes |
 | `physics.js` | Standing-body movement against boxes: step-up, climbing, gravity, ceilings |
+| `fall.js` | Pieces falling or thrown on their own: a rigid box with gravity, tumbling, bounces and friction against the world's boxes |
 | `net.js` | Rooms, presence, host election, messages |
 | `env.js` | Day/night timing, the week and restocks, events, store clock, lighting levels |
 | `models.js` | Shopper and staff models, walk cycle, name tags, carried furniture |
