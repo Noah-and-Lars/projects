@@ -3,7 +3,7 @@
 //
 // Day: they wander slowly and ignore you.
 // Night: the same, until they see you (line of sight), hear you sprint, or
-// hear a whistle. Then they chase at just under sprinting speed, climbing up
+// hear a whistle. Then they chase about as fast as you sprint (small ones faster), climbing up
 // to about a metre at a time and scaling shelving and bookcases, and punch
 // you when they're close. Break their line of sight and they lose you after a
 // few seconds. A shove knocks one down for a moment.
@@ -38,7 +38,7 @@ export function staffLook(id) {
 
 // How the staff behave at night. (Day: they wander and do no harm.)
 function params() {
-  return { climb: 1.15, chase: 6.4, sight: 32, hear: 14, dmg: [7, 13], cd: 1.0, stun: 2.6, per: 1, push: true };
+  return { climb: 1.15, chase: 8.0, sight: 32, hear: 14, dmg: [7, 13], cd: 1.0, stun: 2.6, per: 1, push: true };
 }
 
 export class StaffSim {

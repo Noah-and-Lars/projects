@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import { hashInts, rng } from './rng.js';
 import { restockEpoch } from './env.js';
 import { GeoBuilder } from './geo.js';
-import { TYPES, ITEMS, STOCK, furnitureGeometry, itemGeometry, itemDims, itemMatrix, itemParts, cleanQuat, hasState, TV_CHANNELS, STRIP_COLORS } from './furniture.js';
+import { TYPES, ITEMS, STOCK, FOOD_KEYS, furnitureGeometry, itemGeometry, itemDims, itemMatrix, itemParts, cleanQuat, hasState, TV_CHANNELS, STRIP_COLORS } from './furniture.js';
 import { SURF, staticMaterial, furnitureMaterial, shadowMaterial, shadowGeometry, ShadowBuilder } from './mats.js';
 
 // There is no roof: the pillars run up into the fog. CEIL is only the height
@@ -26,6 +26,7 @@ const Q = 9.6, QPAD = 1.2; // usable quadrant size and aisle padding
 const WALL = 0xd9d3c7, WALL_BASE = 0x8a857b, PILLAR = 0xd6d1c8, PARTITION = 0xe4ded2, RACK = 0x3f6f9a, RACK_BEAM = 0xe07b2b;
 const P_JOINT = 0xb3aea5, P_BAND = 0xa29d94, CONDUIT = 0x80868d, CABLE = 0x26282c, JBOX = 0x9aa0a6, HAZ_Y = 0xd8a320, HAZ_K = 0x1d1d1f, LAMP_CAGE = 0x2b2d31, LAMP_GLOW = 0xffb066;
 // Surface of the fixed parts, by colour (anything else is paint).
+const FOOD_SET = new Set(FOOD_KEYS);
 const STATIC_SURF = {
   [PILLAR]: SURF.concrete, [WALL_BASE]: SURF.plastic, [RACK]: SURF.steel, [RACK_BEAM]: SURF.steel,
   0xc8a26e: SURF.card, 0xb8915c: SURF.card, 0xd2b07d: SURF.card, 0xe7e1d3: SURF.card, 0x9cb3c4: SURF.plastic,
@@ -132,6 +133,50 @@ class ChunkGen {
   randomFood(x, z, y, stock = STOCK.any) {
     if (this.r.chance(0.03)) this.food('medkit', x, z, y);
     else this.food(this.r.pick(stock), x, z, y);
+  }
+  // Four times the food: every bit of food the layout puts down gets three
+  // more of the same beside it, on the same surface (checked against this
+  // chunk's walls, racks and furniture), so shelves and counters read as
+  // stocked. The extras go on the end of the list, so the ids of everything
+  // else stay the same, and their own random numbers don't move the layout.
+  moreFood() {
+    const r = rng(hashInts(this.w.seed, this.cx, this.cz, 77));
+    const solids = this.boxes.slice();
+    for (const it of this.items) {
+      if (it.k !== 'f' || !Object.prototype.hasOwnProperty.call(TYPES, it.t) || TYPES[it.t].flat) continue;
+      const parts = itemParts(it.t, it.r, it.tl, it.o, it.s);
+      if (!parts) { solids.push(this.w.itemBox(it)); continue; }
+      for (const [a, c, d, e, f, g] of parts) solids.push({ x0: it.x + a, x1: it.x + e, y0: it.y + c, y1: it.y + f, z0: it.z + d, z1: it.z + g });
+    }
+    // Where a bit of food sits: the surface under it, and whatever solid it's
+    // inside (food on a rack shelf is inside the rack's block). A spot for an
+    // extra has to sit exactly the same way: same surface, inside the same things.
+    const where = (x, z, y) => {
+      const g = 0.06; let top = 0; const inside = [];
+      solids.forEach((b, i) => {
+        if (b.x1 <= x - g || b.x0 >= x + g || b.z1 <= z - g || b.z0 >= z + g) return;
+        if (b.y1 <= y + 0.02) { if (b.y1 > top) top = b.y1; }
+        else if (b.y0 < y + 0.12) inside.push(i);
+      });
+      return { top, key: inside.join(',') };
+    };
+    const foods = this.items.filter((it) => it.k === 'i' && FOOD_SET.has(it.t));
+    this.foodBase = foods.length; this.foodAdded = 0;
+    for (const f of foods) {
+      const home = where(f.x, f.z, f.y);
+      for (let n = 0; n < 3; n++) for (let tries = 0; tries < 20; tries++) {
+        const a = r() * Math.PI * 2, d = 0.14 + r() * (0.2 + tries * 0.04);
+        const x = f.x + Math.cos(a) * d, z = f.z + Math.sin(a) * d;
+        // not on top of another bit of food
+        const gap = Math.max(ITEMS[f.t].w, ITEMS[f.t].d) * 0.5 + 0.03;
+        if (this.items.some((o) => o.k === 'i' && Math.abs(o.y - f.y) < 0.1 && Math.hypot(o.x - x, o.z - z) < gap + Math.max(ITEMS[o.t].w, ITEMS[o.t].d) * 0.5)) continue;
+        const w = where(x, z, f.y);
+        if (Math.abs(w.top - home.top) > 0.025 || w.key !== home.key) continue;
+        this.items.push({ t: f.t, k: 'i', v: 0, x, y: f.y, z, r: r.int(4) }); this.foodAdded++;
+        break;
+      }
+    }
+    return this;
   }
   // Furniture and food in a quadrant frame.
   ff(f, type, u, v, rot, y = 0) { const [x, z] = f.pt(u, v); return this.furn(type, x, z, rot + f.k, y); }
@@ -873,7 +918,7 @@ export class World {
   }
 
   _load(cx, cz) {
-    const gen = new ChunkGen(this, cx, cz).run();
+    const gen = new ChunkGen(this, cx, cz).run().moreFood();
     this.version++;
     const ch = { cx, cz, key: World.key(cx, cz), gen, boxes: gen.boxes, skylights: gen.skylights, itemIds: [], mesh: null, sign: null };
     gen.items.forEach((spec, i) => {

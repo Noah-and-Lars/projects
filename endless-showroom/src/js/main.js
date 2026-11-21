@@ -759,11 +759,17 @@ function updatePlayer(dt) {
   // footsteps
   if (P.onGround && P.speed > 0.5) { P.stepAcc += P.speed * dt; if (P.stepAcc > (sprint ? 2.2 : 1.7)) { P.stepAcc = 0; if (P.y < 0.05 && world.sectionAt(P.x, P.z) === 'garden') sfx.grassStep(); else sfx.step(!sprint); } }
   if (P.alive) {
-    // Energy drains all the time: slowly standing still, faster walking, fastest
-    // sprinting, and faster still when you're hurt. Only food and drink bring it back.
+    // Energy: sprinting burns it; a moment after you stop it comes back by
+    // itself, quickly standing still, slowly walking, and more slowly the
+    // hungrier or more hurt you are (not at all when starving). Food and drink
+    // still give it back at once.
     const hurtK = 1 + 0.8 * (1 - P.hp / 100);
-    const drain = sprint ? 3.2 : moving || P.slideT > 0 ? 0.12 : 0.04;
-    P.en = Math.max(0, P.en - (drain + (P.carry ? 0.15 : 0)) * hurtK * dt);
+    if (sprint || P.slideT > 0 || !P.onGround) P.restT = 0; else P.restT = (P.restT || 0) + dt;
+    if (sprint) P.en = Math.max(0, P.en - (3.2 + (P.carry ? 0.15 : 0)) * hurtK * dt);
+    else if (P.restT > 1.2 && P.food > 0) {
+      const regen = (moving ? 0.6 : 2.0) * (P.carry ? 0.6 : 1) * (0.4 + 0.6 * P.food / 100) / hurtK;
+      P.en = Math.min(100, P.en + regen * dt);
+    }
     // Hunger runs down more slowly, and faster the less energy you have (twice as
     // fast with none). No food, and your health goes quickly.
     P.food = Math.max(0, P.food - dt * (100 / 1100) * (P.en <= 0 ? 2 : 1 + 0.5 * (1 - P.en / 100)) * (sprint ? 1.3 : 1));
@@ -1060,7 +1066,7 @@ function useItem(it) {
 }
 function shove(id) {
   if (P.eatCd > 0) return;
-  if (P.en < 4) { sfx.deny(); toast("You're too tired to shove. Eat or drink something."); P.eatCd = 0.6; return; }
+  if (P.en < 4) { sfx.deny(); toast("You're too tired to shove. Rest a moment, or eat or drink something."); P.eatCd = 0.6; return; }
   P.en -= 4 + Math.random() * 4; // a shove takes 4 to 8 energy
   P.eatCd = 0.6;
   sfx.shove();
@@ -1311,7 +1317,7 @@ function updateClock(dt) {
   // hunger and energy warnings
   if (P.alive && P.food < 20 && !warn.food) { warn.food = true; toast("You're getting very hungry. Find something to eat."); }
   if (P.food > 30) warn.food = false;
-  if (P.alive && P.en < 10 && !warn.en) { warn.en = true; toast("You're exhausted. Eat, drink, or stand still for a bit."); }
+  if (P.alive && P.en < 10 && !warn.en) { warn.en = true; toast("You're exhausted. Stand still for a bit to get your breath back, or eat or drink."); }
   if (P.en > 20) warn.en = false;
   lastPhase = phase;
 }

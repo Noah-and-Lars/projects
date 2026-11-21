@@ -43,7 +43,7 @@ Don't edit `index.html` by hand. It's generated from `src/`.
 | --- | --- |
 | Day | 6 minutes, 08:00 to 22:00 on the clock. The staff are harmless. The last 5 seconds tick down. |
 | Night | 5 minutes on the first night, and **4 seconds longer every night after** (day 10: 5 min 36 s; day 60: about 9 minutes). 22:00 to 08:00 on the clock. The overhead lights cut out with a clunk, and only the emergency lights (orange) and lamps stay lit. |
-| Week | Days run Monday to Sunday. **Food and first aid restock at the start of every Monday and Friday**, not daily. |
+| Week | Days run Monday to Sunday. **Food and first aid restock at the start of every Monday and Friday**, not daily. Food is plentiful: wherever the store stocks something, there are usually four of it together. |
 
 There are no special days: just day and night, every day.
 
@@ -61,7 +61,8 @@ turn that off).
 - **At closing time** they give you about 5 seconds after the lights go out.
 - **At night** they wander until they **see you** (line of sight, up to
   32 m) or **hear you** (sprinting within 14 m, or a whistle within 45 m).
-  Then they chase at just under sprinting speed, saying things like
+  Then they chase about as fast as you can sprint (the small ones faster, the
+  big ones a little slower), so running alone rarely loses them, saying things like
   *"Closing time. Closing time."* in a flat voice (spoken by the browser if
   it can, always subtitled).
 - **When one spots you, it calls out**: staff within 16 m that aren't busy
@@ -94,7 +95,7 @@ turn that off).
 | | |
 | --- | --- |
 | Health | 100. **It only comes back from food and first aid.** No regenerating. |
-| Energy | **Drains all the time**: slowly standing still, faster walking, fastest sprinting, and faster still the more hurt you are. Jumping, carrying, sliding, whistling, throwing and shoving cost extra. **Only food and drink bring it back.** With none you can't sprint, slide or shove, throws fall short, and you get hungry twice as fast. |
+| Energy | **Sprinting burns it** (faster the more hurt you are); jumping, sliding, whistling, throwing and shoving cost extra. **It comes back by itself** a moment after you stop sprinting: quickly standing still (about 2 a second), slowly walking, more slowly carrying something, and more slowly still the hungrier or more hurt you are. Starving, it doesn't come back at all. Food and drink give it back at once. With none you can't sprint, slide or shove, throws fall short, and you get hungry twice as fast. |
 | Hunger | Runs down more slowly than energy, faster the less energy you have. At zero you lose health quickly, and your stomach growls below 10. |
 | Badly hurt | At 10 health or less you hear your heartbeat, your vision clouds over and the music goes quiet. |
 | Inventory | 16 slots (G). Slots 1 to 8 are the hotbar. Click to use, and right-click (or Q) to put an item down, to stock your base. |
