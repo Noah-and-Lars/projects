@@ -41,6 +41,114 @@ body.sprinting #crosshair {
   opacity: 0;
 }
 
+/* A hit: four short ticks round the crosshair (red to the head, bigger and
+   red for the hit that puts him down), there and gone in a moment. */
+#hitmarker {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  pointer-events: none;
+  opacity: 0;
+  --c: #fff;
+  background:
+    linear-gradient(45deg, transparent 46%, var(--c) 46%, var(--c) 54%, transparent 54%) 0 0 / 8px 8px no-repeat,
+    linear-gradient(-45deg, transparent 46%, var(--c) 46%, var(--c) 54%, transparent 54%) 100% 0 / 8px 8px no-repeat,
+    linear-gradient(-45deg, transparent 46%, var(--c) 46%, var(--c) 54%, transparent 54%) 0 100% / 8px 8px no-repeat,
+    linear-gradient(45deg, transparent 46%, var(--c) 46%, var(--c) 54%, transparent 54%) 100% 100% / 8px 8px no-repeat;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.8));
+}
+
+#hitmarker.head {
+  --c: #ff4a3d;
+}
+
+#hitmarker.kill {
+  --c: #ff2a1f;
+  transform: scale(1.4);
+}
+
+#hitmarker.on {
+  animation: hitmark 0.35s ease-out;
+}
+
+@keyframes hitmark {
+  0% { opacity: 1; }
+  60% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+body:not(.playing) #hitmarker {
+  display: none;
+}
+
+/* The soldier's hit points, over his head once he's been hit: his name, the
+   number, and a bar whose lost part drains away after it. */
+#target-hp {
+  position: fixed;
+  left: 0;
+  top: 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: space-between;
+  gap: 3px 10px;
+  width: 120px;
+  font: 600 11px/1 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+#target-hp.on {
+  opacity: 1;
+}
+
+body:not(.playing) #target-hp {
+  display: none;
+}
+
+#target-hp .hp {
+  font-variant-numeric: tabular-nums;
+}
+
+#target-hp .bar {
+  grid-column: 1 / -1;
+  position: relative;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+#target-hp .fill,
+#target-hp .lost {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 50%;
+}
+
+#target-hp .fill {
+  background: #e8e4dc;
+}
+
+#target-hp .lost {
+  background: #d8352a;
+  transition: transform 0.6s ease-in 0.25s;
+}
+
+#target-hp.low .fill {
+  background: #ff5a4a;
+}
+
+#target-hp.down .hp {
+  color: #ff5a4a;
+}
+
 /* Ammo counter, bottom right: rounds in the magazine, then the reserve. */
 #ammo {
   position: fixed;

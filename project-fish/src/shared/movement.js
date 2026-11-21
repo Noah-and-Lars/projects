@@ -21,7 +21,7 @@
 // - Landing from high up slows you for a moment.
 
 import { MOVEMENT, PLAYER, WORLD } from './config.js';
-import { COLLIDERS } from './map.js';
+import { COLLIDERS, SPAWN, WALLS } from './map.js';
 
 export const BUTTON_JUMP = 1 << 0;
 export const BUTTON_AIM = 1 << 1;
@@ -34,9 +34,9 @@ export const BUTTON_SPRINT_KEY = 1 << 5;
 
 export function createPlayerState() {
   return {
-    x: 0,
-    y: 0, // feet height; the baseplate is at 0
-    z: 0,
+    x: SPAWN.x,
+    y: 0, // feet height; the ground is at 0
+    z: SPAWN.z,
     vx: 0,
     vy: 0,
     vz: 0,
@@ -258,6 +258,7 @@ export function simulatePlayer(s, cmd, dt) {
     s.fallFrom = Math.max(s.fallFrom, s.y); // a fall is from its highest point
   }
   for (const box of COLLIDERS) collideWithBox(s, box);
+  for (const wall of WALLS) collideWithWall(s, wall);
   const floor = floorAt(s.x, s.z, s.y + PLAYER.stepHeight);
   if (s.grounded) {
     if (floor < s.y - 0.02) {
@@ -445,6 +446,7 @@ function tryMantle(s, dx, dz, pressed, onGround) {
   const reach = PLAYER.radius + MOVEMENT.mantleProbe;
   let best = null;
   for (const box of COLLIDERS) {
+    if (box.ceiling) continue;
     const top = box.maxY;
     if (top <= s.y + PLAYER.stepHeight || top > s.y + MOVEMENT.mantleReach) continue;
     if (box.minY > s.y + s.height) continue;
@@ -479,13 +481,18 @@ function tryMantle(s, dx, dz, pressed, onGround) {
     if (!fits(tx, ty, tz, PLAYER.heights.crouch)) return false;
     if (!roomAbove(s.x, s.z, top + PLAYER.heights.crouch)) return false;
   }
+  // Headroom over the top for the climb's highest point (a low ceiling, as
+  // in the garage, rules out a climb or vault that would put the head
+  // through it).
+  const peak = Math.max(top, s.y) + (vault ? 0.15 : 0);
+  if (ceilingAt(s.x + dx * (edge + PLAYER.radius), s.z + dz * (edge + PLAYER.radius), s.y) < peak + PLAYER.heights.crouch) return false;
   const speed = Math.hypot(s.vx, s.vz);
   const kind = vault ? 'vault' : rise <= 1.1 ? 'low' : rise <= 1.6 ? 'mid' : 'high';
   const exitSpeed = Math.min(MOVEMENT.walkSpeed * MOVEMENT.sprintSpeedFactor, Math.max(vault ? MOVEMENT.walkSpeed : 0, speed));
   s.mantle = {
     from: [s.x, s.y, s.z],
     to: [tx, ty, tz],
-    peak: Math.max(top, s.y) + (vault ? 0.15 : 0),
+    peak,
     duration: MOVEMENT.mantleTimes[kind],
     exit: [dx * exitSpeed, dz * exitSpeed],
     vault,
@@ -587,7 +594,7 @@ function overlaps2D(x, z, b, radius = PLAYER.radius) {
 export function floorAt(x, z, below) {
   let floor = 0;
   for (const b of COLLIDERS) {
-    if (b.maxY <= below && b.maxY > floor && overlaps2D(x, z, b)) floor = b.maxY;
+    if (!b.ceiling && b.maxY <= below && b.maxY > floor && overlaps2D(x, z, b)) floor = b.maxY;
   }
   return floor;
 }
@@ -622,6 +629,7 @@ export function fits(x, y, z, height) {
 // walls. Boxes they're above (or can step onto) and boxes overhead don't
 // push.
 function collideWithBox(s, box) {
+  if (box.ceiling) return;
   if (s.y + PLAYER.stepHeight >= box.maxY || s.y + s.height <= box.minY) return;
 
   // Closest point of the box to the player's centre, seen from above.
@@ -651,6 +659,36 @@ function collideWithBox(s, box) {
   s.x += nx * push;
   s.z += nz * push;
 
+  const into = s.vx * nx + s.vz * nz;
+  if (into < 0) {
+    s.vx -= into * nx;
+    s.vz -= into * nz;
+  }
+}
+
+// The same for an upright wall along a line (WALLS in map.js): pushes the
+// player out of it and takes away the part of their velocity going into it.
+function collideWithWall(s, w) {
+  if (s.y >= w.height) return;
+  const ex = w.bx - w.ax;
+  const ez = w.bz - w.az;
+  const len2 = ex * ex + ez * ez;
+  const k = len2 > 0 ? Math.max(0, Math.min(1, ((s.x - w.ax) * ex + (s.z - w.az) * ez) / len2)) : 0;
+  let nx = s.x - (w.ax + ex * k);
+  let nz = s.z - (w.az + ez * k);
+  const dist = Math.hypot(nx, nz);
+  if (dist >= PLAYER.radius) return;
+  if (dist > 1e-9) {
+    nx /= dist;
+    nz /= dist;
+  } else {
+    const len = Math.sqrt(len2) || 1;
+    nx = -ez / len;
+    nz = ex / len;
+  }
+  const push = PLAYER.radius - dist;
+  s.x += nx * push;
+  s.z += nz * push;
   const into = s.vx * nx + s.vz * nz;
   if (into < 0) {
     s.vx -= into * nx;

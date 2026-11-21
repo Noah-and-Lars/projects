@@ -109,6 +109,7 @@ export const PISTOL = {
   reloadTime: 2.1, // with rounds left: the old magazine is caught and kept
   emptyReloadTime: 2.5, // from empty: the slide has to be released too
   range: 150,
+  damage: 25, // hit points a hit takes off (twice that to the head)
   // How far shots can stray from where the gun points (half the cone's angle).
   spread: { hip: 1.8, aim: 0.12, moving: 1.2 }, // moving is added at full walking speed
   recoil: 1, // how hard it kicks (the view and the gun)
@@ -143,6 +144,7 @@ export const BERETTA = {
     catching: { magOut: 0.127, magCaught: 2, magGrab: 0.247, magIn: 0.528, handOn: 0.6 },
   },
   range: 150,
+  damage: 25, // hit points a hit takes off (twice that to the head)
   spread: { hip: 1.8, aim: 0.11, moving: 1.25 },
   recoil: 1.15,
   // Its inspect is its own clip, this long (seconds), and it's left out
@@ -184,6 +186,7 @@ export const MP7 = {
     catching: { magOut: 0.151, magCaught: 2, magGrab: 0.496, magIn: 0.604, handOn: 0.75 },
   },
   range: 200,
+  damage: 20, // hit points a hit takes off (twice that to the head)
   spread: { hip: 2.2, aim: 0.12, moving: 1.4 },
   recoil: 0.4,
   burstKick: { perRound: 0.05, most: 0.6 },
@@ -223,6 +226,7 @@ export const AR15 = {
     catching: { magGrab: 0.007, magOut: 0.34, magCaught: 2, magIn: 0.533, handOn: 0.8 },
   },
   range: 300,
+  damage: 34, // hit points a hit takes off (twice that to the head)
   spread: { hip: 2.4, aim: 0.06, moving: 1.6 },
   recoil: 0.85,
   inspect: false,
@@ -258,6 +262,7 @@ export const MAKAROV = {
     catching: { magOut: 0.295, magCaught: 2, magGrab: 0.474, magIn: 0.768, handOn: 0.888 },
   },
   range: 150,
+  damage: 22, // hit points a hit takes off (twice that to the head)
   spread: { hip: 1.8, aim: 0.11, moving: 1.25 },
   recoil: 1.1,
   inspect: false,
@@ -300,6 +305,7 @@ export const AK74M = {
     { clip: 'reload2', time: 2.815, steps: { magGrab: 0.189, magOut: 0.337, magCaught: 2, magIn: 0.583, handOn: 0.905 } },
   ],
   range: 300,
+  damage: 34, // hit points a hit takes off (twice that to the head)
   spread: { hip: 2.6, aim: 0.08, moving: 1.6 },
   recoil: 0.6,
   burstKick: { perRound: 0.06, most: 0.7 },
@@ -338,6 +344,7 @@ export const AK74U = {
     catching: { magOut: 0.19, magCaught: 2, magGrab: 0.42, magIn: 0.657, handOn: 0.858 },
   },
   range: 200,
+  damage: 31, // hit points a hit takes off (twice that to the head)
   spread: { hip: 2.6, aim: 0.12, moving: 1.6 },
   recoil: 0.75,
   burstKick: { perRound: 0.07, most: 0.8 },
@@ -377,6 +384,7 @@ export const SAPS12 = {
   reloadTime: 2.1,
   emptyReloadTime: 2.5,
   range: 60,
+  damage: 12, // hit points each pellet takes off (nine a shot)
   pellets: 9,
   pelletSpread: 2.2,
   spread: { hip: 1.2, aim: 0.3, moving: 1 },

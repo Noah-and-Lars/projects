@@ -28,6 +28,8 @@
   <body>
     <div id="game"></div>
     <div id="crosshair"></div>
+    <div id="hitmarker"></div>
+    <div id="target-hp"><span class="who">Soldier</span><span class="hp">100</span><span class="bar"><span class="lost"></span><span class="fill"></span></span></div>
     <div id="photo-hint">Photo mode: WASD to fly (Shift faster), Space / C up and down, mouse to look; arrow keys walk him (Shift runs). P to go back.</div>
     <pre id="debug"></pre>
     <div id="ammo"><span class="name" data-gun-name="beretta">Beretta 92FS</span><span class="mag">15</span><span class="reserve">60</span><span class="hint"></span></div>
@@ -39,7 +41,7 @@
         <header class="menu-brand">
           <p class="menu-kicker">Tactical shooter <span>·</span> in the browser</p>
           <h1 class="menu-title"><span class="menu-title-name">Steelhead</span><span class="menu-title-colon">: </span><span class="menu-title-sub">Dead Ground</span></h1>
-          <p class="menu-tag"><span>Phase 1</span> Baseplate</p>
+          <p class="menu-tag"><span>Phase 1</span> Parking garage</p>
         </header>
         <nav class="menu-list" aria-label="Main menu">
           <span class="menu-bar" aria-hidden="true"></span>
@@ -103,6 +105,8 @@
               <li>The AR-15 breakdown's rifle based on <a href="https://sketchfab.com/3d-models/ar-slr-bf6a5fb58a484f60b302adecb8bf0aec" target="_blank" rel="noopener">"AR SLR"</a> by <a href="https://sketchfab.com/luapqq" target="_blank" rel="noopener">luapqq</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
               <li>The FN SCAR-L breakdown's rifle based on <a href="https://sketchfab.com/3d-models/scar-l-f52a0de5e7de44dcbded409c1fcc704e" target="_blank" rel="noopener">"SCAR L"</a> by <a href="https://sketchfab.com/zhe_kan" target="_blank" rel="noopener">zhe_kan</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
               <li>The IWI Galil ACE breakdown's gun based on <a href="https://sketchfab.com/3d-models/galil-ace-5471bfc3d66a402f8eb4fda52b62a2df" target="_blank" rel="noopener">"Galil Ace"</a> by <a href="https://sketchfab.com/mark7levin" target="_blank" rel="noopener">MarkLevin</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
+              <li>The map, the parking garage, based on <a href="https://sketchfab.com/3d-models/parking-garage-98f7bc75350f4fb7ad36830f58fc99be" target="_blank" rel="noopener">"parking garage"</a> by <a href="https://sketchfab.com/spleen.vision" target="_blank" rel="noopener">SPLEEN VISION</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
+              <li>The soldier's hit reaction and fall: <a href="https://www.mixamo.com" target="_blank" rel="noopener">Mixamo</a> animations.</li>
               <li>Soldier based on a <a href="https://sketchfab.com/3d-models/soldier-full-tactical-gear-850593a8c7114c188395ba1849a66eb9" target="_blank" rel="noopener">model</a> by <a href="https://sketchfab.com/1799danly" target="_blank" rel="noopener">DanlyVostok</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game.</li>
               <li>Outfit gear based on models by <a href="https://sketchfab.com/txyrm70" target="_blank" rel="noopener">Exactly</a>, <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>, changed for the game: the <a href="https://sketchfab.com/3d-models/tactical-helmet-with-headset-game-ready-82adf376164f4d99a4e0b2949930e2ad" target="_blank" rel="noopener">comms helmet</a>, the <a href="https://sketchfab.com/3d-models/tactical-headset-game-ready-c1cee56e73ed47438015a646ad82dfa5" target="_blank" rel="noopener">headset</a>, the <a href="https://sketchfab.com/3d-models/tactical-plate-carrier-vest-game-ready-3b51e6329dbb4b0aa14e43f12eb6c42a" target="_blank" rel="noopener">black carrier</a>, the <a href="https://sketchfab.com/3d-models/military-armor-3d-model-7cab57de2b844a60a43af4fd8b61a4a4" target="_blank" rel="noopener">sage carrier</a>, the <a href="https://sketchfab.com/3d-models/tactical-combat-gloves-game-ready-5e8f53fcba864163a199fa22baa653cb" target="_blank" rel="noopener">black gloves</a>, the <a href="https://sketchfab.com/3d-models/tactical-combat-gloves-3d-model-fda69c63c472449f8ded80a9e6d91562" target="_blank" rel="noopener">sage gloves</a> and the <a href="https://sketchfab.com/3d-models/military-tactical-gloves-multicam-hard-knuckle-72342e418cd743209395bba607d5504e" target="_blank" rel="noopener">camo gloves</a>.</li>
               <li><a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> r184, MIT License.</li>

@@ -8,11 +8,11 @@
 import * as THREE from 'three';
 import { GUNS, LOADOUT, MOVEMENT, PLAYER, TICK_DT } from './shared/config.js';
 import { BUTTON_SPRINT, BUTTON_SPRINT_KEY, createPlayerState, emptyCommand, horizontalSpeed, simulatePlayer } from './shared/movement.js';
-import { raycastColliders, raycastWorld } from './shared/map.js';
+import { raycastColliders, raycastWorld, SPAWN } from './shared/map.js';
 import { Pistol } from './weapon.js';
 import { WorldEffects } from './effects/worldEffects.js';
 import { playDryFire, playGunshot, playMagCatch, playMagGrab, playMagIn, playMagOut, playShellIn, playSlideBack, playSlideRelease, startAudio } from './effects/audio.js';
-import { addSoldier, createWorld, outdoorEnvironment, SUN_DIRECTION } from './world.js';
+import { addSoldier, createWorld, outdoorEnvironment, SOLDIER_HP, SUN_DIRECTION } from './world.js';
 import { Viewmodel, AIM } from './viewmodel/viewmodel.js';
 import { PlayerBody } from './player/body.js';
 import { FirstPersonArms } from './player/fpArms.js';
@@ -69,6 +69,8 @@ const hud = new Hud(document.getElementById('debug'));
 const gpuTimer = new GpuTimer(renderer.getContext());
 
 const player = createPlayerState();
+// (Facing the way the map's spawn faces.)
+input.yaw = SPAWN.yaw;
 const previous = { x: player.x, y: player.y, z: player.z, eye: player.eye };
 const cmd = emptyCommand();
 // The guns the player carries (src/shared/config.js), and the one in hand:
@@ -416,7 +418,7 @@ input.onLockChange = (locked) => {
   else if (!menu.open && !showcase) pauseMenu();
 };
 mainMenu.show('title');
-viewmodel.ready.then(() => {
+Promise.all([viewmodel.ready, scene.userData.mapReady]).then(() => {
   // The guns with their own arms wear the outfit's gloves too.
   viewmodel.wearGloves(outfit);
   // A gun whose model couldn't be loaded may have a stand-in that plays by
@@ -540,7 +542,11 @@ function shoot() {
     const d = pellets > 1 ? spread(direction, gun.pelletSpread || 0) : direction;
     const hit = raycastWorld(camera.position.x, camera.position.y, camera.position.z, d.x, d.y, d.z, gun.range);
     const dust = pellets > 1 ? 0.35 : 1;
-    if (hit && hit.what === 'soldier') effects.impact(hit, 0x6b6e58, false, dust); // cloth: no hole (his box is only roughly his shape)
+    if (hit && hit.what === 'soldier') {
+      effects.impact(hit, 0x6b6e58, false, dust); // cloth: no hole (his box is only roughly his shape)
+      const hurt = soldier.hit(gun.damage || 25, hit.y);
+      if (hurt) showHit(hurt);
+    }
     else if (hit) effects.impact(hit, hit.what === 'ground' ? 0x8c8c8c : 0xcfc6b6, true, dust);
   }
 
@@ -583,6 +589,63 @@ function updateBarrelSmoke(dt) {
   barrel.smokeTimer = 1 / (HEAT.puffsPerSecond * (0.4 + 0.6 * amount));
   const from = Math.random() < 0.7 ? viewmodel.muzzlePoint() : viewmodel.portPoint();
   effects.barrelSmoke(gunPointToWorld(from), amount);
+}
+
+// --- The soldier's hit points ---
+
+// A bar over his head with his hit points (shown once he's been hit, while
+// he can be seen: not behind a wall or a pillar, and not too far off), and
+// a mark round the crosshair for each hit: white, red to the head, and a
+// bigger red one for the hit that puts him down.
+const targetBar = document.getElementById('target-hp');
+const targetFill = targetBar.querySelector('.fill');
+const targetLost = targetBar.querySelector('.lost');
+const targetText = targetBar.querySelector('.hp');
+const hitMark = document.getElementById('hitmarker');
+let targetShown = 0; // seconds left showing the bar after a hit
+let hitMarkTimer = 0;
+const barPoint = new THREE.Vector3();
+const TARGET = { show: 6, range: 60 };
+
+function showHit(hurt) {
+  targetShown = TARGET.show;
+  hitMark.className = hurt.killed ? 'kill' : hurt.head ? 'head' : 'body';
+  void hitMark.offsetWidth; // (restart its animation)
+  hitMark.classList.add('on');
+  hitMarkTimer = 0.35;
+  updateTargetBar();
+}
+
+function updateTargetBar() {
+  const share = Math.max(0, soldier.hp) / SOLDIER_HP.max;
+  targetFill.style.transform = `scaleX(${share})`;
+  targetLost.style.transform = `scaleX(${share})`; // (it drains after the fill: its CSS transition)
+  targetText.textContent = soldier.downFor > 0 ? 'DOWN' : `${Math.max(0, soldier.hp)}`;
+  targetBar.classList.toggle('low', share <= 0.3);
+  targetBar.classList.toggle('down', soldier.downFor > 0);
+}
+
+function updateTargetHud(dt) {
+  hitMarkTimer = Math.max(0, hitMarkTimer - dt);
+  if (hitMarkTimer === 0) hitMark.classList.remove('on');
+  if (soldier.downFor > 0) targetShown = Math.max(targetShown, 0.5);
+  else if (soldier.hp === SOLDIER_HP.max && targetShown > 0 && targetText.textContent !== `${SOLDIER_HP.max}`) updateTargetBar(); // (back up)
+  targetShown = Math.max(0, targetShown - dt);
+  let visible = targetShown > 0 && soldier.barPoint(barPoint) && !photo.on;
+  if (visible) {
+    const to = barPoint.clone().sub(camera.position);
+    const distance = to.length();
+    to.divideScalar(distance);
+    const blocked = raycastWorld(camera.position.x, camera.position.y, camera.position.z, to.x, to.y, to.z, distance);
+    const screen = barPoint.clone().project(camera);
+    visible = distance < TARGET.range && screen.z < 1 && Math.abs(screen.x) < 1.1 && Math.abs(screen.y) < 1.1 && (!blocked || blocked.what === 'soldier');
+    if (visible) {
+      const w = renderer.domElement.clientWidth;
+      const h = renderer.domElement.clientHeight;
+      targetBar.style.transform = `translate(${((screen.x + 1) / 2) * w}px, ${((1 - screen.y) / 2) * h}px) translate(-50%, -100%)`;
+    }
+  }
+  targetBar.classList.toggle('on', Boolean(visible));
 }
 
 // --- Ammo counter ---
@@ -756,6 +819,7 @@ renderer.setAnimationLoop((time) => {
   updateBarrelSmoke(frameSeconds);
   effects.update(frameSeconds);
   soldier.update(frameSeconds);
+  updateTargetHud(frameSeconds);
   body.update(new THREE.Vector3(camera.position.x, feetY, camera.position.z), input.yaw, input.pitch, player, frameSeconds, eyeNow);
   if (fpArms && body.model && loaded) fpArms.update(camera, player, input.pitch, frameSeconds);
   updateAmmo();

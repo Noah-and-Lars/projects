@@ -1,11 +1,14 @@
-// The baseplate: one large, flat, plain grey surface under a plain sky,
-// plus a small house to show movement until the real map arrives, and a
-// soldier standing by it.
+// The world: the map (src/shared/map.js, MAP_ID). The parking garage: its
+// scanned model in the dark, its light already in its textures. Or the
+// baseplate: one large, flat, plain grey surface under a plain sky, plus a
+// small house and a movement course. And a soldier standing in it.
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { loadSoldier, SOLDIER_MODEL } from './soldier.js';
 import { WORLD } from './shared/config.js';
-import { COLLIDERS, HOUSE, OBSTACLES, SOLDIER, SOLDIER_BOX } from './shared/map.js';
+import { COLLIDERS, GARAGE, garageEdge, HOUSE, MAP_ID, OBSTACLES, SOLDIER, SOLDIER_BOX } from './shared/map.js';
 
 const SKY_COLOR = 0xb8c6d4;
 const FLOOR_COLOR = 0x8c8c8c;
@@ -13,8 +16,18 @@ const FLOOR_COLOR = 0x8c8c8c;
 // Direction the sunlight comes from (towards the sun). Also used to light the gun.
 export const SUN_DIRECTION = new THREE.Vector3(0.45, 0.8, 0.4).normalize();
 
+// The garage: dark all round (where the scan stops, the car park seems to
+// go on into the dark), and the far side of it a little hazy. Its own
+// lights are in its textures (unlit materials); the lights here are for
+// the soldier and the player's body: a cool overhead light, like its
+// strip lights.
+const GARAGE_DARK = 0x050607;
+const GARAGE_MODEL = new URL(`../${GARAGE.model}`, import.meta.url);
+
 export function createWorld() {
+  if (MAP_ID === 'garage') return createGarage();
   const scene = new THREE.Scene();
+  scene.userData.mapReady = Promise.resolve();
   scene.background = new THREE.Color(SKY_COLOR);
   // Fades the far floor into the sky so the edge of the baseplate isn't visible.
   scene.fog = new THREE.Fog(SKY_COLOR, 200, WORLD.size * 0.45);
@@ -49,6 +62,58 @@ export function createWorld() {
   scene.add(createHouse());
   scene.add(createCourse());
   return scene;
+}
+
+function createGarage() {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(GARAGE_DARK);
+  scene.fog = new THREE.Fog(GARAGE_DARK, 12, 34);
+  scene.add(new THREE.HemisphereLight(0xe4ebf2, 0x3c3c3a, 1.0));
+  const overhead = new THREE.DirectionalLight(0xf2f6ff, 0.9);
+  overhead.position.set(1, 10, 3);
+  overhead.target.position.set(1, 0, 2);
+  scene.add(overhead, overhead.target);
+  scene.add(garageDarkness());
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  scene.userData.mapReady = loader.loadAsync(GARAGE_MODEL.href).then((gltf) => {
+    gltf.scene.name = 'garage';
+    scene.add(gltf.scene);
+  }).catch((error) => {
+    // Without its model, a plain dark floor (its walls still stand, unseen).
+    console.warn(`Couldn't load ${GARAGE_MODEL.pathname}; a plain floor stands in for the garage.`, error);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0x55575a, roughness: 1 }));
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+  });
+  return scene;
+}
+
+// Where the scan stops (the garage's open edges), darkness thickens over
+// the last two metres: see-through black sheets standing one behind
+// the other, each a little darker, the last one solid, so the torn edges of
+// the scanned floor and ceiling fade out and the car park seems to go on
+// into the dark. (Not fogged: they stay black.)
+function garageDarkness() {
+  const group = new THREE.Group();
+  group.name = 'garage-darkness';
+  const LAYERS = 6;
+  const top = GARAGE.ceiling + 0.4;
+  for (const i of GARAGE.open) {
+    const e = garageEdge(i);
+    for (let k = 0; k < LAYERS; k++) {
+      const depth = GARAGE.darkDepth * (1 - k / (LAYERS - 1)); // from the innermost to the edge
+      const opacity = k === LAYERS - 1 ? 1 : 0.12 + 0.05 * k;
+      const geometry = new THREE.PlaneGeometry(e.len + 1.2, top + 0.6);
+      const sheet = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
+        color: GARAGE_DARK, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide, fog: false,
+      }));
+      sheet.position.set((e.ax + e.bx) / 2 + e.nx * depth, top / 2 - 0.3, (e.az + e.bz) / 2 + e.nz * depth);
+      sheet.rotation.y = Math.atan2(e.nx, e.nz);
+      sheet.renderOrder = 10 + k;
+      group.add(sheet);
+    }
+  }
+  return group;
 }
 
 // Where the sun's shadows are drawn: centre and half size (metres).
@@ -169,13 +234,85 @@ export function outdoorEnvironment(renderer, sunDirection) {
 // wardrobe (src/gear.js, optional) dresses him in the player's outfit.
 export const SOLDIER_SKY = 1; // how strongly the sky lights him
 
+// His hit points: a hit takes off the gun's `damage` (src/shared/config.js),
+// twice that to the head (the top HEAD of his box). A hit he lives through
+// plays his hit reaction; the one that takes the last of them, his hit and
+// fall, and he lies there for DOWN seconds, then gets up with them all back.
+// Both clips are Mixamo's, retargeted onto him (assets/cinematic/
+// soldier_clips.glb, enemy_hit and enemy_hit_fall: see tools/cinematic/).
+// While he's down, shots and the player go through where he stood.
+export const SOLDIER_HP = { max: 100, head: 2, down: 4.5 };
+const HEAD = 0.3; // m, the top of his box that counts as his head
+const SOLDIER_CLIPS = new URL('../assets/cinematic/soldier_clips.glb', import.meta.url);
+
 export function addSoldier(scene, renderer, camera, wardrobe = null) {
-  const soldier = { mixer: null, update(dt) { if (this.mixer) this.mixer.update(dt); } };
+  const soldier = {
+    mixer: null,
+    hp: SOLDIER_HP.max,
+    downFor: 0, // seconds left lying down (0: standing)
+    model: null,
+    actions: null,
+    // How a shot that hit his box (at height y) hurts him: the hit points it
+    // took off, whether it was to the head, and whether it put him down.
+    hit(damage, y) {
+      if (this.downFor > 0 || this.hp <= 0) return null;
+      const head = y >= SOLDIER_BOX.maxY - HEAD;
+      const taken = Math.min(this.hp, Math.round(damage * (head ? SOLDIER_HP.head : 1)));
+      this.hp -= taken;
+      const killed = this.hp <= 0;
+      if (killed) this.fall(); else this.flinch();
+      return { taken, head, killed, hp: this.hp };
+    },
+    flinch() {
+      const a = this.actions;
+      if (!a || !a.hit) return;
+      a.hit.reset().setEffectiveWeight(1).fadeIn(0.08).play();
+      a.idle.fadeOut(0.08);
+    },
+    fall() {
+      this.downFor = SOLDIER_HP.down;
+      const i = COLLIDERS.indexOf(SOLDIER_BOX);
+      if (i >= 0) COLLIDERS.splice(i, 1);
+      const a = this.actions;
+      if (!a || !a.fall) return;
+      if (a.hit) a.hit.fadeOut(0.1);
+      a.idle.fadeOut(0.1);
+      a.fall.reset().setEffectiveWeight(1).fadeIn(0.1).play();
+    },
+    getUp() {
+      this.hp = SOLDIER_HP.max;
+      if (!COLLIDERS.includes(SOLDIER_BOX)) COLLIDERS.push(SOLDIER_BOX);
+      const a = this.actions;
+      if (!a) return;
+      a.idle.reset().setEffectiveWeight(1).fadeIn(0.5).play();
+      if (a.fall) a.fall.fadeOut(0.5);
+    },
+    // Where his health bar goes: over his head (world space), or null.
+    barPoint(into) {
+      if (!this.model) return null;
+      return into.set(SOLDIER.x, SOLDIER_BOX.maxY + 0.32, SOLDIER.z);
+    },
+    update(dt) {
+      if (this.downFor > 0) {
+        this.downFor -= dt;
+        if (this.downFor <= 0) {
+          this.downFor = 0;
+          this.getUp();
+        }
+      }
+      if (this.mixer) this.mixer.update(dt);
+    },
+  };
   // Lit by the outdoor sky too, as the gun is (the world's plain lights alone
   // leave his dark olive kit nearly black).
   const sky = outdoorEnvironment(renderer, SUN_DIRECTION);
-  loadSoldier().then(({ gltf }) => {
+  const clips = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(SOLDIER_CLIPS.href).then((g) => g.animations).catch((error) => {
+    console.warn(`Couldn't load ${SOLDIER_CLIPS.pathname}; the soldier won't react to hits.`, error);
+    return [];
+  });
+  Promise.all([loadSoldier(), clips]).then(([{ gltf }, reactions]) => {
     const model = gltf.scene;
+    soldier.model = model;
     model.position.set(SOLDIER.x, 0, SOLDIER.z);
     model.rotation.y = SOLDIER.facing;
     model.traverse((o) => {
@@ -212,7 +349,24 @@ export function addSoldier(scene, renderer, camera, wardrobe = null) {
       }
       if (gltf.animations.length) {
         soldier.mixer = new THREE.AnimationMixer(model);
-        soldier.mixer.clipAction(gltf.animations[0]).play();
+        const idle = soldier.mixer.clipAction(gltf.animations[0]);
+        idle.play();
+        const once = (name) => {
+          const clip = reactions.find((c) => c.name === name);
+          if (!clip) return null;
+          const action = soldier.mixer.clipAction(clip);
+          action.setLoop(THREE.LoopOnce, 1);
+          action.clampWhenFinished = true;
+          return action;
+        };
+        soldier.actions = { idle, hit: once('enemy_hit'), fall: once('enemy_hit_fall') };
+        // After a hit reaction, back to standing at rest.
+        soldier.mixer.addEventListener('finished', (e) => {
+          if (e.action === soldier.actions.hit && soldier.downFor === 0) {
+            idle.reset().setEffectiveWeight(1).fadeIn(0.25).play();
+            e.action.fadeOut(0.25);
+          }
+        });
       }
     });
   }).catch((error) => {
