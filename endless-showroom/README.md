@@ -42,7 +42,7 @@ Don't edit `index.html` by hand. It's generated from `src/`.
 | | |
 | --- | --- |
 | Day | 6 minutes, 08:00 to 22:00 on the clock. The staff are harmless. The last 5 seconds tick down. |
-| Night | 5 minutes on the first night, and **4 seconds longer every night after** (day 10: 5 min 36 s; day 60: about 9 minutes). 22:00 to 08:00 on the clock. The overhead lights cut out with a clunk, and only the emergency fittings (orange) and lamps stay lit. |
+| Night | 5 minutes on the first night, and **4 seconds longer every night after** (day 10: 5 min 36 s; day 60: about 9 minutes). 22:00 to 08:00 on the clock. The overhead lights cut out with a clunk, and only the emergency lights (orange) and lamps stay lit. |
 | Week | Days run Monday to Sunday. **Food and first aid restock at the start of every Monday and Friday**, not daily. |
 
 There are no special days: just day and night, every day.
@@ -142,7 +142,7 @@ turn that off).
   **Shift** for 90°. **Ctrl+Shift+R** squares it back up. Any angle works, so
   you can lean a bookcase into a ramp or stand a pallet on end as a wall.
 - **Let go** with E, a click or Q. If the piece is **touching anything** (the
-  floor, a wall, a pillar, the ceiling or other furniture) it stays exactly
+  floor, a wall, a pillar or other furniture) it stays exactly
   there, fixed, with a thunk. That's how you build floating floors and
   stairs you can take away: hold the next piece so it touches the last one.
   Let go **in mid-air** and it drops onto whatever is below, and anything
@@ -150,7 +150,7 @@ turn that off).
   green when it'll stay put, white when it'll drop, and red when it's
   overlapping someone (you, a friend or a member of staff): you can't let go of
   it there.
-- The **mouse wheel** moves it closer or farther. **Hold F** to wind up a
+- The **mouse wheel** moves it closer or farther (1.5 to 4.5 m from you). **Hold F** to wind up a
   throw and let go of F to throw it: the longer you hold, the further it
   goes. Settings can snap held pieces to a 25 cm, 50 cm or 1 m grid.
 - **Ride** what you hold: put a piece under your feet and raise it, and you
@@ -175,7 +175,7 @@ turn that off).
 - **Lights**: floor lamps, table lamps, warm table lamps, green and purple
   lamps, industrial, modern, triple and arc lamps, a thin LED light, desk lamps,
   lanterns, candles, night lights, small and tall work lights, garden lamps,
-  ceiling lamps (hold one up against the ceiling and it hangs there) and wall
+  ceiling lamps (they hang from a high fitting in the rooms) and wall
   lights (put one against a wall). Every light switches on and off with F and
   lights the dark around it. **Colour lights** (the pencil lamp, the mood globe
   and light strips) step through six colours and then a slow fade through all
@@ -280,20 +280,30 @@ Everything is generated in code. There are no image or model files.
   plaster, generated at start-up. It's projected from world space on all
   three axes, so models need no UVs. The surface type also sets roughness
   and metalness.
-- **Ceiling light.** There's a fluorescent fitting every 6 m, forever. They
+- **No roof.** The walls stop at 6.5 m and above them there's nothing but
+  fog. The grid pillars carry on upwards forever and fade into it, signs hang
+  on cables from somewhere out of sight, and layers of drifting fog move
+  across the sky. By day it's a pale grey haze; at night it's near black.
+- **Overhead light.** There's an invisible light every 6 m, forever. They
   aren't real lights. The shader lights each pixel from the nine nearest
   fittings, with a diffuse term and a glossy highlight. That gives pools of
   light on the floor and their reflections in its polish, at a fixed cost
   however far you walk.
-- **Night.** The fittings go out, except one in nine emergency fittings that
-  glow orange, and the edges of the screen darken. Staff eyes glow red. Your
+- **Night.** The lights go out, except one in nine emergency lights that
+  cast orange pools, and the edges of the screen darken. Staff eyes glow red. Your
   torch (F) is a real spotlight.
+- **Interface.** The whole interface is styled as the store's own printed
+  matter, so it reads as part of the place rather than a web page: signage
+  lettering (Barlow Condensed), square solid blocks with no glass or glow, and
+  one amber colour kept for the main action and the selected slot. The clock
+  is an OPEN / CLOSED shop sign, the bars are thin stocktake gauges,
+  announcements come over the store PA, and death is an incident report slip.
+  The main menu sits over the store at night, looking up a pillar into the fog.
 - **Contact shadows.** A soft shadow sits under every piece of furniture
   (one instanced mesh) and around the base of every pillar, wall, rack and
   counter (merged per chunk). Surfaces also darken slightly where they meet
   the floor.
-- **Everything else.** Speckled vinyl floor tiles with scuffs, acoustic
-  ceiling tiles, feature-coloured back walls in the showrooms, a generic
+- **Everything else.** Speckled vinyl floor tiles with scuffs, feature-coloured back walls in the showrooms, a generic
   room environment map for reflections on metal, ACES tone mapping, and
   dust drifting in the light. The camera bobs when you walk, widens when you
   sprint, dips when you land and shakes when you're hit. Hotbar icons are
