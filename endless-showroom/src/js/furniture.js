@@ -218,7 +218,7 @@ export const TYPES = {
     g.box(0, 0.6, -1.02, 1.6, 1.2, 0.06, 0x6e4a2f);
     for (const x of [-0.53, 0, 0.53]) g.box(x, 0.86, -0.985, 0.48, 0.5, 0.02, shade(c, 0.9));
   } },
-  bunkBed: { climb: true, soft: 'top', m: 'wood', name: 'Bunk Bed', w: 1.0, d: 2.0, h: 1.7, hp: 160, cols: WOOD, build(g, c) {
+  bunkBed: { soft: 'top', m: 'wood', name: 'Bunk Bed', w: 1.0, d: 2.0, h: 1.7, hp: 160, cols: WOOD, build(g, c) {
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.box(sx * 0.46, 0.85, sz * 0.96, 0.07, 1.7, 0.07, c);
     for (const y of [0.3, 1.25]) {
       g.box(0, y, 0, 1.0, 0.08, 2.0, c); g.box(0, y + 0.1, 0, 0.9, 0.12, 1.88, WHITE);
@@ -350,7 +350,7 @@ export const TYPES = {
     g.cyl(0, 0.68, 0, 0.19, 0.06, c, 14); g.cyl(0, 0.74, 0, 0.18, 0.04, shade(c, 1.08), 14, 0.16);
   } },
   // ---- office and study ----
-  bookshelf: { climb: true, m: 'wood', name: 'Bookshelf', w: 0.9, d: 0.35, h: 1.9, hp: 120, cols: WOOD, build(g, c) {
+  bookshelf: { m: 'wood', name: 'Bookshelf', w: 0.9, d: 0.35, h: 1.9, hp: 120, cols: WOOD, build(g, c) {
     g.box(-0.43, 0.95, 0, 0.04, 1.9, 0.35, c); g.box(0.43, 0.95, 0, 0.04, 1.9, 0.35, c); g.box(0, 0.95, -0.16, 0.86, 1.9, 0.02, shade(c, 0.85));
     g.box(0, 1.885, 0.005, 0.92, 0.03, 0.36, shade(c, 1.06)); g.box(0, 0.04, 0.165, 0.86, 0.08, 0.02, shade(c, 0.8));
     const books = [0xa33b3b, 0x3b5ea3, 0xd8b23b, 0x3b8a5a, 0xe0e0e0, 0x6a3ba3];
@@ -402,14 +402,14 @@ export const TYPES = {
     }
   } },
   // ---- storage ----
-  shelfCube: { climb: true, m: 'wood', name: 'Cube Shelf', w: 1.5, d: 0.4, h: 1.5, hp: 140, cols: [WHITE, 0x2f2f33, 0xc89a64], build(g, c) {
+  shelfCube: { m: 'wood', name: 'Cube Shelf', w: 1.5, d: 0.4, h: 1.5, hp: 140, cols: [WHITE, 0x2f2f33, 0xc89a64], build(g, c) {
     for (let i = 0; i < 4; i++) { g.box(-0.73 + i * (1.46 / 3), 0.75, 0, 0.04, 1.5, 0.4, c); g.box(0, 0.02 + i * (1.46 / 3), 0, 1.5, 0.04, 0.4, c); }
     g.box(0, 0.75, -0.19, 1.46, 1.46, 0.02, shade(c, 0.85));
     g.box(-0.48, 0.27, 0.02, 0.4, 0.4, 0.34, 0x8fa7b8); g.box(-0.48, 0.38, 0.193, 0.1, 0.04, 0.004, shade(0x8fa7b8, 0.7));
     g.box(0.48, 0.76, 0.02, 0.4, 0.4, 0.34, 0xc9a56a); g.box(0, 1.24, 0.02, 0.36, 0.36, 0.3, 0x9a4b3f);
     g.box(0.48, 1.08, 0.0, 0.3, 0.06, 0.24, 0x3b5ea3); g.box(0.48, 1.13, 0.0, 0.26, 0.04, 0.22, 0xd8b23b);
   } },
-  wireRack: { climb: true, see: true, m: 'metal', name: 'Wire Shelving', w: 1.2, d: 0.5, h: 1.9, hp: 150, cols: [0xc9ced3, 0x2f2f33], build(g, c) {
+  wireRack: { see: true, m: 'metal', name: 'Wire Shelving', w: 1.2, d: 0.5, h: 1.9, hp: 150, cols: [0xc9ced3, 0x2f2f33], build(g, c) {
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.cyl(sx * 0.58, 0, sz * 0.23, 0.015, 1.9, c, 6);
     for (let s = 0; s < 5; s++) {
       const y = 0.08 + s * 0.44;
@@ -451,7 +451,7 @@ export const TYPES = {
     g.box(-0.25, 0.22, 0.255, 0.12, 0.12, 0.004, 0xf1c40f); g.box(0, 0.22, 0.255, 0.12, 0.12, 0.004, 0x3498db); g.box(0.25, 0.22, 0.255, 0.12, 0.12, 0.004, 0x2ecc71);
   } },
   // ---- fun ----
-  slide: { m: 'plastic', climb: true, see: true, name: 'Play Slide', w: 0.7, d: 2.2, h: 1.4, hp: 120, cols: [0xe74c3c, 0x3498db, 0xf39c12], build(g, c) {
+  slide: { m: 'plastic', see: true, name: 'Play Slide', w: 0.7, d: 2.2, h: 1.4, hp: 120, cols: [0xe74c3c, 0x3498db, 0xf39c12], build(g, c) {
     for (const x of [-0.3, 0.3]) { g.box(x, 0.7, -0.95, 0.06, 1.4, 0.06, 0xecf0f1); g.box(x, 0.7, -0.65, 0.06, 1.4, 0.06, 0xecf0f1); }
     for (let i = 0; i < 5; i++) g.box(0, 0.25 + i * 0.27, -0.95, 0.6, 0.04, 0.05, 0xecf0f1);
     g.box(0, 1.37, -0.8, 0.7, 0.06, 0.36, c);
@@ -531,7 +531,7 @@ export const TYPES = {
     g.box(0, 1.09, 0, 1.44, 0.02, 0.44, shade(c, 1.08));
   } },
   // An open garden frame with a slatted roof. Walk under it or climb a post.
-  pergola: { m: 'wood', climb: true, name: 'Pergola', w: 3.0, d: 3.0, h: 2.5, hp: 300, cols: [0xc89a64, 0x8a5a36, 0xf0ede6],
+  pergola: { m: 'wood', name: 'Pergola', w: 3.0, d: 3.0, h: 2.5, hp: 300, cols: [0xc89a64, 0x8a5a36, 0xf0ede6],
     parts: [[-1.5, 0, -1.5, -1.36, 2.3, -1.36], [1.36, 0, -1.5, 1.5, 2.3, -1.36], [-1.5, 0, 1.36, -1.36, 2.3, 1.5], [1.36, 0, 1.36, 1.5, 2.3, 1.5], [-1.5, 2.3, -1.5, 1.5, 2.5, 1.5]],
     build(g, c) {
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) { g.box(sx * 1.43, 1.15, sz * 1.43, 0.14, 2.3, 0.14, c); g.box(sx * 1.43, 0.03, sz * 1.43, 0.16, 0.06, 0.16, shade(c, 0.8)); }
@@ -563,7 +563,7 @@ export const TYPES = {
     for (const sx of [-1, 1]) { g.box(sx * 0.22, 1.2, 0, 0.05, 2.4, 0.07, c); g.box(sx * 0.22, 0.02, 0, 0.07, 0.04, 0.12, DARK); }
     for (let i = 0; i < 8; i++) g.box(0, 0.25 + i * 0.29, 0, 0.4, 0.035, 0.045, shade(c, 0.92));
   } },
-  pallet: { m: 'wood', climb: true, see: true, name: 'Pallet', w: 1.2, d: 1.0, h: 0.15, hp: 90, cols: [0xc9a46c, 0xb8925a, 0xd8b98a], build(g, c) {
+  pallet: { m: 'wood', see: true, name: 'Pallet', w: 1.2, d: 1.0, h: 0.15, hp: 90, cols: [0xc9a46c, 0xb8925a, 0xd8b98a], build(g, c) {
     for (let i = 0; i < 7; i++) g.box(-0.6 + 0.05 + i * (1.1 / 6), 0.135, 0, 0.1, 0.025, 1.0, shade(c, 0.95 + (i % 3) * 0.04));
     for (const z of [-0.45, 0, 0.45]) for (const x of [-0.5, 0, 0.5]) g.box(x, 0.075, z, 0.14, 0.1, 0.1, shade(c, 0.85));
     for (const z of [-0.45, 0, 0.45]) g.box(0, 0.105, z, 1.2, 0.035, 0.1, shade(c, 0.9));
@@ -629,7 +629,7 @@ export const TYPES = {
     g.box(-0.25, 0.505, 0.05, 0.2, 0.01, 0.14, 0xf2f2f2); g.box(0.2, 0.51, -0.08, 0.06, 0.02, 0.06, 0xe74c3c); g.box(0.3, 0.51, 0.08, 0.06, 0.02, 0.06, 0x3498db);
   } },
   // ---- more shelving and storage ----
-  smallBookcase: { climb: true, m: 'wood', name: 'Small Bookcase', w: 0.8, d: 0.3, h: 1.0, hp: 70, cols: WOOD, build(g, c) {
+  smallBookcase: { m: 'wood', name: 'Small Bookcase', w: 0.8, d: 0.3, h: 1.0, hp: 70, cols: WOOD, build(g, c) {
     g.box(0, 0.5, -0.14, 0.8, 1.0, 0.02, shade(c, 0.85));
     for (const sx of [-1, 1]) g.box(sx * 0.385, 0.5, 0, 0.03, 1.0, 0.3, c);
     for (const y of [0.02, 0.5, 0.985]) g.box(0, y, 0, 0.8, 0.03, 0.3, c);
@@ -640,12 +640,12 @@ export const TYPES = {
     g.box(0, 0.28, 0, 1.0, 0.04, 0.25, c); for (const sx of [-1, 1]) g.box(sx * 0.4, 0.13, -0.08, 0.04, 0.26, 0.08, DARK);
     g.box(-0.3, 0.37, 0, 0.12, 0.14, 0.12, 0xd8cdbb); g.cyl(0.05, 0.3, 0.02, 0.05, 0.12, 0x9a5b3a, 10); g.box(0.3, 0.355, 0, 0.22, 0.11, 0.16, 0x34495e);
   } },
-  woodenShelf: { climb: true, m: 'wood', name: 'Open Shelf', w: 1.0, d: 0.35, h: 1.6, hp: 80, cols: WOOD, build(g, c) {
+  woodenShelf: { m: 'wood', name: 'Open Shelf', w: 1.0, d: 0.35, h: 1.6, hp: 80, cols: WOOD, build(g, c) {
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.box(sx * 0.47, 0.8, sz * 0.15, 0.04, 1.6, 0.04, shade(c, 0.85));
     for (const y of [0.1, 0.55, 1.0, 1.45]) g.box(0, y, 0, 1.0, 0.03, 0.35, c);
     g.box(-0.25, 0.65, 0, 0.3, 0.17, 0.25, 0xc8a26e); g.cyl(0.25, 1.015, 0, 0.08, 0.2, 0xd8d2c4, 10); g.box(0.2, 0.175, 0, 0.4, 0.12, 0.28, 0x8fa7b8);
   } },
-  modernShelf: { climb: true, m: 'paint', name: 'Tall White Shelf', w: 0.8, d: 0.4, h: 1.8, hp: 90, cols: [WHITE, 0x2f2f33, 0xd8cdbb], build(g, c) {
+  modernShelf: { m: 'paint', name: 'Tall White Shelf', w: 0.8, d: 0.4, h: 1.8, hp: 90, cols: [WHITE, 0x2f2f33, 0xd8cdbb], build(g, c) {
     g.box(0, 0.9, -0.19, 0.8, 1.8, 0.02, shade(c, 0.94));
     for (const sx of [-1, 1]) g.box(sx * 0.385, 0.9, 0, 0.03, 1.8, 0.4, c);
     for (let i = 0; i <= 5; i++) g.box(0, 0.02 + i * 0.355, 0, 0.8, 0.03, 0.4, c);

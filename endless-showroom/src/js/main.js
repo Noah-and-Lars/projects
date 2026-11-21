@@ -745,7 +745,7 @@ function updatePlayer(dt) {
     if (!P.onGround || P.slideT <= 0) P.slideT = 0;
   }
   if (!busy && P.alive && k.has('Space') && P.onGround) { P.vy = 7.2; P.onGround = false; P.en = Math.max(0, P.en - 1.5); }
-  // walk into shelving or a bookcase to climb it
+  // walk into a ladder to climb it (shelving can't be climbed: stack furniture)
   P.canClimb = !busy && P.alive && fz < -0.3;
   const ox = P.x, oz = P.z, wasAir = !P.onGround;
   P.landSpeed = 0;
@@ -1327,7 +1327,7 @@ const TIPS = [
   [70, 'Food and first aid are in cafeterias, kitchens and snack bars. Press G to see your inventory.'],
   [110, 'At 22:00 the lights go out and the staff start hunting. They climb about a metre, so get higher than that.'],
   [160, 'While holding a piece, press 1, 2 or 3 to pick an axis and R to rotate it. Pallets stood on end make good walls.'],
-  [210, 'Shelving, bookcases and bunk beds can be climbed, by you and by the staff.'],
+  [210, "You can't climb the shelving. To get up high, stack furniture and jump up it, or bring a ladder."],
   [260, 'Press Z to drop a waypoint at your base so you can find it again.'],
   [300, 'If a member of staff catches you, click to shove them over, then run and break their line of sight.'],
 ];

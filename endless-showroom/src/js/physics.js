@@ -1,7 +1,7 @@
 // Moving a standing body (player or staff) through the store: an upright
 // cylinder against axis-aligned boxes, with step-up, gravity and a ceiling.
-// A body with canClimb set that walks into something climbable (shelving,
-// bookcases, bunk beds, pallets) climbs up its face instead of stopping.
+// A body with canClimb set that walks into a ladder climbs up it instead of
+// stopping. Shelving and racks can't be climbed: to get up them, build.
 import { CEIL } from './world.js';
 
 export function moveBody(world, b, dx, dz, dt) {

@@ -332,7 +332,7 @@ class ChunkGen {
     const { r } = this, top = 4.4, deep = 1.2;
     for (const zc of [2.0, 5.6, 9.2, 14.8, 18.4, 22.0]) {
       const z0 = zc - deep / 2, z1 = zc + deep / 2, x0 = 0.05, x1 = CHUNK - 0.05;
-      this.boxes.push({ x0: x0 + this.ox, x1: x1 + this.ox, z0: z0 + this.oz, z1: z1 + this.oz, y0: 0, y1: top, climb: true });
+      this.boxes.push({ x0: x0 + this.ox, x1: x1 + this.ox, z0: z0 + this.oz, z1: z1 + this.oz, y0: 0, y1: top });
       this.sh.rect(x0, z0, x1, z1, 0.004, 0.3);
       for (let i = 0; i <= 10; i++) for (const zz of [z0, z1 - 0.1]) { const px = x0 + i * ((x1 - x0 - 0.1) / 10); this.deco(px, zz, px + 0.1, zz + 0.1, 0, top, RACK); }
       for (const y of [0.15, 1.55, 2.95, 4.3]) {

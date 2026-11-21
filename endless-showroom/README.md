@@ -69,9 +69,8 @@ turn that off).
   come to look where you were seen.
 - **Break their line of sight** and they lose you after 5 seconds. They go
   and look where they last saw you, then give up.
-- **They climb** about 1.15 m at a time. They also
-  scale climbable furniture: shelving racks, bookcases, cube shelves, bunk
-  beds and pallets. Their paths go over and around anything you build, so a
+- **They climb** about 1.15 m at a time. Like you, they
+  can't scale shelving, only ladders. Their paths go over and around anything you build, so a
   staircase of furniture leads them right up to you. Build high, then take
   your last step away.
 - **They punch** when they're within 1.2 m of you and your feet are less
@@ -165,8 +164,10 @@ turn that off).
   go up with it (jumping helps). Someone else can lift you the same way.
 - **Walk-in wardrobes** are hollow. Step in and block the front for a
   last-minute hiding place. Bathtubs are hollow too.
-- **Climb** shelving, bookcases, cube shelves, bunk beds and pallets by
-  walking into them.
+- **Shelving can't be climbed.** Racks, bookcases, cube shelves and bunk
+  beds are just walls to you: the only way up is to build. Stack furniture
+  into steps you can jump (about 1.2 m at a time), ride a piece up, or carry
+  a ladder over and walk into it to climb it.
 - **Lamps** (floor and table) light up the dark and glow like beacons.
   Carry one at night to see where you're going, or press **F** on one to
   switch it off so it doesn't give you away.
@@ -246,7 +247,7 @@ first aid kit left on it (and an achievement for finding it).
 | Section | What's there |
 | --- | --- |
 | Showroom | Room displays with three walls and a coloured back wall, picked by weight from 36 room types (pictures, lamps, appliances and toys dressing each one): living rooms (classic, modern with a corner sofa, TV lounge, study), dining room, three kinds of kitchen, bedrooms (master, guest, kids', teen, nursery, a bunk bed showcase, a walk-in wardrobe), bathroom, home office (sometimes with the heavy safe), library, bar, games room (billiards and arcade cabinets), music room, entrance hall and a door display (doors you can open and close), lighting display, rug gallery, a TV showcase (every kind of TV), a picture gallery, a toy shop (plush bears, toys, dice, sometimes a gift box), a café, a storage display, kitchen appliances, a party room (light strips, a record player, gift boxes), and the rare mannequin showcase and information desk |
-| Warehouse | **Streets** of 2 to 5 chunks in a row, their 4.4 m climbable racks running the whole length, with pallets, crates, boxes and ladders in the aisles |
+| Warehouse | **Streets** of 2 to 5 chunks in a row, their 4.4 m racks (which nobody can climb) running the whole length, with pallets, crates, boxes and ladders in the aisles |
 | Furniture | Rows of one kind of furniture (lamps and bunk beds included) |
 | Market Hall | Low tables of lamps, plants and boxes, the odd snack, and sometimes a snack bar (ice cream, fizzy drinks, crisps) |
 | Cafeteria | Rare (about 5% of chunks) and worth finding: a hall filling the whole chunk, with a long serving counter heaped with about fifty things to eat and drink, a first aid kit, and 16 tables |

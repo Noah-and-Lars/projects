@@ -4,7 +4,7 @@
 // Day: they wander slowly and ignore you.
 // Night: the same, until they see you (line of sight), hear you sprint, or
 // hear a whistle. Then they chase about as fast as you sprint (small ones faster), climbing up
-// to about a metre at a time and scaling shelving and bookcases, and punch
+// to about a metre at a time (and up ladders, but never shelving), and punch
 // you when they're close. Break their line of sight and they lose you after a
 // few seconds. A shove knocks one down for a moment.
 // Crimson Night: more of them, twice as fast, they climb and jump higher and
