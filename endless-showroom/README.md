@@ -283,7 +283,15 @@ Everything is generated in code. There are no image or model files.
 - **No roof.** The walls stop at 6.5 m and above them there's nothing but
   fog. The grid pillars carry on upwards forever and fade into it, signs hang
   on cables from somewhere out of sight, and layers of drifting fog move
-  across the sky. By day it's a pale grey haze; at night it's near black.
+  across the sky. The higher anything is, the more the fog takes it, and the
+  sky shades from the fog at eye level to a slightly paler haze overhead, so
+  the pillars thin out into it rather than ending. By day it's a pale grey
+  haze; at night it's near black.
+- **The grid pillars** show the joints of the shuttering they were cast in
+  all the way up, a heavier band where the walls give out, a conduit and a
+  cable climbing one face into the fog, hazard-striped corner guards at the
+  bottom and a caged lamp on every face that stays on all night. The main
+  menu looks up one of them at night while its lamps wash it in orange.
 - **Overhead light.** There's an invisible light every 6 m, forever. They
   aren't real lights. The shader lights each pixel from the nine nearest
   fittings, with a diffuse term and a glossy highlight. That gives pools of

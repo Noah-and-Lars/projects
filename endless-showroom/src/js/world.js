@@ -24,10 +24,12 @@ const RENDER_R = 2, DATA_R = 2; // data around other players reaches past where 
 const Q = 9.6, QPAD = 1.2; // usable quadrant size and aisle padding
 
 const WALL = 0xd9d3c7, WALL_BASE = 0x8a857b, PILLAR = 0xd6d1c8, PARTITION = 0xe4ded2, RACK = 0x3f6f9a, RACK_BEAM = 0xe07b2b;
+const P_JOINT = 0xb3aea5, P_BAND = 0xa29d94, CONDUIT = 0x80868d, CABLE = 0x26282c, JBOX = 0x9aa0a6, HAZ_Y = 0xd8a320, HAZ_K = 0x1d1d1f, LAMP_CAGE = 0x2b2d31, LAMP_GLOW = 0xffb066;
 // Surface of the fixed parts, by colour (anything else is paint).
 const STATIC_SURF = {
   [PILLAR]: SURF.concrete, [WALL_BASE]: SURF.plastic, [RACK]: SURF.steel, [RACK_BEAM]: SURF.steel,
   0xc8a26e: SURF.card, 0xb8915c: SURF.card, 0xd2b07d: SURF.card, 0xe7e1d3: SURF.card, 0x9cb3c4: SURF.plastic,
+  [P_JOINT]: SURF.concrete, [P_BAND]: SURF.concrete, [CONDUIT]: SURF.steel, [JBOX]: SURF.steel, [CABLE]: SURF.plastic, [LAMP_CAGE]: SURF.steel, [LAMP_GLOW]: SURF.glow,
   0x7b6a58: SURF.wood, 0xb8a98f: SURF.wood, 0xe8e2d6: SURF.concrete, 0x34495e: SURF.steel,
 };
 
@@ -185,6 +187,37 @@ class ChunkGen {
     return this;
   }
 
+  // What every grid pillar has, all the way up: the joints of the shuttering
+  // it was cast in, a thicker band where the walls give out, a conduit and a
+  // cable running up into the fog, struck corner guards at the bottom and a
+  // caged lamp on each face that stays on all night.
+  pillarDressing(c, w) {
+    const o = w + 0.012;
+    for (let y = 9.5; y < 120; y += 3.0 + (y > 40 ? 1.5 : 0)) this.deco(c - o, c - o, c + o, c + o, y, y + 0.045, P_JOINT);
+    for (let y = 3.6; y < 6.4; y += 1.4) this.deco(c - o, c - o, c + o, c + o, y, y + 0.03, P_JOINT);
+    this.deco(c - w - 0.07, c - w - 0.07, c + w + 0.07, c + w + 0.07, 6.35, 6.75, P_BAND);
+    this.deco(c - w - 0.04, c - w - 0.04, c + w + 0.04, c + w + 0.04, 6.75, 6.82, P_JOINT);
+    // conduit and cable up the east face, off to one side of the screen
+    const fx = c + w, cz = c + 0.82;
+    this.deco(fx, cz - 0.04, fx + 0.08, cz + 0.04, 0.22, 160, CONDUIT);
+    this.deco(fx, cz + 0.13, fx + 0.035, cz + 0.165, 0.9, 160, CABLE);
+    for (let y = 1.6; y < 70; y += 2.4) this.deco(fx, cz - 0.08, fx + 0.1, cz + 0.2, y, y + 0.05, CONDUIT);
+    this.deco(fx, cz - 0.13, fx + 0.12, cz + 0.13, 0.75, 1.05, JBOX);
+    // corner guards, hazard striped, up to 1.2 m
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const x = c + sx * w, z = c + sz * w;
+      const ax = x - sx * 0.16, bx = x + sx * 0.02, az = z - sz * 0.16, bz = z + sz * 0.02;
+      for (let i = 0; i < 8; i++) this.deco(Math.min(ax, bx), Math.min(az, bz), Math.max(ax, bx), Math.max(az, bz), 0.22 + i * 0.125, 0.22 + (i + 1) * 0.125, i % 2 ? HAZ_K : HAZ_Y);
+    }
+    // a caged lamp on each face, under the band
+    for (const [nx, nz] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+      const lx = c + nx * w, lz = c + nz * w, hx = nx ? 0 : 0.16, hz = nz ? 0 : 0.16;
+      this.deco(Math.min(lx, lx + nx * 0.1) - hx, Math.min(lz, lz + nz * 0.1) - hz, Math.max(lx, lx + nx * 0.1) + hx, Math.max(lz, lz + nz * 0.1) + hz, 4.55, 4.85, LAMP_CAGE);
+      const gx = lx + nx * 0.1, gz = lz + nz * 0.1, ex = nx ? 0 : 0.11, ez = nz ? 0 : 0.11;
+      this.deco(Math.min(gx, gx + nx * 0.04) - ex, Math.min(gz, gz + nz * 0.04) - ez, Math.max(gx, gx + nx * 0.04) + ex, Math.max(gz, gz + nz * 0.04) + ez, 4.58, 4.82, LAMP_GLOW);
+    }
+  }
+
   // ---- Whole-chunk layouts ----
   // A big grid pillar in the middle of the chunk, 2.4 m square, with a screen
   // on each face (drawn with the visuals) and dressing for its type.
@@ -200,6 +233,7 @@ class ChunkGen {
       for (let i = 0; i < 5; i++) { const x = c + r.range(-1.6, 1.6), z = c - w - r.range(0.2, 1.0); this.deco(x - 0.12, z - 0.1, x + 0.12, z + 0.1, 0, 0.1, 0xb9b4ab); }
     } else this.solid(c - w, c - w, c + w, c + w, 0, CEIL, CONC);
     this.deco(c - w - 0.03, c - w - 0.03, c + w + 0.03, c + w + 0.03, 0, 0.22, WALL_BASE);
+    this.pillarDressing(c, w);
     this.deco(c - w - 0.02, c - w - 0.02, c + w + 0.02, c + w + 0.02, 2.9, 3.1, P.type === 'lost' ? 0xc9a227 : BAND);
     // screen housings on all four faces (the pictures go on with the visuals)
     for (const [x0, z0, x1, z1] of [[c - 0.55, c + w, c + 0.55, c + w + 0.08], [c - 0.55, c - w - 0.08, c + 0.55, c - w], [c + w, c - 0.55, c + w + 0.08, c + 0.55], [c - w - 0.08, c - 0.55, c - w, c + 0.55]]) this.deco(x0, z0, x1, z1, 1.55, 2.25, 0x1b1d22);

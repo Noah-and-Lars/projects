@@ -143,6 +143,16 @@ const sky = (() => {
     },
   };
 })();
+// The sky: eye-level fog at the horizon, shading up to the colour of the fog
+// overhead, so the pillars dissolve into the same haze they rise into.
+const skyDome = new THREE.Mesh(new THREE.SphereGeometry(150, 32, 16), new THREE.ShaderMaterial({
+  uniforms: { uLow: { value: scene.fog.color }, uHigh: { value: uniforms.uSkyFog.value } },
+  vertexShader: 'varying vec3 vD; void main() { vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: 'uniform vec3 uLow, uHigh; varying vec3 vD; void main() { gl_FragColor = vec4(mix(uLow, uHigh, smoothstep(0.02, 0.55, vD.y)), 1.0);\n#include <colorspace_fragment>\n}',
+  side: THREE.BackSide, depthWrite: false, fog: false,
+}));
+skyDome.renderOrder = -1; skyDome.frustumCulled = false; scene.add(skyDome);
+skyDome.onBeforeRender = (r, s, cam) => skyDome.position.copy(cam.position);
 const dust = makeDust(scene);
 
 // ---------------------------------------------------------------- world
@@ -1768,7 +1778,7 @@ let menuInit = false, menuT = 0;
 function renderMenuBackdrop(dt) {
   if (!menuInit) { menuInit = true; world.reset(1234567); }
   menuT += dt;
-  const px = HALF_C, pz = HALF_C, a = 0.6 + menuT * 0.035, r = 4.6;
+  const px = HALF_C, pz = HALF_C, a = 0.55 + menuT * 0.03, r = 5.8;
   const x = px + Math.sin(a) * r, z = pz + Math.cos(a) * r;
   world.update([{ x, z, render: true }]);
   // clear the floor round the pillar so nothing blocks the view
@@ -1780,10 +1790,13 @@ function renderMenuBackdrop(dt) {
   sky.update(dt, x, z, L);
   camera.position.set(x, 1.5, z);
   // face the pillar, tilted up so it rises out of sight into the murk
-  camera.rotation.set(0.74 + Math.sin(menuT * 0.11) * 0.04, a + 0.42, 0, 'YXZ'); // the pillar sits to the right of the menu
+  camera.rotation.set(0.6 + Math.sin(menuT * 0.11) * 0.035, a + 0.36, 0, 'YXZ'); // the pillar sits to the right of the menu
   // a single lamp glowing somewhere at the pillar's foot
   lampLights.forEach((l, i) => { l.intensity = 0; });
-  lampLights[0].position.set(px + 2.2, 0.9, pz + 2.0); lampLights[0].color.setHex(0xffc27a); lampLights[0].intensity = 5;
+  lampLights[0].position.set(px + 2.2, 0.9, pz + 2.0); lampLights[0].color.setHex(0xffc27a); lampLights[0].intensity = 4;
+  // and the caged lamps on the pillar, washing its faces in a dim orange (they flicker now and then)
+  const fl = Math.sin(menuT * 13.0) + Math.sin(menuT * 31.0) > 1.75 ? 0.35 : 1;
+  for (const [i, nx, nz] of [[1, 0, 1], [2, 1, 0], [3, 0, -1], [4, -1, 0]]) { const l = lampLights[i]; l.position.set(px + nx * 1.75, 4.5, pz + nz * 1.75); l.color.setHex(0xff9a4a); l.intensity = 2.6 * fl; }
   setLampGlow(0.6); setSkyLight(0, false);
   dust.update(dt, x, z, L);
   world.flushItems();

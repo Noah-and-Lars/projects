@@ -29,6 +29,10 @@ export const uniforms = {
   uCutR: { value: 0 },
   uCutIn: { value: 1 },
   uTime: { value: 0 },
+  // There's no roof. Above the walls everything thins into the fog the higher
+  // it is, towards uSkyFog, the colour of the sky overhead.
+  uSkyFog: { value: new THREE.Color(0x0d1116) },
+  uFogY: { value: new THREE.Vector2(6.5, 46) },
 };
 // About one fitting in 37 is faulty and flickers (the same on every screen).
 export function flickerAt(cx, cz, t) {
@@ -101,7 +105,8 @@ vWN = normalize(mat3(modelMatrix) * esN);
 const FRAG_HEAD = /* glsl */`
 uniform sampler2D uDetail;
 uniform float uLevel, uEmerg, uCeil, uGain, uRed, uCutR, uCutIn, uTime;
-uniform vec2 uCutC;
+uniform vec2 uCutC, uFogY;
+uniform vec3 uSkyFog;
 varying float vMat;
 varying vec3 vWP;
 varying vec3 vWN;
@@ -185,7 +190,8 @@ export function storeMaterial(params = {}) {
       .replace('#include <color_fragment>', '#include <color_fragment>\n' + FRAG_COLOR)
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = esRough;')
       .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor = esMetal;')
-      .replace('#include <opaque_fragment>', FRAG_LIGHTS + '\n#include <opaque_fragment>');
+      .replace('#include <opaque_fragment>', FRAG_LIGHTS + '\n#include <opaque_fragment>')
+      .replace('#include <fog_fragment>', '#include <fog_fragment>\n#ifdef USE_FOG\ngl_FragColor.rgb = mix(gl_FragColor.rgb, uSkyFog, smoothstep(uFogY.x, uFogY.y, vWP.y) * 0.97);\n#endif');
   };
   m.customProgramCacheKey = () => 'store' + (params.map ? 'm' : '') + (params.transparent ? 't' : '') + (low ? 'l' : '');
   return m;
