@@ -224,7 +224,7 @@
   </div>
 </div>
 
-<script src="games.js?v=276"></script>
+<script src="games.js?v=277"></script>
 <script src="account.js?v=43"></script>
 <script src="assistant.js?v=7"></script>
 <script src="console.js?v=4"></script>
@@ -499,17 +499,91 @@ function sorted() {
   }[sort];
   return list.sort(by);
 }
+/* ============================== Coming soon (2026-11-21) ============================== */
+// window.COMING_SOON (games.js): announced games, first in the Library with a live countdown; Details pop-up, not playable
+const SOON = (window.COMING_SOON || []).filter(s => s && s.id && s.release);
+(() => { const st = document.createElement('style'); st.textContent = `
+.tile.soon .thumb img { filter: saturate(1.05); }
+.tile.soon .thumb::before { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(0deg, rgba(4,4,5,.82) 0%, rgba(4,4,5,.15) 46%, rgba(4,4,5,0) 70%); pointer-events: none; }
+.soon-cd { position: absolute; z-index: 2; left: 14px; right: 14px; bottom: 12px; display: flex; flex-direction: column; gap: 2px; color: #fff; pointer-events: none; }
+.soon-cd small { font: 700 10.5px var(--mono); letter-spacing: .14em; color: #ffd27a; }
+.soon-cd b { font: 700 24px/1.05 var(--mono); letter-spacing: .02em; font-variant-numeric: tabular-nums; text-shadow: 0 2px 10px rgba(0,0,0,.6); }
+.pill.soon { background: #ffb238; color: #1a0f00; }
+.grid.list .soon-cd { display: none; }
+.soon-dlg { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.62); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.soon-dlg .box { width: min(620px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: var(--panel, #141416); border: 1px solid var(--line, #2a2a2e); border-radius: 18px; box-shadow: 0 40px 90px -30px #000; }
+.soon-dlg img { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 18px 18px 0 0; }
+.soon-dlg .in { padding: 18px 22px 22px; display: flex; flex-direction: column; gap: 10px; }
+.soon-dlg h3 { margin: 0; font-size: 24px; font-stretch: 110%; }
+.soon-dlg p { margin: 0; color: var(--muted, #a1a1aa); font-size: 14.5px; line-height: 1.55; }
+.soon-dlg .cd { display: flex; gap: 10px; flex-wrap: wrap; }
+.soon-dlg .cd div { flex: 1; min-width: 70px; text-align: center; padding: 10px 6px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid var(--line, #2a2a2e); }
+.soon-dlg .cd b { display: block; font: 700 30px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.soon-dlg .cd small { font: 600 10.5px var(--mono); letter-spacing: .12em; color: var(--dim, #71717a); }
+.soon-dlg .when { color: #ffd27a; font-weight: 600; font-size: 14px; }
+.soon-dlg .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--dim, #71717a); font-size: 13px; }
+.soon-dlg button { height: 38px; padding: 0 16px; border-radius: 999px; border: 0; background: #fff; color: #08080a; font: 600 14px var(--font); cursor: pointer; }
+`; document.head.appendChild(st); })();
+const soonLeft = s => Date.parse(s.release) - Date.now();
+const soonParts = ms => { const t = Math.max(0, Math.floor(ms / 1000)); return [Math.floor(t / 86400), Math.floor(t / 3600) % 24, Math.floor(t / 60) % 60, t % 60]; };
+const pad2 = n => String(n).padStart(2, '0');
+const soonShort = s => { const ms = soonLeft(s); if (ms <= 0) return 'Out any minute now'; const [d, h, m, x] = soonParts(ms); return (d ? d + 'd ' : '') + pad2(h) + 'h ' + pad2(m) + 'm ' + pad2(x) + 's'; };
+const soonWhen = s => new Date(s.release).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', hour12: true });
+const soonTiles = new Map();
+function soonTile(s) {
+  if (soonTiles.has(s.id)) return soonTiles.get(s.id);
+  const a = el('a', 'tile soon');
+  a.href = '#soon-' + s.id; a.dataset.soon = s.id;
+  a.innerHTML = `
+    <div class="thumb"><img alt="" loading="lazy" decoding="async"><div class="soon-cd"><small>OUT IN</small><b data-soon-cd></b></div></div>
+    <span class="badge"><span class="pill soon">COMING SOON</span></span>
+    <div class="info">
+      <h2></h2>
+      <p class="desc"></p>
+      <div class="meta"><span class="tag"></span><span class="ctl"></span></div>
+    </div>
+    <div class="list-acts"><span class="btn ghost" role="button">Details</span></div>`;
+  a.querySelector('img').src = s.thumb;
+  txt(a, 'h2', s.title); txt(a, '.desc', s.tagline);
+  txt(a, '.tag', s.category); txt(a, '.ctl', 'Out ' + soonWhen(s));
+  a.onclick = e => { e.preventDefault(); openSoon(s); };
+  soonTiles.set(s.id, a);
+  return a;
+}
+let soonDlg = null;
+function openSoon(s) {
+  closeSoon();
+  const d = el('div', 'soon-dlg', `<div class="box" role="dialog" aria-modal="true"><img alt=""><div class="in"><h3></h3><span class="when"></span><div class="cd"><div><b data-k="0">0</b><small>DAYS</small></div><div><b data-k="1">00</b><small>HOURS</small></div><div><b data-k="2">00</b><small>MINUTES</small></div><div><b data-k="3">00</b><small>SECONDS</small></div></div><p class="ds"></p><div class="row"><span class="ct"></span><button type="button">Got it</button></div></div></div>`);
+  d.querySelector('img').src = s.thumb;
+  txt(d, 'h3', s.title + ' · Coming soon'); txt(d, '.when', 'Out ' + soonWhen(s)); txt(d, '.ds', s.description || s.tagline); txt(d, '.ct', s.controls || '');
+  d.addEventListener('click', e => { if (e.target === d || e.target.closest('button')) closeSoon(); });
+  document.body.appendChild(d); soonDlg = { d, s }; tickSoon();
+  d.querySelector('button').focus({ preventScroll: true });
+}
+function closeSoon() { if (!soonDlg) return; soonDlg.d.remove(); soonDlg = null; if (/^#soon-/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); }
+addEventListener('keydown', e => { if (e.key === 'Escape' && soonDlg) closeSoon(); });
+function tickSoon() {
+  for (const b of document.querySelectorAll('[data-soon-cd]')) { const s = SOON.find(x => x.id === b.closest('[data-soon]').dataset.soon); if (s) b.textContent = soonShort(s); }
+  if (soonDlg) { const ms = soonLeft(soonDlg.s), p = soonParts(ms); for (const b of soonDlg.d.querySelectorAll('[data-k]')) { const k = +b.dataset.k; b.textContent = k ? pad2(p[k]) : p[k]; } if (ms <= 0) txt(soonDlg.d, '.when', 'Out any minute now'); }
+}
+if (SOON.length) setInterval(tickSoon, 1000);
+// the patch-notes card links here (#soon-<id>)
+const soonHash = () => { const m = /^#soon-(.+)$/.exec(location.hash); const s = m && SOON.find(x => x.id === m[1]); if (s) openSoon(s); };
+addEventListener('hashchange', soonHash);
+const soonFor = cat => SOON.filter(s => cat === 'All' || s.category === cat);
+
 let lastOrder = '';
 function render(viewChanged) {
   const grid = $('grid');
   const list = sorted();
-  const order = active + '|' + view + '|' + list.map(g => g.id).join(',');
+  const order = active + '|' + view + '|' + soonFor(active).map(x => x.id).join(',') + '|' + list.map(g => g.id).join(',');
   if (order === lastOrder) return paintLive();
   // FLIP: remember where every card was, change the order, then glide each card from its old spot
   const before = new Map();
   if (!REDUCED && !viewChanged) for (const t of grid.children) before.set(t, t.getBoundingClientRect());
   grid.classList.toggle('list', view === 'list');
-  grid.replaceChildren(...list.map(tile));
+  grid.replaceChildren(...soonFor(active).map(soonTile), ...list.map(tile));
+  tickSoon();
   for (const t of grid.children) {
     const r0 = before.get(t);
     t.classList.remove('enter');
@@ -784,7 +858,7 @@ function closeTrailer() { const ov = $('trailerOv'); if (!ov) return; removeEven
 
 /* ============================== Start ============================== */
 buildShelf(); select(AUTO.length ? AUTO[0] : 0); startAuto();
-renderRecent(); renderRanked(); renderNews(); render();
+renderRecent(); renderRanked(); renderNews(); render(); soonHash();
 // a link to a game's details (index.html#chess) opens them
 if (location.hash && byId[location.hash.slice(1)]) { const id = location.hash.slice(1); history.replaceState(null, '', location.pathname + location.search); openSheet(id); }
 if (window.ArcadeAccount && ArcadeAccount.ready) ArcadeAccount.ready().then(greet);
