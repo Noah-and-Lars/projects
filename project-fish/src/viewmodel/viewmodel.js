@@ -9,12 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { createPistol, GRIP, SIGHTS, MAGAZINE, SLIDE } from './pistol.js';
-import { createPistol45, MODEL45, FALLBACK45 } from './pistol45.js';
-import { MODEL9 } from './pistol9.js';
 import { MODEL_BERETTA } from './beretta.js';
-import { MODEL_FN502 } from './fn502.js';
-import { MODEL_HIPISTOL } from './hipistol.js';
-import { MODEL_X4 } from './x4.js';
 import { MODEL_MP7 } from './mp7.js';
 import { MODEL_AR15 } from './ar15.js';
 import { MODEL_MAKAROV } from './makarov.js';
@@ -30,10 +25,10 @@ import { ViewmodelMotion, MOTION } from './motion.js';
 import { MuzzleFlash } from '../effects/muzzleFlash.js';
 import { outdoorEnvironment } from '../world.js';
 import { RELOAD_STEPS, CATCH_GAP, magazineFall, INSPECT, INSPECT_STEPS, reloadSteps } from '../weapon.js';
-import { PISTOL, PISTOL45, BERETTA, FN502, HIPISTOL, X4, MP7, AR15, MAKAROV, AK74M, AK74U, SAPS12, LOADOUT } from '../shared/config.js';
+import { PISTOL, BERETTA, MP7, AR15, MAKAROV, AK74M, AK74U, SAPS12, LOADOUT } from '../shared/config.js';
 
-// Points on the built-in first pistol (gun space; used if its model file
-// can't be loaded; the model's are in pistol9.js): the
+// Points on the built-in stand-in pistol (gun space; it's held in place of a
+// gun whose model file can't be loaded): the
 // muzzle, and the ejection port the spent case comes out of; the sight line
 // (pistol.js); how far the slide goes back when firing (metres), and the
 // top and half width of the slide; the barrel, which only follows the slide
@@ -41,9 +36,8 @@ import { PISTOL, PISTOL45, BERETTA, FN502, HIPISTOL, X4, MP7, AR15, MAKAROV, AK7
 // muzzle), like a real pistol's; and the slide stop, which turns up
 // (radians) about the pin at its back end into the slide's notch when the
 // slide locks back empty. It has no hammer to show (it's striker fired), and
-// its magazine release is in shootingHand.js. The second pistol's are in
-// pistol45.js. A gun whose magazine slides out at a slightly different angle
-// from the grip line has its own magDown.)
+// its magazine release is in shootingHand.js. A gun whose magazine slides
+// out at a slightly different angle from the grip line has its own magDown.)
 const POINTS9 = {
   muzzle: [0, 0, -0.1545],
   port: [0.008, 0.017, -0.025],
@@ -63,9 +57,9 @@ const TRIGGER_TRAVEL = 0.0032;
 const INDICATOR_TRAVEL = 0.0006;
 const BLADE_TRAVEL = 0.0009;
 
-// If the model of a gun with its own arms can't be loaded, the PF-9's built-
-// in stand-in takes its place, held by the usual hands: its rules, but the
-// PF-9's reloads and inspect (theirs follow their own animations; a
+// If the model of a gun with its own arms can't be loaded, the built-in
+// stand-in pistol takes its place, held by the usual hands: its rules, but
+// the stand-in's reloads and inspect (theirs follow their own animations; a
 // shotgun's stand-in is reloaded by the magazine too).
 const standIn = (rules) => ({
   ...rules,
@@ -80,6 +74,12 @@ const standIn = (rules) => ({
   inspect: undefined,
 });
 
+// Where a pistol's sights sit at the hip (gun space: the sight line's
+// height and the back faces of the rear and front sights), as the M1911 that
+// was once in the game had them: the pistols with their own arms are held so
+// their rear sight is there (sightAsAtHip, see RIG).
+const PISTOL_SIGHT_AT_HIP = { height: 0.0103, rearZ: 0.0096, frontZ: -0.1449 };
+
 // The guns: their rules (src/shared/config.js), their models (made in
 // Blender, see tools/blender/) with simpler built-in ones in case a file
 // can't be loaded, and the points on each. A gun that brings its own arms
@@ -87,47 +87,14 @@ const standIn = (rules) => ({
 // instead, where it's held (`rig`, see RIG), and the rules its stand-in
 // follows (`fallbackRules`).
 const GUN_KINDS = {
-  pistol: { rules: PISTOL, model: new URL('../../assets/pistol.glb', import.meta.url), fallback: createPistol, points: MODEL9, fallbackPoints: POINTS9 },
-  pistol45: { rules: PISTOL45, model: new URL('../../assets/pistol45.glb', import.meta.url), fallback: createPistol45, points: MODEL45, fallbackPoints: FALLBACK45 },
   beretta: {
     rules: BERETTA, model: new URL('../../assets/beretta.glb', import.meta.url), animated: MODEL_BERETTA,
-    // (Its rear sight where the M1911's is at the hip: see RIG.)
-    rig: { sightAsAtHip: MODEL45.sights, kick: 0.4 },
+    // (Its rear sight where a pistol's sits at the hip: see RIG.)
+    rig: { sightAsAtHip: PISTOL_SIGHT_AT_HIP, kick: 0.4 },
     fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(BERETTA),
-  },
-  fn502: {
-    rules: FN502, model: new URL('../../assets/fn502.glb', import.meta.url), animated: MODEL_FN502,
-    // (Its maker framed it close to the eye, its arms ending just past the
-    // elbows, out of view. Moved out as far as the M1911's hold, those ends
-    // would come into view. It's held 3 cm further out, 3 cm lower and 2 cm
-    // to the right than its maker had it, with a slightly wider view at the
-    // hip: as far as the arms' ends stay out of view through every clip, at
-    // 16:9, 21:9 and 4:3, with a margin. That shows it a little bigger than
-    // the others, its rear sight about where theirs is.)
-    rig: { hip: new THREE.Vector3(0.02, -0.03, -0.03), viewFov: 64, kick: 0.4 },
-    fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(FN502),
-  },
-  hipistol: {
-    rules: HIPISTOL, model: new URL('../../assets/hipistol.glb', import.meta.url), animated: MODEL_HIPISTOL,
-    // (Its maker holds it low on the right at the hip, with the support
-    // arm below the view. It's held 1 cm right, 1 cm lower and 2 cm further
-    // out than that, which brings it in to about where the others are; any
-    // higher and the support arm's sleeve comes into view at the bottom
-    // left. Aiming, its own aimed clips play and the gun layer lines up
-    // their sights.)
-    // (Its run clip is its maker's sprint pose, the gun held low across the
-    // chest, so it doesn't take the gun layer's too; that pose is held 7 cm
-    // higher, or the gun would be all but out of view.)
-    rig: { hip: new THREE.Vector3(0.01, -0.01, -0.02), kick: 0.4, sprintPose: 0, sprintOut: new THREE.Vector3(0, 0.07, 0) },
-    fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(HIPISTOL),
   },
   // The guns whose makers' clips were put on the soldier's own arms
   // (soldierRig.js).
-  x4: {
-    rules: X4, model: new URL('../../assets/x4.glb', import.meta.url), animated: MODEL_X4,
-    rig: { hip: new THREE.Vector3(0.015, 0.005, -0.02), kick: 0.4, aimLevel: 1, sprintPose: 0, sprintOut: new THREE.Vector3(0, 0.1, 0.03) },
-    fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(X4),
-  },
   mp7: {
     rules: MP7, model: new URL('../../assets/mp7.glb', import.meta.url), animated: MODEL_MP7,
     rig: {
@@ -144,7 +111,7 @@ const GUN_KINDS = {
   // others with their own arms. Aiming, the eyepiece of its magnifier is
   // 16 cm from the eye: further and the stock fills the bottom of the view,
   // as it runs back under the eye. It has no run clip, so it takes the gun
-  // layer's sprint pose like the PF-9. Its holographic sight's reticle
+  // layer's sprint pose like the stand-in pistol. Its holographic sight's reticle
   // isn't on the model, so a dot is drawn (redDot: in the eyepiece, seen
   // through the glass).)
   ar15: {
@@ -157,7 +124,7 @@ const GUN_KINDS = {
   },
   makarov: {
     rules: MAKAROV, model: new URL('../../assets/makarov.glb', import.meta.url), animated: MODEL_MAKAROV,
-    rig: { sightAsAtHip: MODEL45.sights, kick: 0.4, aimLevel: 1 },
+    rig: { sightAsAtHip: PISTOL_SIGHT_AT_HIP, kick: 0.4, aimLevel: 1 },
     fallback: createPistol, fallbackPoints: POINTS9, fallbackRules: standIn(MAKAROV),
   },
   // (Its maker framed it shouldered, low on the right; it's held 5 cm
@@ -180,7 +147,7 @@ const GUN_KINDS = {
   // out than that, the carbine on the right with both hands in view and the
   // hoodie's cut-off sleeves out of view through every clip. Aiming, its
   // rear sight is 28 cm from the eye. No walk or run clips: it takes the
-  // gun layer's bob and sprint pose, as the PF-9 does.)
+  // gun layer's bob and sprint pose, as the stand-in pistol does.)
   ak74u: {
     rules: AK74U, model: new URL('../../assets/ak74u.glb', import.meta.url), animated: MODEL_AK74U,
     rig: { hip: new THREE.Vector3(0.03, -0.02, -0.03), kick: 0.3, aimLevel: 1, eyeRelief: 0.28 },
@@ -284,8 +251,6 @@ function triggerFace(pistol, trigger) {
   if (!Number.isFinite(z)) for (const q of points) z = Math.min(z, q.z);
   return new THREE.Vector3(0, y, z);
 }
-// How far an attachment is moved for the mount it sits on (see pistol9.js).
-const place = (extra, on) => (extra && extra.on && extra.on[on] && extra.on[on].offset) || [0, 0, 0];
 
 // Where the gun goes while reloading, relative to how it's held: brought up
 // and in, muzzle tipped up so the magazine well comes into view, and canted
@@ -538,9 +503,6 @@ const FRESH_IN_HAND = freshInHand(HAND_PATHS);
 // pressed, is on the button this long before, and is back this long after
 // (fractions of the reload).
 const THUMB = { start: 0.08, on: 0.035, back: 0.06 };
-// Pressing an attachment's switch: how long (seconds), and the fractions of
-// that taken reaching it and holding it down.
-const FLICK = { time: 0.34, reach: 0.4, hold: 0.6 };
 // The same for the slide stop at the end of an empty reload.
 const STOP_THUMB = { start: 0.07, on: 0.025, back: 0.07 };
 
@@ -731,8 +693,8 @@ const HIP_QUATERNION = new THREE.Quaternion().setFromEuler(HIP_ROTATION);
 // arms were posed for: placed there, the gun would sit where its maker
 // framed it. It's placed in the gun's pose to sit at the eye moved by `hip`
 // (gun space) when the gun is at the hip (`at` is the eye there): the
-// Beretta's by as much as puts its rear sight where the M1911's is at the
-// hip (`sightAsAtHip`, that gun's sights), so it's held as the others are.
+// Beretta's by as much as puts its rear sight where a pistol's sits at the
+// hip (`sightAsAtHip`: PISTOL_SIGHT_AT_HIP), so it's held as the others are.
 // It goes up to the sights and moves with the weapon physics from there,
 // the whole rig as one, like the others. Each gun's `rig` in GUN_KINDS can
 // set (else these):
@@ -953,7 +915,6 @@ export class Viewmodel {
     this.flash = null; // the gun in the hands' muzzle flash
     this.slideTime = 1; // seconds since the slide last went back
     this.triggerTime = 1; // seconds since the trigger was last pulled
-    this.flick = null; // seconds into pressing a switch (see flickSwitch)
     this.slammed = true;
     this.lastAim = 0;
     this.pistol = null;
@@ -1025,11 +986,8 @@ export class Viewmodel {
       // to one doesn't stall while they're prepared.
       // (One at a time: each gun brings its own muzzle-flash light, and the
       // materials are made for the lights in the scene.)
-      // (Its attachments too: they're shown for this, then put back as the
-      // loadout has them.)
       for (const g of Object.values(this.guns)) {
         this.gun.add(g.object);
-        for (const node of Object.values(g.attachments)) node.visible = true;
         renderer.compile(this.scene, this.camera);
         g.object.traverse((o) => {
           if (!o.isMesh) return;
@@ -1038,7 +996,6 @@ export class Viewmodel {
           }
         });
         this.gun.remove(g.object);
-        this.setAttachments(g.key, g.on);
       }
       this.useGun(LOADOUT[0]);
     });
@@ -1132,28 +1089,6 @@ export class Viewmodel {
     }
     g.flash = new MuzzleFlash(points.muzzle);
     g.flash.attachTo(pistol);
-    // Its attachments (src/attachments.js): parts named att_<id>, hidden
-    // until they're chosen. Each remembers where it is relative to the gun,
-    // for moving it onto another mount.
-    g.attachments = {};
-    pistol.updateMatrixWorld(true);
-    const toGun = pistol.matrixWorld.clone().invert();
-    g.inGun = (o) => toGun.clone().multiply(o.matrixWorld);
-    // (Only the outermost: the loader names an attachment's own pieces after
-    // it too.)
-    const inAttachment = (o) => {
-      for (let p = o.parent; p && p !== pistol; p = p.parent) if (p.name.startsWith('att_')) return true;
-      return false;
-    };
-    pistol.traverse((o) => {
-      if (o.name.startsWith('att_') && !inAttachment(o)) g.attachments[o.name.slice(4)] = o;
-    });
-    for (const node of Object.values(g.attachments)) {
-      node.visible = false;
-      node.userData.home = node.parent;
-      node.userData.inGun = g.inGun(node);
-    }
-    g.restInGun = new Map();
     return g;
   }
 
@@ -1206,81 +1141,11 @@ export class Viewmodel {
       points.aimTurn = (points.aimTurn || new THREE.Quaternion()).clone().multiply(hold.clone().invert());
       points.aimRear = new THREE.Vector3(M.sights.x || 0, M.sights.height, M.sights.rearZ).applyQuaternion(hold).add(points.sightsAt);
     }
-    const g = { key, rules: kind.rules, base: points, points, pistol: rig.frame, object, rig, at, held, animated: M, parts: NO_PARTS, attachments: {}, on: {}, release: '' };
+    const g = { key, rules: kind.rules, base: points, points, pistol: rig.frame, object, rig, at, held, animated: M, parts: NO_PARTS, release: '' };
     g.flash = new MuzzleFlash(M.muzzle);
     g.flash.setMuzzle(M.muzzle, held.suppressed);
     g.flash.attachTo(rig.frame);
     return g;
-  }
-
-  // Shows the attachments `on` ({ slot: id }, see src/attachments.js) on gun
-  // `key`, each on the mount it sits on with the others, and works out what
-  // they change: the aim line through a red dot, the muzzle at the front of a
-  // suppressor, where the light and laser shine from.
-  setAttachments(key, on) {
-    const g = this.guns[key];
-    if (!g) return;
-    g.on = { ...on };
-    if (g.animated) return; // (it has none)
-    const ids = new Set(Object.values(on).filter(Boolean));
-    const extra = g.base.attachments || {};
-    // Which mount each one sits on.
-    const mount = ids.has('clamp') ? 'clamp' : ids.has('cover') ? 'cover' : null;
-    const rail = ids.has('clamp') ? 'clamp' : ids.has('can_box') ? 'can_box' : 'frame';
-    const sitsOn = { reddot: mount, light_long: rail, light_compact: rail, can_box: ids.has('cover') ? 'cover' : null };
-    const move = new THREE.Matrix4();
-    for (const [id, node] of Object.entries(g.attachments)) {
-      node.visible = ids.has(id);
-      const seat = (extra[id] && extra[id].on && extra[id].on[sitsOn[id]]) || {};
-      const parent = (seat.parent && g.pistol.getObjectByName(seat.parent)) || node.userData.home;
-      if (!g.restInGun.has(parent)) g.restInGun.set(parent, parent === g.pistol ? new THREE.Matrix4() : g.inGun(parent));
-      const [x, y, z] = seat.offset || [0, 0, 0];
-      move.makeTranslation(x, y, z);
-      g.restInGun.get(parent).clone().invert().multiply(move).multiply(node.userData.inGun)
-        .decompose(node.position, node.quaternion, node.scale);
-      if (node.parent !== parent) parent.add(node);
-    }
-    // What they change.
-    const points = { ...g.base, chamberCheck: true };
-    if (ids.has('reddot') && extra.reddot) points.sights = extra.reddot.sights[mount] || g.base.sights;
-    for (const id of ids) {
-      const e = extra[id] || {};
-      if (e.muzzle) {
-        points.muzzle = e.muzzle;
-        if (id === 'can_box' && ids.has('cover')) points.muzzle = [e.muzzle[0], e.muzzle[1], e.muzzle[2] - 0.0018];
-        points.suppressed = true;
-      }
-      if (e.lens) {
-        const [x, y, z] = place(extra[id], sitsOn[id]);
-        points.light = [e.lens[0] + x, e.lens[1] + y, e.lens[2] + z];
-      }
-      if (e.emitter) points.laser = e.emitter;
-    }
-    // The switch the support hand's index finger presses with T: the
-    // laser's if there is one, else the light's.
-    g.switchPose = null;
-    const switchOf = ids.has('laser') && extra.laser && extra.laser.switch ? ['laser', 'index']
-      : ['light_long', 'light_compact'].filter((id) => ids.has(id) && extra[id] && extra[id].switch).map((id) => [id, 'index'])[0];
-    if (switchOf && this.hand) {
-      const [id, finger] = switchOf;
-      const [x, y, z] = extra[id].switch;
-      const [ox, oy, oz] = id === 'laser' ? [0, 0, 0] : place(extra[id], sitsOn[id]);
-      g.switchPose = 'switch_' + key;
-      this.hand.addSwitch(g.switchPose, new THREE.Vector3(x + ox, y + oy, z + oz), finger);
-    }
-    // The hand that checks the chamber takes hold of the slide over its
-    // front: not with the clamp mount or box suppressor in the way. With the
-    // rail cover on, it takes hold of that.
-    if (['clamp', 'can_box'].some((id) => ids.has(id) && g.attachments[id])) points.chamberCheck = false;
-    if (ids.has('cover') && extra.cover) {
-      points.slideTop = extra.cover.slide.top;
-      points.slideHalfWidth = extra.cover.slide.halfWidth;
-    }
-    g.points = points;
-    g.paths = handPaths(points, g.rules);
-    g.freshInHand = freshInHand(g.paths);
-    g.flash.setMuzzle(points.muzzle, Boolean(points.suppressed));
-    if (g === this.current) this.aimAt(points.sights, points.sightsAt);
   }
 
   // Has the guns with their own arms wear the gloves in `outfit` (the
@@ -1323,11 +1188,6 @@ export class Viewmodel {
   // instead, src/player/fpArms.js); its hand rigs keep working.
   hideGloves() {
     for (const mesh of this.gloveMeshes || []) mesh.visible = false;
-  }
-
-  // The support hand presses the gun's light or laser switch (T).
-  flickSwitch() {
-    if (this.current && this.current.switchPose) this.flick = 0;
   }
 
   // Aiming down the sights, the gun comes up so the line through its sights
@@ -1544,36 +1404,6 @@ export class Viewmodel {
     return this.pointOnGun(this.points.muzzle);
   }
 
-  // Where the gun's light and laser shine from, and a point a metre ahead
-  // along their beam (gun layer), or null if it hasn't one.
-  lightBeam() {
-    return this.beam(this.points.light);
-  }
-
-  laserBeam() {
-    return this.beam(this.points.laser);
-  }
-
-  beam(p) {
-    return p ? [this.pointOnGun(p), this.pointOnGun([p[0], p[1], p[2] - 1])] : null;
-  }
-
-  // The light's lens and the laser's window glow while they're on.
-  setGlow(on) {
-    if (this.glowing === on) return;
-    this.glowing = on;
-    for (const g of Object.values(this.guns)) {
-      for (const id of ['light_long', 'light_compact', 'laser']) {
-        const node = g.attachments[id];
-        if (!node) continue;
-        node.traverse((o) => {
-          if (!o.isMesh) return;
-          for (const m of [].concat(o.material)) if (m.emissive) m.emissiveIntensity = on ? 2.5 : 0;
-        });
-      }
-    }
-  }
-
   portPoint() {
     return this.pointOnGun(this.points.port);
   }
@@ -1601,10 +1431,6 @@ export class Viewmodel {
     // Bring the sights up or down at a steady pace, eased at both ends.
     const dt = Math.min(frameSeconds, 0.05);
     this.rigFrameSeconds = Math.min(frameSeconds, 0.25);
-    if (this.flick !== null) {
-      this.flick += dt;
-      if (this.flick >= FLICK.time) this.flick = null;
-    }
     this.aimProgress = Math.min(1, Math.max(0, this.aimProgress + (aiming ? dt : -dt) / AIM.time));
     const p = this.aimProgress;
     const aim = p * p * (3 - 2 * p);
@@ -1808,13 +1634,6 @@ export class Viewmodel {
     // Whether the support hand is on the gun (rather than off at the belt).
     const ON_GUN = ['grip', 'loose', 'flat', 'pushing', 'slide'];
     this.supportOnGun = ON_GUN.includes(hand.from) && ON_GUN.includes(hand.to);
-    // Pressing an attachment's switch (T): a quick reach and back, while
-    // the hand's holding the gun.
-    if (this.hand && this.flick !== null && this.current.switchPose && hand.from === 'grip' && hand.to === 'grip' && returning === 0 && r < 0) {
-      const t = this.flick / FLICK.time;
-      const k = t < FLICK.reach ? smoothstep(0, FLICK.reach, t) : t < FLICK.hold ? 1 : 1 - smoothstep(FLICK.hold, 1, t);
-      this.hand.set('grip', this.current.switchPose, k);
-    }
     if (!this.magazine || !this.magazineRest) return;
 
     // The magazines. Out comes the old one when the release is pressed; in

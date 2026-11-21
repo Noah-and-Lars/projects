@@ -443,14 +443,9 @@ function tone({ at = 0, from, to = from, volume, decay, type = 'sine' }) {
 
 const vary = (x, amount = 0.08) => x * (1 + (Math.random() * 2 - 1) * amount);
 
-// Each gun's shot: the .45 is the same recording slowed down a little, so
-// it's deeper, and a bit louder. The Beretta is the 9 mm's, a touch lower
-// (a longer barrel and a heavier, all-steel gun) and as loud. The FN 502's
-// .22 is the 9 mm's sped up, so it's sharper and shorter, and much quieter,
-// with less of it echoing back. The Hi-Power's is the 9 mm's, between the
-// PF-9's and the Beretta's (all steel, its barrel a little shorter than the
-// Beretta's). The Xiri X4's is the 9 mm's, a touch higher (a polymer frame,
-// like the PF-9's, and a full-size one). The MP7A1 has its own (`set`:
+// Each gun's shot (`pistol`: the plain 9 mm recording, for anything not
+// listed). The Beretta is the 9 mm's, a touch lower (a longer barrel and a
+// heavier, all-steel gun) and as loud. The MP7A1 has its own (`set`:
 // makeSmgShot's, already suppressed), with only a little echo. So has the
 // AR-15 (makeRifleShot's, suppressed too), louder, its crack echoing back
 // more. The Makarov PM's 9x18 mm is the 9 mm's a little higher and
@@ -460,36 +455,33 @@ const vary = (x, amount = 0.08) => x * (1 + (Math.random() * 2 - 1) * amount);
 // short one, louder still and shorter; the SPAS-12 makeShotgunShot's,
 // the loudest and deepest, echoing back the most.
 const GUNSHOT = {
-  pistol: { rate: 1, volume: 0.9 }, pistol45: { rate: 0.82, volume: 1 }, beretta: { rate: 0.95, volume: 0.92 },
-  fn502: { rate: 1.35, volume: 0.5, echo: 0.3 }, hipistol: { rate: 0.97, volume: 0.92 },
-  x4: { rate: 1.02, volume: 0.9 }, mp7: { rate: 1, volume: 0.8, echo: 0.2, set: 'smg' },
+  pistol: { rate: 1, volume: 0.9 }, beretta: { rate: 0.95, volume: 0.92 },
+  mp7: { rate: 1, volume: 0.8, echo: 0.2, set: 'smg' },
   ar15: { rate: 1, volume: 0.95, echo: 0.35, set: 'rifle' },
   makarov: { rate: 1.08, volume: 0.86, echo: 0.45 },
   ak74m: { rate: 1, volume: 1, echo: 0.6, set: 'ak' }, ak74u: { rate: 1.04, volume: 1, echo: 0.55, set: 'akShort' },
   saps12: { rate: 1, volume: 1, echo: 0.7, set: 'shotgun' },
 };
 const OWN_SHOTS = { smg: () => smgShots, rifle: () => rifleShots, ak: () => akShots, akShort: () => akShortShots, shotgun: () => shotgunShots };
-// The guns whose magazine and slide sounds are the .45 recordings: the
-// M1911's, the Beretta's and the Hi-Power's (a steel magazine and slide
-// too). The FN 502
-// has the PF-9's magazine sounds (it's polymer-framed), and the .45's slide
-// recordings played faster and quieter (a lighter slide): LIGHT_SLIDE.
-// The Xiri X4 has the PF-9's magazine sounds (polymer too) and the .45's
-// slide going home, a little faster. The MP7A1 has the PF-9's magazine
-// sounds and, for its charging handle pulled back and let go, the .45's
-// slide recordings played faster and quieter. The AR-15 has the .45's
+// The guns whose magazine and slide sounds are the .45 recordings (made for
+// an M1911 once in the game): the Beretta's (a steel magazine and slide).
+// The others have the made-up polymer magazine sounds below, and some the
+// .45's slide recordings played at another speed and level: LIGHT_SLIDE.
+// The MP7A1 has the polymer magazine sounds and, for its charging handle
+// pulled back and let go, the .45's slide recordings played faster and
+// quieter. The AR-15 has the .45's
 // recorded magazine sounds (a metal magazine) and, for its bolt running
 // home off the bolt catch, the .45's slide going forward, a little lower.
 // The Makarov PM has the .45's recorded magazine sounds (a steel magazine)
 // and its slide recordings a little faster (a smaller steel slide). The
-// AK-74M and the AK-74U have the PF-9's magazine sounds (their magazines
+// AK-74M and the AK-74U have the polymer magazine sounds (their magazines
 // are polymer) and, for the charging handle pulled back and let go, the
 // .45's slide recordings slower (a long, heavy bolt carrier). The SPAS-12
 // has the same, slower still, for its fore-end pumped back and forward,
 // and playShellIn for each shell pushed into its tube.
-const RECORDED = new Set(['pistol45', 'beretta', 'hipistol', 'ar15', 'makarov']);
+const RECORDED = new Set(['beretta', 'ar15', 'makarov']);
 const LIGHT_SLIDE = {
-  fn502: { rate: 1.25, volume: 0.65 }, x4: { rate: 1.08, volume: 0.85 }, mp7: { rate: 1.3, volume: 0.6 }, ar15: { rate: 0.92, volume: 1 },
+  mp7: { rate: 1.3, volume: 0.6 }, ar15: { rate: 0.92, volume: 1 },
   makarov: { rate: 1.12, volume: 0.9 },
   ak74m: { rate: 0.84, volume: 1 }, ak74u: { rate: 0.88, volume: 1 }, saps12: { rate: 0.74, volume: 1 },
 };
@@ -511,11 +503,6 @@ export function playGunshot(gun = 'pistol', suppressed = false) {
   send.gain.value = own ? sound.echo ?? 0.2 : suppressed ? 0.12 : sound.echo ?? 0.5; // (how much echoes back)
   level.connect(send).connect(echo);
   source.start();
-}
-
-// The light or laser's switch.
-export function playSwitchClick() {
-  burst({ type: 'bandpass', from: 2600, q: 5, volume: 0.35, decay: 0.012 });
 }
 
 export function playDryFire() {
@@ -580,7 +567,7 @@ export function playMagIn(gun = 'pistol') {
 }
 
 // The slide pulled back by hand (checking the chamber). Only the .45s have
-// a sound for it, recorded (and the FN 502, the same, lighter).
+// a sound for it, recorded (and the guns in LIGHT_SLIDE, the same, lighter).
 export function playSlideBack(gun = 'pistol') {
   const light = LIGHT_SLIDE[gun];
   if (light) playSample('slide45Back', 0.85 * light.volume, light.rate);

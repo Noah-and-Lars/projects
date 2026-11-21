@@ -14,7 +14,7 @@
 const ABOUT = {
   play: 'Into the game: the mouse locks to it (Esc pauses).',
   resume: 'Back into the game where you left it.',
-  loadout: 'Pick a gun, its attachments, and your outfit.',
+  loadout: 'Pick a gun and your outfit.',
   breakdowns: 'Watch a gun taken apart part by part.',
   controls: 'Every key.',
   credits: 'The models, sounds and fonts the game is made with.',

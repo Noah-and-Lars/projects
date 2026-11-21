@@ -1,9 +1,8 @@
 // A gun that brings its own arms and animations (the Beretta 92FS, see
-// beretta.js, the FN 502, fn502.js, the Browning Hi-Power, hipistol.js,
-// the Makarov PM, makarov.js, the AK-74M, ak74m.js, the AK-74U, ak74u.js,
+// beretta.js, the Makarov PM, makarov.js, the AK-74M, ak74m.js, the AK-74U, ak74u.js,
 // and the Franchi SPAS-12, saps12.js),
-// or whose maker's clips were put on the soldier's own arms (the Xiri X4,
-// x4.js, the MP7A1, mp7.js, and the AR-15, ar15.js; see soldierRig.js): one skeleton with the
+// or whose maker's clips were put on the soldier's own arms (the MP7A1,
+// mp7.js, and the AR-15, ar15.js; see soldierRig.js): one skeleton with the
 // arms, hands and gun on it, and the clips its maker made for it. The gun layer (viewmodel.js) puts it where
 // the eye is and moves the whole rig with the same sway, bob, recoil kick,
 // aiming and sprinting offsets as the other guns; this plays its clips as
@@ -14,8 +13,8 @@
 //   longer than a still: see STILL). idleEmpty: the same with the slide
 //   locked back on an empty magazine (where shootLast ends). A rest clip
 //   can also be held still at one of its frames (model.stills: seconds, or
-//   'end' for its last), e.g. the X4's idleEmpty, the end of its maker's
-//   clip settling with the slide locked back.
+//   'end' for its last), e.g. a pistol's idleEmpty, the end of its
+//   maker's clip settling with the slide locked back.
 // - draw, hide: taking it out and putting it away. Without them, the gun
 //   layer lowers and raises the whole rig as it does the other guns, held in
 //   its rest pose (idle, or idleEmpty).

@@ -1,7 +1,7 @@
 // Guns whose downloads' animations were made for arms the game can't use,
 // so their clips were retargeted onto the soldier's own arms when the file
-// was built (tools/blender/convert_retarget.py: the Xiri X4, x4.js, the
-// MP7A1, mp7.js, and the AR-15, ar15.js). Each file is the gun, the soldier's own sleeves and gloves
+// was built (tools/blender/convert_retarget.py: the MP7A1, mp7.js, and the
+// AR-15, ar15.js). Each file is the gun, the soldier's own sleeves and gloves
 // (from assets/soldier.glb) and one rig: the gun's bones, and his arm bones
 // under an `arms` node, with his names (CC_Base_*), axes and centimetres.
 // They're played by animatedGun.js like the guns with their own arms, the

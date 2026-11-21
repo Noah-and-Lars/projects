@@ -1,7 +1,6 @@
 // Fits the outfit gloves (the same three downloads build_gear.mjs makes the
 // soldier's from) to the arms that come with the animated guns (the Beretta
-// 92FS, assets/beretta.glb, the FN 502, assets/fn502.glb, the Browning
-// Hi-Power, assets/hipistol.glb, the Makarov PM, assets/makarov.glb, the
+// 92FS, assets/beretta.glb, the Makarov PM, assets/makarov.glb, the
 // AK-74M, assets/ak74m.glb, the AK-74U, assets/ak74u.glb, and the Franchi
 // SPAS-12, assets/saps12.glb), so they can be worn on those arms too:
 // assets/gear/gloves_<glove>_<rig>.glb.
@@ -9,12 +8,14 @@
 // From the project-fish folder (after the guns are built; npm run
 // build-gun-gloves):
 //
-//     node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/fn502.glb assets/hipistol.glb assets/makarov.glb assets/ak74m.glb assets/ak74u.glb assets/saps12.glb assets/gear
+//     node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/makarov.glb assets/ak74m.glb assets/ak74u.glb assets/saps12.glb assets/gear
 //
-// (The AK-74M's arms are the FN 502's and the Makarov's maker's; the
-// AK-74U's the Beretta's maker's Mixamo arms, in a hoodie: its bare skin is
-// its arm mesh and the hoodie's sleeves its sleeve mesh; the SPAS-12's are
-// the Hi-Power's.)
+// (The AK-74M's arms are the Makarov's maker's; the AK-74U's the
+// Beretta's maker's Mixamo arms, in a hoodie: its bare skin is its arm mesh
+// and the hoodie's sleeves its sleeve mesh. The SPAS-12's maker's arms also
+// came with a Browning Hi-Power that was once in the game, which is why
+// some notes here still name that gun or the FN 502, by the Makarov's
+// maker.)
 //
 // (Options: --only <glove id>, e.g. --only gloves_camo; --debug DIR writes
 // what it found for each hand as JSON.)
@@ -92,7 +93,7 @@ const SOURCES = positional[0];
 const OUT = positional[positional.length - 1];
 const GUNS = positional.slice(1, -1);
 if (!SOURCES || !OUT || !GUNS.length) {
-  console.error('usage: node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/fn502.glb assets/hipistol.glb assets/makarov.glb assets/gear [--only gloves_camo] [--debug DIR]');
+  console.error('usage: node tools/gear/gun_gloves.mjs build/gear-src assets/beretta.glb assets/makarov.glb assets/gear [--only gloves_camo] [--debug DIR]');
   process.exit(1);
 }
 const ONLY = option('--only', null);
@@ -139,20 +140,11 @@ const AUTHOR = 'Exactly (https://sketchfab.com/txyrm70)';
 const finger = (name) => [1, 2, 3].map((k) => `${name}${k}_S`);
 const RIGS = {
   beretta: { name: 'Beretta 92FS', bare: true, cuffTo: -0.03, clearance: 0.0025, under: 0.008 },
-  fn502: { name: 'FN 502', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004 },
-  // (The same maker's arms as the FN 502's: its own gloves end at the wrist
+  // (Its own gloves end at the wrist
   // and a strip of bare skin shows up to the sleeve's end, 28 mm up the
   // forearm; all of that is cut away.)
   makarov: { name: 'Makarov PM', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004 },
-  hipistol: {
-    name: 'Browning Hi-Power', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004,
-    armMesh: 'hipistol_gloves', sleeveMesh: 'hipistol_sleeves',
-    hands: {
-      hand: 'hand_S', fingers: ['index', 'middle', 'ring', 'little'].map(finger),
-      palm: [1, 2, 3, 4].map((k) => `palm${k}_S`), thumb: finger('thumb'),
-    },
-  },
-  // (The FN 502's and the Makarov's maker's arms again.)
+  // (The Makarov's maker's arms again.)
   ak74m: { name: 'AK-74M', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004 },
   // (The Beretta's maker's Mixamo arms, here in a hoodie: their bare skin
   // is the arm mesh, cut away under the new glove, and the hoodie's sleeves
@@ -161,7 +153,8 @@ const RIGS = {
   // narrowed 12 mm inside them, not 4: any less and it shows through the
   // ribs as the forearm twists in the inspect.)
   ak74u: { name: 'AK-74U', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.012, armMesh: 'ak74u_hands', sleeveMesh: 'ak74u_sleeves' },
-  // (The Hi-Power's maker's arms again.)
+  // (Two meshes, its gloves and its sleeves; its hands, a Rigify rig's,
+  // have their finger bones under bones in the palm that carry no weight.)
   saps12: {
     name: 'Franchi SPAS-12', sleeve: true, sleeveEnd: -0.03, cuffTo: -0.055, sleeveMargin: 0.004,
     armMesh: 'saps12_gloves', sleeveMesh: 'saps12_sleeves',

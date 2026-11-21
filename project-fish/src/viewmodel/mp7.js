@@ -3,7 +3,7 @@
 // with a suppressor, a red dot sight (its maker's name rubbed off) and
 // folding iron sights (assets/mp7.glb, made by tools/blender/
 // convert_retarget.py from "MP7A1 Animations" by TheParaziT, see README.md,
-// Credits). As with the Xiri X4 (x4.js), the download's arms were an
+// Credits). As with the AR-15 (ar15.js), the download's arms were an
 // engine's stock mannequin: its clips were retargeted onto the soldier's
 // own arms when the file was built (soldierRig.js). It's played by
 // animatedGun.js, the clips as made.

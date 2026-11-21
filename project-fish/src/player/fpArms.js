@@ -24,9 +24,9 @@
 // If his arms can't reach where the hands are, the whole gun is drawn in
 // towards his shoulders by the difference, so the hands never leave it.
 //
-// A gun that brings its own arms (the Beretta 92FS, the FN 502 and the
-// Browning Hi-Power, see src/viewmodel/animatedGun.js), or plays its
-// maker's clips on a copy of his own (the Xiri X4, the MP7A1 and the AR-15, see
+// A gun that brings its own arms (the Beretta 92FS, the Makarov PM, the
+// AK-74M, the AK-74U and the SPAS-12, see src/viewmodel/animatedGun.js), or
+// plays its maker's clips on a copy of his own (the MP7A1 and the AR-15, see
 // src/viewmodel/soldierRig.js), is held by those: his
 // arms aren't drawn in the gun layer then, and nothing pulls the gun in or
 // fits his fingers to it. His body's arms (seen in photo mode, and in his shadow) take the hold

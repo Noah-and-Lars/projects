@@ -2,15 +2,13 @@
 // with the player's soldier big in the middle (src/outfitPreview.js: in his
 // outfit, in his idle clip, drag to turn him) and two tabs:
 // - Loadout: on the left the gun in your hands (its picture, name, calibre;
-//   choosing it opens a grid of all twelve, and a strip of all twelve takes
+//   choosing it opens a grid of all seven, and a strip of all seven takes
 //   one straight away), then what he wears (headwear, body armour, hands),
 //   each opening the Customization tab on that slot. On the right the gun:
-//   its picture (the PF-9's with its attachments on), what it is, its
-//   numbers from src/shared/config.js, and its attachments as rows (each
-//   opens the attachments that fit; src/attachments.js), or what's fitted
-//   to it for good.
+//   its picture, what it is, its numbers from src/shared/config.js, and
+//   what's fitted to it for good.
 // - Customization: the outfit (src/outfitMenu.js).
-// The number keys (1 to 9, 0, - and =) also put a gun in your hands, and Q
+// The number keys (1 to 7) also put a gun in your hands, and Q
 // and E change tab. A Breakdowns button opens a picker of the gun breakdowns
 // (src/showcase/breakdowns.js): picking one plays it (onBreakdown: the
 // game's, the breakdown's id; the menu closes without taking the mouse
@@ -21,16 +19,15 @@
 // there closes it. onOpenChange(open) tells the game when it opens and
 // closes (the game draws nothing behind it meanwhile).
 
-import { SLOTS as ATTACHMENT_SLOTS, ATTACHMENTS } from './attachments.js';
 import { GUNS, LOADOUT } from './shared/config.js';
 import { BREAKDOWNS } from './showcase/breakdowns.js';
 import { SLOTS as GEAR_SLOTS } from './gear.js';
-import { GUN_INFO, gunSpecs, thumbUrl, pf9LayersFor } from './loadoutInfo.js';
+import { GUN_INFO, gunSpecs, thumbUrl } from './loadoutInfo.js';
 import { el, picture, heading, gearThumb } from './outfitMenu.js';
 
 // Each gun's key in the game (LOADOUT's order), as shown and as pressed.
-const KEY_NAMES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
-const KEY_CODES = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal'];
+const KEY_NAMES = ['1', '2', '3', '4', '5', '6', '7'];
+const KEY_CODES = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7'];
 // The tabs, and the menu's other two views: the grid of guns, and the
 // breakdowns picker.
 const TABS = { loadout: 'Loadout', outfit: 'Customization' };
@@ -41,58 +38,6 @@ const FRAMING = { loadout: 'full', guns: 'full' };
 
 const keyOf = (gun) => KEY_NAMES[LOADOUT.indexOf(gun)];
 const gunThumb = (gun) => thumbUrl(`gun_${gun}`);
-
-// An attachment's name, from its id.
-function nameOf(gun, id) {
-  for (const options of Object.values(ATTACHMENTS[gun] || {})) {
-    const found = options.find((o) => o.id === id);
-    if (found) return found.name;
-  }
-  return id;
-}
-
-// Where a picture isn't clear (fractions of its width and height:
-// [x0, y0, x1, y1]), worked out once per picture.
-const boxes = new Map();
-async function alphaBox(img) {
-  if (boxes.has(img.src)) return boxes.get(img.src);
-  await img.decode();
-  const w = 256, h = Math.max(1, Math.round((256 * img.naturalHeight) / img.naturalWidth));
-  const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
-  const g = c.getContext('2d', { willReadFrequently: true });
-  g.drawImage(img, 0, 0, w, h);
-  const { data } = g.getImageData(0, 0, w, h);
-  let x0 = w, y0 = h, x1 = -1, y1 = -1;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      if (data[(y * w + x) * 4 + 3] < 12) continue;
-      if (x < x0) x0 = x;
-      if (x > x1) x1 = x;
-      if (y < y0) y0 = y;
-      if (y > y1) y1 = y;
-    }
-  }
-  const box = x1 < 0 ? null : [x0 / w, y0 / h, (x1 + 1) / w, (y1 + 1) / h];
-  boxes.set(img.src, box);
-  return box;
-}
-
-// The transform that fits what the layers in `zoom` show to its box.
-async function fitLayers(zoom) {
-  try {
-    const found = (await Promise.all([...zoom.querySelectorAll('img')].map(alphaBox))).filter(Boolean);
-    if (!found.length) return null;
-    const [x0, y0, x1, y1] = found.reduce((a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
-    const scale = Math.min(0.92 / (x1 - x0), 0.86 / (y1 - y0), 2.6);
-    const tx = 0.5 - ((x0 + x1) / 2) * scale;
-    const ty = 0.5 - ((y0 + y1) / 2) * scale;
-    return `translate(${(tx * 100).toFixed(2)}%, ${(ty * 100).toFixed(2)}%) scale(${scale.toFixed(4)})`;
-  } catch {
-    return null; // (a picture that didn't load: left as it is)
-  }
-}
 
 function button(className, key, onClick) {
   const b = el('button', className);
@@ -107,14 +52,12 @@ function kbd(text) {
 }
 
 export class LoadoutMenu {
-  // element: the #loadout element. loadout: the Loadout (src/attachments.js).
-  // input: the Input, to release and take the mouse. heldGun(): the key of the
+  // element: the #loadout element. input: the Input, to release and take the mouse. heldGun(): the key of the
   // gun in the hands. outfitMenu: the OutfitMenu for the Customization tab
   // and the stage (optional: without it, the Loadout tab alone).
-  constructor(element, loadout, input, heldGun, outfitMenu = null) {
+  constructor(element, input, heldGun, outfitMenu = null) {
     this.outfitMenu = outfitMenu;
     this.element = element;
-    this.loadout = loadout;
     this.input = input;
     this.heldGun = heldGun;
     this.open = false;
@@ -126,7 +69,6 @@ export class LoadoutMenu {
     this.tab = 'loadout'; // the tab last on ('loadout' or 'outfit')
     this.view = 'loadout'; // a tab, GUNS_VIEW or BREAKDOWNS_VIEW
     this.slot = GEAR_SLOTS[0].id; // the outfit slot open on the Customization tab
-    this.openSlot = null; // the attachment slot whose options are open
     this.lastBreakdown = BREAKDOWNS.length ? BREAKDOWNS[0].id : null; // the picker's focus
 
     // What stays: the backdrop, the stage, the shading over it; the rest is
@@ -143,9 +85,6 @@ export class LoadoutMenu {
     element.append(backdrop, this.stage, shade, grain, this.ui);
 
     document.addEventListener('keydown', (e) => this.key(e));
-    this.loadout.onChange(() => {
-      if (this.open) this.render();
-    });
     if (outfitMenu) {
       outfitMenu.outfit.onChange(() => {
         if (this.open) this.render();
@@ -163,7 +102,6 @@ export class LoadoutMenu {
     if (options) this.alone = Boolean(options.alone);
     this.view = view === BREAKDOWNS_VIEW && this.onBreakdown ? BREAKDOWNS_VIEW : this.tab;
     if (breakdown) this.lastBreakdown = breakdown;
-    this.openSlot = null;
     this.element.hidden = false;
     this.element.classList.add('lo-enter');
     requestAnimationFrame(() => requestAnimationFrame(() => this.element.classList.remove('lo-enter')));
@@ -179,7 +117,6 @@ export class LoadoutMenu {
     const from = this.view;
     if (TABS[view]) this.tab = view;
     this.view = view;
-    this.openSlot = null;
     this.render(null);
     // Back from the picker: on the button that opened it; back from the
     // grid of guns: on the gun card.
@@ -219,13 +156,7 @@ export class LoadoutMenu {
       e.preventDefault();
       if (this.view === BREAKDOWNS_VIEW && !this.alone) this.showView(this.tab);
       else if (this.view === GUNS_VIEW) this.showView('loadout');
-      else if (this.view === 'loadout' && this.openSlot) {
-        // (An attachment slot's choices open: closed first.)
-        const slot = this.openSlot;
-        this.openSlot = null;
-        this.render(null);
-        this.focusKey(`att-${slot}`);
-      } else this.close();
+      else this.close();
       return;
     }
     if (e.code === 'KeyB') {
@@ -304,7 +235,6 @@ export class LoadoutMenu {
   // back to the Loadout tab).
   pickGun(gun) {
     if (gun !== this.heldGun() && this.onPickGun) this.onPickGun(gun);
-    this.openSlot = null;
     if (this.view === GUNS_VIEW || this.view === 'outfit') this.showView('loadout');
     else this.render();
   }
@@ -429,7 +359,7 @@ export class LoadoutMenu {
     return foot;
   }
 
-  // The Loadout tab's weapons: the gun in your hands, and all twelve.
+  // The Loadout tab's weapons: the gun in your hands, and all seven.
   renderWeapons(container) {
     const held = this.heldGun();
     const gun = GUNS[held];
@@ -443,7 +373,7 @@ export class LoadoutMenu {
     text.append(el('span', 'lo-gun-name', gun.name), el('span', 'lo-gun-sub', `${gun.kind} · ${gun.calibre}`));
     card.append(top, picture(gunThumb(held), 'lo-pic lo-gun-pic'), text, el('span', 'lo-card-more', 'Change'));
     section.append(card);
-    // All twelve, small: one click takes it.
+    // All seven, small: one click takes it.
     const strip = el('div', 'lo-strip lo-grid');
     strip.setAttribute('aria-label', 'Take a gun');
     for (const key of LOADOUT) {
@@ -475,35 +405,15 @@ export class LoadoutMenu {
     }
   }
 
-  // The gun in the hands, on the right: what it is, its numbers, its
-  // attachments.
+  // The gun in the hands, on the right: what it is, its numbers, and what's
+  // fitted to it for good.
   renderGun(container) {
     const key = this.heldGun();
     const gun = GUNS[key];
     const info = GUN_INFO[key] || {};
     container.append(el('p', 'lo-cat', `${gun.kind} · Key ${keyOf(key)}`), el('h2', 'lo-name', gun.name));
-    // Its picture (the PF-9's with its attachments drawn over it).
     const hero = el('div', 'lo-hero');
-    const slots = ATTACHMENTS[key] || {};
-    const rows = ATTACHMENT_SLOTS.filter((slot) => (slots[slot.id] || []).length);
-    if (rows.length && key === 'pistol') {
-      // (The layers are framed to fit the gun with everything on: zoomed in
-      // to fit what's on now, easing from how it was.)
-      hero.classList.add('layered');
-      const zoom = el('div', 'lo-hero-zoom');
-      if (this.heroZoom) zoom.style.transform = this.heroZoom;
-      zoom.append(picture(thumbUrl('pf9_kit'), 'lo-layer'));
-      const ids = new Set(Object.values(this.loadout.on(key)).filter(Boolean));
-      for (const layer of pf9LayersFor(ids)) zoom.append(picture(thumbUrl(layer.name), 'lo-layer'));
-      hero.append(zoom);
-      fitLayers(zoom).then((transform) => {
-        if (!transform || !zoom.isConnected) return;
-        this.heroZoom = transform;
-        requestAnimationFrame(() => { zoom.style.transform = transform; });
-      });
-    } else {
-      hero.append(picture(gunThumb(key), 'lo-layer'));
-    }
+    hero.append(picture(gunThumb(key), 'lo-layer'));
     container.append(hero);
     if (info.about) container.append(el('p', 'lo-about', info.about));
     const specs = el('dl', 'lo-specs');
@@ -514,47 +424,15 @@ export class LoadoutMenu {
     }
     container.append(specs);
 
-    if (!rows.length) {
-      container.append(heading('Fitted', info.fitted ? `${info.fitted.length}` : ''));
-      const list = el('div', 'lo-rows');
-      for (const f of info.fitted || []) {
-        const line = el('div', 'lo-row fixed');
-        line.append(el('span', 'lo-row-slot', f.slot), el('span', 'lo-row-value', f.what));
-        list.append(line);
-      }
-      if (!(info.fitted || []).length) list.append(el('p', 'lo-note', 'Nothing fitted. This gun has no attachments yet.'));
-      else list.append(el('p', 'lo-note', 'Fitted for good: this gun has no attachments to change yet.'));
-      container.append(list);
-      return;
-    }
-    const on = this.loadout.on(key);
-    container.append(heading('Attachments', `${Object.values(on).filter(Boolean).length} / ${rows.length} fitted`));
+    container.append(heading('Fitted', info.fitted ? `${info.fitted.length}` : ''));
     const list = el('div', 'lo-rows');
-    for (const slot of rows) {
-      const current = this.loadout.get(key, slot.id);
-      const open = this.openSlot === slot.id;
-      const row = button(`lo-row${open ? ' open' : ''}${current ? ' set' : ''}`, `att-${slot.id}`, () => {
-        this.openSlot = open ? null : slot.id;
-        this.render();
-      });
-      row.setAttribute('aria-expanded', String(open));
-      row.append(el('span', 'lo-row-slot', slot.name), el('span', 'lo-row-value', current ? nameOf(key, current) : 'None'), el('span', 'lo-row-mark'));
-      list.append(row);
-      if (!open) continue;
-      // Its options: none, then each that fits.
-      const options = el('div', 'lo-choices lo-grid');
-      for (const option of [{ id: null, name: 'None' }, ...slots[slot.id]]) {
-        const chosen = option.id === current;
-        const choice = button(`lo-choice${chosen ? ' chosen' : ''}`, `att-${slot.id}-${option.id || 'none'}`, () => this.loadout.set(key, slot.id, option.id));
-        choice.setAttribute('aria-pressed', String(chosen));
-        const off = chosen ? [] : this.loadout.wouldTakeOff(key, slot.id, option.id).map((id) => nameOf(key, id));
-        choice.append(el('span', 'lo-choice-name', option.name));
-        if (option.about) choice.append(el('span', 'lo-choice-about', option.about));
-        if (off.length) choice.append(el('span', 'lo-choice-warn', `Takes off: ${off.join(', ')}`));
-        options.append(choice);
-      }
-      list.append(options);
+    for (const f of info.fitted || []) {
+      const line = el('div', 'lo-row fixed');
+      line.append(el('span', 'lo-row-slot', f.slot), el('span', 'lo-row-value', f.what));
+      list.append(line);
     }
+    if (!(info.fitted || []).length) list.append(el('p', 'lo-note', 'Nothing fitted. This gun has no attachments yet.'));
+    else list.append(el('p', 'lo-note', 'Fitted for good: this gun has no attachments to change yet.'));
     container.append(list);
   }
 
@@ -575,7 +453,7 @@ export class LoadoutMenu {
     const sheet = el('section', 'lo-sheet');
     sheet.dataset.scroll = 'guns';
     const head = el('div', 'lo-sheet-head');
-    head.append(el('p', 'lo-cat', 'Weapons'), el('h2', 'lo-name', 'Choose the gun in your hands'), el('p', 'lo-about', 'Every gun is carried; its key (1 to 9, 0, - and =) takes it out in the game. Only the PF-9 takes attachments.'));
+    head.append(el('p', 'lo-cat', 'Weapons'), el('h2', 'lo-name', 'Choose the gun in your hands'), el('p', 'lo-about', 'Every gun is carried; its key (1 to 7) takes it out in the game.'));
     sheet.append(head);
     const grid = el('div', 'lo-gun-grid lo-grid');
     for (const key of LOADOUT) {

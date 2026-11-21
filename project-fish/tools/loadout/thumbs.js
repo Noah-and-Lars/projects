@@ -4,12 +4,7 @@
 // - gun_<key>: each gun (1024×512, clear background), from its right side,
 //   muzzle to the right, without the arms its file brings. A gun whose clips
 //   play on its own arms is posed as its idle clip starts; it's turned so
-//   its length runs across the picture and its widest side faces the camera
-//   (the PF-9 and the M1911, which are posed in code, are already level).
-// - pf9_kit and pf9_<attachment>[_<seat>]: the PF-9 framed to fit it with
-//   every attachment on, then each attachment alone, where it sits (layers
-//   the menu draws over pf9_kit; PF9_LAYERS in src/loadoutInfo.js). The
-//   gun hides what's behind it in each layer.
+//   its length runs across the picture and its widest side faces the camera.
 // - gear_<slot>_<id>: every outfit option (512×512), on the soldier as he
 //   stands in his idle, everything else of him left out; "None" on his
 //   head and vest is him without it, and "No gloves" the bare hands the
@@ -24,10 +19,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { LOADOUT } from '../../src/shared/config.js';
-import { MODEL9 } from '../../src/viewmodel/pistol9.js';
 import { SLOTS, Outfit, Wardrobe } from '../../src/gear.js';
 import { loadSoldier } from '../../src/soldier.js';
-import { PF9_LAYERS } from '../../src/loadoutInfo.js';
 
 const only = new URLSearchParams(location.search).get('only');
 const wanted = (name) => !only || only.split(',').some((p) => name.startsWith(p));
@@ -213,15 +206,11 @@ async function loadGun(key) {
     if (o.isBone && SPARE.test(o.name)) o.scale.setScalar(0);
   });
   root.updateMatrixWorld(true);
-  // The gun's meshes; the PF-9's attachments (att_ nodes) start hidden.
+  // The gun's meshes.
   const gun = [];
   root.traverse((o) => {
-    if (/^att_/.test(o.name) && !/^att_/.test(o.parent.name)) o.visible = false;
     if (!o.isMesh) return;
     o.frustumCulled = false;
-    let attachment = false;
-    for (let p = o; p; p = p.parent) if (/^att_/.test(p.name)) attachment = true;
-    if (attachment) return;
     if (NOT_GUN.test(o.name)) o.visible = false;
     else gun.push(o);
   });
@@ -231,18 +220,17 @@ async function loadGun(key) {
 async function drawGuns() {
   for (const key of LOADOUT) {
     const name = `gun_${key}`;
-    if (!wanted(name) && !(key === 'pistol' && wanted('pf9'))) continue;
+    if (!wanted(name)) continue;
     status.textContent = `Drawing ${name}…`;
     const { root, gun } = await loadGun(key);
     const shown = gun;
     const points = [];
     for (const m of shown) pointsOf(m, points, Math.max(1, Math.floor(m.geometry.attributes.position.count / 6000)));
-    // Gun space is muzzle -Z, up +Y: the PF-9's and the M1911's files are
-    // in it, and a gun with its own arms has a `gun` node that is, in its
-    // idle pose. (Else, from its shape.)
+    // Gun space is muzzle -Z, up +Y: a gun with its own arms has a `gun`
+    // node that is, in its idle pose. (Else, from its shape.)
     const frame = root.getObjectByName('gun');
     const turn = frame ? frame.getWorldQuaternion(new THREE.Quaternion()) : new THREE.Quaternion();
-    const found = frame || key === 'pistol' || key === 'pistol45'
+    const found = frame
       ? { muzzle: new THREE.Vector3(0, 0, -1).applyQuaternion(turn), up: new THREE.Vector3(0, 1, 0).applyQuaternion(turn) }
       : gunAxes(points);
     const axes = tilted(found.muzzle, found.up, TILT[key]);
@@ -253,66 +241,7 @@ async function drawGuns() {
       keep(name, scene, camera, GUN_SIZE);
       scene.remove(root);
     }
-    if (key === 'pistol' && wanted('pf9')) drawPf9Layers(root, shown, points, axes);
   }
-}
-
-// The PF-9's attachments, each a layer over pf9_kit.
-function drawPf9Layers(root, base, basePoints, { muzzle, up }) {
-  const nodes = {};
-  root.traverse((o) => {
-    if (o.name.startsWith('att_') && !o.parent.name.startsWith('att_')) nodes[o.name.slice(4)] = o;
-  });
-  // Puts an attachment where it sits with `seat` (moved by its offset in
-  // gun space, which the file's root is), or where it was modelled.
-  const home = new Map(Object.values(nodes).map((n) => [n, n.matrix.clone()]));
-  const seatOf = (layer) => {
-    const node = nodes[layer.id];
-    node.matrix.copy(home.get(node));
-    node.matrix.decompose(node.position, node.quaternion, node.scale);
-    const seat = layer.seat && (MODEL9.attachments[layer.id] || {}).on && MODEL9.attachments[layer.id].on[layer.seat];
-    if (seat && seat.offset) {
-      node.updateMatrixWorld(true);
-      const world = new THREE.Matrix4().makeTranslation(...seat.offset).multiply(node.matrixWorld);
-      node.parent.updateMatrixWorld(true);
-      new THREE.Matrix4().copy(node.parent.matrixWorld).invert().multiply(world).decompose(node.position, node.quaternion, node.scale);
-    }
-    node.updateMatrixWorld(true);
-    return node;
-  };
-  const meshesOf = (node) => {
-    const list = [];
-    node.traverse((o) => { if (o.isMesh) list.push(o); });
-    return list;
-  };
-  // The frame: the gun with every attachment, in every place it can sit.
-  const points = basePoints.slice();
-  for (const layer of PF9_LAYERS) {
-    for (const m of meshesOf(seatOf(layer))) pointsOf(m, points, 2);
-  }
-  const camera = sideCamera(points, muzzle, up, GUN_SIZE, 1.04);
-  const scene = studio(camera);
-  scene.add(root);
-  for (const n of Object.values(nodes)) n.visible = false;
-  if (wanted('pf9_kit')) keep('pf9_kit', scene, camera, GUN_SIZE);
-  // Each layer: the gun drawn only into the depth buffer first, so it
-  // hides whatever of the attachment is behind it.
-  const colour = new Map();
-  for (const m of base) {
-    m.renderOrder = -1;
-    for (const mat of [].concat(m.material)) colour.set(mat, mat.colorWrite);
-  }
-  for (const mat of colour.keys()) mat.colorWrite = false;
-  for (const layer of PF9_LAYERS) {
-    if (!wanted(layer.name) && !wanted('pf9_layers')) continue;
-    status.textContent = `Drawing ${layer.name}…`;
-    const node = seatOf(layer);
-    node.visible = true;
-    keep(layer.name, scene, camera, GUN_SIZE);
-    node.visible = false;
-  }
-  for (const [mat, was] of colour) mat.colorWrite = was;
-  scene.remove(root);
 }
 
 // ---- The outfit ----

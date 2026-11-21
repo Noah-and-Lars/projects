@@ -4,7 +4,7 @@
 // barrel, a perforated heat shield over the barrel, a stamped steel stock
 // folded over the top with its hook at the front, a pistol grip, and a
 // loading port with a shell lifter underneath). It comes with its own
-// gloved arms (the Hi-Power's maker's) and its own animations (assets/
+// gloved arms and its own animations (assets/
 // saps12.glb, made by tools/blender/convert_saps12.py from "FPS Character
 // Animation Pack Saps-12" by Cristian David Duque Camacho, see README.md,
 // Credits). It's played by animatedGun.js, its clips as its maker made

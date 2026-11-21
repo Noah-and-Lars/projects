@@ -11,7 +11,7 @@ import { BUTTON_SPRINT, BUTTON_SPRINT_KEY, createPlayerState, emptyCommand, hori
 import { raycastColliders, raycastWorld } from './shared/map.js';
 import { Pistol } from './weapon.js';
 import { WorldEffects } from './effects/worldEffects.js';
-import { playDryFire, playGunshot, playMagCatch, playMagGrab, playMagIn, playMagOut, playShellIn, playSlideBack, playSlideRelease, playSwitchClick, startAudio } from './effects/audio.js';
+import { playDryFire, playGunshot, playMagCatch, playMagGrab, playMagIn, playMagOut, playShellIn, playSlideBack, playSlideRelease, startAudio } from './effects/audio.js';
 import { addSoldier, createWorld, outdoorEnvironment, SUN_DIRECTION } from './world.js';
 import { Viewmodel, AIM } from './viewmodel/viewmodel.js';
 import { PlayerBody } from './player/body.js';
@@ -19,7 +19,6 @@ import { FirstPersonArms } from './player/fpArms.js';
 import { Input } from './input.js';
 import { GpuTimer, Hud } from './hud.js';
 import { settings } from './settings.js';
-import { Loadout } from './attachments.js';
 import { LoadoutMenu } from './loadoutMenu.js';
 import { breakdownById } from './showcase/breakdowns.js';
 import { Outfit, Wardrobe } from './gear.js';
@@ -53,21 +52,6 @@ renderer.toneMappingExposure = 1.1;
 container.appendChild(renderer.domElement);
 
 const scene = createWorld();
-// A gun's light and laser (attachments, switched with T). The light is one
-// spot light, always in the world and just dark when it's off (adding or
-// removing a light makes three.js rebuild every material's shader); the laser
-// is a red dot where its beam meets the world.
-const torch = new THREE.SpotLight(0xfff1da, 0, 45, 0.21, 0.5, 2);
-scene.add(torch, torch.target);
-const laserDot = new THREE.Sprite(new THREE.SpriteMaterial({
-  map: dotTexture(), color: 0xff3a22, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false, sizeAttenuation: false,
-}));
-laserDot.scale.setScalar(0.009);
-laserDot.visible = false;
-scene.add(laserDot);
-const LIGHT = { intensity: 140 };
-const LASER = { range: 120 };
-let lightsOn = true;
 const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 1500);
 camera.rotation.order = 'YXZ'; // turn left/right first, then look up/down
 // What the soldier wears (chosen in the loadout menu's Outfit tab, src/
@@ -95,9 +79,8 @@ let held = LOADOUT[0];
 let weapon = weapons[held];
 
 const asked = { reload: false, inspect: false }; // keys pressed while switching guns
-// The keys for the guns, in LOADOUT's order: the number row, 1 to 9, then
-// 0, - and =.
-const GUN_KEYS = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal'];
+// The keys for the guns, in LOADOUT's order: the number row, 1 to 7.
+const GUN_KEYS = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7'];
 
 // What the hands show of a gun (see Viewmodel.update).
 function gunStateOf(w) {
@@ -131,29 +114,15 @@ function switchGun(key) {
 }
 const effects = new WorldEffects(scene);
 
-// The attachments on each gun, and the loadout menu (B) to choose them. If
-// closing the menu can't take the mouse back, the pause menu shows. Opened
-// from the main menu, it goes back there when it closes (its `home`).
-const loadout = new Loadout();
-const menu = new LoadoutMenu(document.getElementById('loadout'), loadout, input, () => held, new OutfitMenu(outfit, wardrobe));
+// The loadout menu (B): a gun for the hands and the outfit. If closing the
+// menu can't take the mouse back, the pause menu shows. Opened from the main
+// menu, it goes back there when it closes (its `home`).
+const menu = new LoadoutMenu(document.getElementById('loadout'), input, () => held, new OutfitMenu(outfit, wardrobe));
 // (It can put any gun in the hands.)
 menu.onPickGun = (key) => switchGun(key);
 // While it's open it covers the whole screen: the game draws nothing (see
 // the game loop) and neither does the title screen's backdrop.
 menu.onOpenChange = (open) => menuBehind(!open);
-// Puts a gun's chosen attachments on it (once the models are in; then each
-// time the loadout changes).
-function applyLoadout(key) {
-  viewmodel.setAttachments(key, loadout.on(key));
-  const g = viewmodel.guns[key];
-  if (weapons[key] && g) weapons[key].chamberCheck = g.points.chamberCheck !== false;
-}
-const pendingLoadout = new Set();
-loadout.onChange((key) => {
-  if (!loaded) return;
-  if (key === held && (weapon.reloading || weapon.inspect)) pendingLoadout.add(key);
-  else applyLoadout(key);
-});
 menu.onFailedLock = () => {
   pauseMenu();
 };
@@ -456,7 +425,6 @@ viewmodel.ready.then(() => {
     const g = viewmodel.guns[key];
     if (g && g.rules && weapons[key].spec !== g.rules) weapons[key].spec = g.rules;
   }
-  LOADOUT.forEach(applyLoadout);
   // A dropped magazine is handed over to the world: get its materials ready
   // now, so the first empty reload doesn't stall.
   const drops = Object.values(viewmodel.guns).map((g) => g.dropModel).filter(Boolean).map((m) => m.clone(true));
@@ -617,49 +585,6 @@ function updateBarrelSmoke(dt) {
   effects.barrelSmoke(gunPointToWorld(from), amount);
 }
 
-// --- Light and laser ---
-
-// A soft round dot, for the laser.
-function dotTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 32;
-  const g = canvas.getContext('2d');
-  const grad = g.createRadialGradient(16, 16, 0, 16, 16, 16);
-  grad.addColorStop(0, 'rgba(255,255,255,1)');
-  grad.addColorStop(0.25, 'rgba(255,255,255,0.9)');
-  grad.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = grad;
-  g.fillRect(0, 0, 32, 32);
-  return new THREE.CanvasTexture(canvas);
-}
-
-// Points the light and laser where the gun in the hands points (they shine
-// straight ahead from where they're mounted), when it has them and they're
-// switched on.
-function updateBeams() {
-  const light = lightsOn && viewmodel.lightBeam();
-  if (light) {
-    const [from, ahead] = light.map(gunPointToWorld);
-    torch.position.copy(from);
-    torch.target.position.copy(ahead);
-    torch.intensity = LIGHT.intensity;
-  } else {
-    torch.intensity = 0;
-  }
-  const laser = lightsOn && viewmodel.laserBeam();
-  laserDot.visible = false;
-  if (laser) {
-    const [from, ahead] = laser.map(gunPointToWorld);
-    const d = ahead.sub(from).normalize();
-    const hit = raycastWorld(from.x, from.y, from.z, d.x, d.y, d.z, LASER.range);
-    if (hit) {
-      laserDot.position.set(hit.x + hit.nx * 0.01, hit.y + hit.ny * 0.01, hit.z + hit.nz * 0.01);
-      laserDot.visible = true;
-    }
-  }
-  viewmodel.setGlow(lightsOn);
-}
-
 // --- Ammo counter ---
 
 // The guns' names on the page (the main menu's controls and credits) are
@@ -758,20 +683,8 @@ renderer.setAnimationLoop((time) => {
     menu.show('loadout', null, { alone: false });
     if (weapon.inspect) weapon.inspect.cut = true; // put the gun back in the hold first
   }
-  // A loadout change to the gun in the hands waits for its reload or
-  // inspect to end.
-  if (pendingLoadout.has(held) && !weapon.reloading && !weapon.inspect) {
-    pendingLoadout.delete(held);
-    applyLoadout(held);
-  }
-  // The light and laser: T.
-  if (play && input.presses('KeyT') > 0 && (viewmodel.points.light || viewmodel.points.laser)) {
-    lightsOn = !lightsOn;
-    playSwitchClick();
-    viewmodel.flickSwitch();
-  }
 
-  // Switching guns: 1 to 9, 0, - and =, or the mouse wheel.
+  // Switching guns: 1 to 7, or the mouse wheel.
   if (play) {
     LOADOUT.forEach((key, i) => {
       if (GUN_KEYS[i] && input.presses(GUN_KEYS[i]) > 0) switchGun(key);
@@ -811,7 +724,6 @@ renderer.setAnimationLoop((time) => {
   const gunState = outgoing ? outgoing.state : gunStateOf(weapons[shownKey]);
   aimAmount = viewmodel.update(frameSeconds, player, input.yaw, input.pitch, camera.quaternion, wallDistance, input.aiming && !photo.on && !weapon.reloading && !weapon.inspecting && !switching, gunState);
   setWorldFov(1 + (AIM.zoom - 1) * aimAmount, moveFeel.fov);
-  updateBeams();
   document.body.classList.toggle('aiming', aimAmount > 0.4);
   document.body.classList.toggle('sprinting', viewmodel.motion.sprint > 0.4);
   for (const event of events) {

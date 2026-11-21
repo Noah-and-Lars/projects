@@ -2,7 +2,7 @@
 // from a 30-round magazine, with a long suppressor and a holographic sight
 // with a magnifier behind it (assets/ar15.glb, made by tools/blender/
 // convert_retarget.py from "AR-15 Animations Miniset" by TheParaziT, see
-// README.md, Credits). As with the Xiri X4 (x4.js) and the MP7A1 (mp7.js),
+// README.md, Credits). As with the MP7A1 (mp7.js),
 // the download's arms were an engine's stock mannequin: its clips were
 // retargeted onto the soldier's own arms when the file was built
 // (soldierRig.js). It's played by animatedGun.js, the clips as made.
@@ -14,7 +14,7 @@
 // the frame bone, which in the idle pose is gun space (metres, +X right, +Y
 // up, -Z forward) moved to the frame bone (frame, below: where that is in
 // the idle pose, in the file's space). Its maker holds it canted 3.75° the
-// other way from the X4 and the MP7A1 (its top to the right as you look:
+// other way from the MP7A1 (its top to the right as you look:
 // cant, below, negative); the gun layer levels it as it's aimed. Measured by
 // the converter (its --report):
 // - muzzle: the front of the suppressor; port: the ejection port, on the

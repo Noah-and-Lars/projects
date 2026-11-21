@@ -43,7 +43,7 @@
 //   charging handle is pulled back (2.21 to 2.43 s) and let go (home at
 //   2.63).
 // No walk or run clips: it takes the gun layer's walking bob and sprint
-// pose, as the PF-9 does.
+// pose, as the stand-in pistol does.
 
 export const MODEL_AK74U = {
   clips: {

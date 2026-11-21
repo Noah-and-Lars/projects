@@ -2,7 +2,7 @@
 // magazine, fully automatic, which comes with its own gloved arms and its
 // own animations (assets/ak74m.glb, made by tools/blender/convert_ak74m.py
 // from "FPS AK-74m animations" by Cransh, see README.md, Credits; the same
-// maker's arms as the FN 502's and the Makarov's). It's played by
+// maker's arms as the Makarov's). It's played by
 // animatedGun.js, its clips as its maker made them.
 //
 // The file's root is the eye its maker framed it from (the download's own

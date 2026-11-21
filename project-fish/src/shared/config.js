@@ -96,9 +96,11 @@ export const WORLD = {
 // Its `calibre` and `kind` are what the loadout menu shows beside the name.
 // A gun fires once per trigger pull unless its fireMode is 'auto' (it fires
 // as long as the trigger is held, see src/weapon.js).
-// The first pistol: a compact 9 mm, 15 rounds.
+// The rules of the built-in stand-in pistol (a compact 9 mm, 15 rounds),
+// held by the built-in hands if a gun's own model can't be loaded (see
+// src/viewmodel/viewmodel.js). It isn't one of the guns the player carries.
 export const PISTOL = {
-  name: 'PF-9',
+  name: 'Stand-in pistol',
   calibre: '9×19 mm',
   kind: 'Pistol',
   fireInterval: 0.12, // fastest the trigger can be pulled again (500 rounds a minute)
@@ -112,34 +114,7 @@ export const PISTOL = {
   recoil: 1, // how hard it kicks (the view and the gun)
 };
 
-// The second pistol: an M1911, a .45. Fewer, slower, harder-kicking shots.
-// (Its reload times match the first pistol's for now: the hands' reload is
-// shared, see src/viewmodel/viewmodel.js.)
-export const PISTOL45 = {
-  name: 'M1911',
-  calibre: '.45 ACP',
-  kind: 'Pistol',
-  fireInterval: 0.17, // 350 rounds a minute at most
-  magazine: 7,
-  reserve: 35,
-  reloadTime: 2.1,
-  // From empty the support hand racks the slide (overhand, from the back)
-  // after the magazine goes in, rather than the thumb dropping the slide
-  // stop: a little longer. (Fractions of the reload; see RELOAD_STEPS in
-  // src/weapon.js.)
-  emptyReloadTime: 2.9,
-  reloadSteps: {
-    empty: { magOut: 0.086, magGrab: 0.31, magIn: 0.543, rackGrab: 0.69, rackPull: 0.735, slideRelease: 0.76, handOn: 0.9 },
-  },
-  range: 150,
-  spread: { hip: 2.1, aim: 0.14, moving: 1.4 },
-  recoil: 1.5,
-  // Its inspect lingers longer on each thing it shows (extra seconds; see
-  // INSPECT_HOLDS in src/weapon.js): 10.4 s in all instead of 7.2.
-  inspectHolds: { right: 0.9, left: 0.9, magazine: 0.8, chamber: 0.6 },
-};
-
-// The third: a Beretta 92FS, a full-size 9 mm holding 15 rounds. It comes
+// The first: a Beretta 92FS, a full-size 9 mm holding 15 rounds. It comes
 // with its own arms and its own animations (src/viewmodel/beretta.js), so
 // its times are those clips' own lengths: a reload with rounds left is its
 // reload clip (2.7 s), one from empty its empty reload (4.03 s, the support
@@ -147,7 +122,7 @@ export const PISTOL45 = {
 // inspect is its inspect clip (5.03 s). Each shot's clip has the slide home
 // 0.12 s after the shot goes off and the trigger pulled again by 0.2: 300
 // rounds a minute at most. A heavy, all-steel-slide 9 mm: it kicks a
-// little more than the PF-9 and a little less than the M1911.
+// little more than the stand-in pistol.
 export const BERETTA = {
   name: 'Beretta 92FS',
   calibre: '9×19 mm',
@@ -180,105 +155,7 @@ export const BERETTA = {
   inspectFade: 0.4,
 };
 
-// The fourth: an FN 502 Tactical, a .22 LR pistol holding 10 rounds. It
-// comes with its own arms and its own animations too (src/viewmodel/
-// fn502.js), so its times are those clips' own lengths: a reload with
-// rounds left is its reload clip (1.98 s), one from empty its full reload
-// (2.98 s: the support hand racks the slide after the fresh magazine goes
-// in). Its shot clip has the slide home 0.19 s after the shot: 300 rounds a
-// minute at most. A light .22: it barely kicks, and strays a little less.
-// It has no inspect (its maker made none).
-export const FN502 = {
-  name: 'FN 502',
-  calibre: '.22 LR',
-  kind: 'Pistol',
-  fireInterval: 0.2,
-  magazine: 10,
-  reserve: 40,
-  reloadTime: 1.983,
-  emptyReloadTime: 2.983,
-  // When things happen, as fractions of the reload: the clips' own times
-  // (src/viewmodel/fn502.js) over their lengths. Either way the magazine
-  // comes out and is swapped for a fresh one at the belt (nothing catches
-  // it: magCaught is never reached); from empty, the slide is then pulled
-  // back and let go.
-  reloadSteps: {
-    empty: { magOut: 0.075, magGrab: 0.207, magIn: 0.444, slidePull: 0.612, slideRelease: 0.665, handOn: 0.869 },
-    catching: { magOut: 0.113, magCaught: 2, magGrab: 0.311, magIn: 0.668, handOn: 0.811 },
-  },
-  range: 150,
-  spread: { hip: 1.6, aim: 0.1, moving: 1.1 },
-  recoil: 0.55,
-  inspect: false,
-  // Its spent case: a .22 LR's (metres), far smaller than a 9 mm's.
-  caseSize: { diameter: 0.0057, length: 0.0156 },
-};
-
-// The fifth: a Browning Hi-Power, a 9 mm holding 13 rounds. It comes with
-// its own arms and its own animations too (src/viewmodel/hipistol.js), so
-// its times are those clips' own lengths: its one reload clip (2.71 s),
-// from empty too (its slide goes home after the last shot, so there's
-// nothing more to do). Its shot clip has the slide home 0.2 s after the
-// shot: 300 rounds a minute at most. An all-steel 9 mm, a little lighter
-// than the Beretta. It has no inspect (its maker made none).
-export const HIPISTOL = {
-  name: 'Browning Hi-Power',
-  calibre: '9×19 mm',
-  kind: 'Pistol',
-  fireInterval: 0.2,
-  magazine: 13,
-  reserve: 52,
-  reloadTime: 2.708,
-  emptyReloadTime: 2.708,
-  // When things happen, as fractions of the reload: the clip's own times
-  // (src/viewmodel/hipistol.js) over its length. Either way the magazine
-  // comes out and is swapped for a fresh one at the belt (nothing catches
-  // it, and the slide isn't touched: magCaught and slideRelease are never
-  // reached).
-  reloadSteps: {
-    empty: { magOut: 0.157, magGrab: 0.326, magIn: 0.665, handOn: 0.825, slideRelease: 2 },
-    catching: { magOut: 0.157, magCaught: 2, magGrab: 0.326, magIn: 0.665, handOn: 0.825 },
-  },
-  range: 150,
-  spread: { hip: 1.8, aim: 0.11, moving: 1.25 },
-  recoil: 1.1,
-  inspect: false,
-};
-
-// The sixth: a Xiri X4, a full-size pistol, played as a 9 mm holding 15
-// rounds. Its clips came with the download and were put on the soldier's
-// own arms (src/viewmodel/x4.js), so its times are those clips' own
-// lengths: a reload with rounds left is its reload clip (1.53 s), one from
-// empty its full reload (1.78 s: the slide stop drops the slide at the
-// end), and its inspect is its inspect clip (2.8 s, left out with the slide
-// locked back: the clip has it forward). Its shot clip lets go of the
-// trigger 0.15 s after the shot: 400 rounds a minute at most.
-export const X4 = {
-  name: 'Xiri X4',
-  calibre: '9×19 mm',
-  kind: 'Pistol',
-  fireInterval: 0.15,
-  magazine: 15,
-  reserve: 60,
-  reloadTime: 1.533,
-  emptyReloadTime: 1.783,
-  // When things happen, as fractions of the reload: the clips' own times
-  // (src/viewmodel/x4.js) over their lengths. Either way the old magazine
-  // drops free and a fresh one is pushed in (nothing catches it: magCaught
-  // is never reached); from empty, the slide then goes home.
-  reloadSteps: {
-    empty: { magOut: 0.159, magGrab: 0.299, magIn: 0.393, handOn: 0.5, slideRelease: 0.607 },
-    catching: { magOut: 0.185, magCaught: 2, magGrab: 0.348, magIn: 0.457, handOn: 0.6 },
-  },
-  range: 150,
-  spread: { hip: 1.8, aim: 0.11, moving: 1.25 },
-  recoil: 1.05,
-  inspectTime: 2.8,
-  inspectLocked: false,
-  inspectFade: 0.3,
-};
-
-// The seventh: an MP7A1, a compact sub-machine gun firing 4.6x30 mm from a
+// The second: an MP7A1, a compact sub-machine gun firing 4.6x30 mm from a
 // 40-round magazine, with a suppressor and a red dot. It's fully automatic
 // (fireMode 'auto': it fires as long as the trigger is held), about 950
 // rounds a minute. Its clips came with the download and were put on the
@@ -316,7 +193,7 @@ export const MP7 = {
   caseSize: { diameter: 0.008, length: 0.0305 },
 };
 
-// The eighth: an AR-15, a civilian rifle firing 5.56 mm from a 30-round
+// The third: an AR-15, a civilian rifle firing 5.56 mm from a 30-round
 // magazine, semi-automatic (one shot per trigger pull), with a suppressor
 // and a holographic sight. Its clips came with the download and were put on
 // the soldier's own arms (src/viewmodel/ar15.js), so its times are those
@@ -324,7 +201,7 @@ export const MP7 = {
 // one from empty its full reload (2.6 s: the bolt catch is slapped after
 // the fresh magazine goes in, and the bolt runs home). It has no shoot
 // clip, so nothing sets its pace but the trigger finger: up to 600 rounds a
-// minute. A shouldered rifle: it kicks a little less than the PF-9 in the
+// minute. A shouldered rifle: it kicks a little less than a 9 mm pistol in the
 // view, strays far less aimed, and reaches further. It has no inspect (its
 // maker made none).
 export const AR15 = {
@@ -353,7 +230,7 @@ export const AR15 = {
   caseSize: { diameter: 0.0096, length: 0.0447 },
 };
 
-// The ninth: a Makarov PM, a 9x18 mm Makarov pistol holding 8 rounds. It
+// The fourth: a Makarov PM, a 9x18 mm Makarov pistol holding 8 rounds. It
 // comes with its own arms and its own animations (src/viewmodel/
 // makarov.js), so its times are those clips' own lengths: a reload with
 // rounds left is its fast reload clip (2.23 s), one from empty its full
@@ -361,7 +238,7 @@ export const AR15 = {
 // magazine goes in). Its shot clip has the slide home 0.07 s after the
 // shot; like the other pistols it fires up to 300 rounds a minute. A small,
 // all-steel blowback gun with a short, sharp kick, a little more than the
-// PF-9's. It has no inspect (its maker made none).
+// stand-in pistol's. It has no inspect (its maker made none).
 export const MAKAROV = {
   name: 'Makarov PM',
   calibre: '9×18 mm Makarov',
@@ -389,7 +266,7 @@ export const MAKAROV = {
   caseSize: { diameter: 0.0099, length: 0.0181 },
 };
 
-// The tenth: an AK-74M, a 5.45x39 mm assault rifle with a 30-round
+// The fifth: an AK-74M, a 5.45x39 mm assault rifle with a 30-round
 // magazine, fully automatic at about 650 rounds a minute. It comes with its
 // own arms and its own animations (src/viewmodel/ak74m.js), so its times are
 // those clips' own lengths. It has two reloads with rounds left, which take
@@ -431,7 +308,7 @@ export const AK74M = {
   caseSize: { diameter: 0.01, length: 0.0396 },
 };
 
-// The eleventh: an AK-74U (an AKS-74U), the AK-74's short carbine: the same
+// The sixth: an AK-74U (an AKS-74U), the AK-74's short carbine: the same
 // 5.45x39 mm from a 30-round magazine, fully automatic at about 700 rounds
 // a minute. It comes with its own arms (a Mixamo character's) and its own
 // animations (src/viewmodel/ak74u.js), so its times are those clips' own
@@ -471,7 +348,7 @@ export const AK74U = {
   caseSize: { diameter: 0.01, length: 0.0396 },
 };
 
-// The twelfth: a Franchi SPAS-12, a 12-gauge combat shotgun, fired
+// The seventh: a Franchi SPAS-12, a 12-gauge combat shotgun, fired
 // semi-automatically, with 8 shells in its tube magazine under the barrel
 // and one more in the chamber. It comes with its own arms and its own
 // animations (src/viewmodel/saps12.js; the download calls it "Saps-12").
@@ -495,7 +372,7 @@ export const SAPS12 = {
   reload: 'shells',
   // (Seconds: the clips' own lengths and times, src/viewmodel/saps12.js.)
   shells: { start: 1.0, each: 1.667, shellIn: 1.158, end: 0.917, pump: 1.25, pumpBack: 0.04, pumpForward: 0.5, chamber: 1 },
-  // (For its stand-in, the PF-9's built-in model, if its own can't load;
+  // (For its stand-in, the built-in stand-in pistol, if its own can't load;
   // its reload is the stand-in's.)
   reloadTime: 2.1,
   emptyReloadTime: 2.5,
@@ -509,10 +386,8 @@ export const SAPS12 = {
   caseSize: { diameter: 0.0205, length: 0.065, color: 0xa3262a },
 };
 
-// The guns the player carries, in the order of their keys (1 to 9, then
-// 0, - and =).
-export const LOADOUT = ['pistol', 'pistol45', 'beretta', 'fn502', 'hipistol', 'x4', 'mp7', 'ar15', 'makarov', 'ak74m', 'ak74u', 'saps12'];
+// The guns the player carries, in the order of their keys (1 to 7).
+export const LOADOUT = ['beretta', 'mp7', 'ar15', 'makarov', 'ak74m', 'ak74u', 'saps12'];
 export const GUNS = {
-  pistol: PISTOL, pistol45: PISTOL45, beretta: BERETTA, fn502: FN502, hipistol: HIPISTOL, x4: X4, mp7: MP7, ar15: AR15,
-  makarov: MAKAROV, ak74m: AK74M, ak74u: AK74U, saps12: SAPS12,
+  beretta: BERETTA, mp7: MP7, ar15: AR15, makarov: MAKAROV, ak74m: AK74M, ak74u: AK74U, saps12: SAPS12,
 };
