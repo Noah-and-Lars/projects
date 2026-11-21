@@ -106,7 +106,7 @@ fs.mkdirSync(out, { recursive: true });
   console.log((carried && rel && fell.y < rel.y - 0.05 && !fell.a && fell.o && !fell.c ? 'ok   ' : 'FAIL ') + 'let go in mid-air, it drops (' + JSON.stringify({ from: rel && +rel.y.toFixed(2), ...fell }) + ')');
   // let go while it touches something: it stays exactly there, fixed
   await g((id) => __game.grabForTest(id), air);
-  await g(() => { __game.P.pitch = -0.6; __game.P.carryDist = 2.2; });
+  await g(() => { __game.P.pitch = -0.6; __game.P.carryDist = 3.4; }); // far enough for the aim to reach the floor, whatever pose the drop left it in
   await page.waitForFunction(() => { const c = __game.P.carry, p = __game.placement; if (!c || !p) return false; const ok = window.__lastY !== undefined && Math.abs(window.__lastY - p.y) < 0.005; window.__lastY = p.y; return ok; }, null, { timeout: 30000, polling: 500 }).catch(() => {});
   const at = await g(() => __game.placement);
   await page.keyboard.press('KeyE');
