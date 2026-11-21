@@ -1,5 +1,5 @@
 """Reading and writing animated, skinned glTF files for the guns that bring
-their own arms (convert_fn502.py, convert_makarov.py and convert_hipistol.py;
+their own arms (convert_makarov.py, convert_ak74m.py, convert_ak74u.py and convert_saps12.py;
 convert_beretta.py has its own copy of the same code): the download's accessors, quaternion and matrix maths,
 sampling a channel as glTF's LINEAR does, posing a skeleton and its skinned
 meshes, finding loose pieces of a mesh, and writing a .glb with embedded

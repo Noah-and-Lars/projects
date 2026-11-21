@@ -13,8 +13,6 @@ The downloads are by TheParaziT (CC BY 4.0, see README.md, Credits):
 Download the glTF version and unzip it so the folder holds scene.gltf,
 scene.bin and textures/. Then, from the project-fish folder:
 
-    blender --background --python tools/blender/convert_retarget.py -- build/upload-xiri build/x4-raw.glb --arms assets/soldier.glb
-    gltf-transform meshopt build/x4-raw.glb assets/x4.glb --level high
     blender --background --python tools/blender/convert_retarget.py -- build/upload-mp7 build/mp7-raw.glb --arms assets/soldier.glb
     gltf-transform meshopt build/mp7-raw.glb assets/mp7.glb --level high
     blender --background --python tools/blender/convert_retarget.py -- build/upload-ar15 build/ar15-raw.glb --arms assets/soldier.glb

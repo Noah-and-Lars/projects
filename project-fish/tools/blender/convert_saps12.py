@@ -28,7 +28,7 @@ fore-end and the bolt back together and pushes them home). The magazine is
 the tube: the download's reload is the shotgun's, one shell at a time (see
 CLIPS).
 
-Like the Browning Hi-Power (convert_hipistol.py), by the same maker, it
+Like the maker's Browning Hi-Power pack (once in the game), it
 comes with its maker's own arms (black gloves and black camouflage
 sleeves: the same Rigify body) and animations, and the game plays its
 maker's clips as they are. It's made of two skeletons: the gun's (receiver,

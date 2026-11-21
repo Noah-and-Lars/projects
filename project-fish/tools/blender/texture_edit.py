@@ -1,6 +1,6 @@
 """Editing downloaded models' textures: finding and rubbing out lettering,
 engraving made-up markings, and filling patches from their surroundings.
-Used by convert_pistol45.py and convert_pistol9.py.
+Used by the gun converters and tools/breakdown/prepare_pf9.py.
 
 Images are handled as numpy arrays (rows from the top, values 0..1, RGBA).
 """

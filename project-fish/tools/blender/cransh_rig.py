@@ -1,5 +1,5 @@
-"""Reading the animated guns with their own arms that Cransh makes (the FN
-502, convert_fn502.py, and the Makarov PM, convert_makarov.py): both are
+"""Reading the animated guns with their own arms that Cransh makes (the
+Makarov PM, convert_makarov.py, and the AK-74M, convert_ak74m.py): both are
 the same kind of download, one FBX armature with the arms and the gun on
 it, its own camera, and a handful of clips, so the converters share how
 it's read, turned into gun space and measured. Each converter says what's
