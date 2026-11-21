@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<title>Mile Zero bridge</title>
+</head>
+<body>
+<script>
+// Mile Zero convoy bridge (pre-alpha admin "Bypass arcade account for multiplayer", the owner's request 2026-11-21).
+// A Mile Zero page that can't reach the realtime server itself (the HTML file, or a player without an arcade account)
+// loads this page in a hidden frame. It joins ONE Mile Zero convoy channel (mz1-c-XXXXX) on the server from the
+// arcade's own address and passes messages both ways with postMessage. It does nothing else: no other channels, no
+// accounts, no saves. The account check rt.js does is skipped for this page only; nothing is written to storage.
+(function () {
+  if (window.parent === window) { document.body.textContent = 'This page is used by Mile Zero. Nothing to see here.'; return; }
+  // rt.js asks for an arcade account before it connects: answer it here without touching the real storage
+  var gi = Storage.prototype.getItem;
+  Storage.prototype.getItem = function (k) {
+    if (k === 'arcade-acct') { var v = null; try { v = gi.call(this, k); } catch (e) {} return v || JSON.stringify({ name: 'mile-zero-bridge', token: 'bridge' }); }
+    return gi.call(this, k);
+  };
+  var TOPIC = /^mz1-c-[A-Z]{5}$/;
+  var client = null, ch = null;
+  var up = function (m) { try { window.parent.postMessage(m, '*'); } catch (e) {} };
+  addEventListener('message', function (e) {
+    if (e.source !== window.parent) return;
+    var m = e.data; if (!m || typeof m.mzb !== 'string') return;
+    if (m.mzb === 'join') {
+      if (ch || !client) return up({ mzb: 'err', m: 'busy' });
+      if (!TOPIC.test(String(m.topic)) || !m.me || typeof m.me.i !== 'string') return up({ mzb: 'err', m: 'not a Mile Zero convoy' });
+      var me = { i: String(m.me.i).slice(0, 40), n: String(m.me.n || 'Driver').slice(0, 16), t: +m.me.t || Date.now() };
+      ch = client.channel(m.topic, { config: { broadcast: { self: false, ack: false }, presence: { key: me.i } } });
+      ch.on('broadcast', { event: 'm' }, function (x) { up({ mzb: 'msg', p: x.payload }); });
+      ch.on('presence', { event: 'sync' }, function () { up({ mzb: 'pres', s: ch ? ch.presenceState() : {} }); });
+      var joined = false;
+      ch.subscribe(function (st) {
+        if (st === 'SUBSCRIBED') { ch.track(me); if (!joined) { joined = true; up({ mzb: 'joined' }); } }
+        else if ((st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') && !joined) up({ mzb: 'err', m: 'offline' });
+      });
+    } else if (m.mzb === 'send' && ch) {
+      try { var r = ch.send({ type: 'broadcast', event: 'm', payload: m.p }); if (r && r.catch) r.catch(function () {}); } catch (err) {}
+    } else if (m.mzb === 'leave' && ch) {
+      try { ch.untrack(); } catch (err) {} try { client.removeChannel(ch); } catch (err) {} ch = null;
+    }
+  });
+  var s = document.createElement('script'); s.src = '../rt.js?v=3';
+  s.onload = function () { client = window.supabase.createClient(); up({ mzb: 'ready' }); };
+  s.onerror = function () { up({ mzb: 'err', m: 'offline' }); };
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>
