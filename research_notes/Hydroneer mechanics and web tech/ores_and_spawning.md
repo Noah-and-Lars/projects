@@ -339,3 +339,62 @@ There are no classic rock nodes. Terrain is voxel dirt inside finite purchasable
 - I found no machine durability or wear rates, and no harvester repair intervals.
 - I found no YouTube transcripts or Reddit threads with additional numbers. Searches for r/Hydroneer surfaced only Steam threads.
 - I found no datamine or modding (pak/UE asset) dump of loot tables. Mod tools such as the "Terrain Manipulator" and "Ore Vein Tool" mods, and a resource-counter save, are mentioned, with full results said to be on the Hydroneer Discord ([Ore Veins Data](https://steamcommunity.com/app/1106840/discussions/0/3821909708353152671)). I could not access the Discord.
+
+## Q7. Which of the coordinator's leads (materials, gems, areas, explosives) are real Hydroneer content?
+
+### Takeaway
+Most of the suggested names are not Hydroneer content:
+
+| Lead | In Hydroneer? |
+|---|---|
+| Cobalt, Arcanite, Infernum, Bismuth, Chromium/Chrome, Copper, Silver, Platinum, Tin, Titanium | Not found |
+| Topaz, Amethyst, Jade | Not found |
+| Paydirt, sluice, ingots, crushed ore | Not found |
+| Bridgeview, Ironfall, Firestone Reef, Arcania | Not found |
+| Gold, Iron | Yes |
+| Emerald, Ruby, Sapphire, Diamond (Diamond is DLC only) | Yes |
+| Nuggets/ores, bars | Yes |
+| Uncut → cut/polished gems | Yes |
+| Caves | Yes |
+| Explosives (TNT/dynamite, Mini Nuke, logic explosives) | Yes |
+
+The real area names are Bridgepour, Ironil, Bastion Keep, Grangefield, Icehelm and Snowrune Falls, plus Volcalidus in the DLC. The unmatched names probably come from a different game, or are misremembered.
+
+### Cited Findings
+- I ran a full-text search of all 64 official Steam announcements (2019-10 to 2026-05) from the [Steam News API for app 1106840](https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=1106840&count=300&maxlength=0&format=json):
+  - Zero hits: cobalt, arcanite, infernum, bismuth, chrom(e/ium), copper, silver, platinum, titanium, topaz, amethyst, jade, paydirt, sluice, ingot, crushed, Bridgeview, Ironfall, Firestone, Arcania.
+  - Hits: Bridgepour (12), Icehelm (11), Ironil (3), Onyx (10), Diamond (2), Emerald, Rubies, Sapphire, cave (5), TNT (2), dynamite (1), nuke (5), explosive (5), Scrap (7).
+  - "Tin" matched only once, as part of another word.
+- None of those zero-hit names appear in any community source used in Q1–Q6 either: the [Fandom page list](https://hydroneer.fandom.com/api.php?action=query&list=allpages&aplimit=500&format=json), the [Ore Veins Data thread](https://steamcommunity.com/app/1106840/discussions/0/3821909708353152671), [Call Before You Dig](https://steamcommunity.com/sharedfiles/filedetails/?id=2809258751) and the [Rainrune Price Guide](https://steamcommunity.com/sharedfiles/filedetails/?id=3265890693).
+- A web search for "Firestone Reef" together with "Arcania" returned no Hydroneer results and no single game with both names (search 2026-11-22; only unrelated mining wikis came back).
+- Real Hydroneer place names in official notes ([2.0 / 2.1 / 3.0 notes](https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=1106840&count=300&maxlength=0&format=json)):
+  - Bridgepour, with its harbour and stores.
+  - Ironil, which has the stock market.
+  - Bastion Keep.
+  - Grangefield, a farming town added in 2.1.
+  - Icehelm and Snowrune Falls, added in 2.0.
+  - Volcalidus, the DLC island, with New Glade, Shattered Outpost and Burnscroft.
+- [OFFICIAL] Explosives exist and do clear voxel dirt:
+  - The Mini Nuke arrived in May 2021 ("Celebrating one year on Steam with a MINI NUKE!").
+  - "Throwable TNT explosives" came in 2.0, and the 2.0.3 notes fix "throwable dynamite".
+  - Explosions don't set off store explosives (2.0.2).
+  - Relics are "not destroyed by explosives" (2.0.3).
+  - Logic explosives and the mini nuke got a voxel-destruction change, "now has a ring around the surface" (3.0).
+  - Logic Mini Nukes work in the Icehelm dig site (3.0.7).
+  - Sources: [Steam announcements](https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=1106840&count=300&maxlength=0&format=json).
+  - [GUIDE] TNT clears about 1 block and a nuke about a 3-block radius ([Call Before You Dig](https://steamcommunity.com/sharedfiles/filedetails/?id=2809258751)). [COMMUNITY-WIKI] TNT and Mini Nukes are sold in the Bridgepour logic shop, are logic-triggered, and release Scrap ([Fandom Digsites](https://hydroneer.fandom.com/wiki/Digsites)). [GUIDE] Tier 3 dirt "can only be accessed through explosives" in early 2.0 ([GamesFuze, May 2022](https://gamesfuze.com/guides/hydroneer-2-0-tier-dirt-explained/)). That was outdated by 2.2, which added T3 tools.
+- [OFFICIAL] Caves exist:
+  - A "Relic cave" (2.0.3).
+  - "Completely reworked the cave" (2.1.1).
+  - The 2024 lighting rework was partly for visibility "inside caves".
+  - Sources: [Steam announcements](https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=1106840&count=300&maxlength=0&format=json).
+  - Icehelm has an abandoned underground city with transporter pipes and a horizontal dig site ([2.0 notes](https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=1106840&count=300&maxlength=0&format=json)). The Masterwork Forge sits inside the Icehelm mountain ([Fandom Drill](https://hydroneer.fandom.com/wiki/Drill)).
+- [OFFICIAL] Gem forms: uncut, cut (via the Gem Cutter conveyor hook and the "Gem Polisher hook ... after cutting"), and compressed. Jewellery models are specific to each gem ([2.0, 2.0.3 notes](https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=1106840&count=300&maxlength=0&format=json)).
+- Bars are called "bars", not "ingots", in the official notes. Fandom uses "ingot" once, informally ([Fandom Corestone](https://hydroneer.fandom.com/wiki/Corestone)).
+- Rock deposits mined by pickaxe: none exist as nodes. The pickaxe digs voxel dirt and splits items ([Q6 sources](https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=1106840&count=300&maxlength=0&format=json)). The closest thing to a "rock" material is DLC Frost Rock, which only drills can break ([DLC Mega Guide](https://steamcommunity.com/sharedfiles/filedetails/?id=3216588622)).
+
+### Inferences
+- Names like Cobalt, Arcanite, Infernum, Topaz and Amethyst, together with sluices and paydirt, look like they come from another mining title, or from a mix of genre conventions. They can still be used freely as original-game design ideas, but they should not be cited as Hydroneer reference.
+
+### Gaps
+- I could not prove a negative from inside the game files: no datamine was available. "Not found" means absent from every official announcement and every community source reviewed here.
