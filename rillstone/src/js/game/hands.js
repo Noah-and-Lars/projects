@@ -29,7 +29,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     else if (e.type === 'clod') geo = clodGeometry(e.data.band);
     else geo = toolGeometry(e.type, e.data);
     held3d = new THREE.Mesh(geo, mat);
-    if (e.type === 'shovel') { held3d.rotation.set(-0.6, 4.3, -1.0); held3d.position.set(0.14, 0.16, 0); held3d.scale.setScalar(0.85); } // blade ahead, face up, shaft to the right
+    if (e.type === 'shovel') { held3d.rotation.set(0.2, 3.56, 0.04); held3d.position.set(0.17, -0.03, 0.2); held3d.scale.setScalar(0.85); } // carried blade-forward, tip up, scoop facing you; shaft runs off bottom-right
     else if (e.type === 'pick') { held3d.rotation.set(0.35, Math.PI + 0.2, 0.25); held3d.position.set(0, 0.1, -0.1); }
     else if (e.type === 'pan') { held3d.position.set(-0.02, -0.06, -0.02); held3d.rotation.set(0.4, 0, 0); held3d.scale.setScalar(0.72); }
     else if (e.type === 'bucket') held3d.position.set(0, -0.08, 0);

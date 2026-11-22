@@ -171,7 +171,7 @@ underground, and L toggles it.
 | `tools/build.mjs` | Builds the single-file `index.html` (not in `src/`) |
 | `tools/test.cjs` | Headless browser test (not in `src/`) |
 | `tools/unit.mjs` | Node unit tests: loot table, weights, values (not in `src/`) |
-| `tools/bench.cjs`, `tools/bench/` | Benchmarks from the brief's section 10 (not in `src/`) |
+| `tools/bench.cjs`, `tools/bench/` | Benchmarks from the brief's section 10, and `model.html` (renders a model from six angles: `?m=shovel&load=1`) (not in `src/`) |
 | `tools/THIRD_PARTY_LICENSES.txt` | three.js, Rapier and fflate licence texts |
 
 ## Testing

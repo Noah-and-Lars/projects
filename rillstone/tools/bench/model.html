@@ -1,0 +1,39 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Rillstone model viewer</title>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/" } }
+</script>
+<style>html,body{margin:0;background:#cfd8cc}canvas{display:block}</style></head><body>
+<script type="module">
+// Renders one model from several angles in a grid, for checking shapes.
+// ?m=shovel&load=1
+import * as THREE from 'three';
+import * as M from '../../src/js/defs/models.js';
+const q = new URLSearchParams(location.search);
+const name = q.get('m') || 'shovel';
+const geo = name === 'shovel' ? M.shovel(q.get('load') ? 0x8c6040 : 0) : M[name]();
+const W = 1200, H = 800;
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(W, H); r.setClearColor(0xcfd8cc); r.setScissorTest(true); document.body.append(r.domElement);
+r.toneMapping = THREE.NeutralToneMapping;
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x667766, 1.4));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(2, 4, 3); scene.add(sun);
+if (q.get('below')) { const b = new THREE.DirectionalLight(0xffffff, 2); b.position.set(0, -4, 1); scene.add(b); }
+const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.6, metalness: 0.15, side: THREE.FrontSide }));
+scene.add(mesh);
+geo.computeBoundingBox(); const bb = geo.boundingBox, c = bb.getCenter(new THREE.Vector3()), size = bb.getSize(new THREE.Vector3()).length();
+// side (from +x), top (from +y), front (from +z, blade end), 3/4, underside, blade close-up
+const views = [['side +x', [1, 0, 0]], ['top +y', [0, 1, 0.001]], ['blade end +z', [0, 0.15, 1]], ['3/4', [0.8, 0.6, 0.6]], ['underside -y', [0, -1, 0.001]], ['blade close', [0.5, 0.8, 0.9], true]];
+const lab = document.createElement('div'); lab.style.cssText = 'position:fixed;inset:0;pointer-events:none;font:14px sans-serif'; document.body.append(lab);
+views.forEach(([label, d, close], i) => {
+  const x = (i % 3) * 400, y = Math.floor(i / 3) * 400;
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 50);
+  const tgt = close ? new THREE.Vector3(0, 0, 0.7) : c;
+  const dist = close ? 0.9 : size * 2.2;
+  cam.position.copy(tgt).addScaledVector(new THREE.Vector3(...d).normalize(), dist); cam.lookAt(tgt);
+  r.setViewport(x, H - y - 400, 400, 400); r.setScissor(x, H - y - 400, 400, 400);
+  r.render(scene, cam);
+  lab.insertAdjacentHTML('beforeend', `<span style="position:absolute;left:${x + 8}px;top:${y + 6}px">${label}</span>`);
+});
+window.__done = true;
+</script></body></html>

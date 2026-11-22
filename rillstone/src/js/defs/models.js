@@ -20,28 +20,53 @@ function extrude(outline, depth, bevel = 0.004) {
 }
 // A tapered round handle along +z from z0 to z1.
 const handle = (r0, r1, z0, z1, hex, seg = 8) => P(place(new THREE.CylinderGeometry(r1, r0, z1 - z0, seg), 0, 0, (z0 + z1) / 2, Math.PI / 2), hex, 0.06);
+// A round rod between two points.
+function rod(a, b, r, hex, seg = 8) {
+  const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), len = d.length();
+  const g = new THREE.CylinderGeometry(r, r, len, seg);
+  g.applyMatrix4(new THREE.Matrix4().compose(A.clone().add(B).multiplyScalar(0.5), new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()), new THREE.Vector3(1, 1, 1)));
+  return P(g, hex, 0.05);
+}
 const rivet = (x, y, z, hex = BRASS, r = 0.009) => P(place(new THREE.SphereGeometry(r, 6, 4), x, y, z), hex, 0.05);
 
-// ---- Shovel: modelled on a real round-point shovel. Blade points +z.
-// A dished, round-pointed blade with a slight lift, a tapered steel socket
-// riveted round the ash shaft, rolled footsteps on the shoulders, a D-grip.
+// ---- Shovel: modelled on a real round-point shovel. Blade points +z, its
+// concave (working) face is +y. The blade is bent UP toward its working face
+// by the "lift" angle (about 14 degrees): that is what lets the blade lie flat
+// on the ground while the shaft rises behind it, and keeps a load level when
+// you carry it.
+const BLADE_W = 0.125, BLADE_L = 0.34, LIFT = 0.14;
+// Half-width along the blade, v = 0 at the top edge, 1 at the point.
+function bladeHalfWidth(v) {
+  const shoulder = 0.9 + 0.1 * Math.min(1, v / 0.06) ** 0.5;           // rounded shoulders
+  if (v < 0.42) return BLADE_W * shoulder * (1 - 0.05 * v);
+  const t = (v - 0.42) / 0.58;
+  return BLADE_W * 0.98 * Math.pow(Math.max(0, 1 - t * t), 0.62) + 0.002 * (1 - t); // tapers to a point
+}
+// Height of the working face: concave across, a little dished along.
+const bladeY = (x, v) => (x / BLADE_W) ** 2 * 0.028 * (1 - 0.5 * v) + v * v * 0.012;
 function shovelBlade() {
-  // Parametric surface: v runs from the top edge (0) to the tip (1), u across.
-  const W = 0.135, L = 0.32, NU = 10, NV = 12, pos = [], col = [];
-  const halfW = (v) => (v < 0.45 ? W * (1 - 0.06 * v) : W * Math.sqrt(Math.max(0, 1 - ((v - 0.45) / 0.55) ** 2)) * 0.97 + 0.004);
-  const pt = (u, v) => {
-    const hw = halfW(v), x = (u * 2 - 1) * hw;
-    const dish = (x / W) ** 2 * 0.045 * (1 - v * 0.6);   // sides curl up
-    return [x, dish, v * L];
+  const NU = 12, NV = 16, T = 0.0045, pos = [], col = [];
+  const top = new THREE.Color(STEEL), edge = new THREE.Color(STEEL_EDGE), back = new THREE.Color(0x6a737a);
+  const P3 = (u, v, off) => { const hw = bladeHalfWidth(v), x = (u * 2 - 1) * hw; return [x, bladeY(x, v) + off, v * BLADE_L]; };
+  const quad = (a, b, c, d, color, flip) => {
+    const tris = flip ? [[a, c, b], [a, d, c]] : [[a, b, c], [a, c, d]];
+    for (const t of tris) for (const p of t) { pos.push(...p); col.push(color.r, color.g, color.b); }
   };
-  const steel = new THREE.Color(STEEL), edge = new THREE.Color(STEEL_EDGE), dark = new THREE.Color(STEEL_DARK);
   for (let j = 0; j < NV; j++) for (let i = 0; i < NU; i++) {
-    const q = [pt(i / NU, j / NV), pt((i + 1) / NU, j / NV), pt((i + 1) / NU, (j + 1) / NV), pt(i / NU, (j + 1) / NV)];
-    // Front (concave, +y) and back faces; the cutting edge is worn bright.
-    const near = Math.max(j / NV, Math.abs(i / NU - 0.5) * 2) > 0.86;
-    const cf = near ? edge : steel, cb = dark;
-    for (const [a, b, c] of [[0, 2, 1], [0, 3, 2]]) for (const k of [a, b, c]) { pos.push(...q[k]); col.push(cf.r, cf.g, cf.b); }
-    for (const [a, b, c] of [[0, 1, 2], [0, 2, 3]]) for (const k of [a, b, c]) { pos.push(q[k][0], q[k][1] - 0.006, q[k][2]); col.push(cb.r, cb.g, cb.b); }
+    const u0 = i / NU, u1 = (i + 1) / NU, v0 = j / NV, v1 = (j + 1) / NV;
+    // Worn bright band round the cutting edge (sides and point).
+    const wear = Math.max(Math.abs(u0 + u1 - 1), v1 > 0.5 ? (v1 - 0.5) * 1.6 : 0) > 0.82;
+    quad(P3(u0, v0, 0), P3(u0, v1, 0), P3(u1, v1, 0), P3(u1, v0, 0), wear ? edge : top, false);  // working face (+y)
+    quad(P3(u0, v0, -T), P3(u0, v1, -T), P3(u1, v1, -T), P3(u1, v0, -T), back, true);              // back face
+  }
+  // Edge strip all round, so the blade has thickness.
+  for (let j = 0; j < NV; j++) for (const u of [0, 1]) {
+    const a = P3(u, j / NV, 0), b = P3(u, (j + 1) / NV, 0), c = P3(u, (j + 1) / NV, -T), d = P3(u, j / NV, -T);
+    quad(a, b, c, d, edge, u === 1);
+  }
+  for (let i = 0; i < NU; i++) {
+    const a = P3(i / NU, 0, 0), b = P3((i + 1) / NU, 0, 0), c = P3((i + 1) / NU, 0, -T), d = P3(i / NU, 0, -T);
+    quad(a, b, c, d, back, true);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -50,24 +75,30 @@ function shovelBlade() {
 }
 export function shovel(load) {
   const parts = [];
-  parts.push(handle(0.019, 0.022, -0.4, 0.42, ASH));
-  // D-grip: two cheeks spreading from the shaft and a crossbar.
-  parts.push(P(place(new THREE.TorusGeometry(0.055, 0.011, 6, 14, Math.PI), 0, 0, -0.44, Math.PI / 2, 0, Math.PI), ASH_DARK, 0.06));
-  parts.push(P(place(new THREE.CylinderGeometry(0.015, 0.015, 0.11, 8), 0, 0, -0.495, 0, 0, Math.PI / 2), ASH, 0.05));
-  parts.push(P(place(lathe([[0.021, 0], [0.024, 0.008], [0.024, 0.03], [0.021, 0.038]], 10), 0, 0, -0.41, Math.PI / 2), BRASS, 0.04)); // ferrule under the grip
-  // Socket: a steel tube round the shaft, flattening and widening into the blade.
-  const sock = lathe([[0.025, 0], [0.026, 0.1], [0.032, 0.15], [0.05, 0.19]], 12);
-  sock.scale(1, 1, 1); place(sock, 0, 0, 0.38, Math.PI / 2);
-  { const p = sock.attributes.position; for (let i = 0; i < p.count; i++) { const zz = p.getZ(i); if (zz > 0.5) p.setY(i, p.getY(i) * (1 - (zz - 0.5) * 5)); } }
-  parts.push(P(sock, STEEL_DARK, 0.05, 5));
-  for (const z of [0.43, 0.48]) parts.push(rivet(0, 0.026, z, STEEL_EDGE, 0.007), rivet(0, -0.026, z, STEEL_EDGE, 0.007));
-  // Blade with a slight lift, joined at the socket.
-  const blade = shovelBlade();
-  place(blade, 0, -0.012, 0.555, 0.16);
-  parts.push(blade); // colours are baked per face (bright edge, dark back)
-  // Rolled footsteps on the shoulders either side of the socket.
-  for (const s of [-1, 1]) parts.push(P(place(new THREE.CylinderGeometry(0.008, 0.008, 0.095, 6), s * 0.082, 0.004, 0.557, 0, 0, Math.PI / 2), STEEL_DARK, 0.04));
-  if (load) parts.push(P(place(new THREE.DodecahedronGeometry(0.075, 1), 0, 0.01, 0.71, 0.16, 0, 0, 1.25, 0.42, 1.4), load, 0.3, 9));
+  // Ash shaft, slightly oval, running from the grip down into the socket.
+  parts.push(handle(0.0185, 0.021, -0.42, 0.40, ASH, 10));
+  // D-grip: a wooden yoke splitting from the shaft into two cheeks, joined
+  // by a crossbar you hold.
+  const Y0 = [0, 0, -0.43], CL = [-0.052, 0, -0.545], CR = [0.052, 0, -0.545];
+  parts.push(rod(Y0, CL, 0.012, ASH_DARK), rod(Y0, CR, 0.012, ASH_DARK));
+  parts.push(rod([-0.062, 0, -0.548], [0.062, 0, -0.548], 0.0155, ASH));
+  for (const c of [CL, CR]) parts.push(P(place(new THREE.SphereGeometry(0.0145, 8, 6), c[0], c[1], c[2] - 0.003), ASH_DARK, 0.05));
+  parts.push(P(place(lathe([[0.02, 0], [0.023, 0.006], [0.023, 0.028], [0.02, 0.034]], 10), 0, 0, -0.43, Math.PI / 2), BRASS, 0.04)); // ferrule
+  // Socket: a steel tube round the shaft end, tapering out and flattening
+  // where it meets the blade's top edge.
+  const sock = lathe([[0.0215, 0], [0.0225, 0.11], [0.027, 0.15], [0.038, 0.18]], 14);
+  place(sock, 0, 0, 0.36, Math.PI / 2);
+  { const p = sock.attributes.position; for (let i = 0; i < p.count; i++) { const zz = p.getZ(i); if (zz > 0.49) { const f = Math.min(1, (zz - 0.49) / 0.05); p.setY(i, p.getY(i) * (1 - 0.65 * f) - 0.006 * f); } } }
+  parts.push(P(sock, STEEL_DARK, 0.04, 5));
+  for (const z of [0.4, 0.45]) parts.push(rivet(0, 0.023, z, STEEL_EDGE, 0.0065), rivet(0, -0.023, z, STEEL_EDGE, 0.0065));
+  // Blade, joined just under the socket's flattened end, dipped by the lift.
+  const bladeAt = (g) => place(g, 0, -0.008, 0.535, -LIFT); // negative x-rotation tips +z toward +y (up)
+  parts.push(bladeAt(shovelBlade()));
+  // Frog: a tapered strap on the back of the blade, from the socket down to mid-blade.
+  { const f = new THREE.CylinderGeometry(0.004, 0.02, 0.15, 6, 1); f.scale(1, 1, 0.35); place(f, 0, -0.008, 0.075, Math.PI / 2); parts.push(P(bladeAt(f), STEEL_DARK, 0.04, 8)); }
+  // Rolled footsteps along the top edge either side of the socket.
+  for (const s of [-1, 1]) { const st = new THREE.CylinderGeometry(0.0075, 0.0075, 0.085, 7); place(st, s * 0.075, bladeY(s * 0.075, 0) + 0.004, 0.004, 0, 0, Math.PI / 2); parts.push(P(bladeAt(st), STEEL_DARK, 0.04, 9 + s)); }
+  if (load) { const l = new THREE.DodecahedronGeometry(0.07, 1); l.translate(0, 0.066, 0); place(l, 0, 0.004, 0.15, 0, 0, 0, 1.3, 0.36, 1.45); parts.push(P(bladeAt(l), load, 0.3, 9)); } // a heap sitting on the working face
   return merge(parts);
 }
 function rivetRing(parts, z, r) { for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.4; parts.push(rivet(Math.cos(a) * r, Math.sin(a) * r, z)); } }

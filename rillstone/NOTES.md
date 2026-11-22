@@ -246,15 +246,24 @@ across freshly dug ground without jitter or launching.
   rotation slerp), with a snap for teleports. No motion blur is used
   anywhere.
 - **Shovel model.** The shovel is rebuilt on real round-point shovel
-  anatomy:
-  - a parametric dished blade (concave side up, bright worn cutting edge,
-    darker back) with a slight lift from the shaft;
-  - a tapered steel socket with rivets;
-  - rolled footsteps on the shoulders;
-  - an ash shaft with a D-grip and brass ferrule.
-
-  The earlier extruded blade was upside down: its dish curled toward the
-  ground.
+  anatomy, checked from six angles in `tools/bench/model.html`.
+  - **Blade:** a parametric round-point blade, 0.25 × 0.34 m, with rounded
+    shoulders and a tapered point. It's concave across and slightly dished
+    along, with real thickness, a bright worn cutting edge and a darker back.
+  - **Lift:** the blade is bent **up** about 14° toward its working face, as
+    on a real shovel, so the blade lies flat while the shaft rises behind it.
+    Two earlier versions had this backwards: first the dish curled toward
+    the ground, then the lift tipped the blade down.
+  - **Frog:** a tapered strap runs down the back of the blade from the socket.
+  - **Socket:** a tapered steel tube that flattens into the blade, with
+    rivets. Rolled footsteps sit on the shoulders.
+  - **Handle:** an ash shaft with a brass ferrule and a D-grip (two cheeks
+    and a crossbar).
+  - **Load:** the dirt heap sits on the working face.
+  - **In the hand:** the shovel is carried blade-forward with the tip up and
+    the scoop facing the camera. The pose was solved numerically for blade
+    direction and face normal, then checked in screenshots so it stays clear
+    of the hint line and hotbar.
 - **Truck bed.** E on the truck opens an inventory screen: take any item,
   put the held item in, or unload everything behind the tailgate.
 - **Hotbar.** Two slots at the bottom of the screen show the hand and the
