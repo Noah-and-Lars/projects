@@ -544,7 +544,7 @@ function shoot() {
     const dust = pellets > 1 ? 0.35 : 1;
     if (hit && hit.what === 'soldier') {
       effects.impact(hit, 0x6b6e58, false, dust); // cloth: no hole (his box is only roughly his shape)
-      const hurt = soldier.hit(gun.damage || 25, hit.y);
+      const hurt = soldier.hit(gun.damage || 25, hit.x, hit.y, hit.z);
       if (hurt) showHit(hurt);
     }
     else if (hit) effects.impact(hit, hit.what === 'ground' ? 0x8c8c8c : 0xcfc6b6, true, dust);

@@ -235,65 +235,178 @@ export function outdoorEnvironment(renderer, sunDirection) {
 export const SOLDIER_SKY = 1; // how strongly the sky lights him
 
 // His hit points: a hit takes off the gun's `damage` (src/shared/config.js),
-// twice that to the head (the top HEAD of his box). A hit he lives through
-// plays his hit reaction; the one that takes the last of them, his hit and
-// fall, and he lies there for DOWN seconds, then gets up with them all back.
-// Both clips are Mixamo's, retargeted onto him (assets/cinematic/
-// soldier_clips.glb, enemy_hit and enemy_hit_fall: see tools/cinematic/).
-// While he's down, shots and the player go through where he stood.
+// twice that to the head. Where a shot hits him (his box split by height
+// and, seen from his front, by side: HIT_PARTS) picks how he reacts: his
+// head snaps back, he doubles over a stomach hit, an arm is knocked back...
+// and the hit that takes the last of them, how he falls (a headshot its own
+// fall, when there's a clip for it). He lies where he lands for DOWN
+// seconds, then gets up there (his get-up clip, from where the fall left
+// him) and stays there: his box and his bar go with him.
+// The clips are Mixamo's, retargeted onto him (assets/cinematic/
+// soldier_clips.glb: see tools/cinematic/clips.json). Each part names the
+// clips it would like, in order; the first that's in the file plays
+// (enemy_hit and enemy_hit_fall, the cinematic's own, are always there).
+// While he's down, shots and the player go through him.
 export const SOLDIER_HP = { max: 100, head: 2, down: 4.5 };
-const HEAD = 0.3; // m, the top of his box that counts as his head
+const HIT_PARTS = {
+  head: { hit: ['hit_head', 'enemy_hit'], fall: ['death_head', 'death_back', 'enemy_hit_fall'] },
+  chest: { hit: ['hit_chest', 'enemy_hit'], fall: ['death_back', 'enemy_hit_fall'] },
+  stomach: { hit: ['hit_stomach', 'hit_chest', 'enemy_hit'], fall: ['death_forward', 'death_back', 'enemy_hit_fall'] },
+  left: { hit: ['hit_shoulder_left', 'hit_shoulder', 'enemy_hit'], fall: ['death_back', 'enemy_hit_fall'] },
+  right: { hit: ['hit_shoulder_right', 'hit_shoulder', 'enemy_hit'], fall: ['enemy_hit_fall', 'death_back'] },
+  legs: { hit: ['hit_leg', 'enemy_hit'], fall: ['death_forward', 'death_back', 'enemy_hit_fall'] },
+};
+const GET_UP = ['get_up', 'get_up_front'];
 const SOLDIER_CLIPS = new URL('../assets/cinematic/soldier_clips.glb', import.meta.url);
+const HIPS = 'CC_Base_Hip';
+const HEAD_BONE = 'CC_Base_Head';
+
+// Which part of him a shot at (x, y, z) hit: by height up his box, and for
+// the chest, by how far to his left or right of his middle it is.
+function hitPart(x, y, z) {
+  const top = SOLDIER_BOX.maxY;
+  if (y >= top - 0.3) return 'head';
+  if (y < 0.85) return 'legs';
+  // Seen from his front: his own left (+X in his frame) or right.
+  const dx = x - SOLDIER.x;
+  const dz = z - SOLDIER.z;
+  const side = dx * Math.cos(SOLDIER.facing) - dz * Math.sin(SOLDIER.facing);
+  if (Math.abs(side) > 0.17 && y > 1.05) return side > 0 ? 'left' : 'right';
+  return y >= 1.15 ? 'chest' : 'stomach';
+}
+
+// One of his bones by its name (the file numbers each node: CC_Base_Hip_01).
+function boneOf(model, name) {
+  let found = null;
+  model.traverse((o) => {
+    if (!found && o.isBone && o.name.replace(/_\d+$/, '') === name) found = o;
+  });
+  return found;
+}
+
+// Puts his box round where he stands (SOLDIER.x, z).
+function placeSoldierBox() {
+  SOLDIER_BOX.minX = SOLDIER.x - 0.32;
+  SOLDIER_BOX.maxX = SOLDIER.x + 0.32;
+  SOLDIER_BOX.minZ = SOLDIER.z - 0.22;
+  SOLDIER_BOX.maxZ = SOLDIER.z + 0.22;
+}
 
 export function addSoldier(scene, renderer, camera, wardrobe = null) {
+  const v = new THREE.Vector3();
   const soldier = {
     mixer: null,
     hp: SOLDIER_HP.max,
-    downFor: 0, // seconds left lying down (0: standing)
+    state: 'standing', // 'standing', 'down' (lying), 'rising' (getting up)
+    downFor: 0, // seconds left lying down
     model: null,
-    actions: null,
-    // How a shot that hit his box (at height y) hurts him: the hit points it
-    // took off, whether it was to the head, and whether it put him down.
-    hit(damage, y) {
-      if (this.downFor > 0 || this.hp <= 0) return null;
-      const head = y >= SOLDIER_BOX.maxY - HEAD;
+    bones: { hip: null, head: null }, // his own (taken before his outfit goes on, which brings bones named the same)
+    clips: {}, // name: its action (played once, held on its last frame)
+    playing: null, // the action playing over his idle, if any
+    // How a shot that hit his box at (x, y, z) hurts him: the hit points it
+    // took off, whether it was to the head, where it hit and whether it put
+    // him down. (Nothing while he's down or getting up.)
+    hit(damage, x, y, z) {
+      if (this.state !== 'standing') return null;
+      const part = hitPart(x, y, z);
+      const head = part === 'head';
       const taken = Math.min(this.hp, Math.round(damage * (head ? SOLDIER_HP.head : 1)));
       this.hp -= taken;
       const killed = this.hp <= 0;
-      if (killed) this.fall(); else this.flinch();
-      return { taken, head, killed, hp: this.hp };
+      if (killed) this.fall(part); else this.react(part);
+      return { taken, head, part, killed, hp: this.hp };
     },
-    flinch() {
-      const a = this.actions;
-      if (!a || !a.hit) return;
-      a.hit.reset().setEffectiveWeight(1).fadeIn(0.08).play();
-      a.idle.fadeOut(0.08);
+    first(names) {
+      for (const name of names) if (this.clips[name]) return this.clips[name];
+      return null;
     },
-    fall() {
+    // Plays `action` over everything else (fading in), or back to idle.
+    play(action, fade) {
+      if (!this.actions) return;
+      const idle = this.actions.idle;
+      if (this.playing && this.playing !== action) this.playing.fadeOut(fade);
+      if (action) {
+        action.reset().setEffectiveWeight(1).fadeIn(fade).play();
+        if (idle.getEffectiveWeight() > 0) idle.fadeOut(fade);
+      } else {
+        idle.reset().setEffectiveWeight(1).fadeIn(fade).play();
+      }
+      this.playing = action;
+    },
+    react(part) {
+      this.play(this.first(HIT_PARTS[part].hit), 0.08);
+    },
+    fall(part) {
+      this.state = 'down';
       this.downFor = SOLDIER_HP.down;
       const i = COLLIDERS.indexOf(SOLDIER_BOX);
       if (i >= 0) COLLIDERS.splice(i, 1);
-      const a = this.actions;
-      if (!a || !a.fall) return;
-      if (a.hit) a.hit.fadeOut(0.1);
-      a.idle.fadeOut(0.1);
-      a.fall.reset().setEffectiveWeight(1).fadeIn(0.1).play();
+      this.play(this.first(HIT_PARTS[part].fall), 0.1);
     },
+    // Gets up where he fell (all his hit points back): his get-up clip
+    // starts with him lying as the falls leave him, on his back, so it's put
+    // where his hips are now. With no get-up clip, he's back on his feet at
+    // once, there.
     getUp() {
       this.hp = SOLDIER_HP.max;
-      if (!COLLIDERS.includes(SOLDIER_BOX)) COLLIDERS.push(SOLDIER_BOX);
-      const a = this.actions;
-      if (!a) return;
-      a.idle.reset().setEffectiveWeight(1).fadeIn(0.5).play();
-      if (a.fall) a.fall.fadeOut(0.5);
+      if (!this.model || !this.actions) {
+        this.state = 'standing';
+        if (!COLLIDERS.includes(SOLDIER_BOX)) COLLIDERS.push(SOLDIER_BOX);
+        return;
+      }
+      const at = this.hips();
+      const rise = this.first(GET_UP);
+      // His new pose straight away (lined up by its own first frame: each
+      // clip carries his hips from its own start), then put where he lay.
+      this.mixer.stopAllAction();
+      if (rise) {
+        this.state = 'rising';
+        rise.reset().setEffectiveWeight(1).play();
+        this.playing = rise;
+      } else {
+        // (No get-up clip: back on his feet where he fell.)
+        this.state = 'standing';
+        this.actions.idle.reset().setEffectiveWeight(1).play();
+        this.playing = null;
+        if (!COLLIDERS.includes(SOLDIER_BOX)) COLLIDERS.push(SOLDIER_BOX);
+      }
+      this.mixer.update(0);
+      this.moveTo(at);
+    },
+    // Where his hips are now (the ground under them, and the way his body
+    // faces), in the world.
+    hips() {
+      const hip = this.bones.hip;
+      if (!hip) return { x: SOLDIER.x, z: SOLDIER.z, facing: SOLDIER.facing };
+      this.model.updateMatrixWorld(true);
+      hip.getWorldPosition(v);
+      return { x: v.x, z: v.z, facing: this.model.rotation.y };
+    },
+    // Moves him (his model, his box, where his bar goes) so his hips stand
+    // where `to` says. (Each clip carries him from over his model's origin.)
+    moveTo(to) {
+      SOLDIER.x = to.x;
+      SOLDIER.z = to.z;
+      SOLDIER.facing = to.facing;
+      placeSoldierBox();
+      if (!this.model) return;
+      const hip = this.bones.hip;
+      this.model.updateMatrixWorld(true);
+      const off = hip ? hip.getWorldPosition(v).sub(this.model.position) : v.set(0, 0, 0);
+      this.model.position.set(to.x - off.x, 0, to.z - off.z);
+      this.model.rotation.y = to.facing;
     },
     // Where his health bar goes: over his head (world space), or null.
     barPoint(into) {
       if (!this.model) return null;
-      return into.set(SOLDIER.x, SOLDIER_BOX.maxY + 0.32, SOLDIER.z);
+      const head = this.bones.head;
+      if (!head) return into.set(SOLDIER.x, SOLDIER_BOX.maxY + 0.32, SOLDIER.z);
+      head.getWorldPosition(into);
+      into.y += 0.38;
+      return into;
     },
     update(dt) {
-      if (this.downFor > 0) {
+      if (this.state === 'down') {
         this.downFor -= dt;
         if (this.downFor <= 0) {
           this.downFor = 0;
@@ -301,6 +414,21 @@ export function addSoldier(scene, renderer, camera, wardrobe = null) {
         }
       }
       if (this.mixer) this.mixer.update(dt);
+    },
+    // A clip that played to its end: after a hit reaction, back to his idle;
+    // after getting up, he's standing where the clip left him.
+    finished(action) {
+      if (this.state === 'standing' && action === this.playing) this.play(null, 0.25);
+      else if (this.state === 'rising' && action === this.playing) {
+        const at = this.hips();
+        this.mixer.stopAllAction();
+        this.actions.idle.reset().setEffectiveWeight(1).play();
+        this.playing = null;
+        this.mixer.update(0);
+        this.moveTo(at);
+        this.state = 'standing';
+        if (!COLLIDERS.includes(SOLDIER_BOX)) COLLIDERS.push(SOLDIER_BOX);
+      }
     },
   };
   // Lit by the outdoor sky too, as the gun is (the world's plain lights alone
@@ -313,6 +441,7 @@ export function addSoldier(scene, renderer, camera, wardrobe = null) {
   Promise.all([loadSoldier(), clips]).then(([{ gltf }, reactions]) => {
     const model = gltf.scene;
     soldier.model = model;
+    soldier.bones = { hip: boneOf(model, HIPS), head: boneOf(model, HEAD_BONE) };
     model.position.set(SOLDIER.x, 0, SOLDIER.z);
     model.rotation.y = SOLDIER.facing;
     model.traverse((o) => {
@@ -359,14 +488,9 @@ export function addSoldier(scene, renderer, camera, wardrobe = null) {
           action.clampWhenFinished = true;
           return action;
         };
-        soldier.actions = { idle, hit: once('enemy_hit'), fall: once('enemy_hit_fall') };
-        // After a hit reaction, back to standing at rest.
-        soldier.mixer.addEventListener('finished', (e) => {
-          if (e.action === soldier.actions.hit && soldier.downFor === 0) {
-            idle.reset().setEffectiveWeight(1).fadeIn(0.25).play();
-            e.action.fadeOut(0.25);
-          }
-        });
+        soldier.actions = { idle };
+        for (const clip of reactions) soldier.clips[clip.name] = once(clip.name);
+        soldier.mixer.addEventListener('finished', (e) => soldier.finished(e.action));
       }
     });
   }).catch((error) => {
