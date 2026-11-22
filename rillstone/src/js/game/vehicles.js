@@ -107,7 +107,8 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
   api.exit = () => { const p = api.exitPoint(); api.driving = null; return p; };
 
   // Per-frame: inputs to the worker, fuel, unflip, visuals.
-  api.update = (dt, input, enabled) => {
+  // alpha: how far we are between the last two physics steps (0..1).
+  api.update = (dt, input, enabled, alpha = 1) => {
     for (const v of list.values()) {
       const st = physics.vehicles.get(v.id);
       const driver = api.driving === v.id;
@@ -124,8 +125,22 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
       } else if (v.wasDriven) physics.post({ op: 'vehicleInput', id: v.id, input: { throttle: 0, steer: 0, brake: 0, driver: false } });
       v.wasDriven = driver;
       if (!st) continue;
-      v.state = st;
-      v.group.position.fromArray(st.p); v.group.quaternion.fromArray(st.q);
+      // Interpolate between the last two physics states so the truck glides
+      // instead of jumping whenever a physics step lands between frames.
+      if (st !== v.state) {
+        v.prevP = v.curP ? v.curP.slice() : st.p.slice(); v.prevQ = v.curQ ? v.curQ.slice() : st.q.slice();
+        v.curP = st.p.slice(); v.curQ = st.q.slice();
+        v.state = st;
+        v.tPrev = v.tCur || performance.now(); v.tCur = performance.now();
+      }
+      // Render one physics interval behind the newest state: smooth even
+      // when 0, 1 or 2 steps land in a frame.
+      const span = Math.max(1, v.tCur - v.tPrev);
+      const a = Math.min(1, Math.max(0, (performance.now() - v.tCur) / span));
+      void alpha;
+      v.group.position.set(v.prevP[0] + (v.curP[0] - v.prevP[0]) * a, v.prevP[1] + (v.curP[1] - v.prevP[1]) * a, v.prevP[2] + (v.curP[2] - v.prevP[2]) * a);
+      if (Math.hypot(v.curP[0] - v.prevP[0], v.curP[2] - v.prevP[2]) > 5) v.group.position.fromArray(v.curP); // teleports snap
+      v.group.quaternion.fromArray(v.prevQ).slerp(_q.fromArray(v.curQ), a);
       st.wheels.forEach(([susp, rot, steerA], i) => {
         const w = v.wheels[i], [x, y, z] = v.def.wheels[i];
         w.position.set(x, y - susp, z);

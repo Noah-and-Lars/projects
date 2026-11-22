@@ -269,7 +269,8 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     const b3 = await p.evaluate(async () => {
       const R = __rill, V = R.vehicles, w = R.places.CLAIMS[1]; R.noRender(true);
       for (let k = 0; k < 5; k++) for (let z = w.z0 + 2; z < w.z1 - 2; z += 0.8) R.brush('willow', [w.x0 + 7 + k * 4, w.top + 0.2, z], 0.5, 'dig', 4);
-      for (let i = 0; i < 40; i++) R.brush('willow', [w.x0 + 6 + Math.random() * 20, w.top - 0.1, w.z0 + 3 + Math.random() * 26], 0.5, 'fill', 4);
+      let sd = 11; const rnd = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+      for (let i = 0; i < 40; i++) R.brush('willow', [w.x0 + 6 + rnd() * 20, w.top - 0.5, w.z0 + 3 + rnd() * 26], 0.8, 'fill', 4); // gentle mounds, same every run
       await R.claims.settle();
       const v = [...V.list.values()][0];
       // Keep clear of the benchmark-1 pit in the middle of the claim.

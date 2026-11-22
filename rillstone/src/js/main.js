@@ -274,7 +274,7 @@ async function boot() {
     items.update();
     hands.moveSpeed = player.grounded ? player.speed : 0;
     vehicles.night = view.env.night > 0.3;
-    vehicles.update(dt, input, controls());
+    vehicles.update(dt, input, controls(), Math.min(1, acc * 60));
     hands.update(dt, input, controls() && !vehicles.driving);
     hands.setVisible?.(!vehicles.driving);
     town.update(dt);

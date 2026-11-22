@@ -22,31 +22,52 @@ function extrude(outline, depth, bevel = 0.004) {
 const handle = (r0, r1, z0, z1, hex, seg = 8) => P(place(new THREE.CylinderGeometry(r1, r0, z1 - z0, seg), 0, 0, (z0 + z1) / 2, Math.PI / 2), hex, 0.06);
 const rivet = (x, y, z, hex = BRASS, r = 0.009) => P(place(new THREE.SphereGeometry(r, 6, 4), x, y, z), hex, 0.05);
 
-// ---- Shovel: ash shaft, D-grip, brass collar, dished steel blade. Blade points +z.
+// ---- Shovel: modelled on a real round-point shovel. Blade points +z.
+// A dished, round-pointed blade with a slight lift, a tapered steel socket
+// riveted round the ash shaft, rolled footsteps on the shoulders, a D-grip.
+function shovelBlade() {
+  // Parametric surface: v runs from the top edge (0) to the tip (1), u across.
+  const W = 0.135, L = 0.32, NU = 10, NV = 12, pos = [], col = [];
+  const halfW = (v) => (v < 0.45 ? W * (1 - 0.06 * v) : W * Math.sqrt(Math.max(0, 1 - ((v - 0.45) / 0.55) ** 2)) * 0.97 + 0.004);
+  const pt = (u, v) => {
+    const hw = halfW(v), x = (u * 2 - 1) * hw;
+    const dish = (x / W) ** 2 * 0.045 * (1 - v * 0.6);   // sides curl up
+    return [x, dish, v * L];
+  };
+  const steel = new THREE.Color(STEEL), edge = new THREE.Color(STEEL_EDGE), dark = new THREE.Color(STEEL_DARK);
+  for (let j = 0; j < NV; j++) for (let i = 0; i < NU; i++) {
+    const q = [pt(i / NU, j / NV), pt((i + 1) / NU, j / NV), pt((i + 1) / NU, (j + 1) / NV), pt(i / NU, (j + 1) / NV)];
+    // Front (concave, +y) and back faces; the cutting edge is worn bright.
+    const near = Math.max(j / NV, Math.abs(i / NU - 0.5) * 2) > 0.86;
+    const cf = near ? edge : steel, cb = dark;
+    for (const [a, b, c] of [[0, 2, 1], [0, 3, 2]]) for (const k of [a, b, c]) { pos.push(...q[k]); col.push(cf.r, cf.g, cf.b); }
+    for (const [a, b, c] of [[0, 1, 2], [0, 2, 3]]) for (const k of [a, b, c]) { pos.push(q[k][0], q[k][1] - 0.006, q[k][2]); col.push(cb.r, cb.g, cb.b); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  return g;
+}
 export function shovel(load) {
   const parts = [];
-  parts.push(handle(0.019, 0.023, -0.36, 0.42, ASH));
-  // D-grip: two cheeks and a crossbar.
-  parts.push(P(place(new THREE.TorusGeometry(0.06, 0.012, 6, 12, Math.PI), 0, 0, -0.42, Math.PI / 2, 0, Math.PI), ASH_DARK, 0.06));
-  parts.push(P(place(new THREE.CylinderGeometry(0.014, 0.014, 0.12, 8), 0, 0, -0.48, 0, 0, Math.PI / 2), ASH, 0.05));
-  // Brass collar + steel socket tapering into the blade.
-  parts.push(P(place(lathe([[0.024, 0], [0.027, 0.01], [0.027, 0.05], [0.024, 0.06]], 10), 0, 0, 0.4, Math.PI / 2), BRASS, 0.05));
-  parts.push(P(place(lathe([[0.024, 0], [0.03, 0.06], [0.05, 0.12]], 10), 0, 0, 0.46, Math.PI / 2), STEEL_DARK, 0.05));
-  rivetRing(parts, 0.43, 0.028);
-  // Blade: rounded point outline, dished by bending the sides up.
-  const outline = [[-0.12, 0], [-0.04, -0.015], [0.04, -0.015], [0.12, 0], [0.135, 0.1], [0.12, 0.19], [0.075, 0.26], [0, 0.31], [-0.075, 0.26], [-0.12, 0.19], [-0.135, 0.1]];
-  const blade = extrude(outline, 0.008, 0.002);
-  const p = blade.attributes.position;
-  for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i); p.setZ(i, p.getZ(i) + x * x * 3.4 - y * y * 0.25); }
-  blade.computeVertexNormals();
-  // The outline's +y (the tip) must point down the handle (+z).
-  parts.push(P(place(blade, 0, -0.01, 0.55, Math.PI / 2 - 0.12), STEEL, 0.06, 4));
-  // Centre ridge (the frog) running from the socket down the blade.
-  { const r = new THREE.CylinderGeometry(0.003, 0.012, 0.14, 5); place(r, 0, 0.004, 0.62, Math.PI / 2 - 0.12); parts.push(P(r, STEEL_DARK, 0.05)); }
-  // Worn bright edge and a rolled step on top of the blade.
-  parts.push(P(place(new THREE.BoxGeometry(0.22, 0.012, 0.02), 0, 0.004, 0.555, -0.12), STEEL_DARK, 0.04)); // rolled step
-  parts.push(P(place(new THREE.TorusGeometry(0.1, 0.006, 3, 10, Math.PI * 0.7), 0, -0.012, 0.75, -Math.PI / 2 - 0.12, 0, Math.PI * 0.15 - Math.PI), STEEL_EDGE, 0.03)); // worn bright tip
-  if (load) parts.push(P(place(new THREE.DodecahedronGeometry(0.09, 1), 0, 0.03, 0.7, 0, 0, 0, 1.25, 0.45, 1.4), load, 0.3, 9));
+  parts.push(handle(0.019, 0.022, -0.4, 0.42, ASH));
+  // D-grip: two cheeks spreading from the shaft and a crossbar.
+  parts.push(P(place(new THREE.TorusGeometry(0.055, 0.011, 6, 14, Math.PI), 0, 0, -0.44, Math.PI / 2, 0, Math.PI), ASH_DARK, 0.06));
+  parts.push(P(place(new THREE.CylinderGeometry(0.015, 0.015, 0.11, 8), 0, 0, -0.495, 0, 0, Math.PI / 2), ASH, 0.05));
+  parts.push(P(place(lathe([[0.021, 0], [0.024, 0.008], [0.024, 0.03], [0.021, 0.038]], 10), 0, 0, -0.41, Math.PI / 2), BRASS, 0.04)); // ferrule under the grip
+  // Socket: a steel tube round the shaft, flattening and widening into the blade.
+  const sock = lathe([[0.025, 0], [0.026, 0.1], [0.032, 0.15], [0.05, 0.19]], 12);
+  sock.scale(1, 1, 1); place(sock, 0, 0, 0.38, Math.PI / 2);
+  { const p = sock.attributes.position; for (let i = 0; i < p.count; i++) { const zz = p.getZ(i); if (zz > 0.5) p.setY(i, p.getY(i) * (1 - (zz - 0.5) * 5)); } }
+  parts.push(P(sock, STEEL_DARK, 0.05, 5));
+  for (const z of [0.43, 0.48]) parts.push(rivet(0, 0.026, z, STEEL_EDGE, 0.007), rivet(0, -0.026, z, STEEL_EDGE, 0.007));
+  // Blade with a slight lift, joined at the socket.
+  const blade = shovelBlade();
+  place(blade, 0, -0.012, 0.555, 0.16);
+  parts.push(blade); // colours are baked per face (bright edge, dark back)
+  // Rolled footsteps on the shoulders either side of the socket.
+  for (const s of [-1, 1]) parts.push(P(place(new THREE.CylinderGeometry(0.008, 0.008, 0.095, 6), s * 0.082, 0.004, 0.557, 0, 0, Math.PI / 2), STEEL_DARK, 0.04));
+  if (load) parts.push(P(place(new THREE.DodecahedronGeometry(0.075, 1), 0, 0.01, 0.71, 0.16, 0, 0, 1.25, 0.42, 1.4), load, 0.3, 9));
   return merge(parts);
 }
 function rivetRing(parts, z, r) { for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.4; parts.push(rivet(Math.cos(a) * r, Math.sin(a) * r, z)); } }

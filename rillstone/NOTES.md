@@ -236,3 +236,35 @@ across freshly dug ground without jitter or launching.
   - Every tool has its own pose in the hand, plus animations: dig, scoop,
     swing, wash swirl, pour, dump, tip, clink recoil, grab and equip, with a
     gentle sway while walking.
+
+### Feedback fixes after M3
+
+- **Truck stutter.** Driving looked like a low frame rate. The truck's pose
+  jumped whenever a physics step landed, because 0, 1 or 2 steps can land in
+  one screen frame. Vehicles now render one physics interval behind the
+  newest state and interpolate between the last two (position lerp,
+  rotation slerp), with a snap for teleports. No motion blur is used
+  anywhere.
+- **Shovel model.** The shovel is rebuilt on real round-point shovel
+  anatomy:
+  - a parametric dished blade (concave side up, bright worn cutting edge,
+    darker back) with a slight lift from the shaft;
+  - a tapered steel socket with rivets;
+  - rolled footsteps on the shoulders;
+  - an ash shaft with a D-grip and brass ferrule.
+
+  The earlier extruded blade was upside down: its dish curled toward the
+  ground.
+- **Truck bed.** E on the truck opens an inventory screen: take any item,
+  put the held item in, or unload everything behind the tailgate.
+- **Hotbar.** Two slots at the bottom of the screen show the hand and the
+  quick-swap slot.
+- **Gem Buyer.** A new shop takes uncut gems. The Assay Office takes
+  everything else and points you to the right counter if you bring gems.
+- **Signs.** Shop signs had their top half inside the roof eaves, and long
+  names overflowed. Signs now sit between the awning and the eaves, and the
+  font shrinks to fit. Chalkboard faces leaned the opposite way to their
+  frames and cut through them; they now match the frame's lean. Sign
+  materials use a polygon offset.
+- **Benchmark 3** now uses seeded, gentler mounds so it gives the same
+  result every run.
