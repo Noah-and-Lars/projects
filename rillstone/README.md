@@ -137,8 +137,11 @@ Millbrook sits across the bridge from the Gravel Bar.
 - **The Old Hauler.** F gets in and out, WASD drives, Space brakes and H
   (hold) unflips. Drop items onto the bed with G to carry them to town; E takes
   them out again. It burns charcoal: LMB with a sack on the truck refuels it.
-- **Saving.** The pause menu has 3 save slots (autosave every 3 minutes),
-  plus export and import of `.rillsave` files.
+- **Saving.** The pause menu has 3 save slots, plus export and import of
+  `.rillsave` files. The game autosaves every 3 minutes to your current
+  slot. A new game takes the first empty slot and never autosaves over
+  another game; with all three full, autosave waits until you pick one.
+  If the newest copy in a slot won't load, the older copy loads instead.
 
 ## Machines and water
 
@@ -336,10 +339,13 @@ outside request to prove the file is self-contained. Add `--src` to test
 - screenshots the title, the start, noon, dusk, night, the adit from outside
   and inside, and the falls;
 - checks the night and cave screenshots stay above a minimum brightness;
-- rebinds a key through the settings panel and checks it took;
+- rebinds a key through the settings panel and checks it took, and opens
+  Save game from the pause menu and checks closing it returns there;
 - digs 50 holes with the shovel, then pans 20 loads in the river and checks
   20 finds land on the bank (`--dig`);
 - drops 80 copper nuggets in one spot and checks they merge into a pile;
+- holds G, turns the held item with R and drops it on release, then
+  presses B over it for its look-up entry;
 - earns § 1,000 by panning and selling, buys the starter kit, carries a
   nugget in the truck bed, drives over fresh ruts (benchmark 3), unflips the
   truck, saves, reloads the page and checks everything persists (`--town`);
