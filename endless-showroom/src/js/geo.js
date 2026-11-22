@@ -57,6 +57,27 @@ export class GeoBuilder {
     return this;
   }
 
+  // Sphere centred on (cx, cy, cz). hex may be a function (ring, segment) ->
+  // colour, for stripes and panels.
+  sphere(cx, cy, cz, r, hex, seg = 12, rings = 8) {
+    const n0 = this.n;
+    for (let j = 0; j <= rings; j++) {
+      const v = j / rings, phi = v * Math.PI, y = Math.cos(phi), rr = Math.sin(phi);
+      for (let i = 0; i <= seg; i++) {
+        const u = i / seg, th = u * Math.PI * 2, x = Math.cos(th) * rr, z = Math.sin(th) * rr;
+        const h = typeof hex === 'function' ? hex(Math.min(j, rings - 1), Math.min(i, seg - 1)) : hex;
+        const col = this._c(h, 0.8 + 0.2 * (y * 0.5 + 0.5));
+        this.pos.push(cx + x * r, cy + y * r, cz + z * r); this.nor.push(x, y, z); this.col.push(col[0], col[1], col[2]); this.mid.push(this._m(h));
+      }
+    }
+    for (let j = 0; j < rings; j++) for (let i = 0; i < seg; i++) {
+      const a = n0 + j * (seg + 1) + i, b = a + seg + 1;
+      this.idx.push(a, a + 1, b + 1, a, b + 1, b);
+    }
+    this.n += (rings + 1) * (seg + 1);
+    return this;
+  }
+
   // Flat horizontal quad (rugs, signs lying down) at height y.
   quadY(cx, y, cz, sx, sz, hex) {
     const col = this._c(hex), n = this.n, m = this._m(hex);

@@ -14,6 +14,8 @@ import { hashInts, rng } from './rng.js';
 import { restockEpoch } from './env.js';
 import { GeoBuilder } from './geo.js';
 import { TYPES, ITEMS, STOCK, FOOD_KEYS, furnitureGeometry, itemGeometry, itemDims, itemMatrix, itemParts, cleanQuat, hasState, TV_CHANNELS, STRIP_COLORS } from './furniture.js';
+// what's out on the tables in a toy shop
+const TOYS = ['toyRobot', 'toyCar', 'puzzleCube', 'rubberDuck', 'toyBlocks', 'xylophone', 'gameConsole', 'bouncyBall', 'toyDrum'];
 import { SURF, staticMaterial, furnitureMaterial, shadowMaterial, shadowGeometry, ShadowBuilder } from './mats.js';
 
 // There is no roof: the pillars run up into the fog. CEIL is only the height
@@ -470,7 +472,7 @@ class ChunkGen {
     this.ff(f, 'slide', 1.2, 2.0, 0); this.ff(f, 'slide', 8.4, 6.5, 2);
     for (let i = 0; i < 4; i++) this.ff(f, 'beanbag', 3.5 + i * 1.0, 7.8, r.int(4));
     this.ff(f, 'coffeeTable', 5.0, 4.4, 0); this.ff(f, 'stool', 4.2, 4.4, 0); this.ff(f, 'stool', 5.8, 4.4, 0);
-    this.ff(f, 'shelfCube', 4.8, 0.4, 0); this.ff(f, 'box', 7.0, 1.0, 0);
+    this.ff(f, 'shelfCube', 4.8, 0.4, 0); this.ff(f, 'exerciseBall', 7.0, 1.0, 0);
     for (let i = 0, n = 1 + r.int(3); i < n; i++) this.fd(f, STOCK.play, 4.7 + i * 0.2, 4.4, 0.45);
   }
 
@@ -721,7 +723,7 @@ const ROOM_EXTRAS = {
   'compact kitchen': (g, f, r) => { g.ff(f, 'microwave', 1.0, 0.35, 0, 0.9); g.ff(f, 'milkCrate', 6.0, 0.4, 0); },
   'master bedroom': (g, f, r) => { g.ff(f, 'warmTableLamp', 1.2, 0.45, 0, 0.85); g.ff(f, 'nightLight', 6.6, 0.15, 0); pic(g, f, r, 2.2); g.ff(f, 'roundMirror', 7.2, 0.15, 0); g.ff(f, 'drawerUnit', 0.5, 4.0, 1); },
   'guest bedroom': (g, f, r) => { g.ff(f, 'nightLight', 0.4, 2.4, 1); g.ff(f, 'miniTvStand', 8.6, 3.2, 3); g.ff(f, 'miniTV', 8.6, 3.2, 3, 0.45); pic(g, f, r, 4.6); g.ff(f, 'candle', 6.3, 0.45, 0, 0.85); },
-  'kids room': (g, f, r) => { if (r.chance(0.5)) g.ff(f, 'curvedTV', 6.4, 0.2, 0, 1.2); g.ff(f, 'nightLight', 9.4, 4.0, 3); g.ff(f, 'pencilLamp', 3.0, 0.32, 0, 1.5); g.ff(f, 'plushBear', 8.6, 1.0, 3); g.ff(f, 'playTable', 2.6, 4.6, 0); g.ff(f, 'toyRobot', 2.4, 4.6, 0, 0.5); g.ff(f, 'toyCar', 4.4, 3.4, r.int(4)); if (r.chance(0.5)) g.ff(f, 'foamDice', 6.8, 4.6, 0); },
+  'kids room': (g, f, r) => { if (r.chance(0.5)) g.ff(f, 'curvedTV', 6.4, 0.2, 0, 1.2); g.ff(f, 'nightLight', 9.4, 4.0, 3); g.ff(f, 'pencilLamp', 3.0, 0.32, 0, 1.5); g.ff(f, 'plushBear', 8.6, 1.0, 3); g.ff(f, 'playTable', 2.6, 4.6, 0); g.ff(f, 'toyDrum', 2.4, 4.6, 0, 0.5); g.ff(f, 'toyCar', 4.4, 3.4, r.int(4)); if (r.chance(0.5)) g.ff(f, 'foamDice', 6.8, 4.6, 0); },
   'teen room': (g, f, r) => { g.ff(f, 'tripleLamp', 2.6, 4.4, 0); g.ff(f, 'globeLamp', 8.4, 0.32, 0, 1.5); g.ff(f, 'wallTV', 7.6, 0.17, 0, 1.3); g.ff(f, 'miniTV', 8.4, 0.32, 0, 1.0); g.ff(f, 'wallShelf', 6.6, 0.26, 0, 1.4); g.ff(f, 'lightStrip', 4.4, 0.16, 0, 1.6).s = 1 + r.int(6); g.ff(f, 'puzzleCube', 3.85, 0.6, 0, 0.75); },
   'nursery': (g, f, r) => { g.ff(f, 'nightLight', 3.4, 0.15, 0); g.ff(f, 'globeLamp', 7.2, 0.45, 0, 0.85); g.ff(f, 'plushBear', 6.4, 4.6, 2); g.ff(f, 'flowerPot', 0.6, 0.6, 0); },
   'walk-in wardrobe': (g, f, r) => { g.ff(f, 'closet', 6.0, 4.6, 2); g.ff(f, 'wideMirror', 4.6, 0.15, 0); },
@@ -756,10 +758,10 @@ ROOMS.push(
     g.ff(f, 'roundMirror', 0.15, 3.0, 1); g.ff(f, 'wideMirror', 9.45, 3.0, 3); g.ff(f, 'longBench', 4.8, 3.6, 0); g.ff(f, 'flowerPot', 0.6, 5.6, 0);
   } },
   { name: 'toy shop', w: 2, build(g, f, r) {
-    for (let i = 0; i < 3; i++) g.ff(f, 'plushBear', 1.2 + i * 1.2, 0.5, 0);
+    for (let i = 0; i < 3; i++) g.ff(f, i === 2 ? 'beachBall' : 'plushBear', 1.2 + i * 1.2, 0.5, 0);
     g.ff(f, 'smallBookcase', 6.0, 0.25, 0); g.ff(f, 'smallBookcase', 7.0, 0.25, 0);
-    for (const [u, v] of [[2.4, 3.2], [6.0, 3.2]]) { g.ff(f, 'playTable', u, v, 0); g.ff(f, r.pick(['toyRobot', 'toyCar', 'puzzleCube']), u - 0.2, v, 0, 0.5); g.ff(f, r.pick(['toyRobot', 'toyCar', 'puzzleCube']), u + 0.25, v, 0, 0.5); }
-    g.ff(f, 'foamDice', 8.6, 3.6, 0); g.ff(f, 'foamDice', 8.6, 4.1, 1); if (r.chance(0.35)) g.ff(f, 'giftBox', 4.4, 5.2, 0);
+    for (const [u, v] of [[2.4, 3.2], [6.0, 3.2]]) { g.ff(f, 'playTable', u, v, 0); g.ff(f, r.pick(TOYS), u - 0.2, v, 0, 0.5); g.ff(f, r.pick(TOYS), u + 0.25, v, 0, 0.5); }
+    g.ff(f, 'foamDice', 8.6, 3.6, 0); g.ff(f, 'playBall', 8.6, 4.1, 1); if (r.chance(0.35)) g.ff(f, 'giftBox', 4.4, 5.2, 0);
     g.ff(f, 'toyChest', 0.7, 4.4, 1); g.ff(f, 'pencilLamp', 6.0, 0.25, 0, 1.0); g.ff(f, 'globeLamp', 7.0, 0.25, 0, 1.0);
   } },
   { name: 'café', w: 2, build(g, f, r) {
@@ -1079,7 +1081,9 @@ export class World {
   // Is this lamp giving light? Ordinary lamps are on unless switched off;
   // colour lamps and light strips are off at 0 and lit in a colour after.
   isLit(it) {
-    const t = it.k === 'f' && TYPES[it.t]; if (!t || !t.lamp) return false;
+    const t = it.k === 'f' && TYPES[it.t];
+    if (t && t.use === 'tv') return it.s > 0; // a screen that's on lights the room a little
+    if (!t || !t.lamp) return false;
     return t.use === 'strip' || t.use === 'colour' ? it.s > 0 : !it.s;
   }
   // The state the model shows: state 7 on a colour light is a slow fade
@@ -1094,6 +1098,7 @@ export class World {
   lightColor(it) {
     const t = TYPES[it.t];
     if (t.use === 'strip' || t.use === 'colour') return STRIP_COLORS[(this.shownState(it) - 1 + 6) % 6];
+    if (t.use === 'tv') return 0x9fc2ff;
     if (t.glowCol === 'shade') return t.cols[it.v % t.cols.length];
     return t.glowCol || 0xffd59a;
   }

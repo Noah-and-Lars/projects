@@ -12,7 +12,7 @@ import { StaffSim } from './staff.js';
 import { createNet, myName, cleanName, myShirt } from './net.js';
 import { input, initInput, initTouch, lockPointer, endFrame, pollGamepad } from './input.js';
 import { makeShopper, makeStaff, animate, setHeld, nameTag, nameHash, SHIRT_COLORS } from './models.js';
-import { makeBody, stepBody, bodyPose, bodyMatrix } from './fall.js';
+import { makeBody, stepBody, bodyPose, bodyMatrix, makeBall, stepBall, ballMatrix } from './fall.js';
 import { initAudio, sfx, setAmbience, setVolume, setMusic, setMusicVolume, musicState } from './audio.js';
 import * as audioMod from './audio.js';
 import { DAY_LEN, DAY_SCALE, setDayScale, cycleLen, nightLen, cascade, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
@@ -173,7 +173,7 @@ highlight.visible = false; scene.add(highlight);
 const net = createNet({
   members: onMembers, hostChanged: onHostChanged, player: onPlayer, request: (from, q) => hostRequest(from, q),
   world: onWorld, staff: onStaffSnap, clock: onClock, hit: (d) => hurt(d, 'staff'), chat: onChat, caught: onCaught,
-  need: onNeed, full: onFull, push: onPushRequest, whistle: onWhistle,
+  need: onNeed, full: onFull, push: onPushRequest, whistle: onWhistle, noise: onNoise,
 });
 
 const INV = 16, HOTBAR = 8;
@@ -359,7 +359,7 @@ function startGame(seed, waitForState, save) {
   remotes.forEach((r) => { scene.remove(r.model.root); if (r.heldMesh) scene.remove(r.heldMesh); }); remotes.clear();
   staffViews.forEach((s) => scene.remove(s.model.root)); staffViews.clear();
   staffSim = net.isHost() ? new StaffSim(world) : null;
-  Object.assign(P, { hp: 100, food: 100, en: 100, alive: true, carry: null, inv: new Array(INV).fill(null), invId: new Array(INV).fill(null), sel: 0, nights: 0, vy: 0, hurtT: 99, using: null, whistleT: 0 });
+  Object.assign(P, { hp: 100, food: 100, en: 100, alive: true, carry: null, inv: new Array(INV).fill(null), invId: new Array(INV).fill(null), sel: 0, nights: 0, vy: 0, hurtT: 99, using: null, whistleT: 0, whistleHold: null, sit: null });
   waypoints.length = 0;
   if (save && save.P) {
     const sp = save.P;
@@ -455,7 +455,7 @@ const num = (v, d = 0) => (Number.isFinite(+v) ? clamp(+v, -1e6, 1e6) : d);
 const has = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 function onPlayer(id, p) {
   const r = remotes.get(id); if (!r) return;
-  const st = { t: performance.now(), x: num(p.x), y: clamp(num(p.y), 0, CEIL), z: num(p.z), ry: num(p.ry), a: p.a ? 1 : 0, ct: has(TYPES, p.ct) ? p.ct : '', cv: p.cv | 0, n: p.n | 0, hp: clamp(num(p.hp, 100), 0, 100), sp: p.sp ? 1 : 0, cr: p.cr ? 1 : 0, tc: p.tc ? 1 : 0, ho: null };
+  const st = { t: performance.now(), x: num(p.x), y: clamp(num(p.y), 0, CEIL), z: num(p.z), ry: num(p.ry), a: p.a ? 1 : 0, ct: has(TYPES, p.ct) ? p.ct : '', cv: p.cv | 0, n: p.n | 0, hp: clamp(num(p.hp, 100), 0, 100), sp: p.sp ? 1 : 0, cr: p.cr ? 1 : 0, tc: p.tc ? 1 : 0, si: p.si ? 1 : 0, ho: null };
   if (st.ct && Array.isArray(p.ho) && p.ho.length === 7) {
     const o = cleanQuat(p.ho.slice(3)), hx = num(p.ho[0]), hz = num(p.ho[2]);
     if (o && Math.hypot(hx - st.x, hz - st.z) < 12) st.ho = { x: hx, y: clamp(num(p.ho[1]), 0, CEIL), z: hz, o };
@@ -585,7 +585,7 @@ function hostRequest(from, q) {
       return;
     }
     if ((u === 'strip' || u === 'colour' || u === 'tv') && !it.c && !world.isGone(it)) world.edit(it, { s: q.s == null ? (it.s ? 0 : 1) : Math.max(0, Math.min(u === 'tv' ? TV_CHANNELS : 7, q.s | 0)) });
-    else if (u && u !== 'flush' && u !== 'gift' && !it.c && !world.isGone(it)) world.edit(it, { s: it.s ? 0 : 1 });
+    else if (u && !['flush', 'gift', 'squeak', 'drum', 'tune', 'boot'].includes(u) && !it.c && !world.isGone(it)) world.edit(it, { s: it.s ? 0 : 1 });
     broadcastItems([it.id], echo);
   } else if (q.a === 'place') {
     if (it.c !== from) { broadcastItems([it.id], echo); return; }
@@ -612,11 +612,24 @@ function onPushRequest(from, p) {
   if (res === 'immune') { if (from === net.id) hurt(10, 'staff'); else net.send('h', { to: from, d: 10 }); }
 }
 function onWhistle(from, p) {
-  const x = num(p.x), z = num(p.z), d = Math.hypot(x - P.x, z - P.z);
-  const r = remotes.get(from);
-  if (d < 120) { const a = Math.atan2(x - P.x, z - P.z) - P.yaw; sfx.whistle(clamp(-Math.sin(a), -1, 1), Math.max(0.15, 1 - d / 120)); }
-  if (r) { r.revealT = 8; toast(`${r.name} whistled${d < 120 ? ` (${Math.round(d)} m away)` : ''}.`); }
-  if (staffSim && isHostile(clock.t)) staffSim.noise(x, z, 45);
+  const x = num(p.x), y = clamp(num(p.y), 0, CEIL), z = num(p.z), long = !!p.k, d = Math.hypot(x - P.x, y - P.y, z - P.z);
+  const r = remotes.get(from), name = r ? r.name : 'Someone';
+  const hear = long ? WHISTLE.hearLong : WHISTLE.hear;
+  if (d < hear) sfx.whistle(panTo(x, z), Math.max(0.12, 1 - d / hear), long, d / hear);
+  if (d < WHISTLE.tagRange) {
+    addBeacon(x, y + 2.2, z, name, long);
+    toast(`${name} ${long ? 'is whistling for help' : 'whistled'} (${Math.round(d)} m ${dirWord(x, z)}).`);
+  }
+  if (r) showBubble(r, long ? '!! Help' : '!');
+  if (staffSim && isHostile(clock.t)) staffSim.noise(x, z, long ? WHISTLE.staffLong : WHISTLE.staff);
+}
+// Where a sound at (x, z) sits left to right for you (-1 to 1), and which way it is in words.
+function panTo(x, z) { const a = Math.atan2(x - P.x, z - P.z) - P.yaw; return clamp(-Math.sin(a), -1, 1); }
+function dirWord(x, z) {
+  let a = Math.atan2(-(x - P.x), -(z - P.z)) - P.yaw; // 0 = straight ahead
+  a = ((a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+  const k = Math.round(a / (Math.PI / 4));
+  return ['behind you', 'behind you to the right', 'to your right', 'ahead to the right', 'ahead', 'ahead to the left', 'to your left', 'behind you to the left', 'behind you'][k + 4];
 }
 
 // ---------------------------------------------------------------- player
@@ -664,7 +677,11 @@ function respawn() {
 }
 
 const CHAT_TIPS = [
-  'Meatballs fill you up more than anything else in the cafeteria.',
+  'A bowl of stew fills you up more than anything else in the cafeteria.',
+  'Hold H for a long whistle. Friends see "needs help" over where you are.',
+  'At night, bang a toy drum somewhere else to pull the staff away, then run.',
+  'Sit down (F on a chair or sofa) to get your breath back faster.',
+  'Walk into a ball to kick it. Sprint into it to kick it further.',
   'Staff can see straight through pallets, coffee tables and ladders. Use something solid.',
   'A beanbag breaks a fall from any side. A bed or a sofa only from on top.',
   'Each shove costs energy. Keep a drink for nights.',
@@ -718,6 +735,14 @@ function updatePlayer(dt) {
   const m = Math.hypot(fx, fz);
   if (m > 1) { fx /= m; fz /= m; }
   const moving = m > 0.1;
+  // Sitting: you stay on the seat until you move, jump or crouch (or someone
+  // takes the seat away).
+  if (P.sit) {
+    const it = world.items.get(P.sit.id);
+    const gone = !P.alive || !it || !world.active(it) || it.c || Math.abs(it.x - P.sit.ix) > 0.01 || Math.abs(it.y - P.sit.iy) > 0.01 || Math.abs(it.z - P.sit.iz) > 0.01;
+    if (gone || (!busy && (moving || k.has('Space') || k.has('KeyC')))) standUp(gone ? null : it);
+    else { P.x = P.sit.x; P.y = P.sit.y; P.z = P.sit.z; P.vy = 0; P.onGround = true; }
+  }
   // Crouch (C or Ctrl): low enough to get through gaps the staff can't.
   const wantCrouch = !busy && P.alive && (k.has('KeyC') || (!P.carry && (k.has('ControlLeft') || k.has('ControlRight'))));
   // crouching while sprinting is a slide: a burst along the ground, harder when you're hurt
@@ -750,7 +775,7 @@ function updatePlayer(dt) {
   const ox = P.x, oz = P.z, wasAir = !P.onGround;
   P.landSpeed = 0;
   world.withHeld = true;
-  if (P.alive) { moveBody(world, P, dx, dz, dt); rideHeld(); }
+  if (P.alive && !P.sit) { moveBody(world, P, dx, dz, dt); rideHeld(); if (!P.carry && !busy) kickBalls(P.x - ox, P.z - oz, dt, sprint); }
   world.withHeld = false;
   P.speed = Math.hypot(P.x - ox, P.z - oz) / dt;
   if (P.alive) { life().dist = (life().dist || 0) + Math.min(1, Math.hypot(P.x - ox, P.z - oz)); if (P.onGround && P.y > (life().high || 0)) life().high = P.y; }
@@ -767,7 +792,7 @@ function updatePlayer(dt) {
     if (sprint || P.slideT > 0 || !P.onGround) P.restT = 0; else P.restT = (P.restT || 0) + dt;
     if (sprint) P.en = Math.max(0, P.en - (3.2 + (P.carry ? 0.15 : 0)) * hurtK * dt);
     else if (P.restT > 1.2 && P.food > 0) {
-      const regen = (moving ? 0.6 : 2.0) * (P.carry ? 0.6 : 1) * (0.4 + 0.6 * P.food / 100) / hurtK;
+      const regen = (moving ? 0.6 : P.sit ? 3.0 : 2.0) * (P.carry ? 0.6 : 1) * (0.4 + 0.6 * P.food / 100) / hurtK;
       P.en = Math.min(100, P.en + regen * dt);
     }
     // Hunger runs down more slowly, and faster the less energy you have (twice as
@@ -784,7 +809,7 @@ function updatePlayer(dt) {
       if (P.using.t <= 0) { const u = P.using; P.using = null; applyItem(u.key); }
     }
   }
-  P.whistleT = Math.max(0, P.whistleT - dt);
+  updateWhistle(dt);
   if (P.y < -5) { P.y = 0; } // safety
 }
 
@@ -870,8 +895,10 @@ function updateInteraction(dt) {
         const left = need - (P.pickId === it.id ? P.pickT : 0);
         text = pct > 0 ? `Picking up ${t.name}… <span class="stat">${Math.round(pct * 100)}%${need > 10 ? ` · ${Math.floor(left / 60)}:${String(Math.ceil(left % 60)).padStart(2, '0')} left` : ''}</span>` : `<b>Hold E</b> Pick up ${t.name}${need > 60 ? ' <span class="stat">(very heavy: takes about 5½ minutes)</span>' : need > 1 ? ' <span class="stat">(heavy)</span>' : ''}`;
         if (t.use) text += ` · <b>F</b> ${useWord(it)}`;
+        else if (t.seat && !P.sit) text += ' · <b>F</b> sit';
         if (pct >= 1) { P.pickId = null; if (it.t === 'safe') ach.unlock('patience'); pickUp(it); }
         else if (t.use && input.pressed.has('KeyF')) useItem(it);
+        else if (t.seat && !P.sit && input.pressed.has('KeyF')) sitDown(it, ex + dx * hit.t, ez + dz * hit.t);
       }
     }
     // A click shoves the member of staff in front of you, or uses the selected item.
@@ -1005,22 +1032,102 @@ function letGo() {
   launchBody(c, new THREE.Vector3(hv[0] * lim, hv[1] * lim, hv[2] * lim), new THREE.Vector3((Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6));
   P.carry = null;
 }
-function placeCarry(p, carry = P.carry) {
+function placeCarry(p, carry = P.carry, quiet = false) {
   const id = carry.id;
   const it = world.items.get(id);
   if (it && !net.isHost()) { world.edit(it, { x: p.x, y: p.y, z: p.z, o: p.o, a: !!p.a, c: null }); }
   if (P.carry === carry) P.carry = null;
-  if (p.a) sfx.place(); else sfx.land();
-  ach.count('placed', 'build50', 50); ach.count('placed2', 'build500', 500);
-  life().placed = (life().placed | 0) + 1;
+  if (!quiet) {
+    if (p.a) sfx.place(); else sfx.land();
+    ach.count('placed', 'build50', 50); ach.count('placed2', 'build500', 500);
+    life().placed = (life().placed | 0) + 1;
+  }
   request({ a: 'place', id, x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3), o: p.o, an: p.a ? 1 : 0 });
+}
+// Sit down on a chair, sofa, bench, stool or bed (F). You sit where you aim
+// along it, facing however you like; you get your breath back faster sitting.
+const _sq = new THREE.Quaternion(), _sv = new THREE.Vector3();
+function sitDown(it, hx, hz) {
+  const t = TYPES[it.t];
+  if (P.carry || it.c || !P.onGround) return;
+  const q = itemQuat(it.r, it.tl, it.o, _sq);
+  if (_sv.set(0, 1, 0).applyQuaternion(q).y < 0.99) { sfx.deny(); toast("You can't sit on that while it's on its side."); return; }
+  // where you aimed, in the seat's own space: along its width, at its seat line
+  _sv.set(hx - it.x, 0, hz - it.z).applyQuaternion(q.clone().invert());
+  const half = t.w / 2 - 0.3;
+  _sv.x = half > 0 ? clamp(_sv.x, -half, half) : 0; _sv.z = t.seat[1]; _sv.y = 0;
+  _sv.applyQuaternion(q);
+  const b = world.itemBox(it);
+  const x = clamp(it.x + _sv.x, b.x0 + 0.05, b.x1 - 0.05), z = clamp(it.z + _sv.z, b.z0 + 0.05, b.z1 - 0.05), y = it.y + t.seat[0];
+  // room to sit up (a table top or the bunk above you is in the way)
+  let blocked = false;
+  world.forBoxes(x - 0.18, z - 0.18, x + 0.18, z + 0.18, (o) => { if (o.item !== it && o.y1 > y + 0.05 && o.y0 < y + 0.95) blocked = true; });
+  if (blocked) { sfx.deny(); toast("There isn't room to sit there."); return; }
+  P.sit = { id: it.id, x, y, z, ix: it.x, iy: it.y, iz: it.z };
+  P.crouch = false; P.slideT = 0; P.vy = 0;
+  sfx.place();
+  if (!stats.sitTip) { stats.sitTip = 1; saveStats(); toast('You sit down. You get your breath back faster sitting. Move, jump or crouch to stand up.'); }
+}
+// Get up: step off the front of the seat (or wherever there's room), else
+// stand on top of it.
+function standUp(it) {
+  const s = P.sit; P.sit = null;
+  if (!it) return; // the seat's gone: you're left where you were
+  for (const r of [0.5, 0.8, 1.2]) for (const k of [0, 1, -1, 2, -2, 3, -3, 4]) {
+    const a = P.yaw + k * Math.PI / 4, x = s.x - Math.sin(a) * r, z = s.z - Math.cos(a) * r;
+    const y = world.supportHeight(x - 0.15, z - 0.15, x + 0.15, z + 0.15, s.y + 0.1, null);
+    if (y > s.y - 1.2 && bodyFits(world, x, y, z, P.radius, P.height)) { P.x = x; P.y = y; P.z = z; return; }
+  }
+  const top = world.itemBox(it).y1;
+  if (bodyFits(world, s.x, top, s.z, P.radius, P.height)) P.y = top;
+}
+// Walk into a ball and you kick it: harder the faster you're going.
+const kickedAt = new Map();
+function kickBalls(mx, mz, dt, sprint) {
+  const sp = Math.hypot(mx, mz) / Math.max(dt, 1e-4);
+  if (sp < 0.6) return;
+  const now = performance.now();
+  world.forItems(P.x - 1, P.z - 1, P.x + 1, P.z + 1, (it) => {
+    const t = it.k === 'f' && TYPES[it.t];
+    if (!t || !t.ball || !world.active(it) || now - (kickedAt.get(it.id) || 0) < 400) return;
+    const r = t.ball[0], bx = it.x - P.x, bz = it.z - P.z, d = Math.hypot(bx, bz);
+    if (d > P.radius + r + 0.1 || it.y > P.y + 1.0 || it.y + 2 * r < P.y - 0.05) return;
+    const ux = bx / Math.max(d, 1e-4), uz = bz / Math.max(d, 1e-4);
+    if ((mx * ux + mz * uz) / Math.hypot(mx, mz) < 0.2) return; // only what you're walking into
+    kickedAt.set(it.id, now);
+    const power = sp * 1.1 + (sprint ? 1.8 : 0.6), lift = (sprint ? 2.6 : 1.4) * Math.min(1, 0.25 / r);
+    const c = { id: it.id, t: it.t, v: it.v, x: it.x, y: it.y, z: it.z, o: [0, 0, 0, 1] };
+    if (!net.isHost()) world.edit(it, { c: net.id });
+    request({ a: 'take', id: it.id });
+    launchBody(c, new THREE.Vector3(ux * power, lift, uz * power), new THREE.Vector3());
+    sfx.bounce(r, 0.8);
+  });
+}
+// Noisy toys: you hear them nearby, and at night the staff come to look.
+const NOISES = { squeak: 12, tune: 20, drum: 35 };
+function makeNoise(kind) {
+  const p = { x: +P.x.toFixed(1), y: +P.y.toFixed(1), z: +P.z.toFixed(1), k: kind };
+  net.send('nz', p);
+  if (staffSim && isHostile(clock.t)) staffSim.noise(P.x, P.z, NOISES[kind]);
+}
+function onNoise(from, p) {
+  if (!has(NOISES, p.k)) return;
+  const x = num(p.x), z = num(p.z), d = Math.hypot(x - P.x, num(p.y) - P.y, z - P.z), r = NOISES[p.k] * 1.6;
+  if (d < r) sfx[p.k](Math.max(0.1, 1 - d / r), panTo(x, z));
+  if (staffSim && isHostile(clock.t)) staffSim.noise(x, z, NOISES[p.k]);
+}
+// Put everything in your inventory down in a little pile at your feet.
+function dropAll() {
+  let n = 0;
+  for (let i = 0; i < INV; i++) if (P.inv[i]) { dropSelected(i, n++); }
+  if (n) { buildHotbar(); toast(`You put down ${n} thing${n === 1 ? '' : 's'}.`); }
 }
 // Switch a lamp off or on, open or close a door, turn a TV on, flush.
 function useWord(it) {
   const u = TYPES[it.t].use;
   return u === 'lamp' ? (it.s ? 'switch on' : 'switch off') : u === 'door' ? (it.s ? 'close' : 'open') : u === 'tv' ? (it.s ? 'turn off' : 'turn on')
     : u === 'strip' || u === 'colour' ? (it.s >= 7 ? 'switch off' : it.s === 6 ? 'fade through colours' : it.s ? 'change colour' : 'switch on') : u === 'music' ? (it.s ? 'stop the record' : 'play a record')
-    : u === 'roll' ? 'roll' : u === 'gift' ? 'open' : u === 'button' ? 'press' : u === 'ding' ? 'switch on' : 'flush';
+    : u === 'roll' ? 'roll' : u === 'gift' ? 'open' : u === 'button' ? 'press' : u === 'ding' || u === 'boot' ? 'switch on' : u === 'squeak' ? 'squeeze' : u === 'drum' ? 'bang the drum' : u === 'tune' ? 'play a tune' : 'flush';
 }
 // Light strips dropped touching each other are linked: changing one changes
 // them all (strips placed earlier only join once one of them is used).
@@ -1042,6 +1149,8 @@ function useItem(it) {
   const u = TYPES[it.t].use;
   if (u === 'flush') { sfx.flush(); return; }
   if (u === 'ding') { sfx.ding(); return; }
+  if (u === 'squeak' || u === 'drum' || u === 'tune') { sfx[u](); makeNoise(u); if (isHostile(clock.t) && !stats.noiseTip) { stats.noiseTip = 1; saveStats(); toast('That was loud. The staff will have heard it.'); } return; }
+  if (u === 'boot') { sfx.boot(); toast('The console starts up, plays its little tune, and goes back to sleep.'); return; }
   if (u === 'button') { sfx.click(); setTimeout(() => sfx.ding(), 250); toast(BUTTON_LINES[(Math.random() * BUTTON_LINES.length) | 0]); return; }
   if (u === 'roll') { sfx.land(); const n = 1 + ((Math.random() * 6) | 0); toast(`You rolled a ${n}.`); const m = `rolled a ${n} on the foam dice`; net.send('c', { m }); chatLine(myName(), m); return; }
   if (u === 'strip' || u === 'colour') {
@@ -1096,13 +1205,15 @@ function useSelected(slot = P.sel) {
   applyItem(key);
 }
 // Put the selected item down at your feet (to keep food in your base).
-function dropSelected(slot = P.sel) {
+function dropSelected(slot = P.sel, k = 0) {
   const key = P.inv[slot], id = P.invId[slot];
   if (!key) return;
   const it = id && world.items.get(id);
-  P.inv[slot] = null; P.invId[slot] = null; buildHotbar();
+  P.inv[slot] = null; P.invId[slot] = null; if (!k) buildHotbar();
   if (!it) return;
-  const fx = P.x - Math.sin(P.yaw) * 0.7, fz = P.z - Math.cos(P.yaw) * 0.7;
+  // several at once go down in a little spiral, so they don't land in one spot
+  const sa = k * 2.4, sr = k ? 0.12 + 0.05 * Math.sqrt(k) : 0;
+  const fx = P.x - Math.sin(P.yaw) * 0.7 + Math.cos(sa) * sr, fz = P.z - Math.cos(P.yaw) * 0.7 + Math.sin(sa) * sr;
   const fy = world.supportHeight(fx - 0.1, fz - 0.1, fx + 0.1, fz + 0.1, P.y + 0.6, null);
   if (!net.isHost()) world.edit(it, { x: fx, y: fy, z: fz, g: false, c: null });
   request({ a: 'drop', id, x: +fx.toFixed(3), y: +fy.toFixed(3), z: +fz.toFixed(3) });
@@ -1129,6 +1240,13 @@ function launchBody(c, vel, spin) {
   const t = TYPES[c.t];
   const mesh = new THREE.Mesh(furnitureGeometry(c.t, c.v), furnitureMaterialRef);
   mesh.matrixAutoUpdate = false; scene.add(mesh);
+  if (t.ball) { // a ball: a bouncing, rolling sphere
+    const body = makeBall(t.ball[0], t.ball[1], new THREE.Vector3(c.x, c.y + t.ball[0], c.z), vel);
+    c.o = [0, 0, 0, 1];
+    ballMatrix(body, mesh.matrix);
+    flying.push({ mesh, body, carry: c, pos: [c.x, c.y, c.z], hitT: 0 });
+    return;
+  }
   const q = itemQuat(0, 0, c.o), h = itemDims(c.t, 0, 0, c.o)[1];
   const body = makeBody(t.w, t.h, t.d, new THREE.Vector3(c.x, c.y + h / 2, c.z), q, vel, spin);
   bodyMatrix(body, mesh.matrix);
@@ -1138,9 +1256,18 @@ function updateFlying(dt) {
   for (let k = flying.length - 1; k >= 0; k--) {
     const f = flying[k], b = f.body, item = world.items.get(f.carry.id);
     // the solid boxes it could reach this frame
-    const r = Math.hypot(b.he.x, b.he.y, b.he.z) + b.v.length() * dt + 0.3;
+    const r = (b.ball ? b.r : Math.hypot(b.he.x, b.he.y, b.he.z)) + b.v.length() * dt + 0.3;
     const boxes = [];
     world.forBoxes(b.p.x - r, b.p.z - r, b.p.x + r, b.p.z + r, (o) => { if (o.held || (item && o.item === item)) return; if (o.y1 > b.p.y - r && o.y0 < b.p.y + r) boxes.push(o); });
+    if (b.ball) {
+      const impact = stepBall(b, Math.min(dt, 0.05), boxes, CEIL);
+      f.hitT -= dt;
+      if (impact > 0.6 && f.hitT <= 0) { sfx.bounce(b.r, impact / 5); f.hitT = 0.06; }
+      ballMatrix(b, f.mesh.matrix);
+      f.pos = [b.p.x, Math.max(0, b.p.y - b.r), b.p.z];
+      if (b.done) { scene.remove(f.mesh); flying.splice(k, 1); placeCarry({ x: b.p.x, y: Math.max(0, b.p.y - b.r), z: b.p.z, o: null, a: 0 }, f.carry, true); }
+      continue;
+    }
     const impact = stepBody(b, Math.min(dt, 0.05), boxes, CEIL);
     f.hitT -= dt;
     if (impact > 1.6 && f.hitT <= 0) { sfx.land(); f.hitT = 0.12; }
@@ -1238,6 +1365,7 @@ function toggleInventory(open = !invOpen, noLock = false) {
   else if (!noLock && !IS_TOUCH && mode === 'play' && !paused) lockPointer(canvas);
 }
 $('inv-close').onclick = () => toggleInventory(false);
+$('inv-dropall').onclick = () => { if (P.alive) dropAll(); };
 function updateRoster() {
   const r = $('roster');
   r.innerHTML = '';
@@ -1255,7 +1383,7 @@ function updateHud(dt) {
   nums[0].textContent = Math.ceil(P.hp); nums[1].textContent = Math.ceil(P.food); nums[2].textContent = Math.ceil(P.en);
   $('bars').classList.toggle('starving', P.food <= 0); $('bars').classList.toggle('tired', P.en <= 0);
   const wh = $('whistle');
-  wh.textContent = P.whistleT > 0 ? `Whistle ${Math.ceil(P.whistleT)} s` : 'H · Whistle';
+  wh.textContent = P.whistleHold != null ? 'Whistling… hold for help' : P.whistleT > 0 ? `Whistle ${Math.ceil(P.whistleT)} s` : 'H · Whistle · hold for help';
   wh.classList.toggle('cool', P.whistleT > 0);
   updateMarks();
   const night = isNight(clock.t);
@@ -1443,7 +1571,7 @@ function drawRemotes(dt, now) {
       r.tag.scale.set(1.2 + d * 0.02, 0.3 + d * 0.005, 1);
     }
     setHeld(m, s1.ct && !s1.ho ? s1.ct : '', s1.cv);
-    animate(m, Math.min(sp, 9), dt, { carrying: !!s1.ct, crouch: !!s1.cr });
+    animate(m, s1.si ? 0 : Math.min(sp, 9), dt, { carrying: !!s1.ct, crouch: !!s1.cr, sit: !!s1.si });
     // what they're holding, floating where they aim
     r.hold = null;
     if (s1.ho && s1.a) {
@@ -1519,7 +1647,7 @@ function frame() {
   if (now >= sendT && net.on) {
     sendT = now + 100;
     const hold = myHold();
-    net.send('p', { x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), ry: +P.yaw.toFixed(2), a: P.alive ? 1 : 0, ct: hold ? hold.t : '', cv: hold ? hold.v : 0, ho: hold ? [hold.x, hold.y, hold.z].map((n) => +n.toFixed(2)).concat(hold.o) : 0, n: P.nights, hp: Math.ceil(P.hp), sp: P.sprinting ? 1 : 0, cr: P.crouch ? 1 : 0, tc: torchLit() ? 1 : 0 });
+    net.send('p', { x: +P.x.toFixed(2), y: +P.y.toFixed(2), z: +P.z.toFixed(2), ry: +P.yaw.toFixed(2), a: P.alive ? 1 : 0, ct: hold ? hold.t : '', cv: hold ? hold.v : 0, ho: hold ? [hold.x, hold.y, hold.z].map((n) => +n.toFixed(2)).concat(hold.o) : 0, n: P.nights, hp: Math.ceil(P.hp), sp: P.sprinting ? 1 : 0, cr: P.crouch ? 1 : 0, tc: torchLit() ? 1 : 0, si: P.sit ? 1 : 0 });
   }
   // light and camera
   const L = lightLevel(clock.t, clock.day);
@@ -1576,7 +1704,7 @@ function updateLamps(L) {
     if (torchLit()) lampList.push({ head: true });
     for (const r of remotes.values()) if (r.st && r.st.a && r.st.tc) { const p = r.model.root.position; lampList.push({ x: p.x, y: p.y + 1.7, z: p.z }); }
     for (const r of remotes.values()) if (r.hold && TYPES[r.hold.t].lamp) lampList.push({ x: r.hold.x, y: r.hold.y + itemDims(r.hold.t, 0, 0, r.hold.o)[1] * 0.85, z: r.hold.z });
-    for (const it of world.lampsNear(P.x, P.z, 30, 6)) { const tt = TYPES[it.t]; lampList.push({ x: it.x, y: it.y + itemDims(it.t, it.r, it.tl, it.o)[1] * (tt.glowY ?? 1) + (tt.glowY != null ? -0.1 : 0.08), z: it.z, col: world.lightColor(it), k: tt.glowK || 1 }); }
+    for (const it of world.lampsNear(P.x, P.z, 30, 6)) { const tt = TYPES[it.t]; lampList.push({ x: it.x, y: it.y + itemDims(it.t, it.r, it.tl, it.o)[1] * (tt.glowY ?? 1) + (tt.glowY != null ? -0.1 : 0.08), z: it.z, col: world.lightColor(it), k: tt.glowK || (tt.use === 'tv' ? 0.5 : 1) }); }
     lampList = lampList.slice(0, lampLights.length);
   }
   const k = Math.max(0, 1 - L * 1.4);
@@ -1608,7 +1736,7 @@ function placeCamera(dt) {
   const fov = settings.fov + feel.fov;
   if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = fov; camera.updateProjectionMatrix(); }
   const sh = feel.shake * feel.shake;
-  P.eyeH += ((P.crouch ? 0.85 : 1.6) - P.eyeH) * Math.min(1, dt * 12);
+  P.eyeH += ((P.sit ? 0.82 : P.crouch ? 0.85 : 1.6) - P.eyeH) * Math.min(1, dt * 12);
   // ease the camera over steps (but follow jumps and falls exactly)
   feel.camY = feel.camY === undefined || Math.abs(P.y - feel.camY) > 1.2 || !P.onGround ? P.y : feel.camY + (P.y - feel.camY) * Math.min(1, dt * 14);
   const ey = feel.camY + P.eyeH + Math.sin(feel.bob * 2) * 0.045 * bobAmt - feel.dip * 0.4;
@@ -1616,7 +1744,7 @@ function placeCamera(dt) {
   myModel.root.position.set(P.x, P.y, P.z);
   myModel.root.rotation.y = P.yaw + Math.PI;
   setHeld(myModel, '', 0);
-  animate(myModel, P.speed, dt, { carrying: !!P.carry, crouch: P.crouch });
+  animate(myModel, P.speed, dt, { carrying: !!P.carry, crouch: P.crouch, sit: !!P.sit });
   if (P.third && P.alive) {
     const [dx, dy, dz] = lookDir();
     const hit = raycast(P.x, ey, P.z, -dx, -dy, -dz, 4, false);
@@ -1701,8 +1829,8 @@ function handleKeys() {
   if (p.has('Escape') && (IS_TOUCH || invOpen)) { if (invOpen) { toggleInventory(false, true); pause(); } else pause(); return; }
   if (p.has('KeyG') || p.has('KeyI')) toggleInventory();
   if (p.has('KeyV')) P.third = !P.third;
-  if (p.has('KeyH')) whistle();
-  if (p.has('KeyQ') && !P.carry && P.alive && !invOpen) dropSelected();
+  if (p.has('KeyH')) whistleKey();
+  if (p.has('KeyQ') && !P.carry && P.alive && !invOpen) { if (input.keys.has('ShiftLeft') || input.keys.has('ShiftRight')) dropAll(); else dropSelected(); }
   if (p.has('KeyZ')) setWaypoint(input.keys.has('ShiftLeft') || input.keys.has('ShiftRight'));
   if (p.has('F1')) { pause(); returnTo = 'pause'; show('how'); }
   if (!P.carry) for (let i = 0; i < HOTBAR; i++) if (p.has('Digit' + (i + 1))) { P.sel = i; buildHotbar(); }
@@ -1710,18 +1838,42 @@ function handleKeys() {
 }
 
 // ---------------------------------------------------------------- whistle and waypoints
-// A whistle shows everyone nearby (staff in red, shoppers in blue) for a few
-// seconds, and tells your friends where you are. At night it also brings the
-// staff. 25 s between whistles; it costs a little energy.
-let revealT = 0;
-function whistle() {
-  if (!P.alive || P.whistleT > 0) { if (P.whistleT > 0) sfx.deny(); return; }
-  P.whistleT = 25; P.en = Math.max(0, P.en - 5);
+// Whistling (H). Tap it for a short two-note whistle ("over here"); hold it
+// for a long one ("help!"). Everyone within 400 m sees a ! marker with your
+// name where you whistled for a few seconds (an arrow at the edge of the
+// screen when it's off to one side), and hears it if they're close enough,
+// muffled by distance. At night the staff hear it too and come to look: a
+// long whistle carries further. 25 s between whistles; a little energy each.
+const WHISTLE = { cool: 25, hold: 0.4, hear: 140, hearLong: 200, tagRange: 400, staff: 45, staffLong: 70, tag: 5, tagLong: 8 };
+const beacons = [];
+function addBeacon(x, y, z, name, long) {
+  for (let i = beacons.length - 1; i >= 0; i--) if (beacons[i].name === name) beacons.splice(i, 1);
+  beacons.push({ x, y, z, name, long, t: long ? WHISTLE.tagLong : WHISTLE.tag });
+}
+// H goes down: start timing the whistle; it goes off when you let go (short)
+// or once you've held it long enough (long).
+function whistleKey() {
+  if (!P.alive) return;
+  if (P.whistleT > 0) { sfx.deny(); return; }
+  P.whistleHold = 0;
+}
+function updateWhistle(dt) {
+  P.whistleT = Math.max(0, P.whistleT - dt);
+  if (P.whistleHold == null) return;
+  if (!P.alive || chatOpen) { P.whistleHold = null; return; }
+  P.whistleHold += dt;
+  if (P.whistleHold >= WHISTLE.hold) whistle(true);
+  else if (!input.keys.has('KeyH')) whistle(false);
+}
+function whistle(long) {
+  P.whistleHold = null;
+  if (!P.alive || P.whistleT > 0) return;
+  P.whistleT = WHISTLE.cool; P.en = Math.max(0, P.en - (long ? 4 : 2));
   ach.count('whistles', 'whistle', 10);
-  revealT = 6;
-  sfx.whistle(0, 1);
-  net.send('wh', { x: +P.x.toFixed(1), z: +P.z.toFixed(1) });
-  if (staffSim && isHostile(clock.t)) staffSim.noise(P.x, P.z, 45);
+  sfx.whistle(0, 1, long, 0);
+  net.send('wh', { x: +P.x.toFixed(1), y: +P.y.toFixed(1), z: +P.z.toFixed(1), k: long ? 1 : 0 });
+  if (staffSim && isHostile(clock.t)) staffSim.noise(P.x, P.z, long ? WHISTLE.staffLong : WHISTLE.staff);
+  if (!stats.whistleTip) { stats.whistleTip = 1; saveStats(); toast(long ? 'You whistled for help. Anyone within 400 m sees where you are, and at night the staff hear it too.' : 'You whistled. Anyone within 400 m sees where you are. Hold H for a long whistle that calls for help.'); }
 }
 // Z drops a waypoint where you stand (up to 4; the oldest goes). Shift+Z clears them.
 function setWaypoint(clear) {
@@ -1732,30 +1884,44 @@ function setWaypoint(clear) {
   waypoints.push({ x: P.x, y: P.y + 1.2, z: P.z, name: 'Waypoint ' + n });
   sfx.pick(); toast(`Waypoint ${n} set. Shift+Z clears your waypoints.`);
 }
-// Markers drawn over the 3D view: waypoints always, and everyone nearby for a
-// few seconds after a whistle.
+// Markers drawn over the 3D view: waypoints, and the ! where someone just
+// whistled. A whistle marker that's off the screen (or behind you) sits at
+// the edge of the screen with an arrow pointing the way.
 const markPool = [];
+const _cv = new THREE.Vector3();
 function updateMarks() {
   const host = $('marks');
   const list = [];
   for (const w of waypoints) list.push({ x: w.x, y: w.y, z: w.z, cls: w.death ? 'wp death' : 'wp', label: w.name });
-  revealT = Math.max(0, revealT - frameDt);
-  if (revealT > 0) for (const v of staffViews.values()) { const p = v.model.root.position; if (Math.hypot(p.x - P.x, p.z - P.z) < 45) list.push({ x: p.x, y: p.y + 2.3, z: p.z, cls: 'staff', label: '' }); }
-  for (const r of remotes.values()) {
-    r.revealT = Math.max(0, (r.revealT || 0) - frameDt);
-    if (r.st && r.st.a && (revealT > 0 || r.revealT > 0)) { const p = r.model.root.position; list.push({ x: p.x, y: p.y + 2.5, z: p.z, cls: 'mate', label: r.name }); }
-  }
+  for (let i = beacons.length - 1; i >= 0; i--) { const b = beacons[i]; b.t -= frameDt; if (b.t <= 0) beacons.splice(i, 1); }
+  for (const b of beacons) list.push({ x: b.x, y: b.y, z: b.z, cls: b.long ? 'whistle help' : 'whistle', label: b.long ? `!! ${b.name} needs help` : `! ${b.name}`, edge: true, fade: b.t < 1 });
   while (markPool.length < list.length) { const d = document.createElement('div'); host.append(d); markPool.push(d); }
+  const W = innerWidth, H = innerHeight, M = 36;
   markPool.forEach((el, i) => {
     const m = list[i];
     if (!m) { el.style.display = 'none'; return; }
+    _cv.set(m.x, m.y, m.z).applyMatrix4(camera.matrixWorldInverse);
+    const behind = _cv.z > -0.1;
     _v.set(m.x, m.y, m.z).project(camera);
-    if (_v.z > 1 || _v.z < -1) { el.style.display = 'none'; return; }
+    let sx = (_v.x + 1) / 2 * W, sy = (1 - _v.y) / 2 * H, arrow = null;
+    const off = behind || sx < M || sx > W - M || sy < M || sy > H - M;
+    if (off && !m.edge) { el.style.display = 'none'; return; }
+    if (off) {
+      // the way to it on the screen: from the middle towards it (its direction in view space if it's behind you)
+      let dx = _cv.x, dy = -_cv.y;
+      if (!behind) { dx = sx - W / 2; dy = sy - H / 2; }
+      if (Math.abs(dx) < 1e-3 && Math.abs(dy) < 1e-3) dx = 1;
+      const k = Math.min((W / 2 - M) / Math.max(1e-6, Math.abs(dx)), (H / 2 - M) / Math.max(1e-6, Math.abs(dy)));
+      sx = W / 2 + dx * k; sy = H / 2 + dy * k;
+      arrow = Math.atan2(dy, dx);
+    }
     el.style.display = '';
-    el.className = 'mark ' + m.cls;
-    el.style.transform = `translate(${((_v.x + 1) / 2 * innerWidth).toFixed(0)}px, ${((1 - _v.y) / 2 * innerHeight).toFixed(0)}px)`;
+    el.className = 'mark ' + m.cls + (arrow != null ? ' edge' : '') + (m.fade ? ' fade' : '');
+    el.style.transform = `translate(${sx.toFixed(0)}px, ${sy.toFixed(0)}px)`;
     const dist = Math.round(Math.hypot(m.x - P.x, m.z - P.z));
-    el.textContent = m.label ? `${m.label} · ${dist} m` : '';
+    const label = m.label ? `${m.label} · ${dist} m` : '';
+    if (arrow != null) el.innerHTML = `<i class="arr" style="transform: rotate(${(arrow * 180 / Math.PI).toFixed(0)}deg)"></i>${label}`;
+    else el.textContent = label;
   });
 }
 
@@ -1820,4 +1986,5 @@ requestAnimationFrame(frame);
 
 // Test hook for tools/test.cjs.
 window.__game = { P, clock, world, net, renderer, TYPES, ITEMS, get music() { return musicState(); }, get notes() { return audioMod.noteCount; }, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
-  useItemForTest: (id) => { const it = world.items.get(id); if (it) useItem(it); }, nightLen, roomNames: () => ROOMS.map((r) => [r.name, 'showroom']).concat(GARDEN_ROOMS.map((r) => [r.name, 'garden'])), useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; }, get flying() { return flying.map((f) => ({ t: f.carry.t, age: +f.body.age.toFixed(2), v: +f.body.v.length().toFixed(3), w: +f.body.w.length().toFixed(3), still: +f.body.still.toFixed(2), y: +f.body.p.y.toFixed(3), touching: !!f.body.touching })); } };
+  sitForTest: (id) => { const it = world.items.get(id); if (it) sitDown(it, it.x, it.z); return !!P.sit; }, get beacons() { return beacons; }, whistleForTest: (from, p) => onWhistle(from, p), dropAllForTest: () => dropAll(),
+  useItemForTest: (id) => { const it = world.items.get(id); if (it) useItem(it); }, nightLen, roomNames: () => ROOMS.map((r) => [r.name, 'showroom']).concat(GARDEN_ROOMS.map((r) => [r.name, 'garden'])), useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; }, get flying() { return flying.map((f) => ({ t: f.carry.t, age: +f.body.age.toFixed(2), v: +f.body.v.length().toFixed(3), w: f.body.w ? +f.body.w.length().toFixed(3) : 0, ball: !!f.body.ball, still: +f.body.still.toFixed(2), y: +f.body.p.y.toFixed(3), touching: !!f.body.touching })); } };

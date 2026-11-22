@@ -32,10 +32,35 @@ nights) or **Short** (3 and 2.5 minutes) for any store you start, solo or a
 room you create. Everyone in the room plays to the host's choice.
 
 Everyone starts somewhere random in the store. Whistle (H) to find each
-other, and read the aisle signs (`AISLE E3 · S2`) to say where you are. Pick a
+other (see [Whistling](#whistling)), and read the aisle signs (`AISLE E3 · S2`) to say where you are. Pick a
 shirt colour on the menu so friends can tell you apart.
 
 Don't edit `index.html` by hand. It's generated from `src/`.
+
+## Whistling
+
+Every shopper can whistle; it isn't an item.
+
+- **Tap H** for a short two-note whistle ("over here"). **Hold H** for a long
+  one ("help!"): a rising call, a held note and a fall.
+- Everyone within **400 m** sees a **!** marker with your name where you
+  whistled, with the distance, for 5 seconds (8 for a long whistle, which
+  shows as **!! name needs help** and pulses red). If the spot is off the
+  screen or behind them, the marker sits at the edge of the screen with an
+  arrow pointing the way. The chat log also says who whistled, how far away
+  and which way ("64 m behind you to the left").
+- They **hear** it if they're within 140 m (200 m for a long whistle),
+  panned to the side it came from and more muffled the further away it is.
+  A speech bubble pops up over the whistler.
+- **At night the staff hear it too** and come to look where you whistled:
+  within 45 m, or 70 m for a long whistle. By day it's safe. You can use it to
+  pull them somewhere, or give yourself away.
+- **25 seconds** between whistles. A whistle costs 2 energy, a long one 4.
+- Friends' names also show faintly through the shelves when they're within
+  about 90 m.
+
+On a phone or tablet the whistle is a button (hold it for a long whistle); on
+a controller it's Y.
 
 ## The week
 
@@ -60,7 +85,8 @@ turn that off).
 - **By day** they wander slowly and ignore you.
 - **At closing time** they give you about 5 seconds after the lights go out.
 - **At night** they wander until they **see you** (line of sight, up to
-  32 m) or **hear you** (sprinting within 14 m, or a whistle within 45 m).
+  32 m) or **hear you** (sprinting within 14 m, a whistle within 45 m, a long
+  whistle within 70 m, or a noisy toy).
   Then they chase about as fast as you can sprint (the small ones faster, the
   big ones a little slower), so running alone rarely loses them, saying things like
   *"Closing time. Closing time."* in a flat voice (spoken by the browser if
@@ -97,9 +123,10 @@ turn that off).
 | Energy | **Sprinting burns it** (faster the more hurt you are); jumping, sliding, whistling, throwing and shoving cost extra. **It comes back by itself** a moment after you stop sprinting: quickly standing still (about 2 a second), slowly walking, more slowly carrying something, and more slowly still the hungrier or more hurt you are. Starving, it doesn't come back at all. Food and drink give it back at once. With none you can't sprint, slide or shove, throws fall short, and you get hungry twice as fast. |
 | Hunger | Runs down more slowly than energy, faster the less energy you have. At zero you lose health quickly, and your stomach growls below 10. |
 | Badly hurt | At 10 health or less you hear your heartbeat, your vision clouds over and the music goes quiet. |
-| Inventory | 16 slots (G). Slots 1 to 8 are the hotbar. Click to use, and right-click (or Q) to put an item down, to stock your base. |
+| Inventory | 16 slots (G). Slots 1 to 8 are the hotbar. Click to use, and right-click (or Q) to put an item down, to stock your base. **Drop all** (the button in the inventory, or Shift+Q) puts everything down in a little pile at your feet. |
 | First aid | +30 health, takes 2.5 seconds to use. |
-| Falling | Landing faster than 13 m/s (about a 4 m drop) hurts. Landing **on top of** a bed, sofa, armchair, ottoman or mattress softens it a lot; a **beanbag** softens it from any side, even more, and a **giant plush bear** takes the whole fall. A long drop onto a bed bounces you. |
+| Sitting | Press **F** on a chair, stool, bench, sofa, armchair, ottoman, beanbag, bed or mattress to sit on it, where you aim along it. You get your breath back half again as fast sitting (3 energy a second). Move, jump or crouch to stand up; you step off the front, or wherever there's room. You can't sit on something lying on its side or with something just above the seat. |
+| Falling | Landing faster than 13 m/s (about a 4 m drop) hurts. Landing **on top of** a bed, sofa, armchair, ottoman or mattress softens it a lot; a **beanbag** or an **exercise ball** softens it from any side, even more, and a **giant plush bear** takes the whole fall. A long drop onto a bed bounces you. |
 | Death | You lose your inventory and what you carry. The screen shows what you did that life (furniture placed, staff shoved, things eaten, your favourite food, distance walked, your highest point); press **Wake up** (or Space) to wake 40 to 100 m away. A red marker shows where you were caught. |
 
 | Food | Hunger | Energy | Health |
@@ -119,6 +146,8 @@ turn that off).
 | Ice Cream | +6 | +13 | |
 | Old Beans | +18 | +5 | −10 |
 | Fizz Cola | | +17 | |
+| Vintage Fizz (a rarer can, the same as Fizz Cola) | | +17 | |
+| Slice of Cake (cafeterias) | +20 | +15 | |
 | Big Fizz (2 L) | | +23 | −5 |
 | Water | | +12 | +3 |
 | Cinnamon Swirl | +14 | +15 | |
@@ -174,7 +203,7 @@ turn that off).
 - **Doors** open and close with **F**. The staff can't open them.
 - **Screens**: five kinds of TV (flat-screen on a foot, wall-mounted, curved
   wall-mounted, box, and a monitor-sized mini TV) and arcade cabinets switch on
-  with F. A TV comes on to one of 24 channels (a summer field, colour bars, the
+  with F, and a screen that's on gives off a soft blue light in the dark. A TV comes on to one of 24 channels (a summer field, colour bars, the
   city at night, a boat at sea, the weather, the news, football, a sunset, an
   aquarium, mountains, space, a cooking show, a cat, a quiz show, a racing
   game, a forest, fireworks, the store's own advert, a test pattern, a rainy
@@ -197,6 +226,18 @@ turn that off).
   the big red button does... something.
 - **Head torch**: an inventory item. Select it and click to switch it on; it
   lights the way while it's in your hand, and friends see its light.
+- **Balls** bounce and roll as spheres, each with its own bounciness: a
+  small **bouncy ball** (it keeps bouncing for ages), a **play ball**, a
+  striped **beach ball** and a big soft **exercise ball** (land on it and it
+  breaks your fall from any side). **Walk into one to kick it**, harder when
+  you're sprinting. Drop or throw one and it bounces off the floor, walls and
+  furniture, rolls, slows and stops. They're in toy shops and play areas.
+- **Noisy toys**: a **rubber duck** squeaks, a **toy drum** bangs and a
+  **toy xylophone** plays a little tune (F). Anyone nearby hears it, and at
+  night so do the staff: the duck carries 12 m, the xylophone 20 m and the
+  drum 35 m. Bang a drum somewhere else to draw them off, then run.
+- **Toy blocks** and a **game console** (F starts it up) for the toy shop.
+- **Sitting**: F on any chair, sofa, stool, bench or bed (see Survival).
 - **Slide**: crouch while sprinting to slide along the floor.
 - Browsers don't let a page stop **Ctrl+W** closing the tab, so while you're
   in a store the browser asks before leaving (and a solo store is saved).
@@ -215,7 +256,9 @@ turn that off).
 | Held piece closer or farther | mouse wheel | |
 | Let go / throw | Q / F | Drop / Throw |
 | Hotbar / inventory | 1 to 8, wheel / G | tap a slot (tap again to use) / Bag |
-| Whistle | H | Whistle |
+| Whistle (hold for a long one) | H | Whistle |
+| Sit on a seat | F | |
+| Drop all | Shift+Q | |
 | Waypoint / clear waypoints | Z / Shift+Z | |
 | First / third person | V | |
 | Chat (online) / players | Enter / hold Tab | |
@@ -360,7 +403,8 @@ the staff.
 | `c` | everyone | chat (120 characters, plain text) |
 | `x` | everyone | "I was caught" |
 | `pu` | anyone | shove a member of staff (to the host) |
-| `wh` | anyone | I whistled here (the host lets the staff hear it) |
+| `wh` | anyone | I whistled here, short or long (the host lets the staff hear it) |
+| `nz` | anyone | I made a noise with a toy here (the host lets the staff hear it) |
 | `need` / `full` | newcomer / host | the list of changes, in parts |
 
 Furniture and staff are cheap to draw: each furniture model (type and
@@ -395,18 +439,19 @@ cd tools && npm install && npm run build
 | `furniture.js` | Furniture (with hollow collision parts, free rotation cut into collision strips) and food definitions and models; what each place stocks |
 | `staff.js` | Staff AI (host only): spawning, senses, path finding over standing surfaces with climbing, attacks, shoves, sizes |
 | `physics.js` | Standing-body movement against boxes: step-up, climbing, gravity, ceilings |
-| `fall.js` | Pieces falling or thrown on their own: a rigid box with gravity, tumbling, bounces and friction against the world's boxes |
+| `fall.js` | Pieces falling or thrown on their own: a rigid box with gravity, tumbling, bounces and friction against the world's boxes; balls as bouncing, rolling spheres |
 | `net.js` | Rooms, presence, host election, messages |
 | `env.js` | Day/night timing, the week and restocks, events, store clock, lighting levels |
 | `models.js` | Shopper and staff models, walk cycle, name tags, carried furniture |
 | `mats.js` | Surface types, detail texture, the store material (shader patch with ceiling lighting), contact shadows, light fittings, dust |
-| `geo.js` | Merged vertex-coloured geometry from boxes and cylinders |
+| `geo.js` | Merged vertex-coloured geometry from boxes, cylinders and spheres |
 | `input.js` | Keyboard, mouse (pointer lock) and touch controls |
 | `audio.js` | All sound and music, synthesised with Web Audio |
 | `rng.js` | Seeded hashing and random numbers |
 | `achievements.js` | The achievements, their counters, and saving them |
 | `tools/build.mjs` | Builds the single-file `index.html` |
 | `tools/test.cjs` | Solo smoke test (see below) |
+| `tools/test-items.cjs` | Whistling, sitting, TV light, kicking a ball, noisy toys, drop all |
 | `tools/test-mp.cjs`, `tools/mock-rt.js` | Two-player test with a stand-in realtime server |
 | `tools/shots.cjs` | Screenshots of the look: day, close-up, night, lamps, staff, third person, a grid pillar, a cafeteria hall, a warehouse street |
 | `tools/soak.cjs` | Runs through every day and night transition, including an old store's long nights, checking for errors |
@@ -419,6 +464,7 @@ the built file.
 ```bash
 node tools/test.cjs <screenshot-dir>
 node tools/test-mp.cjs <screenshot-dir>
+node tools/test-items.cjs
 ```
 
 `test.cjs` starts solo play and checks:
@@ -452,6 +498,8 @@ place of the realtime server). It checks:
 - a lamp switched off by the guest being off on both screens;
 - the host's staff, clock and hits reaching the guest;
 - chat arriving with a bubble over the speaker;
+- the guest's long whistle reaching the host as a "needs help" marker with
+  their name, and the guest sitting down showing as sitting;
 - the guest taking over as host, with the store's changes kept and anything
   the old host was carrying let go, when the host leaves.
 

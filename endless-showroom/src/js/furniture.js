@@ -980,6 +980,48 @@ export const TYPES = {
     for (let i = 0; i < 4; i++) { const y = 0.3 + i * 0.3, z = 0.33 - (y / 1.45) * 0.24; g.box(0, y, z, 0.44, 0.03, 0.1, shade(c, 0.9)); }
     g.box(0, 1.47, 0, 0.48, 0.05, 0.24, shade(c, 0.85)); g.box(0, 0.6, 0, 0.02, 0.02, 0.44, DARK);
   } },
+  // Balls (ball: [radius, bounciness]) roll and bounce as spheres when you
+  // drop, throw or kick them (walk into one). A rubber bouncy ball hardly
+  // stops; an exercise ball is big and soft enough to land on.
+  bouncyBall: { m: 'plastic', ball: [0.07, 0.86], name: 'Bouncy Ball', w: 0.14, d: 0.14, h: 0.14, hp: 10, cols: [0xe74c3c, 0x2ecc71, 0x9b59b6, 0xf1c40f], build(g, c) {
+    g.sphere(0, 0.07, 0, 0.07, (j, i) => (((j + i) >> 1) % 3 === 0 ? shade(c, 1.25) : c), 10, 7);
+  } },
+  playBall: { m: 'plastic', ball: [0.11, 0.62], name: 'Play Ball', w: 0.22, d: 0.22, h: 0.22, hp: 15, cols: [0xd63a2f, 0x2e86c1, 0x27ae60, 0xf39c12], build(g, c) {
+    g.sphere(0, 0.11, 0, 0.11, (j) => (j === 3 || j === 4 ? shade(c, 0.78) : c), 12, 8);
+  } },
+  beachBall: { m: 'plastic', ball: [0.2, 0.52], name: 'Beach Ball', w: 0.4, d: 0.4, h: 0.4, hp: 10, cols: [0xe74c3c, 0x2e86c1, 0x27ae60], build(g, c) {
+    const panels = [c, WHITE, 0xf1c40f, WHITE, 0x2e86c1, WHITE];
+    g.sphere(0, 0.2, 0, 0.2, (j, i) => (j === 0 || j === 7 ? WHITE : panels[Math.floor(i / 2) % 6]), 12, 8);
+  } },
+  exerciseBall: { m: 'plastic', soft: 'any', ball: [0.32, 0.42], name: 'Exercise Ball', w: 0.64, d: 0.64, h: 0.64, hp: 40, cols: [0x5a8fd6, 0x8e8e93, 0xd96aa0, 0x3daa8c], build(g, c) {
+    g.sphere(0, 0.32, 0, 0.32, (j) => (j === 4 ? shade(c, 0.85) : c), 16, 10);
+  } },
+  // Noisy toys: F makes a racket. At night the staff hear it (the drum from
+  // furthest away), so you can lure them somewhere, or give yourself away.
+  rubberDuck: { m: 'plastic', use: 'squeak', name: 'Rubber Duck', w: 0.16, d: 0.12, h: 0.15, hp: 5, cols: [0xf7d23a, 0xf2f2f2, 0xe74c3c], build(g, c) {
+    g.cyl(0, 0, 0, 0.065, 0.07, c, 10, 0.06); g.box(0.035, 0.05, 0, 0.06, 0.04, 0.09, c);
+    g.cyl(-0.035, 0.07, 0, 0.04, 0.06, c, 10, 0.035); g.box(-0.085, 0.1, 0, 0.04, 0.015, 0.03, 0xe67e22);
+    for (const sz of [-1, 1]) g.box(-0.05, 0.11, sz * 0.03, 0.012, 0.012, 0.01, 0x1a1a1e);
+  } },
+  toyDrum: { m: 'paint', use: 'drum', name: 'Toy Drum', w: 0.32, d: 0.32, h: 0.24, hp: 20, cols: [0xc0392b, 0x2e86c1, 0x27ae60], build(g, c) {
+    g.cyl(0, 0, 0, 0.15, 0.2, c, 14); g.cyl(0, 0.2, 0, 0.152, 0.012, 0xf2efe8, 14);
+    g.cyl(0, 0, 0, 0.158, 0.02, 0xf1c40f, 14); g.cyl(0, 0.18, 0, 0.158, 0.02, 0xf1c40f, 14);
+    for (const sx of [-1, 1]) g.box(sx * 0.05, 0.225, 0.06, 0.015, 0.015, 0.2, 0xc89a64);
+  } },
+  xylophone: { m: 'paint', use: 'tune', name: 'Toy Xylophone', w: 0.42, d: 0.2, h: 0.08, hp: 15, cols: [0xc89a64, 0x8a5a36], build(g, c) {
+    for (const sz of [-1, 1]) g.box(0, 0.015, sz * 0.07, 0.42, 0.03, 0.03, c);
+    const keys = [0xe74c3c, 0xe67e22, 0xf1c40f, 0x2ecc71, 0x1abc9c, 0x3498db, 0x9b59b6];
+    keys.forEach((k, i) => g.box(-0.18 + i * 0.06, 0.04, 0, 0.05, 0.015, 0.2 - i * 0.012, k));
+  } },
+  toyBlocks: { m: 'paint', name: 'Toy Blocks', w: 0.3, d: 0.2, h: 0.26, hp: 15, cols: [0xe74c3c, 0x3498db, 0x2ecc71], build(g, c) {
+    const cs = [c, 0xf1c40f, 0x3498db, 0x2ecc71, 0xe67e22, 0x9b59b6];
+    g.box(-0.08, 0.04, 0, 0.08, 0.08, 0.08, cs[0]); g.box(0, 0.04, 0.02, 0.08, 0.08, 0.08, cs[1]); g.box(0.08, 0.04, -0.03, 0.08, 0.08, 0.08, cs[2]);
+    g.box(-0.04, 0.12, 0.01, 0.08, 0.08, 0.08, cs[3]); g.box(0.045, 0.12, -0.01, 0.08, 0.08, 0.08, cs[4]); g.box(0, 0.2, 0, 0.08, 0.08, 0.08, cs[5]);
+  } },
+  gameConsole: { m: 'plastic', use: 'boot', name: 'Game Console', w: 0.22, d: 0.22, h: 0.2, hp: 25, cols: [0x6a4fb3, 0x2f2f33, 0xf2f2f2], build(g, c) {
+    g.box(0, 0.1, 0, 0.22, 0.2, 0.22, c); g.box(0, 0.12, 0.111, 0.14, 0.012, 0.002, shade(c, 0.6)); g.box(0.07, 0.04, 0.111, 0.02, 0.02, 0.002, 0x3dff7a);
+    g.box(0.12, 0.03, 0.05, 0.08, 0.02, 0.05, DARK); g.box(0.15, 0.04, 0.05, 0.015, 0.006, 0.015, 0xe74c3c);
+  } },
 };
 // Light strip colours: warm white, red, orange, green, blue, purple.
 export const STRIP_COLORS = [0xfff1d6, 0xff3b3b, 0xff9a2e, 0x3dff7a, 0x3d8bff, 0xb04dff];
@@ -1003,6 +1045,8 @@ export const ITEMS = {
   icecream: { name: 'Ice Cream', food: 6, en: 13, color: 0xf7e1d7, w: 0.07, d: 0.07, h: 0.18 },
   beans: { name: 'Old Beans', food: 18, en: 5, hp: -10, color: 0x8e9a5b, w: 0.08, d: 0.08, h: 0.11 },
   soda: { name: 'Fizz Cola', en: 17, color: 0xc0392b, w: 0.07, d: 0.07, h: 0.13 },
+  sodaGold: { name: 'Vintage Fizz', en: 17, color: 0xb8892b, w: 0.07, d: 0.07, h: 0.13 },
+  cake: { name: 'Slice of Cake', food: 20, en: 15, color: 0xf3d9c4, w: 0.12, d: 0.1, h: 0.09 },
   bigsoda: { name: 'Big Fizz (2 L)', en: 23, hp: -5, color: 0x922b21, w: 0.11, d: 0.11, h: 0.33 },
   water: { name: 'Water', en: 12, hp: 3, color: 0x85c1e9, w: 0.07, d: 0.07, h: 0.24 },
   cinnamon: { name: 'Cinnamon Swirl', food: 14, en: 15, color: 0xb9743f, w: 0.12, d: 0.12, h: 0.06 },
@@ -1017,11 +1061,11 @@ export const ITEMS = {
 };
 // What each kind of place stocks.
 export const STOCK = {
-  cafeteria: ['pizza', 'pizza', 'pizza', 'burger', 'burger', 'chips', 'chips', 'chips', 'chips', 'stew', 'stew', 'banana', 'banana', 'apple', 'orange', 'pastry', 'hotdog', 'donut', 'beans', 'soda', 'bigsoda', 'water', 'water', 'water', 'cinnamon', 'cinnamon', 'lemon', 'lemon'],
+  cafeteria: ['pizza', 'pizza', 'pizza', 'burger', 'burger', 'chips', 'chips', 'chips', 'chips', 'stew', 'stew', 'banana', 'banana', 'apple', 'orange', 'pastry', 'hotdog', 'donut', 'beans', 'soda', 'bigsoda', 'water', 'water', 'water', 'cinnamon', 'cinnamon', 'lemon', 'lemon', 'cake', 'cake', 'sodaGold'],
   kitchen: ['hotdog', 'pizza', 'pizza', 'cookie', 'orange', 'water', 'lemon', 'lemonSlice'],
   bedroom: ['crackers', 'crackers', 'pizza', 'cookie'],
   greenhouse: ['glass', 'glass', 'glass', 'glass'],
-  snack: ['icecream', 'icecream', 'soda', 'soda', 'chips', 'chocolate'],
+  snack: ['icecream', 'icecream', 'soda', 'soda', 'sodaGold', 'chips', 'chocolate'],
   play: ['apple', 'apple', 'cookie'],
   any: ['chips', 'water', 'soda', 'apple', 'cookie', 'pizza', 'beans'],
 };
@@ -1071,12 +1115,22 @@ export function furnitureGeometry(type, variant, state = 0) {
   return g;
 }
 
+// Things you can sit on (F): [seat height, where along front-to-back you sit
+// (local z, the front is +z)]. On anything wide you sit where you aim along it.
+const SEATS = {
+  chair: [0.48, 0.02], cafeChair: [0.48, 0.03], stool: [0.65, 0], barStool: [0.78, 0], bench: [0.45, 0], longBench: [0.45, 0],
+  ottoman: [0.42, 0], sofa: [0.48, 0.1], armchair: [0.4, 0.08], cornerSofa: [0.48, 0.2], loveseat: [0.48, 0.08], sofaModule: [0.48, 0.08],
+  sofaCornerModule: [0.48, 0.08], beanbag: [0.45, 0.08], bedSingle: [0.5, 0.3], bedDouble: [0.5, 0.3], queenBed: [0.5, 0.3], bunkBed: [0.48, 0.3],
+  mattress: [0.2, 0], officeChair: [0.53, 0.03],
+};
+for (const [k, v] of Object.entries(SEATS)) if (TYPES[k]) TYPES[k].seat = v;
+
 export function itemGeometry(kind) {
   const key = 'item:' + kind;
   let g = geoCache.get(key);
   if (!g) {
     const it = ITEMS[kind], b = new GeoBuilder();
-    b.mat = kind === 'glass' ? SURF.plastic : ['chips', 'chocolate', 'cookie', 'pastry', 'donut', 'burger', 'hotdog', 'pizza', 'cinnamon', 'crackers'].includes(kind) ? SURF.paint : SURF.plastic;
+    b.mat = kind === 'glass' ? SURF.plastic : ['chips', 'chocolate', 'cookie', 'pastry', 'donut', 'burger', 'hotdog', 'pizza', 'cinnamon', 'crackers', 'cake'].includes(kind) ? SURF.paint : SURF.plastic;
     const c = it.color;
     switch (kind) {
       case 'medkit': b.box(0, 0.07, 0, 0.3, 0.14, 0.2, c); b.box(0, 0.141, 0, 0.1, 0.004, 0.03, 0xf5f5f5); b.box(0, 0.141, 0, 0.03, 0.004, 0.1, 0xf5f5f5); b.box(0, 0.16, 0, 0.12, 0.02, 0.03, 0x555555); break;
@@ -1094,6 +1148,10 @@ export function itemGeometry(kind) {
       case 'icecream': b.cyl(0, 0, 0, 0.008, 0.12, 0xd4a35e, 8, 0.035); b.cyl(0, 0.115, 0, 0.038, 0.05, c, 10, 0.02); break;
       case 'beans': b.cyl(0, 0, 0, 0.04, 0.11, 0xb7bcc2, 10); b.cyl(0, 0.02, 0, 0.041, 0.07, c, 10); break;
       case 'soda': b.cyl(0, 0, 0, 0.035, 0.13, c, 10); b.cyl(0, 0.13, 0, 0.026, 0.012, 0xcccccc, 8); break;
+      case 'sodaGold': b.cyl(0, 0, 0, 0.035, 0.13, c, 10); b.cyl(0, 0.045, 0, 0.0355, 0.04, 0x1d1d1f, 10); b.cyl(0, 0.13, 0, 0.026, 0.012, 0xe8d08a, 8); break;
+      case 'cake': // a wedge: sponge, a layer of jam, icing on top and a cherry
+        b.box(0, 0.025, 0, 0.11, 0.05, 0.06, 0xe8c48a); b.box(0, 0.052, 0, 0.11, 0.006, 0.06, 0xc0392b); b.box(0.005, 0.07, 0, 0.1, 0.03, 0.055, 0xe8c48a);
+        b.box(0, 0.088, 0, 0.11, 0.008, 0.062, c); b.box(-0.03, 0.098, 0, 0.018, 0.016, 0.018, 0xb0202a); break;
       case 'bigsoda': b.cyl(0, 0, 0, 0.055, 0.26, c, 10); b.cyl(0, 0.26, 0, 0.055, 0.05, c, 10, 0.02); b.cyl(0, 0.31, 0, 0.018, 0.02, 0xeeeeee, 8); b.cyl(0, 0.09, 0, 0.056, 0.08, 0xf2f2f2, 10); break;
       case 'water': b.cyl(0, 0, 0, 0.035, 0.19, c, 10); b.cyl(0, 0.19, 0, 0.035, 0.04, c, 10, 0.014); b.cyl(0, 0.23, 0, 0.015, 0.015, 0x2e86c1, 8); break;
       case 'cinnamon': b.cyl(0, 0, 0, 0.06, 0.045, c, 12, 0.055); b.cyl(0, 0.045, 0, 0.045, 0.006, 0x8a4f25, 10); b.cyl(0, 0.05, 0, 0.022, 0.006, 0xf6ead2, 8); break;

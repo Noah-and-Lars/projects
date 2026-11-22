@@ -111,6 +111,14 @@ input, select { font: inherit; color: var(--ink); }
 .mark.wp.death { color: var(--closed); }
 .mark.staff { color: #ff4a3a; }
 .mark.mate { color: #7cc3ff; }
+.mark.whistle { color: #7cc3ff; font-size: 14px; transition: opacity 0.9s; }
+.mark.whistle.help { color: var(--closed); animation: help-pulse 0.7s steps(2) infinite; }
+.mark.whistle.fade { opacity: 0; }
+.mark.edge { margin: -9px 0 0 -9px; padding-left: 26px; }
+.mark.edge::before { display: none; }
+.mark .arr { position: absolute; left: 0; top: 1px; width: 16px; height: 16px; }
+.mark .arr::before { content: ''; position: absolute; left: 3px; top: 2px; border-left: 12px solid currentColor; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
+@keyframes help-pulse { 50% { opacity: 0.55; } }
 
 /* ---- The incident report (death) ---- */
 #death { position: fixed; inset: 0; z-index: 8; display: grid; place-items: center; background: rgba(5, 3, 3, 0.86); padding: 16px; }
@@ -239,4 +247,7 @@ body.touch #bars { width: 160px; bottom: auto; top: calc(max(12px, env(safe-area
   .slot { width: 44px; height: 44px; font-size: 9px; }
   #bars { width: 170px; }
 }
-@media (prefers-reduced-motion: reduce) { #menu .logo { animation: none; } #daytitle.show { animation-duration: 4.5s; } }
+@media (prefers-reduced-motion: reduce) { #menu .logo, .mark.whistle.help { animation: none; } #daytitle.show { animation-duration: 4.5s; } }
+
+.inv-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.inv-actions .back { margin-top: 0; flex: 1 1 160px; width: auto; }

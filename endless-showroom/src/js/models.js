@@ -155,6 +155,11 @@ export function animate(m, speed, dt, opts = {}) {
   else if (opts.reach) { m.armL.rotation.x = -1.5; m.armR.rotation.x = -1.5 + Math.sin(opts.reach * 20) * 0.4; }
   else { m.armL.rotation.x = -s * 0.8; m.armR.rotation.x = s * 0.8; }
   m.body.position.y = Math.abs(Math.cos(m.phase)) * 0.05 * amp;
+  if (opts.sit) { // sitting: thighs forward, hands in the lap, hips down on the seat
+    m.legL.rotation.x = m.legR.rotation.x = -1.45;
+    m.armL.rotation.x = m.armR.rotation.x = -0.5;
+    m.body.position.y = -0.74;
+  }
   if (m.crouchK !== undefined || opts.crouch) {
     m.crouchK = (m.crouchK || 0) + ((opts.crouch ? 1 : 0) - (m.crouchK || 0)) * Math.min(1, dt * 10);
     m.body.scale.y = 1 - m.crouchK * 0.42;

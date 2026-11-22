@@ -110,17 +110,55 @@ export const sfx = {
     for (let i = 0; i < 6; i++) setTimeout(() => { burst(0.04, 3000, 0.08, 3); tone(120, 0.06, 'square', 0.05); }, 120 + i * 90 + Math.random() * 60);
     tone(523, 0.5, 'sine', 0.12, 0.9); tone(659, 0.5, 'sine', 0.12, 1.15); tone(784, 0.8, 'sine', 0.12, 1.4);
   },
-  // A two-note finger whistle, panned towards whoever made it.
-  whistle(pan = 0, vol = 1) {
+  // A finger whistle, panned towards whoever made it and muffled with
+  // distance (far 0..1). A short one is two notes ("over here"); a long one
+  // ("help!") is a rising call, a held note and a fall, louder.
+  whistle(pan = 0, vol = 1, long = false, far = 0) {
     if (!ctx) return;
     const t = ctx.currentTime;
-    for (const [f0, f1, at, dur] of [[1900, 2500, 0, 0.22], [2500, 1700, 0.3, 0.5]]) {
+    const notes = long ? [[1700, 2700, 0, 0.32], [2700, 2650, 0.34, 0.55], [2650, 1500, 0.92, 0.6]] : [[1900, 2500, 0, 0.22], [2500, 1700, 0.3, 0.5]];
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400 + 16000 * Math.pow(1 - Math.min(1, far), 2.2);
+    let out = lp; if (ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; lp.connect(p); out = p; }
+    out.connect(master);
+    const peak = (long ? 0.2 : 0.16) * vol;
+    for (const [f0, f1, at, dur] of notes) {
       const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f0, t + at); o.frequency.exponentialRampToValueAtTime(f1, t + at + dur);
-      const g = ctx.createGain(); g.gain.setValueAtTime(0, t + at); g.gain.linearRampToValueAtTime(0.16 * vol, t + at + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + at + dur);
-      let node = g; if (ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; g.connect(p); node = p; }
-      o.connect(g); node.connect(master); o.start(t + at); o.stop(t + at + dur + 0.05);
+      // a little warble, like a real whistle
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 6 + Math.random() * 2; const lg = ctx.createGain(); lg.gain.value = f0 * 0.012; lfo.connect(lg); lg.connect(o.frequency);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, t + at); g.gain.linearRampToValueAtTime(peak, t + at + 0.03); g.gain.setValueAtTime(peak, t + at + dur * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + at + dur);
+      o.connect(g); g.connect(lp); o.start(t + at); o.stop(t + at + dur + 0.05); lfo.start(t + at); lfo.stop(t + at + dur + 0.05);
     }
   },
+  // Toys. A squeaky duck, a drum, a little tune on a xylophone, a console
+  // starting up, and a ball bouncing (higher for a small one). vol and pan
+  // are for hearing someone else's from a distance.
+  squeak(vol = 1, pan = 0) {
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    for (const [at, f0, f1] of [[0, 900, 1500], [0.16, 1500, 800]]) {
+      const o = ctx.createOscillator(); o.type = 'square'; o.frequency.setValueAtTime(f0, t + at); o.frequency.exponentialRampToValueAtTime(f1, t + at + 0.13);
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1300; f.Q.value = 2;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.12 * vol, t + at); g.gain.exponentialRampToValueAtTime(0.0001, t + at + 0.14);
+      let node = g; if (ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; g.connect(p); node = p; }
+      o.connect(f); f.connect(g); node.connect(master); o.start(t + at); o.stop(t + at + 0.16);
+    }
+  },
+  drum(vol = 1, pan = 0) {
+    if (!ctx) return;
+    for (let i = 0; i < 4; i++) setTimeout(() => { burst(0.09, 180 + Math.random() * 40, 0.4 * vol, 0.9, 'lowpass', pan); burst(0.05, 2400, 0.08 * vol, 2, 'bandpass', pan); }, i * (i === 3 ? 170 : 130));
+  },
+  tune(vol = 1, pan = 0) {
+    if (!ctx) return;
+    const scale = [523, 587, 659, 784, 880, 1047], notes = [0, 2, 4, 2, 5].map((k) => scale[(k + ((Math.random() * 2) | 0)) % scale.length]);
+    notes.forEach((f, i) => setTimeout(() => {
+      const t = ctx.currentTime, o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.16 * vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+      let node = g; if (ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; g.connect(p); node = p; }
+      o.connect(g); node.connect(master); o.start(t); o.stop(t + 0.5);
+    }, i * 160));
+  },
+  boot() { tone(392, 0.12, 'square', 0.05); tone(523, 0.12, 'square', 0.05, 0.12); tone(784, 0.3, 'square', 0.05, 0.24); },
+  bounce(size = 0.1, vol = 1) { if (!ctx) return; tone(260 / Math.max(0.05, size) * 0.12 + 90, 0.07, 'sine', 0.12 * Math.min(1, vol), 0, -40); burst(0.03, 1800, 0.04 * Math.min(1, vol), 2); },
   hailTick() { burst(0.03, 2500 + Math.random() * 3000, 0.04 + Math.random() * 0.05, 3, 'bandpass', Math.random() * 2 - 1); },
   staffStep(pan, vol) { burst(0.12, 110 + Math.random() * 30, 0.22 * vol, 1.1, 'lowpass', pan); },
   shove() { burst(0.12, 300, 0.35, 0.8); tone(90, 0.12, 'sine', 0.2); },

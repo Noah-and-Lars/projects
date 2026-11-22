@@ -3,7 +3,8 @@
 // stand-in realtime server (mock-rt.js). Checks: joining a private room by
 // code, the same store on both screens, seeing each other, furniture moved on
 // one screen moving on the other, the host's staff showing up on the guest,
-// staff hits reaching the guest, and the guest taking over when the host leaves.
+// staff hits reaching the guest, a whistle and sitting reaching the other
+// screen, and the guest taking over when the host leaves.
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
@@ -113,6 +114,22 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   await B.evaluate(() => { const P = __game.P; P.inv[0] = 'torch'; P.sel = 0; P.torchOn = true; });
   await A.waitForTimeout(1500);
   check(await A.evaluate(() => { const r = [...__game.remotes.values()][0]; return !!(r && r.st && r.st.tc); }), "the guest's head torch shows on the host's screen");
+
+  // Bravo whistles for help (holds H): Alpha gets a "needs help" marker with Bravo's name
+  await B.evaluate(() => { __game.P.whistleT = 0; });
+  await B.keyboard.down('KeyH');
+  await B.waitForFunction(() => __game.P.whistleT > 0, null, { timeout: 120000, polling: 100 });
+  await B.keyboard.up('KeyH');
+  await A.waitForFunction(() => __game.beacons.length > 0, null, { timeout: 30000 }).catch(() => {});
+  const bc = await A.evaluate(() => __game.beacons.map((b) => ({ name: b.name, long: b.long })));
+  check(bc.length === 1 && bc[0].name === 'Bravo' && bc[0].long, `the guest's long whistle shows on the host's screen as a help marker (${JSON.stringify(bc)})`);
+  // Bravo sits on a chair: Alpha sees them sitting
+  const before = await B.evaluate(() => [__game.P.x, __game.P.y, __game.P.z]);
+  const seat = await B.evaluate(() => { const P = __game.P, w = __game.world; w.applyState('mp:chair', { t: 'chair', k: 'f', v: 0, x: P.x + 40, y: 0, z: P.z + 40, r: 0 }); const it = w.items.get('mp:chair'); const ok = __game.sitForTest('mp:chair'); return ok; });
+  if (seat) await A.waitForFunction(() => { const r = [...__game.remotes.values()][0]; return !!(r && r.st && r.st.si); }, null, { timeout: 30000 }).catch(() => {});
+  check(seat && await A.evaluate(() => { const r = [...__game.remotes.values()][0]; return !!(r && r.st && r.st.si); }), 'the guest sitting down shows as sitting on the host\'s screen');
+  // back where Bravo was, and the test chair (only on Bravo's screen) taken away again
+  await B.evaluate((b) => { const P = __game.P, w = __game.world; P.sit = null; [P.x, P.y, P.z] = b; const it = w.items.get('mp:chair'); w.applyState('mp:chair', Object.assign(w.stateOf(it), { g: true })); }, before);
 
   // Bravo (guest) picks something up: goes through the host.
   const gid = await B.evaluate(() => {

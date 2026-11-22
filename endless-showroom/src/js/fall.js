@@ -160,3 +160,63 @@ export function bodyMatrix(b, m4) {
   _v.set(0, -b.he.y, 0).applyQuaternion(b.q).add(b.p);
   return m4.compose(_v, b.q, _a.set(1, 1, 1));
 }
+
+// ---------------------------------------------------------------- balls
+// A ball is a sphere, not a box: it bounces off the floor, walls and
+// furniture with its own bounciness (a rubber bouncy ball keeps going for a
+// long time), and rolls along the floor, slowing as it goes. Its spin is just
+// for show: it turns as it rolls.
+export function makeBall(r, bounce, c, vel) {
+  return { ball: true, r, bounce, p: c.clone(), v: vel.clone(), q: new THREE.Quaternion(), still: 0, age: 0, done: false, touching: false };
+}
+export function stepBall(b, dt, boxes, ceil) {
+  let impact = 0;
+  const n = Math.min(12, Math.max(1, Math.ceil(b.v.length() * dt / (b.r * 0.5))));
+  const h = dt / n;
+  // slower than a step's worth of gravity, a contact doesn't bounce (or a ball
+  // lying on the floor would hop on its own when the frame rate is low)
+  const rest = Math.max(0.35, G * h * 1.6);
+  for (let s = 0; s < n; s++) {
+    b.v.y -= G * h;
+    b.p.addScaledVector(b.v, h);
+    let touching = false;
+    const hit = (nx, ny, nz, depth) => {
+      _n.set(nx, ny, nz);
+      b.p.addScaledVector(_n, depth);
+      const vn = b.v.dot(_n);
+      if (vn < 0) {
+        if (-vn > impact) impact = -vn;
+        // a bounce, unless it's barely moving into the surface (then it rolls)
+        b.v.addScaledVector(_n, -vn * (-vn > rest ? 1 + b.bounce : 1));
+      }
+      touching = true;
+      if (ny > 0.5) { // rolling on something: slows down, and turns as it goes
+        b.v.x *= Math.exp(-h * 0.9); b.v.z *= Math.exp(-h * 0.9);
+        _t.set(b.v.z, 0, -b.v.x); const sp = _t.length();
+        if (sp > 1e-4) { _q.setFromAxisAngle(_t.divideScalar(sp), sp / b.r * h); b.q.premultiply(_q); }
+      }
+    };
+    if (b.p.y - b.r < 0) hit(0, 1, 0, b.r - b.p.y);
+    if (b.p.y + b.r > ceil) hit(0, -1, 0, b.p.y + b.r - ceil);
+    for (const o of boxes) {
+      // the nearest point of the box to the centre
+      const cx = Math.max(o.x0, Math.min(b.p.x, o.x1)), cy = Math.max(o.y0, Math.min(b.p.y, o.y1)), cz = Math.max(o.z0, Math.min(b.p.z, o.z1));
+      const dx = b.p.x - cx, dy = b.p.y - cy, dz = b.p.z - cz, d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 >= b.r * b.r) continue;
+      if (d2 > 1e-10) { const d = Math.sqrt(d2); hit(dx / d, dy / d, dz / d, b.r - d); }
+      else hit(0, 1, 0, o.y1 - b.p.y + b.r); // the centre's inside it: out of the top
+    }
+    b.touching = touching;
+  }
+  b.q.normalize();
+  b.age += dt;
+  const slow = b.v.length() < 0.08;
+  b.still = slow && b.touching ? b.still + dt : 0;
+  if (b.still > 0.3 || b.age > 20) b.done = true;
+  return impact;
+}
+// The model's matrix for a ball (the model's origin is the bottom of the ball).
+export function ballMatrix(b, m4) {
+  _v.set(0, -b.r, 0).applyQuaternion(b.q).add(b.p);
+  return m4.compose(_v, b.q, _a.set(1, 1, 1));
+}
