@@ -15,6 +15,7 @@
      family profiles, signing in with a phone and the first-time tour.
    Settings live in 'arcade-acct-tv' (the arcade-acct prefix keeps them on this device, out of the cloud sync).
    2026-11-22 (console.js?v=5): Up/Down scroll a focused scrollable box (the Terms of Service) before moving on.
+   2026-11-22 (console.js?v=6): Up/Down from a text box move on from that box (they used to jump back to the first item).
    On an Apple Watch (html.watch) this file only loads watch.js. */
 (function () {
   var me = document.currentScript && document.currentScript.src, base = me ? me.replace(/console\.js(\?.*)?$/, '') : '';
@@ -234,8 +235,8 @@
     a.scrollTop += (dir === 'down' ? 1 : -1) * Math.max(60, a.clientHeight * 0.8);
     return true;
   }
-  function move(dir) {
-    var l = list(), a = document.activeElement;
+  function move(dir, from) {
+    var l = list(), a = from && from !== document.body && from.isConnected ? from : document.activeElement;
     if (scrollBox(a, dir)) return;
     if (!a || a === document.body || l.indexOf(a) < 0) { var f = firstFocus(); if (f) focus(f); return; }
     var ra = a.getBoundingClientRect(), ax = ra.left + ra.width / 2, ay = ra.top + ra.height / 2, best = null, bd = 1e18;
@@ -299,7 +300,9 @@
     if (k === 'Enter' && textField(document.activeElement) && !document.activeElement.value && window.ArcadeTV && ArcadeTV.osk && opt('osk')) { e.preventDefault(); e.stopPropagation(); ArcadeTV.osk(document.activeElement); return; }
     if (typing() && (k === 'ArrowLeft' || k === 'ArrowRight')) return;
     var dir = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[k];
-    if (dir) { e.preventDefault(); if (typing()) document.activeElement.blur(); move(dir); }
+    // 2026-11-22 (v=6): remember the text box before letting go of it, so the move starts from there (it used to restart
+    // from the first item, so Down from Username went back up to the top and Password could never be reached)
+    if (dir) { e.preventDefault(); var from = document.activeElement; if (typing()) from.blur(); move(dir, from); }
   }, true);
 
   /* ---------- controllers (standard mapping) ---------- */

@@ -11,6 +11,7 @@
 <script>
 // 2026-11-13: the download page for The Arcade app (Tauri, ~/Downloads/arcade-app). Only the "Download" button on the
 // app banner (appbanner.js) links here. Inside the app itself (window.ARCADE_APP, set by the app) it goes straight home.
+// 2026-11-22: Android TV has its own APK, TheArcade-androidtv.apk (1.0.1a, `TV=1 ./build.sh`: smoother on TVs, keyboard only on OK)
 // 2026-11-15: and the Android app (~/Downloads/arcade-android, one APK for phones, tablets and Android TV), which also
 // says "TheArcadeApp/" in its browser name.
 if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app') || /TheArcadeApp\//.test(navigator.userAgent)) location.replace('../');
@@ -149,9 +150,9 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
     </div>
     <div class="card" id="and-tv">
       <div class="head"><span class="os"><svg viewBox="0 0 24 24"><path d="M21 3H3a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5v2h8v-2h5a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 14H3V5h18z"/></svg></span><div><h3>Android TV</h3><small>Google TV, Chromecast, Nvidia Shield, Sony and TCL TVs</small></div></div>
-      <p>The same app opens in the big-screen layout, played with the TV remote or a controller, and shows on your TV's home screen. Install it with the free Downloader app.</p>
-      <div class="meta">Android TV 7.0 or later · .apk · 0.2 MB</div>
-      <a class="dl" href="TheArcade-android.apk" download><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>Download for Android TV</a>
+      <p>Its own TV version, built to run smoothly on TVs: the big-screen layout, played with the TV remote or a controller, and on your TV's home screen. Install it with the free Downloader app.</p>
+      <div class="meta">Android TV 7.0 or later · version 1.0.1a · .apk · 0.2 MB</div>
+      <a class="dl" href="TheArcade-androidtv.apk" download><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM5 18h14v2H5z"/></svg>Download for Android TV</a>
     </div>
   </div>
 
@@ -223,7 +224,7 @@ if (window.ARCADE_APP || document.documentElement.classList.contains('arcade-app
     <div><h4>On a Mac</h4><ol><li>Open the <b>.dmg</b> file.</li><li>Drag <b>The Arcade</b> into <b>Applications</b>.</li><li>Open it from Applications or Launchpad. If macOS warns you, use <b>Open Anyway</b> (see above). On macOS 10.9 to 10.12: right-click the app, choose <b>Open</b>, then <b>Open</b> again.</li><li>Log in with your Arcade account and all your progress is there.</li></ol></div>
     <div><h4>On Windows</h4><ol><li>Run the <b>setup .exe</b>.</li><li>If SmartScreen appears, click <b>More info → Run anyway</b>.</li><li>Follow the installer. The Arcade goes in your Start menu.</li><li>Log in with your Arcade account and all your progress is there.</li></ol></div>
     <div><h4>On an Android phone</h4><ol><li>Tap the downloaded <b>.apk</b> (or open it from Downloads).</li><li>Allow your browser to <b>install unknown apps</b> when asked.</li><li>Tap <b>Install</b>, then open The Arcade.</li><li>Log in with your Arcade account and all your progress is there.</li></ol></div>
-    <div><h4>On Android TV</h4><ol><li>Install the free <b>Downloader</b> app from the TV's Play Store.</li><li>In Settings, allow Downloader to <b>install unknown apps</b>.</li><li>Open Downloader and type <b>noah-and-lars.github.io/projects/app/TheArcade-android.apk</b>.</li><li>Install it: The Arcade appears on your TV's home screen.</li></ol></div>
+    <div><h4>On Android TV</h4><ol><li>Install the free <b>Downloader</b> app from the TV's Play Store.</li><li>In Settings, allow Downloader to <b>install unknown apps</b>.</li><li>Open Downloader and type <b>noah-and-lars.github.io/projects/app/TheArcade-androidtv.apk</b>.</li><li>Install it: The Arcade appears on your TV's home screen.</li></ol></div>
     <div id="tizen-how"><h4>On a Samsung TV</h4><ol><li>On a computer, install the free <b>Tizen Studio</b> from Samsung, then in its Package Manager add <b>Samsung Certificate Extension</b> and <b>TV Extensions</b>.</li><li>On the TV: <b>Apps</b>, then press <b>1 2 3 4 5</b> on the remote, turn <b>Developer mode</b> on, type your computer's IP address and restart the TV.</li><li>In Tizen Studio's <b>Device Manager</b>, add the TV by its IP address. In <b>Certificate Manager</b>, make a <b>Samsung</b> certificate (sign in with a Samsung account) for that TV.</li><li>Sign and install: <b>tizen package -t wgt -s <i>your certificate</i> -- TheArcade-tizen.wgt</b>, then <b>tizen install -n TheArcade-tizen.wgt</b>. The Arcade appears in the TV's Apps.</li></ol></div>
     <div id="cb-how"><h4>On a Chromebook</h4><ol><li><b>Install from Chrome:</b> click <b>Install The Arcade</b> above, or the install icon at the right of the address bar, or <b>⋮ → Cast, save and share → Install page as app</b>.</li><li><b>Chromebook app (.apk):</b> Chromebooks only install .apk files with <b>ADB debugging</b> on: Settings → Advanced → Developers → <b>Linux development environment</b> → <b>Develop Android apps</b> → <b>Enable ADB debugging</b>. Then open the downloaded file from the Files app (or run <b>adb install TheArcade-chromebook.apk</b> in Linux).</li><li>On a school or work Chromebook use <b>Install from Chrome</b>: they don't allow .apk files.</li><li>Log in with your Arcade account and all your progress is there.</li></ol></div>
   </div>
