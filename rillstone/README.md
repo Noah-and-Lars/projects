@@ -116,6 +116,32 @@ Millbrook sits across the bridge from the Gravel Bar.
 - **Saving.** The pause menu has 3 save slots (autosave every 3 minutes),
   plus export and import of `.rillsave` files.
 
+## Machines and water
+
+Buy machines at the **Millwright** and **Foundry Yard**. They arrive as
+crates.
+
+- **Placing.** Hold a crate to see a placement ghost (green fits, magenta
+  doesn't). R rotates and LMB places. A placed machine is unlocked: E picks
+  it back up, and the **Mallet** locks it (LMB) or unlocks it (RMB).
+- **Machine panel.** RMB opens it: status, water, speed, wear, settings.
+- **Water.** A **River Intake** (mouth in the river) supplies water. Lay
+  **pipe** by holding a coil and clicking one machine's brass port, then
+  another's. A **Pipe Junction** splits one supply between machines.
+- **Flow.** Each network shares its flow: machines run at
+  `0.2 + 0.8 × min(1, supply / demand)` of full speed, so too little water
+  slows them rather than stopping them.
+- **Silt.** River silt wears drills and sluices. Settling tanks clean the
+  water, and the Wrench and Repair Kit fix wear.
+- **A first line.** Put a **Drill** in your claim with its spout over a
+  **Sluice**'s hopper and pipe water to both. It digs and washes on its own,
+  spilling finds out of the sluice's end.
+- **Heat.** The **Kiln** (quartz fuel) or the **Crucible** melts one ore at
+  a time; pour it from the panel to get a hot ingot. The **Workbench** turns
+  a hot ingot into a tool head, ring, chain or chalice; hold a cut gem in
+  your swap slot to set it into a ring or chalice. The **Grinding Wheel**
+  cuts gems (3 clicks).
+
 ## The valley
 
 Rillstone Vale is about 600 × 600 m, shaped by `src/js/world/valley.js`.
@@ -163,6 +189,8 @@ underground, and L toggles it.
 | `js/game/vehicles.js`, `js/defs/vehicles.js` | The Old Hauler: model, wheels, driving input, chase camera, fuel, unflip, cargo |
 | `js/core/save.js` | IndexedDB save slots with A/B halves, migrations, `.rillsave` export/import |
 | `js/ui/panels.js` | Shop, contracts and save panels |
+| `js/sim/flow.js` | Water flow budget: networks, sources, boosters, tanks, widest-path pipe limits, silt |
+| `js/defs/machines.js`, `js/game/machines.js` | Machine models and specs; placement ghost, pipe runs, item links, production, furnaces, crafting, wear, machine panels |
 | `js/game/player.js` | First-person controller: input to wanted velocity, view angles, smoothed camera |
 | `js/ui/hud.js`, `js/ui/menu.js`, `style.css` | HUD, title, pause and settings panels |
 | `js/core/workers.js` | Starts workers from Blob URLs (bundled strings in the build, rewritten modules in dev) |
@@ -199,6 +227,9 @@ outside request to prove the file is self-contained. Add `--src` to test
 - earns § 1,000 by panning and selling, buys the starter kit, carries a
   nugget in the truck bed, drives over fresh ruts (benchmark 3), unflips the
   truck, saves, reloads the page and checks everything persists (`--town`);
+- runs an intake → drill → sluice line for 10 simulated minutes, checks that
+  halving the intake slows it by the formula, and melts, cuts and crafts a
+  ring (`--machines`);
 - runs digging benchmark 1 and screenshots the depth bands, the drop ring,
   a tooltip and panning;
 - fails on any console error.

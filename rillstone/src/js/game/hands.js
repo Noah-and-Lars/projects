@@ -16,7 +16,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
   scene.add(camera);
   const holder = new THREE.Group(); holder.position.set(0.34, -0.32, -0.62); camera.add(holder);
   let held3d = null, heldKey = '';
-  function heldKeyOf(e) { return e ? `${e.id}:${e.data?.loads?.length || 0}:${e.data?.contents?.length || 0}` : ''; }
+  function heldKeyOf(e) { return e ? `${e.id}:${e.data?.loads?.length || 0}:${e.data?.contents?.length || 0}:${e.item?.stage}:${e.item?.hotUntil > items.clock ? 1 : 0}:${e.data?.m ?? ''}` : ''; }
   function rebuildHeld() {
     const e = H.hand ? items.get(H.hand) : null;
     const k = heldKeyOf(e);
@@ -25,9 +25,10 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (held3d) { holder.remove(held3d); held3d.geometry.dispose(); held3d = null; }
     if (!e) return;
     let geo, mat = materials.vcolor;
-    if (e.type === 'nugget') { geo = nuggetGeometry(MATERIALS[e.item.material].kind, e.item.material.length * 7); const s = Math.max(0.1, nuggetSize(e.item.kg, e.item.material)); geo.scale(s, s, s); mat = new THREE.MeshStandardMaterial({ color: MATERIALS[e.item.material].color, metalness: MATERIALS[e.item.material].metal, roughness: 0.4, flatShading: true, vertexColors: true }); }
+    if (e.type === 'nugget') { const m = items.buildMesh(e); geo = m.geometry; mat = m.material; const s = nuggetSize(e.item.kg, e.item.material, e.item.stage); if (s < 0.1) geo.scale(0.1 / s, 0.1 / s, 0.1 / s); }
     else if (e.type === 'clod') geo = clodGeometry(e.data.band);
-    else geo = toolGeometry(e.type, e.data);
+    else if (TOOLS[e.type]) geo = toolGeometry(e.type, e.data);
+    else { const m = items.buildMesh(e); geo = m.geometry; mat = m.material; if (e.type === 'crate') { geo.scale(0.3, 0.3, 0.3); geo.translate(0.02, -0.06, -0.05); } }
     held3d = new THREE.Mesh(geo, mat);
     if (e.type === 'shovel') { held3d.rotation.set(0.2, 3.56, 0.04); held3d.position.set(0.17, -0.03, 0.2); held3d.scale.setScalar(0.85); } // carried blade-forward, tip up, scoop facing you; shaft runs off bottom-right
     else if (e.type === 'pick') { held3d.rotation.set(0.35, Math.PI + 0.2, 0.25); held3d.position.set(0, 0.1, -0.1); }
@@ -71,7 +72,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (outline) { scene.remove(outline); outline.geometry.dispose(); outline = null; }
     const e = id != null ? items.get(id) : null; if (!e) return;
     let geo;
-    if (e.type === 'nugget') { const s = nuggetSize(e.item.kg, e.item.material); geo = nuggetGeometry(MATERIALS[e.item.material].kind, e.item.material.length * 7).scale(s, s, s); }
+    if (e.type === 'nugget') geo = items.buildMesh(e).geometry;
     else { const m = items.meshes.get(id); if (!m) return; geo = m.geometry.clone(); }
     geo.computeBoundingSphere();
     const grow = 1 + Math.min(0.08, 0.008 / Math.max(0.02, geo.boundingSphere.radius)); // thin, roughly constant width
@@ -132,6 +133,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     const a = H.aim; if (!a || a.t > 6) return { kind: 'none' };
     const [x, y, z] = a.p;
     if (a.id != null && items.get(a.id)) return { kind: 'item', ent: items.get(a.id), dist: a.t, p: a.p, n: a.n };
+    if (a.id != null && H.machines?.has(a.id)) return { kind: 'machine', id: a.id, m: H.machines.get(a.id), dist: a.t, p: a.p, n: a.n };
     if (a.id != null && H.props?.has(a.id)) return { kind: 'prop', id: a.id, dist: a.t, p: a.p, n: a.n };
     if (a.id != null && H.vehicles?.isVehicle(a.id)) return { kind: 'vehicle', id: a.id, dist: a.t, p: a.p, n: a.n, bed: H.vehicles.bedPoint(a.id, a.p) };
     if (water.contains(x, y, z)) {
@@ -206,6 +208,24 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (!e) return;
     const def = toolDef(e);
     const near = info.dist !== undefined && info.dist < REACH;
+    // Placing a machine from its crate.
+    if (e.type === 'crate' && H.machines) {
+      if (!H.ghostState) return;
+      if (H.ghostState.why) { say(H.ghostState.why, 'err'); audio.play('error'); return; }
+      if (!H.ghostFree) { say('Something is in the way', 'err'); audio.play('error'); return; }
+      const g = H.ghostState, d = e.data;
+      H.machines.place(d.def, g.pos, g.rot, d.state || {}, { wear: d.wear || 0 });
+      items.remove(e.id); H.hand = null; audio.play('drop'); H.play('place');
+      hud.toast(`${H.machines.name(d.def)} placed · lock it with the mallet`);
+      return true;
+    }
+    if (e.type === 'coil' && H.machines) {
+      if (!H.aim) return;
+      const r = H.machines.coilClick(e, H.aim.p);
+      if (r === 'laid' && e.data.m < 0.3) { items.remove(e.id); H.hand = null; hud.toast('Coil used up'); }
+      return true;
+    }
+    if (info.kind === 'machine' && info.dist < REACH + 0.5 && H.machines.useOn(info.id, e, H)) return true;
     if (e.type === 'sack') {
       if (info.kind === 'vehicle' && near) {
         if (H.vehicles.refuel(info.id)) { items.remove(e.id); H.hand = null; audio.play('pour'); H.play('pour'); hud.toast('Topped up with charcoal'); return true; }
@@ -245,6 +265,15 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
   function pickup() {
     const info = aimInfo();
     if (info.kind === 'prop' && info.dist < REACH + 0.5) { H.props.interact(info.id); return true; }
+    if (info.kind === 'machine' && info.dist < REACH + 0.5) {
+      const m = info.m;
+      if (m.run) { say('Pick up a machine at either end to remove its pipe'); return false; }
+      if (m.locked) { say('Locked — unlock it with the mallet (RMB)', 'err'); audio.play('error'); return false; }
+      if (H.hand) { const cur = heldEnt(); if (TOOLS[cur.type] && !H.slot) { H.slot = H.hand; H.hand = null; } else { say('Hands full — G to drop, Q to swap'); return false; } }
+      const c = items.spawn('crate', [0, 0, 0], { data: { def: m.def, family: H.machines.family(m.def), state: m.state, wear: m.wear }, loc: 'held' });
+      H.machines.remove(m.id); H.hand = c.id; audio.play('pickup'); H.play('equip');
+      return true;
+    }
     // E on the truck opens its bed inventory.
     if (info.kind === 'vehicle' && info.dist < REACH + 0.8) { H.onVehicle?.(info.id); return true; }
     if (info.kind !== 'item' || info.dist > REACH) return false;
@@ -301,6 +330,15 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       parts.push(`${k('G')} drop`);
     }
     if (info.kind === 'item' && near) parts.push(`${k('E')} pick up`);
+    if (e && e.type === 'crate') parts.unshift(`${k('LMB')} place · ${k('R')} rotate`);
+    if (e && e.type === 'coil') parts.unshift(H.machines?.runStart() ? `${k('LMB')} finish run · ${k('RMB')} cancel` : `${k('LMB')} start a pipe run at a port`);
+    if (info.kind === 'machine' && info.dist < REACH + 0.5 && !info.m.run) {
+      if (e && e.type === 'mallet') parts.unshift(`${k('LMB')} lock · ${k('RMB')} unlock`);
+      else if (e && (e.type === 'wrench' || e.type === 'repairkit')) parts.unshift(`${k('LMB')} repair`);
+      else if (e && (e.item || e.data?.loads?.length)) parts.unshift(`${k('LMB')} put in`);
+      if (!info.m.locked) parts.push(`${k('E')} pick up`);
+      parts.push(`${k('RMB')} panel`);
+    }
     if (info.kind === 'prop' && info.dist < REACH + 0.5) { const t = H.props.hint(info.id); if (t) parts.unshift(`${k('E')} ${t}`); }
     if (info.kind === 'vehicle' && info.dist < 4) {
       if (e && e.type === 'sack') parts.unshift(`${k('LMB')} refuel`);
@@ -324,11 +362,30 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
         if (e && H.cooldown <= 0) { H.cooldown = toolDef(e)?.cooldown || 0.3; use(); }
       }
       if (input.pressed('pickup')) pickup();
+      if (input.pressed('secondary') && H.machines) {
+        const held = heldEnt();
+        if (held && held.type === 'coil' && H.machines.runStart()) { H.machines.cancelRun(); say('Run cancelled'); }
+        else if (info.kind === 'machine' && info.dist < REACH + 0.5 && !info.m.run) {
+          if (held && held.type === 'mallet') { info.m.locked = false; audio.play('pickup'); say(`${H.machines.name(info.m.def)} unlocked`); }
+          else H.machines.openPanel(info.id);
+        }
+      }
       if (input.pressed('drop')) drop();
       if (input.pressed('swap')) swap();
     }
-    // Drop ring and validity check (a box overlap at the landing spot).
     const e = heldEnt();
+    // Placement ghost while holding a machine crate; pipe preview with a coil.
+    if (H.machines) {
+      if (e && e.type === 'crate') {
+        const aimOk = H.aim && H.aim.t < 6 && (info.kind === 'claim' || info.kind === 'ground' || info.kind === 'machine' || info.kind === 'water');
+        const g = H.machines.ghost(e.data.def, aimOk ? { p: H.aim.p, n: H.aim.n, machine: info.kind === 'machine' ? info.id : null } : null, enabled ? input : null, dt);
+        H.ghostState = g;
+        if (g && (H._gq = (H._gq || 0) - dt) < 0) { H._gq = 0.12; const key = g.pos.join(',') + g.rot; H.machines.checkFree(e.data.def, g.pos, g.rot).then(ok => { H.ghostFree = ok; H.machines.setGhostOk(ok && !H.machines._ghostWhy); }); void key; }
+        if (g) H.machines.setGhostOk(H.ghostFree && !g.why);
+      } else { H.machines.ghost(null); H.ghostState = null; }
+      H.machines.previewRun(e && e.type === 'coil' ? e : null, H.aim ? H.aim.p : [0, 0, 0]);
+    }
+    // Drop ring and validity check (a box overlap at the landing spot).
     if (e && H.aim && H.aim.t < 3.5 && (info.kind === 'claim' || info.kind === 'ground' || info.kind === 'item' || (info.kind === 'vehicle' && info.bed))) {
       H.ringPos = H.aim.p.slice();
       ring.visible = true;
@@ -345,6 +402,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     setOutline(hov);
     let card = hov != null ? items.card(hov) : null;
     if (!card && info.kind === 'prop' && info.dist < 6) card = H.props.card(info.id);
+    if (!card && info.kind === 'machine' && info.dist < 6) card = H.machines.card(info.id);
     if (!card && info.kind === 'vehicle' && info.dist < 5) {
       const c = H.vehicles.cargoNear(info.id, info.p, 0.6);
       if (c) card = items.card(c.id);
@@ -370,6 +428,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     return ent;
   };
   H.viewmodel = () => held3d;
+  H.refreshHeld = () => { heldKey = ''; };
   H.setVisible = (v) => { holder.visible = v; if (!v) ring.visible = false; };
   H.use = use; H.pickup = pickup; H.drop = drop; H.swap = swap; H.aimInfo = aimInfo; H.wash = wash; H.dig = dig;
   return H;

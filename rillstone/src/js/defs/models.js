@@ -222,3 +222,38 @@ export function clod(hex) {
   const parts = [base, P(place(new THREE.DodecahedronGeometry(0.04, 0), 0.12, 0.06, 0.05), 0x8a8a84, 0.2, 3), P(place(new THREE.DodecahedronGeometry(0.03, 0), -0.1, 0.07, -0.06), 0x9a948a, 0.2, 4)];
   return merge(parts);
 }
+
+// ---- Workshop tools ----
+export function mallet() {
+  return merge([handle(0.017, 0.02, -0.25, 0.22, ASH, 8), P(place(new THREE.CylinderGeometry(0.06, 0.06, 0.2, 10), 0, 0, 0.27, 0, 0, Math.PI / 2), 0xb88a5a, 0.08), ...[-1, 1].map(s2 => P(place(new THREE.CylinderGeometry(0.062, 0.062, 0.02, 10), s2 * 0.09, 0, 0.27, 0, 0, Math.PI / 2), BRASS, 0.04))]);
+}
+export function wrench() {
+  const parts = [P(place(new THREE.BoxGeometry(0.03, 0.012, 0.32), 0, 0, 0), STEEL, 0.05)];
+  parts.push(P(place(new THREE.TorusGeometry(0.035, 0.012, 6, 12, Math.PI * 1.5), 0, 0, 0.19, Math.PI / 2, 0, Math.PI * 0.25), STEEL, 0.04));
+  parts.push(P(place(new THREE.TorusGeometry(0.028, 0.011, 6, 12), 0, 0, -0.18, Math.PI / 2), STEEL, 0.04));
+  return merge(parts);
+}
+export function repairKit() {
+  return merge([P(place(new THREE.BoxGeometry(0.34, 0.18, 0.2), 0, 0, 0), 0x7a4a2a, 0.08), P(place(new THREE.BoxGeometry(0.36, 0.04, 0.22), 0, 0.08, 0), 0x5a3a20, 0.06), P(place(new THREE.TorusGeometry(0.06, 0.012, 4, 10, Math.PI), 0, 0.11, 0), BRASS, 0.04), P(place(new THREE.BoxGeometry(0.05, 0.05, 0.01), 0.1, 0.0, 0.105), BRASS, 0.03)]);
+}
+// A coil of pipe.
+export function coil(hex) {
+  const parts = [];
+  for (let i = 0; i < 4; i++) parts.push(P(place(new THREE.TorusGeometry(0.2, 0.03, 6, 16), 0, 0.03 + i * 0.055, 0, Math.PI / 2), hex, 0.05, i));
+  parts.push(P(place(new THREE.BoxGeometry(0.06, 0.25, 0.03), 0.2, 0.12, 0), 0x8a6a3a, 0.05));
+  return merge(parts);
+}
+// An ingot bar (unit size; scaled per item).
+export function ingot() {
+  const g = new THREE.CylinderGeometry(0.42, 0.55, 0.3, 4, 1).rotateY(Math.PI / 4).scale(1.2, 1, 0.6);
+  g.computeVertexNormals();
+  const c = new Float32Array(g.toNonIndexed().attributes.position.count * 3).fill(1);
+  const ng = g.toNonIndexed(); ng.setAttribute('color', new THREE.BufferAttribute(c, 3)); return ng;
+}
+// Crafted goods (unit size).
+export function crafted(kind) {
+  if (kind === 'ring') return merge([P(new THREE.TorusGeometry(0.32, 0.1, 8, 20), 0xffffff, 0.02)]);
+  if (kind === 'chain') return merge([0, 1, 2, 3].map(i => P(place(new THREE.TorusGeometry(0.16, 0.05, 6, 12), 0, 0, -0.36 + i * 0.24, 0, i % 2 ? Math.PI / 2 : 0, 0), 0xffffff, 0.02, i)));
+  if (kind === 'chalice') return merge([P(new THREE.LatheGeometry([[0, -0.4], [0.24, -0.4], [0.24, -0.35], [0.05, -0.3], [0.05, 0.05], [0.28, 0.2], [0.32, 0.45], [0.29, 0.45], [0.25, 0.22], [0, 0.12]].map(([x, y]) => new THREE.Vector2(x, y)), 12), 0xffffff, 0.02)]);
+  return merge([P(place(new THREE.BoxGeometry(0.6, 0.18, 0.3), 0, 0, 0), 0xffffff, 0.02), P(place(new THREE.ConeGeometry(0.15, 0.3, 4), 0.42, 0, 0, 0, 0, -Math.PI / 2), 0xffffff, 0.02)]); // tool head
+}

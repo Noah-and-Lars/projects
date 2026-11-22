@@ -1,6 +1,6 @@
 // Headless smoke test. Serve the rillstone folder first
 // (python3 -m http.server 8765), then:
-//   node tools/test.cjs <outdir> [--src] [--shots] [--move] [--dig] [--town]
+//   node tools/test.cjs <outdir> [--src] [--shots] [--move] [--dig] [--town] [--machines]
 // SCALE=2 takes screenshots at deviceScaleFactor 2 (for showing people).
 // Tests the built single-file index.html; --src tests src/index.html instead.
 const { chromium } = require('playwright');
@@ -215,7 +215,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       const zr = g.cz, rx = R.riverX(zr), sx = rx - 8.2;
       const assay = T.counters.find(c => c.venue === 'assay');
       let loads = 0, sales = 0, guard = 0;
-      while (E.state.scrip < 1000 && guard++ < 400) {
+      while (E.state.scrip < 1060 && guard++ < 400) {
         // Two loads from 4-5 m down in the claim, washed in the river.
         pan.data.loads.push({ band: 1, depth: 4 + Math.random(), claim: 'gravel' }, { band: 1, depth: 4 + Math.random(), claim: 'gravel' });
         await R.teleport(sx, R.height(sx, zr) + 1.2, zr); await R.tick(2);
@@ -234,14 +234,14 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     const kit = await p.evaluate(async () => {
       const R = __rill; R.noRender(true);
       const before = R.economy.state.scrip;
-      const ids = ['sluice1', 'drill1', 'intake1', 'pipe', 'pipe', 'pipe', 'pipe', 'pipe', 'pipe', 'pipe', 'pipe'];
+      const ids = ['sluice1', 'drill1', 'intake1', 'junction', 'pipe_copper', 'pipe_copper', 'pipe_copper', 'pipe_copper', 'pipe_copper', 'pipe_copper', 'pipe_copper', 'pipe_copper'];
       let ok = 0; for (const id of ids) if (R.town.buy('millwright', id)) ok++;
       await R.tick(90); R.items.update();
-      const crates = [...R.items.ents.values()].filter(e => e.type === 'crate').length;
+      const crates = [...R.items.ents.values()].filter(e => e.type === 'crate').length, coils = [...R.items.ents.values()].filter(e => e.type === 'coil').length;
       R.noRender(false);
-      return { ok, spent: before - R.economy.state.scrip, crates };
+      return { ok, spent: before - R.economy.state.scrip, crates, coils };
     });
-    check(kit.ok === 11 && kit.crates === 11, `bought the starter kit: ${kit.crates} crates for § ${kit.spent}`);
+    check(kit.ok === 12 && kit.crates === 4 && kit.coils === 8, `bought the starter kit: ${kit.crates} machine crates and ${kit.coils} pipe coils for § ${kit.spent}`);
     // Market saturation in the live game.
     const mkt = await p.evaluate(() => { const E = __rill.economy; const m = E.state.market[0]; const a = E.stallMult(0); m.sold += 500; const b = E.stallMult(0); m.sold -= 500; return { a, b, want: m.want }; });
     check(mkt.b < mkt.a || mkt.a === 1, `stall 1 price drops after sales (${(mkt.a * 100).toFixed(0)}% -> ${(mkt.b * 100).toFixed(0)}%)`);
@@ -320,6 +320,83 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     // A/B: the slot keeps a complete older half too; export round-trips.
     const ab = await p.evaluate(async () => { const R = __rill; await R.saveTo(1, true); const l = await R.saves.list(); const blob = R.saves.exportBlob(R.snapshot()); const snap = await R.saves.importFile(new File([blob], 'x.rillsave')); return { ab: l[0].ab, size: blob.size, scrip: snap.economy.scrip }; });
     check(ab.size > 100 && ab.scrip === after.scrip, `export/import round-trips a ${(ab.size / 1024).toFixed(0)} KB .rillsave (slot 1 now on half ${ab.ab})`);
+  }
+
+  if (all || flags.has('--machines')) {
+    // M4: an intake -> junction -> drill + sluice line on the Gravel Bar runs
+    // unattended for 10 minutes; halving the intake slows it by the formula.
+    const setup = await p.evaluate(async () => {
+      const R = __rill, Mc = R.machines, g = R.places.CLAIMS[0]; R.noRender(true);
+      for (const id of [...Mc.list.keys()]) Mc.remove(id);
+      // Intake on the bank with its mouth in the river (facing east, rot 3).
+      const z = g.cz - 4, rx = R.riverX(z);
+      let ix = null;
+      for (let x = rx - 12; x < rx; x += 0.25) { if (!Mc.requirement('intake1', [x, R.height(x, z), z], 3)) { ix = x; break; } }
+      const intake = Mc.place('intake1', [ix, R.height(ix, z), z], 3, {}, { locked: true });
+      const junc = Mc.place('junction', [g.x1 - 1.5, g.top, z], 0, {}, { locked: true });
+      const S = [g.x1 - 4, g.top, g.cz + 3];
+      const sluice = Mc.place('sluice1', S, 0, {}, { locked: true });
+      const drill = Mc.place('drill1', [S[0] - 0.95, g.top, S[2] - 1.2], 0, {}, { locked: true });
+      Mc.layRun('copper', { m: intake.id, s: 0 }, { m: junc.id, s: 1 });
+      Mc.layRun('copper', { m: junc.id, s: 3 }, { m: drill.id, s: 0 });
+      Mc.layRun('copper', { m: junc.id, s: 2 }, { m: sluice.id, s: 0 });
+      await R.tick(5); R.noRender(false);
+      return { intake: intake.id, drill: drill.id, sluice: sluice.id, link: Mc.linkOf(drill.id) === sluice.id, valid: !Mc.requirement('intake1', intake.pos, 3) };
+    });
+    check(setup.valid && setup.link, 'line built: intake in the river, drill spout feeds the sluice hopper');
+    const runFor = (secs, throttle, noWear) => p.evaluate(async ([secs, throttle, ids, noWear]) => {
+      const R = __rill, Mc = R.machines; R.noRender(true);
+      const intake = Mc.get(ids.intake), drill = Mc.get(ids.drill), sluice = Mc.get(ids.sluice);
+      intake.state.throttle = throttle; drill.wear = 0; sluice.wear = 0;
+      const w0 = sluice.washed || 0, d0 = drill.made || 0;
+      const statuses = new Set();
+      for (let t = 0; t < secs; t += 1) {
+        for (let k = 0; k < 20; k++) Mc.tick(0.05);
+        if (noWear) { drill.wear = 0; sluice.wear = 0; }
+        if (t % 5 === 0) { await R.physics.step(30); R.items.update(); R.items.mergePiles(); }
+        statuses.add(drill.status); statuses.add(sluice.status);
+      }
+      R.noRender(false);
+      return { washed: (sluice.washed || 0) - w0, drilled: (drill.made || 0) - d0, statuses: [...statuses], drillSat: drill.flow.satisfaction, speed: drill.speed, wear: [drill.wear, sluice.wear], awake: R.physics.stats.awake, items: R.items.counts() };
+    }, [secs, throttle, setup, !!noWear]);
+    const full = await runFor(600, 1);
+    console.log('     10 min full flow: ' + JSON.stringify(full));
+    check(full.washed >= 105 && !full.statuses.includes('output blocked') && !full.statuses.includes('broken'), `ran 10 minutes unattended: ${full.drilled} loads drilled, ${full.washed} washed`);
+    check(Math.abs(full.wear[0] - 0.2) < 0.02, `silt 6 wore the drill ${(full.wear[0] * 100).toFixed(0)}% in 10 minutes (2% a minute)`);
+    // Throughput with and without half the intake, wear held at zero so only flow differs.
+    const ref = await runFor(300, 1, true);
+    const half = await runFor(300, 0.5, true);
+    const fullRate = ref.washed / 300, halfRate = half.washed / 300;
+    const want = (0.2 + 0.8 * (20 / 35)) / 1;
+    console.log('     5 min half intake: ' + JSON.stringify(half));
+    check(Math.abs(halfRate / fullRate - want) < 0.04, `half the intake: throughput ${(halfRate / fullRate).toFixed(3)}× (formula 0.2 + 0.8 × 20/35 = ${want.toFixed(3)}×)`);
+    // Kiln, workbench, grinder: ore -> ingot -> ring with a cut gem.
+    const craft = await p.evaluate(async () => {
+      const R = __rill, Mc = R.machines, H = R.hands, T = R.places.TOWN; R.noRender(true);
+      const kiln = Mc.place('kiln', [T.x + 4, T.y, T.z + 12], 2), bench = Mc.place('workbench', [T.x + 8, T.y, T.z + 12], 0), grinder = Mc.place('grinder', [T.x + 11, T.y, T.z + 12], 0);
+      const give = (item) => { const e = R.items.spawn('nugget', [0, 0, 0], { item, loc: 'held' }); H.hand = e.id; return e; };
+      give({ material: 'quartz', stage: 'ore', kg: 2 }); Mc.useOn(kiln.id, R.items.get(H.hand), H);
+      give({ material: 'silver', stage: 'ore', kg: 4 }); Mc.useOn(kiln.id, R.items.get(H.hand), H);
+      const mixed = give({ material: 'gold', stage: 'ore', kg: 1 }); Mc.useOn(kiln.id, mixed, H); const kept = !!R.items.get(mixed.id); R.items.remove(mixed.id); H.hand = null;
+      for (let i = 0; i < 200; i++) Mc.tick(0.05);
+      const ingot = Mc.pour(kiln.id);
+      await R.physics.step(30); R.items.update();
+      const ent = [...R.items.ents.values()].find(e => e.item && e.item.stage === 'ingot');
+      // Cut a garnet on the wheel (3 clicks), keep it in the swap slot.
+      const gem = give({ material: 'garnet', stage: 'uncut', kg: 1 }); for (let i = 0; i < 3; i++) Mc.useOn(grinder.id, gem, H);
+      H.slot = gem.id; H.hand = null;
+      R.items.take(ent.id, 'held'); H.hand = ent.id;
+      Mc.useOn(bench.id, ent, H);
+      const btn = [...document.querySelectorAll('#scr-panel .entry')].find(el => el.textContent.startsWith('Ring')).querySelector('button'); btn.click();
+      const ring = R.items.get(H.hand);
+      R.noRender(false);
+      return { kept, ingot, cut: gem.item.stage, ring: ring && ring.item, value: ring && R.economy.quote(ring.item, 'assay') };
+    });
+    check(craft.kept && craft.ingot && Math.abs(craft.ingot.kg - 4) < 0.01, `kiln melted 4 kg silver into an ingot and refused gold without deleting it`);
+    check(craft.cut === 'cut' && craft.ring && craft.ring.craft === 'ring' && craft.ring.gem, `workbench: hot silver ingot + cut garnet -> ${craft.ring && craft.ring.material} ring worth § ${craft.value && craft.value.toFixed(0)}`);
+    // Pipes and machines survive a save round-trip.
+    const saved = await p.evaluate(() => { const R = __rill; const s = R.snapshot(); return { n: s.machines.length, runs: s.machines.filter(m => m.run).length }; });
+    check(saved.n >= 7 && saved.runs === 3, `snapshot keeps ${saved.n} machines and ${saved.runs} pipe runs`);
   }
 
   if (all || flags.has('--shots')) {

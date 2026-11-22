@@ -277,3 +277,68 @@ across freshly dug ground without jitter or launching.
   materials use a polygon offset.
 - **Benchmark 3** now uses seeded, gentler mounds so it gives the same
   result every run.
+
+## M4: water and machines
+
+- **Flow solver** (`sim/flow.js`). It's pure data, with unit tests.
+  - Each connected network adds up its sources, then boosts intake flow by
+    50% if a fuelled booster pump is on it. A header tank gives up to
+    60 L/s while above 10% and fills from any surplus.
+  - Satisfaction is `min(1, supply / demand)` and speed is
+    `0.2 + 0.8 × satisfaction`.
+  - A consumer can't draw more than the narrowest pipe on its best path from
+    a source. This is a widest-path search, which handles loops directly, so
+    the brief's even-split fallback for cycles was never needed.
+  - Silt is 6 from the river, minus 3 per settling tank on the network.
+    Each point above 4 wears drills and sluices by 1% a minute.
+- **Pipes are runs, not grid pieces.** Hold a coil (bought by the metre),
+  click one machine's water port, then another. The run is laid as a curved
+  tube between the two ports and uses its length from the coil (straight
+  distance × 1.1 + 0.3 m). A Pipe Junction joins up to four runs.
+  - **Why:** fixed 1 m pieces on a grid never line up on dug, uneven ground,
+    and laying them one at a time is tedious.
+  - **Brief:** this keeps its sockets and snapping (runs snap to ports) and
+    its "narrowest pipe on the path" rule.
+- **Placement.** Holding a machine crate shows a ghost on a 0.5 m grid,
+  translucent green when valid and magenta when blocked. R rotates in 90°
+  steps. Aiming at the side of a machine places flush against that face.
+  - **Validity:** a physics overlap query against items, machines and
+    vehicles, plus each machine's rule: an intake's mouth must be in the
+    river; a drill needs a claim you own.
+  - **Mallet:** LMB locks a machine, RMB unlocks it. Unlocked machines can be
+    picked back up with E and return to a crate with their state.
+- **Item links.** A machine's "out" port feeds any "in" port within 1.3 m.
+  For example, a drill's spout over a sluice's hopper sends loads straight
+  in. Otherwise loads land as clods. A drill jams when 8 clods pile up under
+  its spout.
+- **Machines in M4:**
+  - **River Intake Mk I:** 40 L/s, with a valve at 25/50/75/100%.
+  - **Water parts:** Header Tank, Settling Tank, Booster Pump and Pipe
+    Junction.
+  - **Drill Mk I:** band 1, one load every 5 s at full speed. Its tip sits
+    2.6 m down, and the depth there decides band and weight.
+  - **Sluice Mk I:** a 10-load hopper, one roll every 4 s, with a bonus roll
+    chance of 10% × satisfaction.
+  - **Kiln:** 10 kg per 8 s, burns quartz at 1 kg a minute, holds 50 kg of
+    one material. It rejects a second material without deleting it, and
+    reheats cold ingots in 20 s.
+  - **Crucible & Campfire:** 10 kg, half speed, no fuel.
+  - **Workbench:** turns a hot ingot into a tool head, ring, chain or
+    chalice. A cut gem in the swap slot gets set into rings and chalices.
+  - **Grinding Wheel:** 3 clicks cut a gem, keeping 85% of its weight.
+- **Repairs.** The Wrench takes 10% wear off per click, and the Repair Kit
+  fully repairs a machine, 5 times. Worn machines slow by up to 60% and
+  spark above 60% wear. A brass dial on each machine shows its wear.
+- **Ingots** stay hot (glowing) for 90 s of game time. Cut gems and ingots
+  have their own instanced meshes.
+
+### Acceptance (`node tools/test.cjs <dir> --machines`)
+
+- **Unattended run:** an intake → junction → drill + sluice line on the
+  Gravel Bar ran 10 simulated minutes and washed 112 loads. Nothing was
+  blocked or broken, and silt 6 wore the drill exactly 20%.
+- **Half intake:** with wear held at zero, halving the intake valve gave
+  0.656× throughput against the formula's 0.2 + 0.8 × 20/35 = 0.657×.
+- **Crafting:** the kiln melted 4 kg of silver and refused gold without
+  deleting it. A garnet was cut, then a hot ingot and the cut garnet became a
+  silver ring worth § 130.

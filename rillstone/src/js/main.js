@@ -27,6 +27,7 @@ import { createSaves, SAVE_VERSION } from './core/save.js';
 import { readChunk, writeChunk } from './world/claims.js';
 import { h } from './ui/dom.js';
 import { createBed, slotCard } from './game/bed.js';
+import { createMachines } from './game/machines.js';
 import { createHUD } from './ui/hud.js';
 import { createMenu } from './ui/menu.js';
 import { HALF, spawnPoint, height, ADIT, TOWN, HAMLET, CLAIMS, riverX, waterY, FALLS_Z } from './world/valley.js';
@@ -90,6 +91,8 @@ async function boot() {
   hands.props = town;
   const saves = createSaves();
   const bed = createBed({ panels, items, vehicles, hands, hud, audio });
+  const machines = createMachines({ scene, physics, materials: view.materials, items, claims, water, economy, hud, audio, panels, rng: mulberry32((SEED * 977 + 3) >>> 0), fx, height });
+  hands.machines = machines;
   hands.onVehicle = (id) => bed.open(id);
 
   // Player.
@@ -145,12 +148,15 @@ async function boot() {
       saveVersion: SAVE_VERSION, seed: SEED, time: state.time, day: state.day, playTime: state.playTime,
       player: { pos: player.cur.toArray(), yaw: player.yaw, pitch: player.pitch }, hands: { hand: hands.hand, slot: hands.slot },
       items: items.serialize(), vehicles: vehicles.serialize(), economy: economy.serialize(), chunks,
+      machines: machines.serialize(), clock: items.clock,
     };
   }
   async function restore(snap) {
     for (const c of snap.chunks || []) { const vol = claims.volumes.get(c.claim); if (vol) writeChunk(vol, c.key, c.dens, c.band); }
     await claims.settle();
     items.restore(snap.items || []);
+    items.clock = snap.clock || 0;
+    machines.restore(snap.machines || []);
     hands.hand = snap.hands?.hand ?? null; hands.slot = snap.hands?.slot ?? null;
     for (const v of [...vehicles.list.values()]) { await physics.call({ op: 'removeVehicle', id: v.id }); scene.remove(v.group); vehicles.list.delete(v.id); }
     for (const v of snap.vehicles || []) await vehicles.spawn(v.type, v.pos, 0, v);
@@ -224,7 +230,9 @@ async function boot() {
   const controls = () => state.mode === 'play' && (input.locked || TEST);
   function simTick() {
     state.simTick++;
-    if (state.simTick % SIM_HZ === 0) items.mergePiles();
+    machines.tick(1 / SIM_HZ);
+    items.clock += 1 / SIM_HZ;
+    if (state.simTick % SIM_HZ === 0) { items.mergePiles(); items.cool(); }
   }
   async function frame(now) {
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
@@ -278,6 +286,7 @@ async function boot() {
     hands.update(dt, input, controls() && !vehicles.driving);
     hands.setVisible?.(!vehicles.driving);
     town.update(dt);
+    machines.update(dt);
     hud.hotbar([slotCard(items, hands.hand), slotCard(items, hands.slot)]);
     const dh = vehicles.hud();
     driveEl.classList.toggle('hidden', !dh);
@@ -292,7 +301,7 @@ async function boot() {
     frames++; fpsT += dt; if (fpsT > 0.5) { fps = frames / fpsT; frames = 0; fpsT = 0; }
     if (hud.debugOn()) {
       const ri = view.renderer.info.render, st = physics.stats;
-      hud.debug.textContent = `${fps.toFixed(0)} fps\nphysics step ${(st.stepMs || 0).toFixed(2)} ms (rtt ${timings.physics.toFixed(1)})\nsim ${timings.sim.toFixed(2)} ms · render ${timings.render.toFixed(1)} ms\ndraw calls ${ri.calls} · tris ${(ri.triangles / 1000).toFixed(0)}k\nbodies awake ${st.awake ?? 0} / asleep ${st.asleep ?? 0} · items ${items.ents.size}\nremesh queue ${claims.busy} · mesh ${avg(claims.stats.meshMs).toFixed(1)} ms · collider ${avg(claims.stats.colliderMs).toFixed(1)} ms\npos ${player.cur.x.toFixed(1)} ${player.cur.y.toFixed(1)} ${player.cur.z.toFixed(1)}`;
+      hud.debug.textContent = `${fps.toFixed(0)} fps\nphysics step ${(st.stepMs || 0).toFixed(2)} ms (rtt ${timings.physics.toFixed(1)})\nsim ${timings.sim.toFixed(2)} ms · render ${timings.render.toFixed(1)} ms\ndraw calls ${ri.calls} · tris ${(ri.triangles / 1000).toFixed(0)}k\nbodies awake ${st.awake ?? 0} / asleep ${st.asleep ?? 0} · items ${items.ents.size} · machines ${machines.counts().mach}\nremesh queue ${claims.busy} · mesh ${avg(claims.stats.meshMs).toFixed(1)} ms · collider ${avg(claims.stats.colliderMs).toFixed(1)} ms\npos ${player.cur.x.toFixed(1)} ${player.cur.y.toFixed(1)} ${player.cur.z.toFixed(1)}`;
     }
     input.endFrame();
     requestAnimationFrame(frame);
@@ -306,7 +315,7 @@ async function boot() {
   // so ?test=1 lets tests drive the game directly.
   const api = { ready: true, physics, version: physics.version, seed: SEED };
   if (TEST) Object.assign(api, {
-    THREE, view, player, input, state, settings, hud, menu, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
+    THREE, view, player, input, state, settings, hud, menu, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, machines, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
     places: { TOWN, HAMLET, ADIT, CLAIMS, FALLS_Z, spawn: spawnPoint() },
     height, riverX, waterY,
     play,

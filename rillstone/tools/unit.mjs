@@ -64,4 +64,33 @@ check(Math.abs(itemValue({ material: 'silver', stage: 'crafted', craft: 'ring', 
   check(E.quote(gem, 'assay') == null && E.quote(gem, 'gems') > 0 && E.quote(ore, 'gems') == null && E.quote(ore, 'assay') === 30, 'gems sell at the Gem Buyer, everything else at the Assay Office');
   const rg = E.sell([gem], 'assay'); check(rg.total === 0 && /Gem Buyer/.test(rg.refused[0].why), 'the Assay Office sends gems to the Gem Buyer');
 }
+// M4: water flow.
+{
+  const { solveFlow, speedFrom, wearRate } = await import('../src/js/sim/flow.js');
+  const N = (id, kind, o = {}) => ({ id, kind, ...o });
+  // Intake 40 -> 2 pipes (60) -> drill 20 + sluice 15.
+  const nodes = [N(1, 'source', { flow: 40 }), N(2, 'pipe', { cap: 60 }), N(3, 'pipe', { cap: 60 }), N(4, 'consumer', { demand: 20 }), N(5, 'consumer', { demand: 15 })];
+  const edges = [[1, 2], [2, 3], [3, 4], [3, 5]];
+  let r = solveFlow(nodes, edges);
+  check(r.get(4).satisfaction === 1 && r.get(5).satisfaction === 1, 'intake 40 L/s satisfies drill 20 + sluice 15');
+  nodes[0].flow = 20; r = solveFlow(nodes, edges);
+  const s = 20 / 35;
+  check(Math.abs(r.get(4).satisfaction - s) < 1e-9 && Math.abs(speedFrom(r.get(4).satisfaction) - (0.2 + 0.8 * s)) < 1e-9, `half the intake: satisfaction ${s.toFixed(3)}, speed ${(0.2 + 0.8 * s).toFixed(3)}`);
+  // Narrow pipe caps one consumer.
+  const n2 = [N(1, 'source', { flow: 200 }), N(2, 'pipe', { cap: 60 }), N(3, 'consumer', { demand: 100 })];
+  r = solveFlow(n2, [[1, 2], [2, 3]]);
+  check(Math.abs(r.get(3).flow - 60) < 1e-9, 'a 60 L/s pipe caps a 100 L/s consumer at 60');
+  // Loop: two paths, widest wins.
+  const n3 = [N(1, 'source', { flow: 200 }), N(2, 'pipe', { cap: 60 }), N(3, 'pipe', { cap: 140 }), N(4, 'pipe', { cap: 140 }), N(5, 'consumer', { demand: 120 })];
+  r = solveFlow(n3, [[1, 2], [2, 5], [1, 3], [3, 4], [4, 5]]);
+  check(Math.abs(r.get(5).flow - 120) < 1e-9, 'loops: the steel path carries 120 L/s past the copper one');
+  // Settling tanks and silt, booster, tank.
+  const n4 = [N(1, 'source', { flow: 40 }), N(2, 'settle'), N(3, 'consumer', { demand: 60 }), N(4, 'booster', { fuelled: true })];
+  r = solveFlow(n4, [[1, 2], [2, 3], [1, 4]]);
+  check(r.get(3).net.silt === 3 && Math.abs(r.get(3).net.supply - 60) < 1e-9, 'settling tank removes 3 silt; booster adds 50% of intake');
+  check(Math.abs(wearRate(6) * 60 - 0.02) < 1e-12 && wearRate(4) === 0, 'silt 6 wears 2% per minute; silt 4 none');
+  const tank = N(2, 'tank', { tank: { level: 1000, cap: 2000 } });
+  r = solveFlow([N(1, 'source', { flow: 10 }), tank, N(3, 'consumer', { demand: 50 })], [[1, 2], [2, 3]], 1);
+  check(Math.abs(r.get(3).satisfaction - 1) < 1e-9 && tank.tank.level < 1000, 'header tank tops up a short network and drains');
+}
 if (fails) { console.log(fails + ' failed'); process.exit(1); }

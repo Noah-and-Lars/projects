@@ -26,28 +26,33 @@ export function createItems({ scene, physics, materials }) {
   const meshes = new Map(); // id -> Mesh for non-instanced entities
   const group = new THREE.Group(); scene.add(group);
 
-  function instFor(material) {
-    if (inst[material]) return inst[material];
+  // One InstancedMesh per material and shape (nugget/crystal, cut gem, ingot, hot ingot).
+  const shapeOf2 = (it) => (it.stage === 'cut' ? 'cut' : it.stage === 'ingot' ? (it.hotUntil && it.hotUntil > api.clock ? 'hot' : 'ingot') : '');
+  const keyOf = (it) => it.material + ':' + shapeOf2(it);
+  function instFor(key) {
+    if (inst[key]) return inst[key];
+    const [material, shape] = key.split(':');
     const kind = MATERIALS[material].kind;
-    const mat = nuggetMaterial(material);
+    const mat = nuggetMaterial(material, shape);
     materials.litMaterial(mat);
-    const mesh = new THREE.InstancedMesh(nuggetGeometry(kind, material.length * 7), mat, CAP);
+    const mesh = new THREE.InstancedMesh(nuggetGeometry(kind, material.length * 7, shape), mat, CAP);
     mesh.count = CAP; mesh.castShadow = true; mesh.receiveShadow = true; mesh.frustumCulled = false;
     for (let i = 0; i < CAP; i++) mesh.setMatrixAt(i, ZERO);
     group.add(mesh);
-    inst[material] = { mesh, free: Array.from({ length: CAP }, (_, i) => CAP - 1 - i), dirty: true };
-    return inst[material];
+    inst[key] = { mesh, free: Array.from({ length: CAP }, (_, i) => CAP - 1 - i), dirty: true };
+    return inst[key];
   }
 
   const isNugget = (e) => e.type === 'nugget';
   function shapeOf(e) {
-    if (isNugget(e)) { const s = nuggetSize(e.item.kg, e.item.material) * 0.5; return { type: 'box', hx: s * 0.95, hy: s * 0.65, hz: s * 0.95 }; }
+    if (isNugget(e)) { const s = nuggetSize(e.item.kg, e.item.material, e.item.stage) * 0.5; if (e.item.stage === 'ingot') return { type: 'box', hx: s * 0.66, hy: s * 0.16, hz: s * 0.34 }; return { type: 'box', hx: s * 0.95, hy: s * 0.65, hz: s * 0.95 }; }
     if (e.type === 'clod') return { type: 'box', hx: 0.18, hy: 0.12, hz: 0.18 };
     if (EXTRA_BOX[e.type]) { const b = EXTRA_BOX[e.type](e); return { type: 'box', hx: b[0], hy: b[1], hz: b[2] }; }
     if (e.type === 'pile') { const r = pileRadius(e); return { type: 'box', hx: r * 0.8, hy: r * 0.35, hz: r * 0.8 }; }
     const b = TOOL_BOX[e.type] || [0.15, 0.15, 0.15];
     return { type: 'box', hx: b[0], hy: b[1], hz: b[2] };
   }
+  // Game clock in seconds (for hot ingots); advanced by the sim tick.
   const pileRadius = (e) => 0.35 + Math.cbrt(e.data.kgs.length) * 0.09;
   function massOf(e) { if (e.item) return Math.max(0.2, e.item.kg); if (TOOLS[e.type]) return TOOLS[e.type].kg; if (EXTRA_MASS[e.type]) return EXTRA_MASS[e.type](e); return 3; }
 
@@ -59,7 +64,7 @@ export function createItems({ scene, physics, materials }) {
       const r = pileRadius(e);
       geo = new THREE.ConeGeometry(r, r * 0.75, 9, 2).toNonIndexed();
       geo.translate(0, r * 0.2, 0);
-      mat = instFor(e.data.material).mesh.material;
+      mat = instFor(e.data.material + ':' + (e.data.stage === 'ingot' ? 'ingot' : e.data.stage === 'cut' ? 'cut' : '')).mesh.material;
     } else geo = toolGeometry(e.type, e.data);
     const m = new THREE.Mesh(geo, mat);
     m.castShadow = m.receiveShadow = true;
@@ -68,9 +73,10 @@ export function createItems({ scene, physics, materials }) {
   }
   function show(e) {
     if (isNugget(e)) {
-      const I = instFor(e.item.material);
+      e.ikey = keyOf(e.item);
+      const I = instFor(e.ikey);
       if (e.slot === undefined) e.slot = I.free.pop();
-      const s = nuggetSize(e.item.kg, e.item.material);
+      const s = nuggetSize(e.item.kg, e.item.material, e.item.stage);
       I.mesh.setMatrixAt(e.slot, _m.compose(_v.fromArray(e.pos), _q.fromArray(e.quat), _s.set(s, s, s)));
       I.dirty = true;
     } else if (!meshes.has(e.id)) {
@@ -82,7 +88,7 @@ export function createItems({ scene, physics, materials }) {
   }
   function hide(e) {
     if (isNugget(e)) {
-      if (e.slot !== undefined) { const I = instFor(e.item.material); I.mesh.setMatrixAt(e.slot, ZERO); I.free.push(e.slot); I.dirty = true; e.slot = undefined; }
+      if (e.slot !== undefined) { const I = instFor(e.ikey || keyOf(e.item)); I.mesh.setMatrixAt(e.slot, ZERO); I.free.push(e.slot); I.dirty = true; e.slot = undefined; }
     } else { const m = meshes.get(e.id); if (m) { group.remove(m); m.geometry.dispose(); meshes.delete(e.id); } }
   }
   function addBody(e, vel) {
@@ -90,7 +96,9 @@ export function createItems({ scene, physics, materials }) {
   }
 
   const api = {
-    ents, group, meshes,
+    ents, group, meshes, clock: 0,
+    // Ingots cool: swap their look when they stop glowing.
+    cool() { for (const e of ents.values()) if (e.item && e.item.hotUntil && e.item.hotUntil <= api.clock) { e.item.hotUntil = 0; if (e.loc === 'loose') { hide(e); show(e); } } },
     get(id) { return ents.get(id); },
     // Create a loose entity in the world.
     spawn(type, pos, { item = null, data = {}, quat = [0, 0, 0, 1], vel = null, loc = 'loose' } = {}) {
@@ -123,7 +131,7 @@ export function createItems({ scene, physics, materials }) {
     halfHeight(e) { return shapeOf(e).hy; },
     // A standalone mesh for an entity (cargo on a vehicle, crate contents).
     buildMesh(e) {
-      if (isNugget(e)) { const g = nuggetGeometry(MATERIALS[e.item.material].kind, e.item.material.length * 7); const s = nuggetSize(e.item.kg, e.item.material); g.scale(s, s, s); return new THREE.Mesh(g, instFor(e.item.material).mesh.material); }
+      if (isNugget(e)) { const k = keyOf(e.item); const g = nuggetGeometry(MATERIALS[e.item.material].kind, e.item.material.length * 7, k.split(':')[1]); const s = nuggetSize(e.item.kg, e.item.material, e.item.stage); g.scale(s, s, s); return new THREE.Mesh(g, instFor(k).mesh.material); }
       return makeMesh(e);
     },
     shapeOf,
@@ -137,7 +145,7 @@ export function createItems({ scene, physics, materials }) {
         e.quat[0] = pose.q[0]; e.quat[1] = pose.q[1]; e.quat[2] = pose.q[2]; e.quat[3] = pose.q[3];
         e._synced = pose.asleep;
         if (isNugget(e) && e.slot !== undefined) {
-          const I = inst[e.item.material]; const s = nuggetSize(e.item.kg, e.item.material);
+          const I = inst[e.ikey]; const s = nuggetSize(e.item.kg, e.item.material, e.item.stage);
           I.mesh.setMatrixAt(e.slot, _m.compose(_v.fromArray(e.pos), _q.fromArray(e.quat), _s.set(s, s, s))); I.dirty = true;
         } else { const m = meshes.get(e.id); if (m) { m.position.fromArray(e.pos); m.quaternion.fromArray(e.quat); } }
       }

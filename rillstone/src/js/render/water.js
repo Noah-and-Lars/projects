@@ -56,6 +56,21 @@ void main() {
   #include <fog_fragment>
 }`;
 
+// The thin animated sheet of water running down a sluice.
+const sheetFrag = /* glsl */`
+uniform float uTime; varying vec2 vUv;
+float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
+void main() {
+  float n = vn(vec2(vUv.x * 8.0, vUv.y * 6.0 - uTime * 3.0)) * 0.6 + vn(vec2(vUv.x * 16.0, vUv.y * 14.0 - uTime * 5.0)) * 0.4;
+  vec3 col = mix(vec3(0.16, 0.5, 0.52), vec3(0.85, 0.95, 0.96), smoothstep(0.55, 0.9, n));
+  gl_FragColor = vec4(col, 0.62 + n * 0.25);
+  #include <colorspace_fragment>
+}`;
+export function sheetMaterial() {
+  return new THREE.ShaderMaterial({ vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }', fragmentShader: sheetFrag, transparent: true, depthWrite: false, uniforms: { uTime: { value: 0 } } });
+}
+
 export function buildWater(scene) {
   const pos = [], uv = [], steep = [], idx = [];
   const STEP = 2, ACROSS = 8;
@@ -97,7 +112,7 @@ export function buildWater(scene) {
   mesh.renderOrder = 2;
   scene.add(mesh);
   return {
-    mesh, mat,
+    mesh, mat, sheetMaterial,
     // Is a point under the river surface (used for panning, splashes, swimming)?
     contains(x, y, z) { const w = RIVER_HALF_WIDTH(z) + 0.8; return Math.abs(x - riverX(z)) < w && y < waterY(z) + 0.05; },
     update(t, env) { const u = mat.uniforms; u.uTime.value = t; u.uSunDir.value.copy(env.sunDir); u.uSunColor.value.copy(env.sunColor).multiplyScalar(env.sunIntensity * 0.5); u.uSky.value.copy(env.horizon); u.uLight.value = env.waterLight; },

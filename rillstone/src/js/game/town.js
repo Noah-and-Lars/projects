@@ -7,6 +7,7 @@ import { TOWN, riverX, waterY, height, CLAIMS } from '../world/valley.js';
 import { building, counter, bell, stall, chalkboardFrame, textPlane, clerk, pad, bridge } from '../render/buildings.js';
 import { paint, merge, place } from '../render/geom.js';
 import { SHOPS } from '../defs/shops.js';
+import { MACHINES } from '../defs/machines.js';
 import { wantLabel } from '../sim/economy.js';
 import { MATERIALS, itemName } from '../defs/materials.js';
 import { EXTRA_MESH, EXTRA_BOX, EXTRA_CARD, EXTRA_MASS } from './items.js';
@@ -23,8 +24,8 @@ EXTRA_MESH.crate = (e) => {
 };
 EXTRA_BOX.crate = () => [0.44, 0.44, 0.44];
 EXTRA_MASS.crate = () => 40;
-const crateName = (e) => { for (const s of Object.values(SHOPS)) { const it = s.items.find(i => i.data?.def === e.data.def); if (it) return it.name; } return 'Machine'; };
-EXTRA_CARD.crate = (e) => ({ name: `${crateName(e)} (crate)`, lines: ['Machine crate', 'Placing machines arrives with the water update'] });
+const crateName = (e) => MACHINES[e.data.def]?.name || 'Machine';
+EXTRA_CARD.crate = (e) => ({ name: `${crateName(e)} (crate)`, lines: ['Machine crate', 'Hold it and LMB to place · R rotates'] });
 
 export function createTown({ scene, physics, materials, items, vehicles, economy, hud, audio, panels }) {
   const T = TOWN, gy = T.y;
@@ -94,7 +95,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     const [px, pz] = local(x, z, yaw, 0, 7.5); pads.wagons = [px, gy + 0.3, pz]; pads.yard = [px, gy + 1.2, pz, yaw + Math.PI];
   }
   shop({ key: 'guild', name: 'Guild Hall', x: T.x - 22, z: T.z - 6, w: 10, d: 7, trim: 0x6e56a8 });
-  shop({ key: 'foundry', name: 'Foundry Yard', x: T.x - 18, z: T.z + 18, trim: 0xa84a3a, sign: 'Foundry Yard · opening soon' });
+  shop({ key: 'foundry', name: 'Foundry Yard', x: T.x - 18, z: T.z + 18, trim: 0xa84a3a, shopId: 'foundry' });
   shop({ key: 'signal', name: 'Signal House', x: T.x + 16, z: T.z - 26, w: 7, trim: 0x6e56a8, sign: 'Signal House · soon' });
   // Guild board (contracts + claim deeds) in front of the Guild Hall.
   {
@@ -182,6 +183,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     const pos = [base[0] + r(), base[1] + 0.6, base[2] + r()];
     if (entry.spawn === 'crate') items.spawn('crate', pos, { data: { ...entry.data } });
     else if (entry.spawn === 'sack') items.spawn('sack', pos, { data: {} });
+    else if (entry.spawn === 'coil') items.spawn('coil', pos, { data: { ...entry.data } });
     else items.spawn(entry.spawn, pos, { data: { loads: [], contents: [], ...(entry.data || {}), ...(entry.data ? { name: entry.name } : {}) } });
   }
   function buy(shopId, itemId) {

@@ -51,8 +51,9 @@ export function itemValue(it) {
 export function itemName(it) {
   const m = MATERIALS[it.material];
   if (!m) return it.material;
+  if (it.stage === 'crafted') return `${m.name} ${({ toolhead: 'tool head', ring: 'ring', chain: 'chain', chalice: 'chalice' })[it.craft] || 'piece'}${it.gem ? ' with ' + MATERIALS[it.gem.material].name.toLowerCase() : ''}`;
   if (m.kind === 'gem') return `${it.stage === 'cut' ? 'Cut' : 'Uncut'} ${m.name.toLowerCase()}`;
   if (m.kind === 'fuel') return `${m.name} shard`;
-  if (it.stage === 'ingot') return `${m.name} ingot`;
+  if (it.stage === 'ingot') return `${it.hotUntil ? 'Hot ' : ''}${m.name.toLowerCase().replace(/^./, c => c.toUpperCase())} ingot`;
   return `${m.name} nugget`;
 }
