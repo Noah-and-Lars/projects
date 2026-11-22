@@ -325,7 +325,6 @@ async function boot() {
     current: () => state.slot,
     onLoad: (slot, half) => loadSlot(slot, half),
     onSave: async (slot) => { await saveTo(slot); refreshTitle(); },
-    onNewHere: (slot) => savesPage.show('new', slot),
     onNew: async (slot, name) => {
       state.slot = slot; state.saveName = name; state.slotChosen = true;
       savesPage.hide(); play();

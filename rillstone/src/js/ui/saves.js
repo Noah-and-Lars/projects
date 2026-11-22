@@ -44,16 +44,18 @@ export function createSavesPage(root, o) {
   //      onExport(slot), onImport(slot, file), onDeleted(slot), onRenamed(slot, name), onBack() }
   const el = h('section', { id: 'scr-saves', class: 'screen page interactive hidden' });
   root.append(el);
-  let showBackups = false, confirmDel = null, renaming = null, busy = false;
+  let showBackups = false, confirmDel = null, renaming = null, busy = false, armLoad = null, newFromSaves = false;
   const fileIn = h('input', { type: 'file', accept: '.rillsave', style: { display: 'none' } });
   let importSlot = null;
   fileIn.onchange = async (e) => { const f = e.target.files[0]; fileIn.value = ''; if (f && importSlot != null) { await o.onImport(importSlot, f); render(); } };
   el.append(fileIn);
   // Esc goes back (a rename in progress handles its own Esc).
-  addEventListener('keydown', (e) => { if (e.code === 'Escape' && !el.classList.contains('hidden') && renaming == null) { e.preventDefault(); o.onBack(); } });
+  // New game opened from the Saves page goes back there; otherwise out.
+  const goBack = () => { if (mode === 'new' && newFromSaves) { newFromSaves = false; api.show('saves'); } else o.onBack(); };
+  addEventListener('keydown', (e) => { if (e.code === 'Escape' && !el.classList.contains('hidden') && renaming == null) { e.preventDefault(); goBack(); } });
 
   const head = (title, sub) => h('header', { class: 'page-head' },
-    h('button', { class: 'btn ghost back', onclick: () => o.onBack() }, icon('back'), 'Back'),
+    h('button', { class: 'btn ghost back', onclick: () => goBack() }, icon('back'), 'Back'),
     h('div', {}, h('h2', {}, title), sub ? h('p', { class: 'small' }, sub) : null));
 
   function stats(m) {
@@ -77,7 +79,7 @@ export function createSavesPage(root, o) {
       body.append(h('b', { class: 'slot-name muted' }, 'Free'), h('p', { class: 'small' }, inGame ? 'Save your game here to keep a copy.' : 'Start a new claim here, or import a .rillsave file.'));
       const actions = h('div', { class: 'slot-actions' });
       if (inGame) actions.append(h('button', { class: 'btn primary', disabled: !canSave || busy, onclick: () => act(() => o.onSave(m.slot)) }, icon('save'), 'Save here'));
-      else actions.append(h('button', { class: 'btn primary', onclick: () => o.onNewHere(m.slot) }, icon('plus'), 'New game here'));
+      else actions.append(h('button', { class: 'btn primary', onclick: () => { newFromSaves = true; api.show('new', m.slot, true); } }, icon('plus'), 'New game here'));
       actions.append(tool('import', 'Import', () => { importSlot = m.slot; fileIn.click(); }));
       body.append(actions);
     } else {
@@ -94,7 +96,11 @@ export function createSavesPage(root, o) {
           h('button', { class: 'btn', onclick: () => { confirmDel = null; render(); } }, 'Keep it')));
       } else {
         const actions = h('div', { class: 'slot-actions' },
-          h('button', { class: 'btn primary', disabled: busy, onclick: () => o.onLoad(m.slot) }, icon('load'), cur && inGame ? 'Reload' : 'Load'));
+          h('button', { class: 'btn primary' + (armLoad === m.slot ? ' danger' : ''), disabled: busy, onclick: () => {
+            // In a game, loading drops what isn't saved: ask once.
+            if (inGame && armLoad !== m.slot) { armLoad = m.slot; render(); setTimeout(() => { if (armLoad === m.slot) { armLoad = null; render(); } }, 4000); return; }
+            o.onLoad(m.slot);
+          } }, icon('load'), armLoad === m.slot ? 'Unsaved progress is lost: load?' : cur && inGame ? 'Reload' : 'Load'));
         if (inGame) actions.append(h('button', { class: 'btn', disabled: !canSave || busy, onclick: () => act(() => o.onSave(m.slot)) }, icon('save'), cur ? 'Save' : 'Save here'));
         actions.append(
           tool('rename', 'Rename', () => { renaming = m.slot; render(); }),
@@ -149,11 +155,12 @@ export function createSavesPage(root, o) {
     setTimeout(() => inp.focus(), 0);
   }
 
-  return {
+  const api = {
     el,
     get open() { return !el.classList.contains('hidden'); },
-    show(m = 'saves', slot = null) {
-      mode = m === 'new' ? 'new' : 'saves'; pick = slot; nameVal = ''; confirmDel = null; renaming = null;
+    show(m = 'saves', slot = null, keepFrom = false) {
+      mode = m === 'new' ? 'new' : 'saves'; pick = slot; nameVal = ''; confirmDel = null; renaming = null; armLoad = null;
+      if (!keepFrom) newFromSaves = false;
       // Something to see at once: reading saves can take a moment.
       el.replaceChildren(h('div', { class: 'page-inner' + (mode === 'new' ? ' narrow' : '') }, head(mode === 'new' ? 'New game' : 'Saves', 'Reading your saves…')));
       el.classList.remove('hidden'); return render();
@@ -161,4 +168,5 @@ export function createSavesPage(root, o) {
     hide() { el.classList.add('hidden'); },
     refresh: () => render(),
   };
+  return api;
 }

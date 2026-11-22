@@ -9,7 +9,7 @@ export function createCoopPage(root, o) {
   // o: { coop, net, inGame(), latestSave() -> Promise<meta|null>, hostSave(slot), onBack(), getName(), setName(n) }
   const el = h('section', { id: 'scr-coop', class: 'screen page interactive hidden' });
   root.append(el);
-  let msg = '', msgKind = '', busy = false, stopArm = false;
+  let msg = '', msgKind = '', busy = false, stopArm = false, latestCache, looking = false;
   addEventListener('keydown', (e) => { if (e.code === 'Escape' && !el.classList.contains('hidden') && !(e.target && e.target.tagName === 'INPUT')) { e.preventDefault(); o.onBack(); } });
 
   const head = (sub) => h('header', { class: 'page-head' },
@@ -72,13 +72,15 @@ export function createCoopPage(root, o) {
     const name = h('input', { class: 'name-input', value: o.getName(), maxlength: 16, placeholder: 'Your name', onchange: (e) => { o.setName(e.target.value); e.target.value = o.getName(); }, onkeydown: (e) => e.stopPropagation() });
     const code = h('input', { class: 'code-input', maxlength: 5, placeholder: 'CODE', autocomplete: 'off', spellcheck: 'false', oninput: (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); }, onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter') join(code.value); } });
     const inGame = o.inGame();
-    const latest = inGame ? null : await o.latestSave();
+    // Draw at once; the newest save (for "Host <save>") fills in when read.
+    if (!inGame && latestCache === undefined) { latestCache = null; looking = true; o.latestSave().then((l) => { latestCache = l; looking = false; render(); }); }
+    const latest = inGame ? null : latestCache;
     const hostCard = h('div', { class: 'coop-option' },
       h('h3', {}, 'Host'),
       h('p', { class: 'small' }, inGame ? 'Open this world to up to 3 friends. Your browser runs it, and your save keeps it.' : 'Pick the world to open to friends. Your browser runs it, and your save keeps it.'),
       inGame ? h('button', { class: 'btn primary', disabled: busy, onclick: () => host() }, 'Host this world')
         : latest ? h('button', { class: 'btn primary', disabled: busy, onclick: () => o.hostSave(latest.slot) }, `Host “${latest.name || `Claim ${latest.slot}`}”`)
-          : h('p', { class: 'small' }, 'Start a new game first, then host it from the pause menu.'),
+          : h('p', { class: 'small' }, looking ? 'Looking for your saves…' : 'Start a new game first, then host it from the pause menu.'),
       !inGame && latest ? h('p', { class: 'small' }, 'Or load another save, then host from the pause menu (Esc → Co-op).') : null);
     const joinCard = h('div', { class: 'coop-option' },
       h('h3', {}, 'Join'),
@@ -96,7 +98,7 @@ export function createCoopPage(root, o) {
   return {
     el,
     get open() { return !el.classList.contains('hidden'); },
-    show() { msg = ''; stopArm = false; el.classList.remove('hidden'); return render(); },
+    show() { msg = ''; stopArm = false; latestCache = undefined; el.classList.remove('hidden'); return render(); },
     hide() { el.classList.add('hidden'); },
     refresh: () => render(),
   };
