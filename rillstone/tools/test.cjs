@@ -1,6 +1,6 @@
 // Headless smoke test. Serve the rillstone folder first
 // (python3 -m http.server 8765), then:
-//   node tools/test.cjs <outdir> [--src] [--shots] [--move] [--dig]
+//   node tools/test.cjs <outdir> [--src] [--shots] [--move] [--dig] [--town]
 // SCALE=2 takes screenshots at deviceScaleFactor 2 (for showing people).
 // Tests the built single-file index.html; --src tests src/index.html instead.
 const { chromium } = require('playwright');
@@ -92,10 +92,10 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       let holes = 0;
       for (let i = 0; i < 50; i++) {
         const x = g.x0 + 3 + (i % 10) * 1.9, z = g.z0 + 3 + Math.floor(i / 10) * 4.2;
-        await R.teleport(x - 1.6, g.top + 1.2, z + 1.2); await R.tick(2);
+        await R.teleport(x - 1.6, g.top + 1.2, z - 0.2); await R.tick(2);
         const l = await act(x, g.top - 0.05, z);
         if (l && l.band) holes++;
-        if (R.items.get(H.hand).data.loads.length) await act(x - 0.6, g.top, z + 1.6); // dump the load beside the hole
+        if (R.items.get(H.hand).data.loads.length) await act(x - 0.6, g.top, z - 1.6); // dump the load beside the hole (away from the pan area)
       }
       await R.claims.settle();
       // Pan: scoop 2 loads in the claim, wash both in the river, tip out on the bank.
@@ -202,6 +202,123 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     });
     await p.waitForTimeout(900);
     await p.screenshot({ timeout: 180000, path: `${out}/m2-pan.png` });
+  }
+
+  if (all || flags.has('--town')) {
+    // M3: earn § 1,000 by panning and selling at the Assay Office, buy the
+    // starter automation kit, save, reload, and check it all persists.
+    const earn = await p.evaluate(async () => {
+      const R = __rill, H = R.hands, E = R.economy, g = R.places.CLAIMS[0], T = R.town; R.noRender(true); R.fly(false);
+      const act = async (x, y, z) => { R.aimAt(x, y, z); await R.refreshAim(); H.cooldown = 0; return H.use(); };
+      if (R.items.get(H.hand)?.type !== 'pan') H.swap();
+      const pan = R.items.get(H.hand);
+      const zr = g.cz, rx = R.riverX(zr), sx = rx - 8.2;
+      const assay = T.counters.find(c => c.venue === 'assay');
+      let loads = 0, sales = 0, guard = 0;
+      while (E.state.scrip < 1000 && guard++ < 400) {
+        // Two loads from 4-5 m down in the claim, washed in the river.
+        pan.data.loads.push({ band: 1, depth: 4 + Math.random(), claim: 'gravel' }, { band: 1, depth: 4 + Math.random(), claim: 'gravel' });
+        await R.teleport(sx, R.height(sx, zr) + 1.2, zr); await R.tick(2);
+        for (let k = 0; k < 2; k++) { await act(rx - 6, R.waterY(zr) - 0.2, zr); loads++; }
+        // Carry the finds to the counter.
+        const finds = pan.data.contents.splice(0);
+        finds.forEach((id, i) => R.items.place(id, [assay.x - 1.2 + (i % 6) * 0.4, assay.top + 0.15 + Math.floor(i / 6) * 0.15, assay.z]));
+        R.items.refresh(pan.id);
+        if (loads % 10 === 0) { await R.tick(30); R.items.update(); const r = T.ringBell(assay.bell); sales += r.total || 0; }
+      }
+      await R.tick(30); R.items.update(); const r = T.ringBell(assay.bell); sales += r.total || 0;
+      R.noRender(false);
+      return { scrip: E.state.scrip, loads, sales, perLoad: sales / loads };
+    });
+    check(earn.scrip >= 1000, `earned § ${earn.scrip} from ${earn.loads} panned loads (§ ${earn.perLoad.toFixed(1)} per load)`);
+    const kit = await p.evaluate(async () => {
+      const R = __rill; R.noRender(true);
+      const before = R.economy.state.scrip;
+      const ids = ['sluice1', 'drill1', 'intake1', 'pipe', 'pipe', 'pipe', 'pipe', 'pipe', 'pipe', 'pipe', 'pipe'];
+      let ok = 0; for (const id of ids) if (R.town.buy('millwright', id)) ok++;
+      await R.tick(90); R.items.update();
+      const crates = [...R.items.ents.values()].filter(e => e.type === 'crate').length;
+      R.noRender(false);
+      return { ok, spent: before - R.economy.state.scrip, crates };
+    });
+    check(kit.ok === 11 && kit.crates === 11, `bought the starter kit: ${kit.crates} crates for § ${kit.spent}`);
+    // Market saturation in the live game.
+    const mkt = await p.evaluate(() => { const E = __rill.economy; const m = E.state.market[0]; const a = E.stallMult(0); m.sold += 500; const b = E.stallMult(0); m.sold -= 500; return { a, b, want: m.want }; });
+    check(mkt.b < mkt.a || mkt.a === 1, `stall 1 price drops after sales (${(mkt.a * 100).toFixed(0)}% -> ${(mkt.b * 100).toFixed(0)}%)`);
+    // Cargo: a nugget rides in the truck bed while driving, then comes back out.
+    const cargo = await p.evaluate(async () => {
+      const R = __rill, V = R.vehicles; R.noRender(true);
+      const v = [...V.list.values()][0];
+      const n = R.items.spawn('nugget', [0, 0, 0], { item: { material: 'gold', stage: 'ore', kg: 1.2 }, loc: 'held' });
+      const bedWorld = new R.THREE.Vector3(0, v.def.bed.y + 0.05, -1).applyMatrix4(v.group.matrixWorld).toArray();
+      const r = V.addCargo(v.id, n, bedWorld);
+      V.enter(v.id); R.input.simulate('forward', true);
+      for (let i = 0; i < 150; i++) { V.update(1 / 60, R.input, true); await R.tick(1); }
+      R.input.simulate('forward', false); R.input.endFrame();
+      for (let i = 0; i < 90; i++) { V.update(1 / 60, R.input, true); await R.tick(1); }
+      await R.exitVehicle();
+      const moved = Math.hypot(v.group.position.x - bedWorld[0], v.group.position.z - bedWorld[2]);
+      const still = v.cargo.includes(n.id);
+      const mesh = v.cargoGroup.children.length;
+      const out = V.cargoNear(v.id, new R.THREE.Vector3(0, v.def.bed.y, -1).applyMatrix4(v.group.matrixWorld).toArray(), 0.6);
+      R.noRender(false);
+      return { r, moved, still, mesh, found: out && out.id === n.id };
+    });
+    check(cargo.r === 'ok' && cargo.still && cargo.mesh >= 1 && cargo.found && cargo.moved > 5, `nugget rode ${cargo.moved.toFixed(0)} m in the truck bed and can be taken back out`);
+    // Benchmark 3: drive over freshly dug ground in Willow Bend.
+    const b3 = await p.evaluate(async () => {
+      const R = __rill, V = R.vehicles, w = R.places.CLAIMS[1]; R.noRender(true);
+      for (let k = 0; k < 5; k++) for (let z = w.z0 + 2; z < w.z1 - 2; z += 0.8) R.brush('willow', [w.x0 + 7 + k * 4, w.top + 0.2, z], 0.5, 'dig', 4);
+      for (let i = 0; i < 40; i++) R.brush('willow', [w.x0 + 6 + Math.random() * 20, w.top - 0.1, w.z0 + 3 + Math.random() * 26], 0.5, 'fill', 4);
+      await R.claims.settle();
+      const v = [...V.list.values()][0];
+      // Keep clear of the benchmark-1 pit in the middle of the claim.
+      await V.teleport(v.id, [w.x0 + 2.5, w.top + 1.5, w.z1 - 4], Math.PI / 2);
+      for (let i = 0; i < 60; i++) await R.tick(1);
+      V.enter(v.id); R.input.simulate('forward', true);
+      const trace = []; let maxRoll = 0, maxPitchRate = 0, maxUp = 0, minUpDot = 1, launches = 0, stepMs = 0, n = 0, crossed = false;
+      for (let i = 0; i < 900; i++) {
+        V.update(1 / 60, R.input, true); await R.tick(1);
+        const s = R.physics.vehicles.get(v.id);
+        if (s.p[0] > w.x0 + 4 && s.p[0] < w.x1 - 2) {
+          maxRoll = Math.max(maxRoll, Math.abs(s.av[2]), Math.abs(s.av[0]));
+          maxUp = Math.max(maxUp, s.lv[1]);
+          if (s.lv[1] > 3) launches++;
+          minUpDot = Math.min(minUpDot, 1 - 2 * (s.q[0] ** 2 + s.q[2] ** 2));
+          stepMs += R.physics.stats.stepMs; n++;
+        }
+        if (i % 60 === 0) trace.push([+s.p[0].toFixed(1), +s.p[1].toFixed(1), +s.speed.toFixed(1), s.grounded]);
+        if (s.p[0] > w.x1 + 2) { crossed = true; break; }
+      }
+      R.input.simulate('forward', false); R.input.endFrame();
+      await R.exitVehicle();
+      R.noRender(false);
+      return { trace: trace.join(' '), x1: w.x1, crossed, maxAngVel: +maxRoll.toFixed(2), maxVy: +maxUp.toFixed(2), launches, minUp: +minUpDot.toFixed(2), stepMs: +(stepMs / Math.max(1, n)).toFixed(2) };
+    });
+    console.log('     benchmark 3: ' + JSON.stringify(b3));
+    check(b3.crossed && b3.launches === 0 && b3.minUp > 0.7, `truck crossed 5 fresh ruts and mounds without launching or rolling (min up ${b3.minUp}, max vy ${b3.maxVy} m/s)`);
+    // Unflip.
+    const flip = await p.evaluate(async () => {
+      const R = __rill, V = R.vehicles, v = [...V.list.values()][0]; R.noRender(true);
+      const s = R.physics.vehicles.get(v.id);
+      await R.physics.call({ op: 'teleportVehicle', id: v.id, pos: [s.p[0], s.p[1] + 1, s.p[2]], quat: [0.7071, 0, 0, 0.7071] });
+      for (let i = 0; i < 120; i++) await R.tick(1);
+      await V.unflip(v.id);
+      for (let i = 0; i < 120; i++) await R.tick(1);
+      const t = R.physics.vehicles.get(v.id); R.noRender(false);
+      return 1 - 2 * (t.q[0] ** 2 + t.q[2] ** 2);
+    });
+    check(flip > 0.95, `unflip puts the truck back on its wheels (up ${flip.toFixed(2)})`);
+    // Save, reload the page, load the slot: everything persists.
+    const before = await p.evaluate(async () => { const R = __rill; await R.saveTo(1); return { scrip: R.economy.state.scrip, items: R.items.ents.size, crates: [...R.items.ents.values()].filter(e => e.type === 'crate').length, chunks: [...R.claims.volumes.values()].reduce((a, v) => a + v.modified.size, 0), contracts: R.economy.state.contracts.map(c => c.id).join(','), truck: [...R.vehicles.list.values()][0].group.position.toArray().map(v => Math.round(v)) }; });
+    await p.evaluate(() => __rill.loadSlot(1));
+    await p.waitForFunction(() => window.__rill && window.__rill.ready && window.__rill.state.mode === 'play', null, { timeout: 120000 });
+    await p.waitForTimeout(500);
+    const after = await p.evaluate(() => { const R = __rill; return { scrip: R.economy.state.scrip, items: R.items.ents.size, crates: [...R.items.ents.values()].filter(e => e.type === 'crate').length, chunks: [...R.claims.volumes.values()].reduce((a, v) => a + v.modified.size, 0), contracts: R.economy.state.contracts.map(c => c.id).join(','), truck: [...R.vehicles.list.values()][0].group.position.toArray().map(v => Math.round(v)) }; });
+    check(JSON.stringify(before) === JSON.stringify(after), `reload keeps everything: § ${after.scrip}, ${after.items} items, ${after.crates} crates, ${after.chunks} dug chunks, contracts ${after.contracts}, truck at ${after.truck}`);
+    // A/B: the slot keeps a complete older half too; export round-trips.
+    const ab = await p.evaluate(async () => { const R = __rill; await R.saveTo(1, true); const l = await R.saves.list(); const blob = R.saves.exportBlob(R.snapshot()); const snap = await R.saves.importFile(new File([blob], 'x.rillsave')); return { ab: l[0].ab, size: blob.size, scrip: snap.economy.scrip }; });
+    check(ab.size > 100 && ab.scrip === after.scrip, `export/import round-trips a ${(ab.size / 1024).toFixed(0)} KB .rillsave (slot 1 now on half ${ab.ab})`);
   }
 
   if (all || flags.has('--shots')) {

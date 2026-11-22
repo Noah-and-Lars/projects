@@ -9,7 +9,7 @@ export async function createPhysics(opts = {}) {
   let pending = [], stats = {}, playerState = null, busy = null;
   const api = {
     version: info.version,
-    poses, get stats() { return stats; }, get player() { return playerState; },
+    poses, vehicles: new Map(), get stats() { return stats; }, get player() { return playerState; },
     call: (m, t) => w.call(m, t),
     post: (m, t) => w.post(m, t),
     addBody(m) { poses.set(m.id, { p: m.pos.slice(), q: (m.quat || [0, 0, 0, 1]).slice(), asleep: !!m.asleep }); w.post({ op: 'addBody', ...m }); },
@@ -33,6 +33,7 @@ export async function createPhysics(opts = {}) {
       }
       if (r.lost.length && api.onLost) for (const id of r.lost) api.onLost(id);
       stats = r.stats; playerState = r.player;
+      for (const v of r.veh) api.vehicles.set(v.id, v);
       qs.forEach((x, i) => x.res(r.queries[i]));
       return r;
     },

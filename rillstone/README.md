@@ -96,6 +96,26 @@ Deeper loads give heavier finds. Tools clink, throw sparks and tell you the
 tier you need when a band is too hard. More than 60 resting finds of one kind
 merge into a pile so the physics stays cheap.
 
+## Town and money
+
+Millbrook sits across the bridge from the Gravel Bar.
+
+- **Selling.** Put finds on the **Assay Office** counter and ring the bell
+  (E). The clerk weighs them and the ledger pays base price in Scrip (§).
+- **Market stalls.** The three stalls each want one thing a day, shown on
+  their chalkboards. They pay up to 130% of base, falling as you sell to them.
+- **Shops.** The **General Store** sells tools and shovel upgrades, the
+  **Millwright** sells the starter automation kit as crates, and the **Wagon
+  Shed** sells charcoal and can call your truck to its yard. Purchases
+  appear on the delivery pad by each shop.
+- **Guild board.** It has three contracts, which pay Scrip and Guild
+  Standing, and claim deeds. Willow Bend costs § 900.
+- **The Old Hauler.** F gets in and out, WASD drives, Space brakes and H
+  (hold) unflips. Drop items onto the bed with G to carry them to town; E takes
+  them out again. It burns charcoal: LMB with a sack on the truck refuels it.
+- **Saving.** The pause menu has 3 save slots (autosave every 3 minutes),
+  plus export and import of `.rillsave` files.
+
 ## The valley
 
 Rillstone Vale is about 600 × 600 m, shaped by `src/js/world/valley.js`.
@@ -137,6 +157,12 @@ underground, and L toggles it.
 | `js/game/items.js` | Entity store for carriable things: location states, physics bodies, instanced nuggets, piles |
 | `js/game/hands.js` | Hand and swap slot, tool actions (dig, scoop, pour, wash), pick up/drop, drop ring, hover outline, tooltips |
 | `js/render/fx.js`, `js/core/audio.js` | Particle bursts; synthesised sound cues on volume buses with captions |
+| `js/sim/economy.js` | Ledger, market buyers with saturation, contracts, claim deeds |
+| `js/game/town.js`, `js/render/buildings.js` | Millbrook: buildings, counters, bells, clerks, stalls, guild board, delivery pads, bridge |
+| `js/defs/shops.js` | Shop catalogues |
+| `js/game/vehicles.js`, `js/defs/vehicles.js` | The Old Hauler: model, wheels, driving input, chase camera, fuel, unflip, cargo |
+| `js/core/save.js` | IndexedDB save slots with A/B halves, migrations, `.rillsave` export/import |
+| `js/ui/panels.js` | Shop, contracts and save panels |
 | `js/game/player.js` | First-person controller: input to wanted velocity, view angles, smoothed camera |
 | `js/ui/hud.js`, `js/ui/menu.js`, `style.css` | HUD, title, pause and settings panels |
 | `js/core/workers.js` | Starts workers from Blob URLs (bundled strings in the build, rewritten modules in dev) |
@@ -170,6 +196,9 @@ outside request to prove the file is self-contained. Add `--src` to test
 - digs 50 holes with the shovel, then pans 20 loads in the river and checks
   20 finds land on the bank (`--dig`);
 - drops 80 copper nuggets in one spot and checks they merge into a pile;
+- earns § 1,000 by panning and selling, buys the starter kit, carries a
+  nugget in the truck bed, drives over fresh ruts (benchmark 3), unflips the
+  truck, saves, reloads the page and checks everything persists (`--town`);
 - runs digging benchmark 1 and screenshots the depth bands, the drop ring,
   a tooltip and panning;
 - fails on any console error.

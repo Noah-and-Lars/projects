@@ -9,8 +9,11 @@
 // one InstancedMesh per material.
 import * as THREE from 'three';
 import { MATERIALS, itemValue, itemName } from '../defs/materials.js';
-import { TOOLS, TOOL_BOX, nuggetSize, nuggetGeometry, nuggetMaterial, toolGeometry, clodGeometry } from '../defs/items.js';
+import { TOOLS, toolDef, TOOL_BOX, nuggetSize, nuggetGeometry, nuggetMaterial, toolGeometry, clodGeometry } from '../defs/items.js';
 
+// Other modules register meshes and colliders for their entity types
+// (sacks, machine crates...).
+export const EXTRA_MESH = {}, EXTRA_BOX = {}, EXTRA_CARD = {}, EXTRA_MASS = {};
 const CAP = 2048;           // instances per material
 const PILE_MIN = 60;        // items of one material/stage resting within 1 m merge
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _v = new THREE.Vector3(), _s = new THREE.Vector3();
@@ -40,16 +43,18 @@ export function createItems({ scene, physics, materials }) {
   function shapeOf(e) {
     if (isNugget(e)) { const s = nuggetSize(e.item.kg, e.item.material) * 0.5; return { type: 'box', hx: s * 0.95, hy: s * 0.65, hz: s * 0.95 }; }
     if (e.type === 'clod') return { type: 'box', hx: 0.18, hy: 0.12, hz: 0.18 };
+    if (EXTRA_BOX[e.type]) { const b = EXTRA_BOX[e.type](e); return { type: 'box', hx: b[0], hy: b[1], hz: b[2] }; }
     if (e.type === 'pile') { const r = pileRadius(e); return { type: 'box', hx: r * 0.8, hy: r * 0.35, hz: r * 0.8 }; }
     const b = TOOL_BOX[e.type] || [0.15, 0.15, 0.15];
     return { type: 'box', hx: b[0], hy: b[1], hz: b[2] };
   }
   const pileRadius = (e) => 0.35 + Math.cbrt(e.data.kgs.length) * 0.09;
-  function massOf(e) { if (e.item) return Math.max(0.2, e.item.kg); if (TOOLS[e.type]) return TOOLS[e.type].kg; return 3; }
+  function massOf(e) { if (e.item) return Math.max(0.2, e.item.kg); if (TOOLS[e.type]) return TOOLS[e.type].kg; if (EXTRA_MASS[e.type]) return EXTRA_MASS[e.type](e); return 3; }
 
   function makeMesh(e) {
     let geo, mat = materials.vcolor;
     if (e.type === 'clod') geo = clodGeometry(e.data.band);
+    else if (EXTRA_MESH[e.type]) geo = EXTRA_MESH[e.type](e);
     else if (e.type === 'pile') {
       const r = pileRadius(e);
       geo = new THREE.ConeGeometry(r, r * 0.75, 9, 2).toNonIndexed();
@@ -116,6 +121,11 @@ export function createItems({ scene, physics, materials }) {
     // A tool's look depends on its loads: rebuild its mesh.
     refresh(id) { const e = ents.get(id); if (e && meshes.has(id)) { hide(e); show(e); } },
     halfHeight(e) { return shapeOf(e).hy; },
+    // A standalone mesh for an entity (cargo on a vehicle, crate contents).
+    buildMesh(e) {
+      if (isNugget(e)) { const g = nuggetGeometry(MATERIALS[e.item.material].kind, e.item.material.length * 7); const s = nuggetSize(e.item.kg, e.item.material); g.scale(s, s, s); return new THREE.Mesh(g, instFor(e.item.material).mesh.material); }
+      return makeMesh(e);
+    },
     shapeOf,
     // Sync drawn transforms with the physics worker's latest poses.
     update() {
@@ -144,8 +154,9 @@ export function createItems({ scene, physics, materials }) {
         const kg = e.data.kgs.reduce((a, b) => a + b, 0), m = MATERIALS[e.data.material];
         return { name: `Pile of ${m.name.toLowerCase()} ${e.data.stage === 'ore' ? 'nuggets' : e.data.stage}`, lines: [`${e.data.kgs.length} pieces · ${kg.toFixed(1)} kg`, m.kind === 'fuel' ? 'Fuel' : `≈ § ${(kg * (e.data.stage === 'ore' ? m.ore : m.refined)).toFixed(0)}`, 'E takes one'] };
       }
+      if (EXTRA_CARD[e.type]) return EXTRA_CARD[e.type](e);
       if (e.type === 'clod') return { name: 'Dirt clod', lines: ['1 gravel load', 'Wash it in a pan'] };
-      if (TOOLS[e.type]) { const t = TOOLS[e.type], n = e.data.loads?.length || 0; return { name: t.name, badge: 'Tier ' + ['', 'I', 'II', 'III', 'IV'][t.tier], lines: [t.loads ? `${n}/${t.loads} loads` : 'Breaks ground fast', e.data.contents?.length ? `${e.data.contents.length} finds inside` : null].filter(Boolean) }; }
+      if (TOOLS[e.type]) { const t = toolDef(e), n = e.data.loads?.length || 0; return { name: t.name, badge: 'Tier ' + ['', 'I', 'II', 'III', 'IV'][t.tier], lines: [t.loads ? `${n}/${t.loads} loads` : 'Breaks ground fast', e.data.contents?.length ? `${e.data.contents.length} finds inside` : null].filter(Boolean) }; }
       return { name: e.type };
     },
     // Merge resting nuggets into piles when more than PILE_MIN of one
@@ -194,6 +205,15 @@ export function createItems({ scene, physics, materials }) {
       return n;
     },
     counts() { let loose = 0, piles = 0; for (const e of ents.values()) { if (e.loc === 'loose') loose++; if (e.type === 'pile') piles++; } return { total: ents.size, loose, piles }; },
+    // Rebuild the store from a snapshot (load game).
+    restore(list) {
+      for (const id of [...ents.keys()]) api.remove(id);
+      for (const d of list) {
+        const e = { id: d.id, type: d.type, pos: d.pos.slice(), quat: d.quat.slice(), loc: d.loc, container: d.container, item: d.item, data: d.data };
+        ents.set(e.id, e); nextId = Math.max(nextId, e.id + 1);
+        if (e.loc === 'loose') { addBody(e); show(e); e._synced = false; }
+      }
+    },
     // Plain-data snapshot for saves (M3) and network (M7).
     serialize() { return [...ents.values()].map(e => ({ id: e.id, type: e.type, pos: e.pos, quat: e.quat, loc: e.loc, container: e.container ?? null, item: e.item, data: e.data })); },
   };

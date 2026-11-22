@@ -1,0 +1,99 @@
+// The economy, held by the host (BUILD_BRIEF 3.6): an abstract ledger in
+// Scrip (§), Guild Standing, market buyers that saturate during the day,
+// guild contracts and claim deeds. Plain data, so it saves and syncs.
+import { MATERIALS, itemValue, itemName } from '../defs/materials.js';
+import { CLAIMS } from '../world/valley.js';
+
+const WANTS = [
+  { stage: 'ore', material: 'copper' }, { stage: 'ore', material: 'iron' }, { stage: 'ore', material: 'silver' },
+  { stage: 'ore', material: 'gold' }, { stage: 'uncut', kind: 'gem' },
+];
+export const wantLabel = (w) => (w.kind === 'gem' ? 'Uncut gems' : `${MATERIALS[w.material].name} ${w.stage === 'ore' ? 'ore' : w.stage + 's'}`);
+const matches = (w, it) => it.stage === w.stage && (w.kind ? MATERIALS[it.material].kind === w.kind : it.material === w.material);
+
+// Contract templates, scaled by standing. kind: 'kg' (deliver kg of a
+// material/stage), 'count' (items matching), 'big' (one piece over X kg), 'day' (sell § in a day).
+function makeContract(rng, standing, id) {
+  const tier = Math.min(4, 1 + Math.floor(standing / 4));
+  const t = rng();
+  const metal = ['copper', 'iron', 'silver', 'gold'][Math.min(3, Math.floor(rng() * (1.5 + tier)))];
+  let c;
+  if (t < 0.4) { const kg = Math.round((6 + rng() * 10) * tier * (metal === 'gold' ? 0.4 : metal === 'silver' ? 0.6 : 1)); c = { kind: 'kg', want: { stage: 'ore', material: metal }, target: kg, text: `Deliver ${kg} kg of ${MATERIALS[metal].name.toLowerCase()} ore` }; }
+  else if (t < 0.6) { const n = 2 + Math.floor(rng() * 2 * tier); c = { kind: 'count', want: { stage: 'uncut', kind: 'gem' }, target: n, text: `Deliver ${n} uncut gems` }; }
+  else if (t < 0.8) { const kg = Math.round((0.8 + rng() * 0.8) * tier * 10) / 10; c = { kind: 'big', want: { stage: 'ore', material: metal }, target: kg, text: `Deliver a ${MATERIALS[metal].name.toLowerCase()} nugget over ${kg} kg` }; }
+  else { const s = Math.round((150 + rng() * 150) * tier / 10) * 10; c = { kind: 'day', target: s, text: `Sell § ${s} in one day` }; }
+  const reward = Math.round((c.kind === 'day' ? c.target * 0.35 : c.kind === 'big' ? 60 * tier : c.kind === 'count' ? c.target * 25 : c.target * MATERIALS[c.want.material].ore * 0.6) / 5) * 5 + 20;
+  return { id, ...c, progress: 0, reward, standing: tier, done: false };
+}
+
+export function createEconomy(rng) {
+  const S = {
+    scrip: 0, standing: 0, day: 1, soldToday: 0, totalEarned: 0, ledger: [],
+    market: [], contracts: [], nextContract: 1, owned: ['gravel'],
+  };
+  const api = { state: S };
+  function rollMarket() {
+    const pool = WANTS.slice();
+    S.market = [0, 1, 2].map((i) => { const w = pool.splice(Math.floor(rng() * pool.length), 1)[0]; return { stall: i, want: w, mult: Math.round((1.05 + rng() * 0.25) * 100) / 100, sold: 0 }; });
+  }
+  function refillContracts() {
+    S.contracts = S.contracts.filter(c => !c.done);
+    while (S.contracts.length < 3) S.contracts.push(makeContract(rng, S.standing, S.nextContract++));
+  }
+  api.init = () => { rollMarket(); refillContracts(); };
+  api.newDay = (day) => { S.day = day; S.soldToday = 0; rollMarket(); for (const c of S.contracts) if (c.kind === 'day' && !c.done) c.progress = 0; refillContracts(); };
+
+  // A market stall pays 105-130% of base, falling 1.5% per § 100 sold there
+  // today, never below base.
+  api.stallMult = (i) => { const m = S.market[i]; return m ? Math.max(1, m.mult * (1 - 0.015 * (m.sold / 100))) : 1; };
+  api.quote = (it, venue) => {
+    const base = itemValue(it);
+    if (venue === 'assay') return base;
+    const m = S.market[venue]; if (!m || !matches(m.want, it)) return null;
+    return base * api.stallMult(venue);
+  };
+  // Sell a list of items (plain item data) at a venue: 'assay' or a stall index.
+  api.sell = (list, venue) => {
+    let total = 0; const sold = [], refused = [];
+    for (const it of list) {
+      if (MATERIALS[it.material]?.kind === 'fuel') { refused.push({ it, why: 'Quartz is fuel, not for sale' }); continue; }
+      const q = api.quote(it, venue);
+      if (q == null) { refused.push({ it, why: 'Not what this buyer wants today' }); continue; }
+      total += q; sold.push(it);
+      if (venue !== 'assay') S.market[venue].sold += q;
+      progressContracts(it, q);
+    }
+    total = Math.round(total);
+    if (total > 0) { S.scrip += total; S.totalEarned += total; S.soldToday += total; S.ledger.unshift({ day: S.day, venue, total, n: sold.length }); S.ledger.length = Math.min(S.ledger.length, 30); }
+    for (const c of S.contracts) if (c.kind === 'day' && !c.done) c.progress = S.soldToday;
+    const completed = checkContracts();
+    return { total, sold, refused, completed };
+  };
+  function progressContracts(it, value) {
+    void value;
+    for (const c of S.contracts) {
+      if (c.done || c.kind === 'day') continue;
+      if (!matches(c.want, it)) continue;
+      if (c.kind === 'kg') c.progress += it.kg;
+      else if (c.kind === 'count') c.progress += 1;
+      else if (c.kind === 'big' && it.kg >= c.target) c.progress = c.target;
+    }
+  }
+  function checkContracts() {
+    const done = [];
+    for (const c of S.contracts) if (!c.done && c.progress >= c.target) { c.done = true; S.scrip += c.reward; S.standing += c.standing; done.push(c); }
+    if (done.length) refillContracts();
+    return done;
+  }
+  api.spend = (amount) => { if (S.scrip < amount) return false; S.scrip -= amount; return true; };
+  api.owns = (claimId) => S.owned.includes(claimId);
+  api.buyClaim = (claimId) => {
+    const c = CLAIMS.find(x => x.id === claimId); if (!c || api.owns(claimId)) return 'owned';
+    if (!api.spend(c.price)) return 'poor';
+    S.owned.push(claimId); return 'ok';
+  };
+  api.describe = (it) => itemName(it);
+  api.serialize = () => JSON.parse(JSON.stringify(S));
+  api.restore = (d) => { Object.assign(S, d); };
+  return api;
+}

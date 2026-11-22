@@ -131,3 +131,26 @@ export const VOXEL_CLAIMS = ['gravel', 'willow'];
 // Mark them so the valley terrain leaves a hole for each volume.
 for (const c of CLAIMS) if (VOXEL_CLAIMS.includes(c.id)) c.voxel = true;
 export function claimDefs() { return CLAIMS.filter(c => VOXEL_CLAIMS.includes(c.id)); }
+
+// Saves: copy a chunk's voxels out of / back into a volume.
+export function readChunk(vol, ck) {
+  const [i, j, k] = ck.split(',').map(Number), n = CHUNK ** 3;
+  const dens = new Int8Array(n), band = new Uint8Array(n);
+  let o = 0;
+  for (let y = 0; y < CHUNK; y++) for (let z = 0; z < CHUNK; z++) for (let x = 0; x < CHUNK; x++, o++) {
+    const X = i * CHUNK + x, Y = j * CHUNK + y, Z = k * CHUNK + z;
+    if (X >= vol.nx || Y >= vol.ny || Z >= vol.nz) continue;
+    const id = vol.idx(X, Y, Z); dens[o] = vol.dens[id]; band[o] = vol.band[id];
+  }
+  return { dens, band };
+}
+export function writeChunk(vol, ck, dens, band) {
+  const [i, j, k] = ck.split(',').map(Number);
+  let o = 0;
+  for (let y = 0; y < CHUNK; y++) for (let z = 0; z < CHUNK; z++) for (let x = 0; x < CHUNK; x++, o++) {
+    const X = i * CHUNK + x, Y = j * CHUNK + y, Z = k * CHUNK + z;
+    if (X >= vol.nx || Y >= vol.ny || Z >= vol.nz) continue;
+    const id = vol.idx(X, Y, Z); vol.dens[id] = dens[o]; vol.band[id] = band[o];
+  }
+  vol.modified.add(ck); vol.markAll();
+}

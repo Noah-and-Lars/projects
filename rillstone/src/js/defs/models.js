@@ -39,12 +39,14 @@ export function shovel(load) {
   const p = blade.attributes.position;
   for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i); p.setZ(i, p.getZ(i) + x * x * 3.4 - y * y * 0.25); }
   blade.computeVertexNormals();
-  parts.push(P(place(blade, 0, -0.01, 0.56, -Math.PI / 2 + 0.2), STEEL, 0.06, 4));
+  // The outline's +y (the tip) must point down the handle (+z).
+  parts.push(P(place(blade, 0, -0.01, 0.55, Math.PI / 2 - 0.12), STEEL, 0.06, 4));
   // Centre ridge (the frog) running from the socket down the blade.
-  { const r = new THREE.CylinderGeometry(0.004, 0.016, 0.2, 5); place(r, 0, 0.006, 0.62, Math.PI / 2 + 0.2); parts.push(P(r, STEEL_DARK, 0.05)); }
+  { const r = new THREE.CylinderGeometry(0.003, 0.012, 0.14, 5); place(r, 0, 0.004, 0.62, Math.PI / 2 - 0.12); parts.push(P(r, STEEL_DARK, 0.05)); }
   // Worn bright edge and a rolled step on top of the blade.
-  parts.push(P(place(new THREE.BoxGeometry(0.25, 0.016, 0.022), 0, 0.006, 0.565, 0.2), STEEL_EDGE, 0.04));
-  if (load) parts.push(P(place(new THREE.DodecahedronGeometry(0.085, 1), 0, 0.035, 0.68, 0, 0, 0, 1.2, 0.4, 1.3), load, 0.3, 9));
+  parts.push(P(place(new THREE.BoxGeometry(0.22, 0.012, 0.02), 0, 0.004, 0.555, -0.12), STEEL_DARK, 0.04)); // rolled step
+  parts.push(P(place(new THREE.TorusGeometry(0.1, 0.006, 3, 10, Math.PI * 0.7), 0, -0.012, 0.75, -Math.PI / 2 - 0.12, 0, Math.PI * 0.15 - Math.PI), STEEL_EDGE, 0.03)); // worn bright tip
+  if (load) parts.push(P(place(new THREE.DodecahedronGeometry(0.09, 1), 0, 0.03, 0.7, 0, 0, 0, 1.25, 0.45, 1.4), load, 0.3, 9));
   return merge(parts);
 }
 function rivetRing(parts, z, r) { for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.4; parts.push(rivet(Math.cos(a) * r, Math.sin(a) * r, z)); } }

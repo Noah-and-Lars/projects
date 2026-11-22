@@ -37,4 +37,28 @@ for (const b in LOOT) { const s = Object.values(LOOT[b]).reduce((a, x) => a + x,
 check(itemValue({ material: 'gold', stage: 'ore', kg: 2 }) === 60, 'gold ore 2 kg = § 60');
 check(Math.abs(itemValue({ material: 'garnet', stage: 'cut', kg: 2 }) - 26 * Math.pow(2, 1.15)) < 1e-9, 'cut garnet uses kg^1.15');
 check(Math.abs(itemValue({ material: 'silver', stage: 'crafted', craft: 'ring', kg: 1, gem: { material: 'garnet', stage: 'cut', kg: 1 } }) - (23 * 1.15 + 26 * 1.1)) < 1e-9, 'silver ring with garnet');
+// M3: market saturation and contracts.
+{
+  const { createEconomy } = await import('../src/js/sim/economy.js');
+  const E = createEconomy(mulberry32(4)); E.init();
+  const st = E.state;
+  check(st.market.length === 3 && st.contracts.length === 3, '3 market stalls and 3 contracts');
+  const m = st.market[0], w = m.want;
+  const it = { material: w.kind ? 'garnet' : w.material, stage: w.stage, kg: 1 };
+  const q0 = E.quote(it, 0), base = E.quote(it, 'assay');
+  check(q0 >= base * 1.05 - 1e-9 && q0 <= base * 1.3 + 1e-9, `stall pays ${(q0 / base * 100).toFixed(0)}% of base`);
+  m.sold = 1000; const q1 = E.quote(it, 0);
+  check(Math.abs(q1 - Math.max(base, base * m.mult * 0.85)) < 1e-9, `after § 1000 sold the stall pays ${(q1 / base * 100).toFixed(0)}% (falls 1.5%/§100, floor at base)`);
+  m.sold = 1e6; check(E.quote(it, 0) === base, 'price floor at base');
+  const wrong = { material: 'quartz', stage: 'ore', kg: 1 };
+  const r = E.sell([wrong], 'assay');
+  check(r.total === 0 && r.refused.length === 1, 'quartz is refused (fuel)');
+  E.newDay(2); check(st.market.every(x => x.sold === 0) && st.soldToday === 0, 'demand recovers overnight');
+  // Complete a contract by selling.
+  const c = st.contracts.find(x => x.kind === 'kg') || st.contracts[0];
+  const before = st.scrip;
+  if (c.kind === 'kg') { E.sell([{ material: c.want.material, stage: 'ore', kg: c.target + 0.5 }], 'assay'); check(c.done && st.scrip > before + c.reward - 1 && st.standing >= 1, `contract "${c.text}" completes and pays § ${c.reward} + standing`); }
+  check(st.contracts.filter(x => !x.done).length === 3, 'contracts refill to 3');
+  check(E.buyClaim('willow') === 'poor' || E.state.scrip >= 900, 'claim deed needs § 900');
+}
 if (fails) { console.log(fails + ' failed'); process.exit(1); }

@@ -164,3 +164,75 @@ past budget.
 - **Test flakiness.** The hands' per-frame aim ray could overwrite a ray the
   test had just aimed. Tests now turn the automatic aim off while they drive
   the hands.
+
+## M3: town and money
+
+### Benchmark 3: truck feel on dug terrain
+
+Run as part of `node tools/test.cjs <dir> --town`. Five fresh ruts are cut
+across Willow Bend (0.5 m spherical digs, about 0.3 m deep) and 40 random
+mounds are added. The Old Hauler then drives across at full throttle.
+
+| Measure | Result |
+|---|---|
+| Crossed the claim | yes, reaching 10 m/s |
+| Upward speed (launch check: > 3 m/s) | max 0.55 m/s, 0 launches |
+| Chassis up-vector (1 = level) | min 0.99 |
+| Max angular velocity | 1.2 rad/s |
+| Physics step while driving | 0.4–0.8 ms |
+
+**Result: go.** The ray-cast vehicle with ballast low in the frame,
+anti-roll torque, speed-clamped steering and friction slip 2.6 drives
+across freshly dug ground without jitter or launching.
+
+**Tuning:**
+- **Engine:** an earlier pass (5,600 N) stalled climbing out of 0.5 m deep
+  trenches. 8,500 N with a 16 m/s cap climbs out of ruts.
+- **Ground clearance:** the truck clears about 0.5 m, so a hole deeper than
+  the wheel radius still stops it, as it would in real life.
+
+### Other notes
+
+- **Economy.** The economy (`sim/economy.js`) is plain data: Scrip,
+  Standing, 3 market stalls and 3 contracts.
+  - **Stalls** pay 105–130% of base, falling 1.5% per § 100 sold that day,
+    with a floor at base. Demand resets each new day.
+  - **Contracts** fill from any sale of matching goods in town. Each pays
+    Scrip and Standing, and a new one replaces it.
+  - **Tests:** unit tests cover the price curve, quartz being refused, the
+    overnight reset and contract completion.
+- **Selling is physical.** You place goods on a counter and ring the bell.
+  Items inside the counter's box are weighed, paid for and removed. Anything
+  the buyer doesn't want stays on the counter with a message.
+- **Buying.** Purchases appear on a delivery pad beside the shop. Machines
+  arrive as crates, because placing them comes in M4.
+- **Claim ownership.** Digging only works in claims you own. Willow Bend's
+  deed is § 900 at the Guild board.
+- **Panning income.** In the test, panning from 4–5 m deep averaged
+  § 12.9 per load, so § 1,000 took 50 loads. Hand-panning near the surface
+  is closer to § 5 per load. Tune against the brief's 40–80 §/min in M6.
+- **Truck cargo.**
+  - Items dropped onto the bed become data on the vehicle: a local position,
+    drawn as children of the chassis, with no colliders. Their weight goes on
+    the chassis with `setAdditionalMass`.
+  - E takes the nearest item back out of the bed.
+  - The bed holds 2,000 kg or 60 items.
+- **Fuel.** 960 s of driving (two sacks). A sack of charcoal costs § 15 at
+  the Wagon Shed; LMB pours it into the hopper. Unflip is H held for 1 s.
+  "Call my hauler" is at the Wagon Shed.
+- **Saves.**
+  - **Storage:** IndexedDB with stores meta, entities, chunks and economy,
+    and keys like `slot:A` / `slot:B`. Each save goes to the older half of
+    the pair in one transaction, with meta written last.
+  - **Files:** export and import use a deflated `.rillsave` file.
+  - **Loading** reloads the page and restores at boot, because rebuilding the
+    world in place is error-prone.
+  - **Autosave** runs every 3 minutes to the current slot.
+  - **Test:** saving, reloading the page and loading again gives the same
+    Scrip, items, crates, dug chunks, contracts and truck position.
+- **Held tools.**
+  - The shovel's blade outline was built pointing back up the handle. It's
+    now flipped, and the shovel is held with its blade ahead and face up.
+  - Every tool has its own pose in the hand, plus animations: dig, scoop,
+    swing, wash swirl, pour, dump, tip, clink recoil, grab and equip, with a
+    gentle sway while walking.

@@ -2,7 +2,7 @@
 // quick-swap tool slot (BUILD_BRIEF section 5). Tools dig claims, carry
 // gravel loads and wash them in the river; E picks up, G drops at the ring.
 import * as THREE from 'three';
-import { TOOLS, TIER_NAMES, BAND_NAMES, BAND_DIRT, nuggetSize, nuggetGeometry, toolGeometry, clodGeometry } from '../defs/items.js';
+import { TOOLS, toolDef, TIER_NAMES, BAND_NAMES, BAND_DIRT, nuggetSize, nuggetGeometry, toolGeometry, clodGeometry } from '../defs/items.js';
 import { MATERIALS, itemName } from '../defs/materials.js';
 import { brush, BEDROCK } from '../world/claims.js';
 import { rollLoot } from '../sim/loot.js';
@@ -29,7 +29,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     else if (e.type === 'clod') geo = clodGeometry(e.data.band);
     else geo = toolGeometry(e.type, e.data);
     held3d = new THREE.Mesh(geo, mat);
-    if (e.type === 'shovel') { held3d.rotation.set(0.12, Math.PI + 0.55, 0.05); held3d.position.set(0.14, -0.2, 0.08); held3d.scale.setScalar(0.7); }
+    if (e.type === 'shovel') { held3d.rotation.set(-0.6, 4.3, -1.0); held3d.position.set(0.14, 0.16, 0); held3d.scale.setScalar(0.85); } // blade ahead, face up, shaft to the right
     else if (e.type === 'pick') { held3d.rotation.set(0.35, Math.PI + 0.2, 0.25); held3d.position.set(0, 0.1, -0.1); }
     else if (e.type === 'pan') { held3d.position.set(-0.02, -0.06, -0.02); held3d.rotation.set(0.4, 0, 0); held3d.scale.setScalar(0.72); }
     else if (e.type === 'bucket') held3d.position.set(0, -0.08, 0);
@@ -132,6 +132,8 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     const a = H.aim; if (!a || a.t > 6) return { kind: 'none' };
     const [x, y, z] = a.p;
     if (a.id != null && items.get(a.id)) return { kind: 'item', ent: items.get(a.id), dist: a.t, p: a.p, n: a.n };
+    if (a.id != null && H.props?.has(a.id)) return { kind: 'prop', id: a.id, dist: a.t, p: a.p, n: a.n };
+    if (a.id != null && H.vehicles?.isVehicle(a.id)) return { kind: 'vehicle', id: a.id, dist: a.t, p: a.p, n: a.n, bed: H.vehicles.bedPoint(a.id, a.p) };
     if (water.contains(x, y, z)) {
       // The ray hit the river bed; reach is measured to the water surface.
       const o = camera.position, d = camDir(), wy = waterY(z);
@@ -147,6 +149,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     // Dig slightly into the surface along the view ray.
     const d = camDir();
     const c = [info.p[0] + d.x * def.dig * 0.45, info.p[1] + d.y * def.dig * 0.45, info.p[2] + d.z * def.dig * 0.45];
+    if (H.owns && !H.owns(info.vol.id)) { audio.play('error'); say(`${info.vol.def.name} isn't yours — buy the deed at the Guild Hall (§ ${info.vol.def.price.toLocaleString('en-GB')})`, 'err'); return null; }
     const band = info.vol.bandAt(info.p[0], info.p[1], info.p[2]);
     if (band > def.tier || band === BEDROCK) {
       audio.play('clink'); H.play('clink');
@@ -169,7 +172,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
   }
   function addLoad(e, load) { e.data.loads.push(load); items.refresh(e.id); }
   function dumpClod(load, p, anim = true) { items.spawn('clod', [p[0], p[1] + 0.2, p[2]], { data: { band: load.band, depth: load.depth, loads: [load] } }); audio.play('pour'); if (anim) H.play('dump'); fx.burst(p, BAND_DIRT[load.band], 8, { speed: 1, size: 0.05, life: 0.4, up: 0.6 }); }
-  function containerCanTake(e) { return e && (e.type === 'pan' || e.type === 'bucket') && e.data.loads.length < TOOLS[e.type].loads && !(e.type === 'pan' && e.data.contents.length); }
+  function containerCanTake(e) { return e && (e.type === 'pan' || e.type === 'bucket') && e.data.loads.length < toolDef(e).loads && !(e.type === 'pan' && e.data.contents.length); }
 
   // Wash one load in the pan: one loot roll per load (BUILD_BRIEF 3.4).
   function wash(pan) {
@@ -201,8 +204,15 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
   function use() {
     const e = heldEnt(); const info = aimInfo();
     if (!e) return;
-    const def = TOOLS[e.type];
+    const def = toolDef(e);
     const near = info.dist !== undefined && info.dist < REACH;
+    if (e.type === 'sack') {
+      if (info.kind === 'vehicle' && near) {
+        if (H.vehicles.refuel(info.id)) { items.remove(e.id); H.hand = null; audio.play('pour'); H.play('pour'); hud.toast('Topped up with charcoal'); return true; }
+        say('The hopper is already full'); return;
+      }
+      return;
+    }
     if (e.type === 'shovel' || e.type === 'bucket' || e.type === 'pan') {
       const loads = e.data.loads, cap = def.loads;
       if (e.type === 'pan' && info.kind === 'water' && near && loads.length) return wash(e);
@@ -214,7 +224,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       if (info.kind === 'claim' && near && loads.length < cap) { const l = dig(info, e, def); if (l) addLoad(e, l); return l; }
       if (loads.length && info.kind === 'item' && near && containerCanTake(info.ent)) {
         const t = info.ent;
-        while (e.data.loads.length && t.data.loads.length < TOOLS[t.type].loads) t.data.loads.push(e.data.loads.shift());
+        while (e.data.loads.length && t.data.loads.length < toolDef(t).loads) t.data.loads.push(e.data.loads.shift());
         items.refresh(t.id); items.refresh(e.id); audio.play('pour'); H.play('pour');
         fx.burst([t.pos[0], t.pos[1] + 0.3, t.pos[2]], BAND_DIRT[t.data.loads[t.data.loads.length - 1].band], 10, { speed: 0.8, size: 0.04, life: 0.45, up: 0.4 }); return true;
       }
@@ -234,6 +244,15 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
 
   function pickup() {
     const info = aimInfo();
+    if (info.kind === 'prop' && info.dist < REACH + 0.5) { H.props.interact(info.id); return true; }
+    if (info.kind === 'vehicle' && info.dist < REACH) {
+      const c = H.vehicles.cargoNear(info.id, info.p, 0.6);
+      if (!c) return false;
+      if (H.hand) { const cur = heldEnt(); if (TOOLS[cur.type] && !H.slot) { H.slot = H.hand; H.hand = null; } else { say('Hands full — G to drop, Q to swap'); return false; } }
+      H.vehicles.removeCargo(info.id, c.id);
+      c.loc = 'held'; c.container = null; H.hand = c.id; audio.play('pickup'); H.play('equip');
+      return true;
+    }
     if (info.kind !== 'item' || info.dist > REACH) return false;
     const target = info.ent;
     if (H.hand) {
@@ -252,6 +271,12 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
   }
   function drop() {
     const e = heldEnt(); if (!e) return false;
+    const info = aimInfo();
+    if (info.kind === 'vehicle' && info.dist < REACH) {
+      const r = H.vehicles.addCargo(info.id, e, info.p);
+      if (r === 'ok') { H.hand = null; audio.play('drop'); H.play('place'); return true; }
+      say(r === 'full' ? 'The bed is full (60 items)' : r === 'heavy' ? 'Too heavy for the bed (2,000 kg)' : 'Aim at the truck bed', 'err'); return false;
+    }
     if (!H.ringPos) { say('Aim at the ground to drop'); return false; }
     if (!H.ringOk) { say('No room there', 'err'); audio.play('error'); return false; }
     const hh = items.halfHeight(e);
@@ -267,7 +292,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     const parts = [];
     const near = info.dist !== undefined && info.dist < REACH;
     if (e) {
-      const def = TOOLS[e.type];
+      const def = toolDef(e);
       if (e.type === 'pan') {
         if (e.data.loads.length && info.kind === 'water' && near) parts.push(`${k('LMB')} wash (${e.data.loads.length} left)`);
         else if (e.data.contents.length && !e.data.loads.length) parts.push(`${k('LMB')} tip out finds`);
@@ -282,6 +307,13 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       parts.push(`${k('G')} drop`);
     }
     if (info.kind === 'item' && near) parts.push(`${k('E')} pick up`);
+    if (info.kind === 'prop' && info.dist < REACH + 0.5) { const t = H.props.hint(info.id); if (t) parts.unshift(`${k('E')} ${t}`); }
+    if (info.kind === 'vehicle' && info.dist < 4) {
+      if (e && e.type === 'sack') parts.unshift(`${k('LMB')} refuel`);
+      else if (e && info.bed) parts.unshift(`${k('G')} load into bed`);
+      if (!e && H.vehicles.cargoNear(info.id, info.p, 0.6)) parts.push(`${k('E')} take`);
+      parts.push(`${k('F')} drive`);
+    }
     if (H.slot || (e && TOOLS[e.type])) parts.push(`${k('Q')} swap`);
     return parts.join(' · ');
   }
@@ -295,7 +327,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (enabled) {
       if (input.pressed('use') || (input.held('use') && H.cooldown <= -0.15)) {
         const e = heldEnt();
-        if (e && H.cooldown <= 0) { H.cooldown = TOOLS[e.type]?.cooldown || 0.3; use(); }
+        if (e && H.cooldown <= 0) { H.cooldown = toolDef(e)?.cooldown || 0.3; use(); }
       }
       if (input.pressed('pickup')) pickup();
       if (input.pressed('drop')) drop();
@@ -303,20 +335,28 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     }
     // Drop ring and validity check (a box overlap at the landing spot).
     const e = heldEnt();
-    if (e && H.aim && H.aim.t < 3.5 && (info.kind === 'claim' || info.kind === 'ground' || info.kind === 'item')) {
+    if (e && H.aim && H.aim.t < 3.5 && (info.kind === 'claim' || info.kind === 'ground' || info.kind === 'item' || (info.kind === 'vehicle' && info.bed))) {
       H.ringPos = H.aim.p.slice();
       ring.visible = true;
       ring.position.fromArray(H.ringPos).addScaledVector(new THREE.Vector3().fromArray(H.aim.n), 0.02);
       ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3().fromArray(H.aim.n));
       const s = items.shapeOf(e);
       physics.query({ type: 'overlap', pos: [H.ringPos[0], H.ringPos[1] + s.hy + 0.05, H.ringPos[2]], hx: s.hx * 0.9, hy: s.hy * 0.9, hz: s.hz * 0.9 }).then((q) => { H.ringOk = q && !q.blocked; });
+      if (info.kind === 'vehicle') H.ringOk = true;
       const col = H.ringOk ? 0xffffff : 0xff3df0;
       ringMatA.color.setHex(col);
     } else { ring.visible = false; H.ringPos = null; }
     // Hover: outline and tooltip.
     const hov = info.kind === 'item' && info.dist < REACH ? info.ent.id : null;
     setOutline(hov);
-    hud.tooltip(hov != null ? items.card(hov) : null);
+    let card = hov != null ? items.card(hov) : null;
+    if (!card && info.kind === 'prop' && info.dist < 6) card = H.props.card(info.id);
+    if (!card && info.kind === 'vehicle' && info.dist < 5) {
+      const c = H.vehicles.cargoNear(info.id, info.p, 0.6);
+      if (c) card = items.card(c.id);
+      else { const v = H.vehicles.list.get(info.id); card = { name: v.def.name, lines: [`Fuel ${Math.round(v.fuel / v.def.fuelMax * 100)}%`, `Bed: ${v.cargo.length} items · ${H.vehicles.cargoKg(info.id).toFixed(0)} kg`] }; }
+    }
+    hud.tooltip(card);
     hud.hint(enabled ? hint(info) : '');
     // Viewmodel: swing on use.
     rebuildHeld(); rebuildPanBits();
@@ -335,6 +375,8 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     H.hand = ent.id;
     return ent;
   };
+  H.viewmodel = () => held3d;
+  H.setVisible = (v) => { holder.visible = v; if (!v) ring.visible = false; };
   H.use = use; H.pickup = pickup; H.drop = drop; H.swap = swap; H.aimInfo = aimInfo; H.wash = wash; H.dig = dig;
   return H;
 }

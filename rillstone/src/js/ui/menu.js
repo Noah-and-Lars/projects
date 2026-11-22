@@ -3,13 +3,14 @@
 import { h, $ } from './dom.js';
 import { ACTION_LABELS, DEFAULT_BINDS, keyLabel, saveSettings } from '../core/settings.js';
 
-export function createMenu(root, { settings, input, onPlay, onSettingsChanged, items = [] }) {
+export function createMenu(root, { settings, input, onPlay, onSettingsChanged, items = [], titleItems = [] }) {
   const title = h('section', { id: 'scr-title', class: 'screen interactive' },
     h('div', { class: 'panel title' },
       h('h1', { class: 'logo' }, 'Rillstone'),
       h('p', { class: 'sub' }, 'Dig, wash and automate a highland claim'),
       h('div', { class: 'col' },
-        h('button', { class: 'btn primary', id: 'btn-play', onclick: () => onPlay() }, 'Play'),
+        h('div', { class: 'col', id: 'title-extra', style: { marginTop: 0 } }),
+        h('button', { class: 'btn primary', id: 'btn-play', onclick: () => onPlay() }, 'New game'),
         h('button', { class: 'btn', onclick: () => openSettings() }, 'Settings')),
       h('p', { class: 'small' }, 'Click to look around · WASD to move · Esc for the menu')));
   const pause = h('section', { id: 'scr-pause', class: 'screen interactive hidden' },
@@ -54,7 +55,11 @@ export function createMenu(root, { settings, input, onPlay, onSettingsChanged, i
   }
   function openSettings() { back = !title.classList.contains('hidden') ? title : pause; title.classList.add('hidden'); pause.classList.add('hidden'); settingsEl.classList.remove('hidden'); renderSettings(); }
   function closeSettings() { settingsEl.classList.add('hidden'); (back || pause).classList.remove('hidden'); }
+  const extra = title.querySelector('#title-extra');
+  function setTitleItems(list) { extra.replaceChildren(...list.map(it => h('button', { class: 'btn primary', onclick: it.onclick }, it.label))); title.querySelector('#btn-play').className = list.length ? 'btn' : 'btn primary'; }
+  setTitleItems(titleItems);
   return {
+    setTitleItems,
     showTitle(v) { title.classList.toggle('hidden', !v); },
     showPause(v) { pause.classList.toggle('hidden', !v); if (v) settingsEl.classList.add('hidden'); },
     get open() { return [title, pause, settingsEl].some(e => !e.classList.contains('hidden')); },

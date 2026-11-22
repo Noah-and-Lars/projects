@@ -22,6 +22,7 @@ const GROUPS = {
 };
 
 let world, kcc, player = null;
+const vehicles = new Map(); // id -> { rb, vc, def, input, hold }
 const bodies = new Map();   // id -> { rb, col, sentAsleep }
 const statics = new Map();  // key -> collider
 const colliderOwner = new Map(); // collider handle -> body id
@@ -69,7 +70,9 @@ const H = {
     const d = RAPIER.ColliderDesc.cuboid(m.hx, m.hy, m.hz).setTranslation(m.pos[0], m.pos[1], m.pos[2]).setCollisionGroups(GROUPS[m.group || 'terrain']);
     if (m.quat) d.setRotation({ x: m.quat[0], y: m.quat[1], z: m.quat[2], w: m.quat[3] });
     if (m.sensor) d.setSensor(true);
-    statics.set(m.key, world.createCollider(d));
+    const col = world.createCollider(d);
+    statics.set(m.key, col);
+    if (m.owner != null) colliderOwner.set(col.handle, m.owner);
     return { ok: true };
   },
 
@@ -110,6 +113,51 @@ const H = {
     return { ok: true };
   },
 
+  // Vehicles: a dynamic chassis with Rapier's ray-cast vehicle controller
+  // (BUILD_BRIEF 3.7): low centre of mass, anti-roll, speed-clamped steering,
+  // high friction slip on dirt, mild air control.
+  createVehicle(m) {
+    if (vehicles.has(m.id)) H.removeVehicle(m);
+    const d = m.def;
+    const rb = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(m.pos[0], m.pos[1], m.pos[2])
+      .setRotation({ x: m.quat[0], y: m.quat[1], z: m.quat[2], w: m.quat[3] }).setLinearDamping(0.08).setAngularDamping(0.6).setCcdEnabled(true));
+    const body = world.createCollider(RAPIER.ColliderDesc.cuboid(d.hx, d.hy, d.hz).setTranslation(0, d.bodyY, 0).setMass(d.mass * 0.6).setFriction(0.6).setCollisionGroups(GROUPS.vehicle), rb);
+    // Ballast low in the frame pulls the centre of mass down: hard to roll.
+    world.createCollider(RAPIER.ColliderDesc.cuboid(d.hx * 0.8, 0.08, d.hz * 0.8).setTranslation(0, d.ballastY, 0).setMass(d.mass * 0.4).setCollisionGroups(GROUPS.vehicle), rb);
+    colliderOwner.set(body.handle, m.id);
+    const vc = world.createVehicleController(rb);
+    vc.indexUpAxis = 1; vc.setIndexForwardAxis = 2;
+    for (const w of d.wheels) {
+      vc.addWheel({ x: w[0], y: w[1], z: w[2] }, { x: 0, y: -1, z: 0 }, { x: -1, y: 0, z: 0 }, d.suspRest, d.wheelR);
+      const i = vc.numWheels() - 1;
+      vc.setWheelSuspensionStiffness(i, d.stiffness); vc.setWheelSuspensionCompression(i, d.compression); vc.setWheelSuspensionRelaxation(i, d.relaxation);
+      vc.setWheelMaxSuspensionTravel(i, d.travel); vc.setWheelMaxSuspensionForce(i, d.mass * 40); vc.setWheelFrictionSlip(i, d.slip); vc.setWheelSideFrictionStiffness(i, d.sideStiff);
+    }
+    vehicles.set(m.id, { rb, vc, def: d, input: { throttle: 0, steer: 0, brake: 0 }, body, extra: 0, steer: 0 });
+    return { ok: true };
+  },
+  removeVehicle(m) { const v = vehicles.get(m.id); if (!v) return { ok: true }; colliderOwner.delete(v.body.handle); world.removeVehicleController(v.vc); world.removeRigidBody(v.rb); vehicles.delete(m.id); return { ok: true }; },
+  vehicleInput(m) { const v = vehicles.get(m.id); if (v) Object.assign(v.input, m.input); return { ok: true }; },
+  // Cargo is data on the vehicle; its weight is added to the chassis.
+  vehicleMass(m) { const v = vehicles.get(m.id); if (v) { v.extra = m.kg; v.rb.setAdditionalMass(m.kg, true); } return { ok: true }; },
+  // Unflip in place: lift and set upright, keep heading.
+  unflip(m) {
+    const v = vehicles.get(m.id); if (!v) return { ok: false };
+    const q = v.rb.rotation(), p = v.rb.translation();
+    const fwdX = 2 * (q.x * q.z + q.w * q.y), fwdZ = 1 - 2 * (q.x * q.x + q.y * q.y);
+    const yaw = Math.atan2(fwdX, fwdZ);
+    v.rb.setTranslation({ x: p.x, y: p.y + 1.6, z: p.z }, true);
+    v.rb.setRotation({ x: 0, y: Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) }, true);
+    v.rb.setLinvel({ x: 0, y: 0, z: 0 }, true); v.rb.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    return { ok: true };
+  },
+  teleportVehicle(m) {
+    const v = vehicles.get(m.id); if (!v) return { ok: false };
+    v.rb.setTranslation({ x: m.pos[0], y: m.pos[1], z: m.pos[2] }, true);
+    v.rb.setRotation({ x: m.quat[0], y: m.quat[1], z: m.quat[2], w: m.quat[3] }, true);
+    v.rb.setLinvel({ x: 0, y: 0, z: 0 }, true); v.rb.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    return { ok: true };
+  },
   // Benchmark 1: build a Rapier voxel collider for a chunk's solid voxels,
   // then time single-voxel edits, for comparison with trimesh rebuilds.
   benchVoxels(m) {
@@ -147,8 +195,50 @@ const H = {
   },
 };
 
+function driveVehicle(v) {
+  const d = v.def, inp = v.input, rb = v.rb, vc = v.vc;
+  const speed = vc.currentVehicleSpeed();
+  // Steering clamped by speed, eased toward the target.
+  const maxSteer = d.maxSteer / (1 + Math.abs(speed) * d.steerFalloff);
+  v.steer += (inp.steer * maxSteer - v.steer) * 0.15;
+  const fuelOk = inp.fuel !== false;
+  const throttle = fuelOk ? inp.throttle : 0;
+  // Reversing: throttle backwards once nearly stopped; otherwise it brakes.
+  let engine = 0, brake = inp.brake ? d.brake : 0;
+  const top = Math.max(0, 1 - Math.abs(speed) / (d.topSpeed || 15));
+  if (throttle > 0) engine = throttle * d.engine * top * (speed < -0.5 ? 0 : 1), brake += speed < -0.5 ? d.brake : 0;
+  else if (throttle < 0) { if (speed > 0.5) brake += d.brake; else engine = throttle * d.engine * 0.6; }
+  else if (!inp.driver) brake += d.brake * 0.3; // parked
+  else brake += d.brake * 0.03; // rolling resistance
+  for (let i = 0; i < vc.numWheels(); i++) {
+    const front = d.wheels[i][2] > 0;
+    vc.setWheelSteering(i, front ? v.steer : 0);
+    vc.setWheelEngineForce(i, front ? engine * 0.35 : engine * 0.65);
+    vc.setWheelBrake(i, brake);
+  }
+  vc.updateVehicle(DT, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, grp(G.VEHICLE, G.TERRAIN | G.MACHINE), (c) => c.parent() !== rb);
+  // Anti-roll and mild air control: torque the chassis back toward upright.
+  const q = rb.rotation();
+  const upX = 2 * (q.x * q.y - q.w * q.z), upY = 1 - 2 * (q.x * q.x + q.z * q.z), upZ = 2 * (q.y * q.z + q.w * q.x);
+  let grounded = 0; for (let i = 0; i < vc.numWheels(); i++) if (vc.wheelIsInContact(i)) grounded++;
+  const k = (grounded ? d.antiRoll : d.airControl) * rb.mass();
+  // Torque axis = up x worldUp = (upZ, 0, -upX) * ... (cross(up, (0,1,0)) = (-upZ, 0, upX)) negated to restore.
+  if (upY > 0.2) rb.applyTorqueImpulse({ x: upZ * k * DT, y: 0, z: -upX * k * DT }, true);
+  v.grounded = grounded; v.speed = speed;
+}
+
 function movePlayer(inp) {
   if (!player || !inp) return;
+  if (inp.drive != null) {
+    const v = vehicles.get(inp.drive);
+    if (v) {
+      if (!player.driving) { player.col.setCollisionGroups(0); player.driving = true; }
+      const p = v.rb.translation();
+      player.rb.setNextKinematicTranslation({ x: p.x, y: p.y + 1.2, z: p.z });
+      player.vy = 0; player.grounded = false;
+      return;
+    }
+  } else if (player.driving) { player.col.setCollisionGroups(GROUPS.player); player.driving = false; }
   const g = world.gravity.y;
   if (inp.fly) { player.vy = 0; }
   else {
@@ -193,6 +283,7 @@ function step(m) {
   const t0 = performance.now();
   const n = Math.max(0, Math.min(m.n ?? 1, 600));
   for (let i = 0; i < n; i++) {
+    for (const v of vehicles.values()) driveVehicle(v);
     movePlayer(m.player);
     world.step();
   }
@@ -219,9 +310,16 @@ function step(m) {
   const tr = new Float32Array(out);
   let pl = null;
   if (player) { const p = player.rb.translation(); pl = { pos: [p.x, p.y, p.z], grounded: player.grounded, vy: player.vy }; }
+  const veh = [];
+  for (const [id, v] of vehicles) {
+    const p = v.rb.translation(), q = v.rb.rotation(), vc = v.vc, wheels = [];
+    for (let i = 0; i < vc.numWheels(); i++) wheels.push([vc.wheelSuspensionLength(i) ?? v.def.suspRest, vc.wheelRotation(i) ?? 0, vc.wheelSteering(i) ?? 0, vc.wheelIsInContact(i) ? 1 : 0]);
+    const lv = v.rb.linvel(), av = v.rb.angvel();
+    veh.push({ id, p: [p.x, p.y, p.z], q: [q.x, q.y, q.z, q.w], wheels, speed: v.speed || 0, grounded: v.grounded || 0, lv: [lv.x, lv.y, lv.z], av: [av.x, av.y, av.z] });
+  }
   const queries = (m.queries || []).map(query);
   stepMs = n ? (performance.now() - t0) / n : 0;
-  return { msg: { tr, lost, player: pl, queries, stats: { stepMs, awake, asleep, bodies: bodies.size } }, transfer: [tr.buffer] };
+  return { msg: { tr, lost, veh, player: pl, queries, stats: { stepMs, awake, asleep, bodies: bodies.size } }, transfer: [tr.buffer] };
 }
 
 self.onmessage = async (e) => {
