@@ -25,9 +25,11 @@ import { createTown } from './game/town.js';
 import { createPanels } from './ui/panels.js';
 import { createSaves, SAVE_VERSION } from './core/save.js';
 import { readChunk, writeChunk } from './world/claims.js';
+import { createProgress } from './game/progress.js';
 import { h } from './ui/dom.js';
 import { createBed, slotCard } from './game/bed.js';
 import { createMachines } from './game/machines.js';
+import { createAutomation } from './game/automation.js';
 import { createHUD } from './ui/hud.js';
 import { createMenu } from './ui/menu.js';
 import { HALF, spawnPoint, height, ADIT, TOWN, HAMLET, CLAIMS, riverX, waterY, FALLS_Z } from './world/valley.js';
@@ -93,6 +95,18 @@ async function boot() {
   const bed = createBed({ panels, items, vehicles, hands, hud, audio });
   const machines = createMachines({ scene, physics, materials: view.materials, items, claims, water, economy, hud, audio, panels, rng: mulberry32((SEED * 977 + 3) >>> 0), fx, height });
   hands.machines = machines;
+  const auto = createAutomation({ machines, items, scene, materials: view.materials, hud, audio, panels, fx, claims, economy, brush: (id, c, r, mode, b) => brush(claims.volumes.get(id), c, r, mode, b) });
+  machines.panelRows = auto.panelRows;
+  hands.auto = auto;
+  // Take one thing out of a bin or crate into your hands (or drop it if they're full).
+  auto.takeFrom = (m, i) => {
+    const it = m.state.contents.splice(i, 1)[0]; if (!it) return;
+    const e = items.spawn(it.stage === 'crafted' ? 'crafted' : 'nugget', [0, 0, 0], { item: it, loc: 'held' });
+    if (!hands.hand) hands.hand = e.id; else { e.loc = 'held'; const p = machines._int.toWorld(m, [0, 1.3, 0.8]); items.place(e.id, p); }
+    audio.play('pickup');
+  };
+  // Riding a lift: up to the top deck, or back down.
+  hands.onLift = async (m) => { const top = machines._int.toWorld(m, [0, 4.15, 0]), bottom = machines._int.toWorld(m, [0, 0.4, -1.2]); const up = player.cur.y < m.pos[1] + 2; const p = up ? top : bottom; await teleport(p[0], p[1] + 1, p[2]); audio.play('pickup'); };
   hands.onVehicle = (id) => bed.open(id);
 
   // Player.
@@ -117,6 +131,7 @@ async function boot() {
   const lantern = new THREE.PointLight(0xffc27a, 0, 18, 1.6);
   scene.add(lantern);
   let lanternManual = null;
+  const progress = createProgress({ items, hands, economy, hud, audio, adit, physics, lantern });
 
   const state = { mode: 'title', time: 0.32, day: 1, simTick: 0, playing: false, slot: 1, playTime: 0, autosaveT: 0 };
   const menu = createMenu(ui, {
@@ -287,6 +302,7 @@ async function boot() {
     hands.setVisible?.(!vehicles.driving);
     town.update(dt);
     machines.update(dt);
+    progress.update(dt, camera.position.toArray());
     hud.hotbar([slotCard(items, hands.hand), slotCard(items, hands.slot)]);
     const dh = vehicles.hud();
     driveEl.classList.toggle('hidden', !dh);
@@ -315,7 +331,7 @@ async function boot() {
   // so ?test=1 lets tests drive the game directly.
   const api = { ready: true, physics, version: physics.version, seed: SEED };
   if (TEST) Object.assign(api, {
-    THREE, view, player, input, state, settings, hud, menu, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, machines, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
+    THREE, view, player, input, state, settings, hud, menu, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, machines, auto, progress, adit, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
     places: { TOWN, HAMLET, ADIT, CLAIMS, FALLS_Z, spawn: spawnPoint() },
     height, riverX, waterY,
     play,

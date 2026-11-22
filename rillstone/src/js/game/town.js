@@ -96,7 +96,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
   }
   shop({ key: 'guild', name: 'Guild Hall', x: T.x - 22, z: T.z - 6, w: 10, d: 7, trim: 0x6e56a8 });
   shop({ key: 'foundry', name: 'Foundry Yard', x: T.x - 18, z: T.z + 18, trim: 0xa84a3a, shopId: 'foundry' });
-  shop({ key: 'signal', name: 'Signal House', x: T.x + 16, z: T.z - 26, w: 7, trim: 0x6e56a8, sign: 'Signal House · soon' });
+  shop({ key: 'signal', name: 'Signal House', x: T.x + 16, z: T.z - 26, w: 7, trim: 0x6e56a8, shopId: 'signal' });
   // Guild board (contracts + claim deeds) in front of the Guild Hall.
   {
     const x = T.x - 15.5, z = T.z - 6, yaw = faceYaw(x, z);
@@ -215,7 +215,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
         ...E.contracts.map(c => h('div', { class: 'entry' + (c.done ? ' done' : '') }, h('b', {}, c.text), h('span', { class: 'pill' }, `§ ${c.reward} · ★ ${c.standing}`), h('span', { class: 'bar' }, h('i', { style: { width: Math.min(100, c.progress / c.target * 100) + '%' } })))),
         h('p', { class: 'small' }, 'Contracts fill as you sell matching goods anywhere in town. New ones arrive as you finish them.'),
         h('h3', {}, 'Claim deeds'),
-        ...CLAIMS.filter(c => c.voxel).map(c => h('div', { class: 'entry' }, h('b', {}, c.name), economy.owns(c.id) ? h('span', { class: 'pill' }, 'Owned') : h('button', { class: 'btn primary', disabled: E.scrip < c.price, onclick: () => { if (economy.buyClaim(c.id) === 'ok') { audio.play('coins'); hud.toast(`${c.name} is yours`, 'gold'); } render(); } }, `§ ${c.price.toLocaleString('en-GB')}`), h('span', { class: 'desc' }, `${c.w} × ${c.d} m · ${c.depth} m deep`))),
+        ...CLAIMS.filter(c => c.voxel).map(c => h('div', { class: 'entry' }, h('b', {}, c.name), economy.owns(c.id) ? h('span', { class: 'pill' }, 'Owned') : (E.standing < (c.standing || 0) ? h('span', { class: 'pill' }, `Needs ★ ${c.standing}`) : h('button', { class: 'btn primary', disabled: E.scrip < c.price, onclick: () => { const r = economy.buyClaim(c.id); if (r === 'ok') { audio.play('coins'); hud.toast(`${c.name} is yours${c.tunnel ? ' — the adit door is open' : ''}`, 'gold'); } render(); } }, `§ ${c.price.toLocaleString('en-GB')}`)), h('span', { class: 'desc' }, `${c.blurb || ''} · ${c.w} × ${c.d} m · ${c.depth} m deep${c.standing ? ` · ★ ${c.standing}` : ''}`))),
       );
       panels.show('guild', 'Guild Hall', body, { badge: `§ ${E.scrip.toLocaleString('en-GB')} · ★ ${E.standing}` });
     };

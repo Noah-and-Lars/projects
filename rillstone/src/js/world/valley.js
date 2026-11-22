@@ -39,19 +39,36 @@ function plot(id, name, price, w, d, depth, cx, cz, extra = {}) {
   const x0 = snap(cx - w / 2), z0 = snap(cz - d / 2);
   return { id, name, price, w, d, depth, x0, z0, x1: x0 + w, z1: z0 + d, cx: x0 + w / 2, cz: z0 + d / 2, ...extra };
 }
-export const CLAIMS = [
-  plot('gravel', 'Gravel Bar', 0, 24, 24, 6, riverX(76) - 23, 76, { band: 1 }),
-  plot('willow', 'Willow Bend', 900, 32, 32, 22, riverX(150) + 30, 150),
-  plot('oldcut', 'Old Cut', 1500, 40, 32, 22, riverX(-40) - 70, -40),
-  plot('slate', 'Slate Shelf', 6000, 48, 40, 22, riverX(220) - 110, 220),
-  plot('glimmer', 'Glimmer Hollow', 8500, 40, 40, 22, riverX(-90) + 85, -90),
-];
-for (const c of CLAIMS) c.top = Math.max(floorY(c.cz) + 0.6, 0) + (c.id === 'slate' ? 14 : c.id === 'oldcut' ? 3 : c.id === 'glimmer' ? 4 : 0);
-
 // The old adit: a horizontal tunnel into a terrace cliff east of Millbrook.
-// It leads to the Ember Seam claim (M6) and is the M1 "cave".
+// It leads to the Ember Seam claim behind a timber door, and is the M1 "cave".
 export const ADIT = { x: snap(TOWN.x + 70), z: snap(TOWN.z - 30), y: 0, len: 46, w: 4.2, h: 3.6, dir: 1 };
 ADIT.y = floorY(ADIT.z) + 3.2;
+
+// Deeds also need Guild Standing (BUILD_BRIEF 3.6: standing unlocks deeds).
+export const CLAIMS = [
+  plot('gravel', 'Gravel Bar', 0, 24, 24, 6, riverX(76) - 23, 76, { band: 1, standing: 0, blurb: 'River-edge starter' }),
+  plot('willow', 'Willow Bend', 900, 32, 32, 22, riverX(150) + 30, 150, { standing: 0, blurb: 'Gentle bank, good river access' }),
+  plot('oldcut', 'Old Cut', 1500, 40, 32, 22, riverX(-40) - 70, -40, { standing: 2, blurb: 'Half-dug old pit. Something was left behind' }),
+  plot('slate', 'Slate Shelf', 6000, 48, 40, 22, riverX(220) - 110, 220, { standing: 6, blurb: 'Terraced cliff: bring lifts and belts' }),
+  plot('glimmer', 'Glimmer Hollow', 8500, 40, 40, 22, riverX(-90) + 85, -90, { standing: 10, blurb: 'A sure Glimmerite vein at mid-depth' }),
+  // Ember Seam runs horizontally into the mountain from the end of the adit:
+  // its bands deepen with distance from the door, down to basalt (band 4).
+  plot('ember', 'Ember Seam', 12000, 48, 32, 28, ADIT.x + ADIT.len - 2 + 24, ADIT.z, { standing: 16, tunnel: true, blurb: 'A tunnel into the mountain, down to basalt' }),
+];
+for (const c of CLAIMS) c.top = Math.max(floorY(c.cz) + 0.6, 0) + (c.id === 'slate' ? 14 : c.id === 'oldcut' ? 3 : c.id === 'glimmer' ? 4 : 0);
+{ // Tunnel claim: x0 sits just inside the adit's end; floor level with the adit.
+  const e = CLAIMS.find(c => c.id === 'ember');
+  e.x0 = ADIT.x + ADIT.len - 2; e.x1 = e.x0 + e.w; e.cx = e.x0 + e.w / 2;
+  e.floor = ADIT.y; e.top = ADIT.y + 9;
+}
+
+
+// Slate Shelf's terrace floors, by x (shared with world/claims.js): the
+// hillside outside its open (+x) end follows the lowest step.
+export function slateFloor(c, x) {
+  const u = x - c.x0;
+  return c.top - 5 * smooth(15, 17.5, u) - 5 * smooth(31, 33.5, u);
+}
 
 // Raw valley shape before features are flattened in.
 function baseHeight(x, z) {
@@ -95,11 +112,21 @@ export function height(x, z) {
   let h = baseHeight(x, z);
   h = flatDisc(h, x, z, TOWN.x, TOWN.z, TOWN.r, TOWN.y);
   h = flatDisc(h, x, z, HAMLET.x, HAMLET.z, HAMLET.r, HAMLET.y, 14);
-  for (const c of CLAIMS) h = flatRect(h, x, z, c.x0, c.z0, c.x1, c.z1, c.top, c.id === 'gravel' ? 4 : 9);
+  for (const c of CLAIMS) {
+    if (c.tunnel) continue;
+    if (c.id === 'slate' && x > c.x1 - 16) {
+      // Past the open end the ground drops with the lowest terrace, then
+      // blends into the hillside.
+      const y = slateFloor(c, Math.min(x, c.x1));
+      h = flatRect(h, x, z, c.x0, c.z0, c.x1, c.z1, y, 9);
+      continue;
+    }
+    h = flatRect(h, x, z, c.x0, c.z0, c.x1, c.z1, c.top, c.id === 'gravel' ? 4 : 9);
+  }
   // Adit: a flat apron in front of a sheer cliff the tunnel runs into.
   const a = ADIT;
   const across = Math.abs(z - a.z);
-  if (across < 34 && x > a.x - 30 && x < a.x + a.len + 20) {
+  if (across < 34 && x > a.x - 30 && x < a.x + a.len + 80) {
     const side = smooth(34, 22, across);
     const cliff = x >= a.x ? Math.max(h, a.y + a.h + 6 + (x - a.x) * 0.25) : lerp(h, a.y, smooth(a.x - 30, a.x - 18, x));
     h = lerp(h, cliff, side);
@@ -112,7 +139,7 @@ export function height(x, z) {
 export function isHole(cx, cz) {
   // cx, cz: the cell's minimum corner.
   const mx = cx + GRID / 2, mz = cz + GRID / 2;
-  for (const c of CLAIMS) if (c.voxel && mx > c.x0 && mx < c.x1 && mz > c.z0 && mz < c.z1) return true;
+  for (const c of CLAIMS) if (c.voxel && !c.tunnel && mx > c.x0 && mx < c.x1 && mz > c.z0 && mz < c.z1) return true;
   const a = ADIT;
   if (mx > a.x - GRID && mx < a.x && Math.abs(mz - a.z) < 3.2) return true;
   return false;

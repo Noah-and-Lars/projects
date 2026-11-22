@@ -110,6 +110,7 @@ export function createItems({ scene, physics, materials }) {
     remove(id) {
       const e = ents.get(id); if (!e) return;
       if (e.loc === 'loose') { physics.removeBody(id); hide(e); }
+      else if (e.loc === 'belt') hide(e);
       ents.delete(id);
     },
     // Take an entity out of the world (into a hand or a container).
@@ -126,6 +127,17 @@ export function createItems({ scene, physics, materials }) {
       addBody(e, vel); show(e); e._synced = false;
       return e;
     },
+    // Draw a non-physical entity (on a belt) at its pos, or stop drawing it.
+    showAt(e) {
+      if (isNugget(e)) {
+        const k = keyOf(e.item);
+        if (e.slot !== undefined && e.ikey !== k) hide(e);
+        show(e);
+        const I = inst[e.ikey], sz = nuggetSize(e.item.kg, e.item.material, e.item.stage);
+        I.mesh.setMatrixAt(e.slot, _m.compose(_v.fromArray(e.pos), _q.fromArray(e.quat), _s.set(sz, sz, sz))); I.dirty = true;
+      } else { show(e); const m = meshes.get(e.id); m.position.fromArray(e.pos); m.quaternion.fromArray(e.quat); }
+    },
+    hideEnt(e) { hide(e); },
     // A tool's look depends on its loads: rebuild its mesh.
     refresh(id) { const e = ents.get(id); if (e && meshes.has(id)) { hide(e); show(e); } },
     halfHeight(e) { return shapeOf(e).hy; },
@@ -163,7 +175,7 @@ export function createItems({ scene, physics, materials }) {
         return { name: `Pile of ${m.name.toLowerCase()} ${e.data.stage === 'ore' ? 'nuggets' : e.data.stage}`, lines: [`${e.data.kgs.length} pieces · ${kg.toFixed(1)} kg`, m.kind === 'fuel' ? 'Fuel' : `≈ § ${(kg * (e.data.stage === 'ore' ? m.ore : m.refined)).toFixed(0)}`, 'E takes one'] };
       }
       if (EXTRA_CARD[e.type]) return EXTRA_CARD[e.type](e);
-      if (e.type === 'clod') return { name: 'Dirt clod', lines: ['1 gravel load', 'Wash it in a pan'] };
+      if (e.type === 'clod') return e.data.ore ? { name: 'Ore clod', lines: ['Hard rock from deep down', 'Crush it in a Stamp Mill for 3 loads'] } : { name: 'Dirt clod', lines: ['1 gravel load', 'Wash it in a pan or sluice'] };
       if (TOOLS[e.type]) { const t = toolDef(e), n = e.data.loads?.length || 0; return { name: t.name, badge: 'Tier ' + ['', 'I', 'II', 'III', 'IV'][t.tier], lines: [t.loads ? `${n}/${t.loads} loads` : 'Breaks ground fast', e.data.contents?.length ? `${e.data.contents.length} finds inside` : null].filter(Boolean) }; }
       return { name: e.type };
     },

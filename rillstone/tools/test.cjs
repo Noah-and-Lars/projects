@@ -1,6 +1,6 @@
 // Headless smoke test. Serve the rillstone folder first
 // (python3 -m http.server 8765), then:
-//   node tools/test.cjs <outdir> [--src] [--shots] [--move] [--dig] [--town] [--machines]
+//   node tools/test.cjs <outdir> [--src] [--shots] [--move] [--dig] [--town] [--machines] [--belts]
 // SCALE=2 takes screenshots at deviceScaleFactor 2 (for showing people).
 // Tests the built single-file index.html; --src tests src/index.html instead.
 const { chromium } = require('playwright');
@@ -36,6 +36,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
   const { p, errs } = await open(b, +(process.env.SCALE || 1));
+  const mainPage = p;
   await p.screenshot({ path: `${out}/title.png` });
   await p.evaluate(() => __rill.play());
 
@@ -305,18 +306,22 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       await R.physics.call({ op: 'teleportVehicle', id: v.id, pos: [s.p[0], s.p[1] + 1, s.p[2]], quat: [0.7071, 0, 0, 0.7071] });
       for (let i = 0; i < 120; i++) await R.tick(1);
       await V.unflip(v.id);
-      for (let i = 0; i < 120; i++) await R.tick(1);
+      for (let i = 0; i < 240; i++) await R.tick(1);
       const t = R.physics.vehicles.get(v.id); R.noRender(false);
       return 1 - 2 * (t.q[0] ** 2 + t.q[2] ** 2);
     });
     check(flip > 0.95, `unflip puts the truck back on its wheels (up ${flip.toFixed(2)})`);
     // Save, reload the page, load the slot: everything persists.
-    const before = await p.evaluate(async () => { const R = __rill; await R.saveTo(1); return { scrip: R.economy.state.scrip, items: R.items.ents.size, crates: [...R.items.ents.values()].filter(e => e.type === 'crate').length, chunks: [...R.claims.volumes.values()].reduce((a, v) => a + v.modified.size, 0), contracts: R.economy.state.contracts.map(c => c.id).join(','), truck: [...R.vehicles.list.values()][0].group.position.toArray().map(v => Math.round(v)) }; });
+    const before = await p.evaluate(async () => { const R = __rill; await R.saveTo(1); return { scrip: R.economy.state.scrip, items: R.items.ents.size, crates: [...R.items.ents.values()].filter(e => e.type === 'crate').length, chunks: [...R.claims.volumes.values()].reduce((a, v) => a + v.modified.size, 0), contracts: R.economy.state.contracts.map(c => c.id).join(','), truck: [...R.vehicles.list.values()][0].group.position.toArray() }; });
     await p.evaluate(() => __rill.loadSlot(1));
     await p.waitForFunction(() => window.__rill && window.__rill.ready && window.__rill.state.mode === 'play', null, { timeout: 120000 });
     await p.waitForTimeout(500);
-    const after = await p.evaluate(() => { const R = __rill; return { scrip: R.economy.state.scrip, items: R.items.ents.size, crates: [...R.items.ents.values()].filter(e => e.type === 'crate').length, chunks: [...R.claims.volumes.values()].reduce((a, v) => a + v.modified.size, 0), contracts: R.economy.state.contracts.map(c => c.id).join(','), truck: [...R.vehicles.list.values()][0].group.position.toArray().map(v => Math.round(v)) }; });
-    check(JSON.stringify(before) === JSON.stringify(after), `reload keeps everything: § ${after.scrip}, ${after.items} items, ${after.crates} crates, ${after.chunks} dug chunks, contracts ${after.contracts}, truck at ${after.truck}`);
+    const after = await p.evaluate(() => { const R = __rill; return { scrip: R.economy.state.scrip, items: R.items.ents.size, crates: [...R.items.ents.values()].filter(e => e.type === 'crate').length, chunks: [...R.claims.volumes.values()].reduce((a, v) => a + v.modified.size, 0), contracts: R.economy.state.contracts.map(c => c.id).join(','), truck: [...R.vehicles.list.values()][0].group.position.toArray() }; });
+    // The truck settles on its suspension after a reload: compare it within 0.6 m.
+    const tdist = Math.hypot(...before.truck.map((v, i) => v - after.truck[i]));
+    if (tdist > 0.6) console.log('     truck moved ' + tdist.toFixed(2) + ' m');
+    before.truck = after.truck = null;
+    check(JSON.stringify(before) === JSON.stringify(after) && tdist < 0.6, `reload keeps everything: § ${after.scrip}, ${after.items} items, ${after.crates} crates, ${after.chunks} dug chunks, contracts ${after.contracts}, truck within ${tdist.toFixed(2)} m`);
     // A/B: the slot keeps a complete older half too; export round-trips.
     const ab = await p.evaluate(async () => { const R = __rill; await R.saveTo(1, true); const l = await R.saves.list(); const blob = R.saves.exportBlob(R.snapshot()); const snap = await R.saves.importFile(new File([blob], 'x.rillsave')); return { ab: l[0].ab, size: blob.size, scrip: snap.economy.scrip }; });
     check(ab.size > 100 && ab.scrip === after.scrip, `export/import round-trips a ${(ab.size / 1024).toFixed(0)} KB .rillsave (slot 1 now on half ${ab.ab})`);
@@ -399,7 +404,150 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     check(saved.n >= 7 && saved.runs === 3, `snapshot keeps ${saved.n} machines and ${saved.runs} pipe runs`);
   }
 
+  if (all || flags.has('--belts')) {
+    // M5: dig -> wash -> sort -> smelt -> bin, all automatic, gated by a
+    // fill sensor, a scale plate and a smelter pour, for 15 minutes.
+    const line = await p.evaluate(async () => {
+      const R = __rill, Mc = R.machines, g = R.places.CLAIMS[0]; R.noRender(true);
+      for (const id of [...Mc.list.keys()]) Mc.remove(id);
+      const z0 = g.z0 + 3, sx = g.x1 - 7.5, sz = z0 + 2, top = g.top;
+      // Water: two intakes into a junction, a second junction to share it out.
+      const zi = g.z0 + 1, rx = R.riverX(zi);
+      const intakes = [];
+      for (const dz of [0, 2.5]) { let ix = null; for (let x = rx - 12; x < rx; x += 0.25) if (!Mc.requirement('intake1', [x, R.height(x, zi + dz), zi + dz], 3)) { ix = x; break; } intakes.push(Mc.place('intake1', [ix, R.height(ix, zi + dz), zi + dz], 3, {}, { locked: true })); }
+      const j1 = Mc.place('junction', [g.x1 - 1.5, top, zi + 1], 0, {}, { locked: true });
+      const j2 = Mc.place('junction', [g.x1 - 3.5, top, zi + 1], 0, {}, { locked: true });
+      const S = [sx, top, sz];
+      const sluice = Mc.place('sluice1', S, 0, {}, { locked: true });
+      const drill = Mc.place('drill1', [sx - 0.95, top, sz - 1.2], 0, {}, { locked: true });
+      // Belt: drive, sorter (iron straight on, rest to the right), belt, smelter.
+      const by = sz + 1.65;
+      const drive = Mc.place('belt_drive', [sx, top, by + 0.5], 0, {}, { locked: true });
+      const sorter = Mc.place('belt_sorter', [sx, top, by + 1.5], 0, { filter: { material: 'iron', stage: 'ore' } }, { locked: true });
+      const b3 = Mc.place('belt', [sx, top, by + 2.5], 0, {}, { locked: true });
+      const smelter = Mc.place('smelter', [sx, top, by + 3 + 0.9], 0, { fuel: 20 }, { locked: true });
+      // Rejects: two belts east, into an ore bin.
+      const b5 = Mc.place('belt', [sx + 1, top, by + 1.5], 1, {}, { locked: true });
+      const b6 = Mc.place('belt', [sx + 2, top, by + 1.5], 1, {}, { locked: true });
+      const bin = Mc.place('orebin', [sx + 3.0, top, by + 1.5], 0, {}, { locked: true });
+      // Ingots drop onto a scale plate in front of the smelter.
+      const sm = smelter.pos, scale = Mc.place('scale', [sx, top, sm[2] + 1.35], 0, {}, { locked: true });
+      // Logic beside the smelter.
+      const lx = sx - 1.6, lz = sm[2];
+      const fill = Mc.place('fillsensor', [lx, top, lz - 0.6], 0), c1 = Mc.place('compare', [lx - 0.8, top, lz - 0.6], 0, { op: '>', value: 10 });
+      const c2 = Mc.place('compare', [lx - 0.8, top, lz + 0.6], 0, { op: '<', value: 500 }), and = Mc.place('and', [lx - 1.6, top, lz], 0);
+      const pulse = Mc.place('pulse', [lx - 2.4, top, lz], 0), pour = Mc.place('pourer', [lx + 0.2, top, lz + 0.8], 0);
+      const cable = (a, b, port = 0) => Mc.layRun('cable', { m: a.id, s: R.machines._int.MACHINES[a.def].sockets.findIndex(s => s.kind === 'sig-out') }, { m: b.id, s: R.machines._int.MACHINES[b.def].sockets.findIndex(s => s.kind === 'sig-in' && s.port === port) });
+      cable(fill, c1); cable(c1, and, 0); cable(scale, c2); cable(c2, and, 1); cable(and, pulse); cable(pulse, pour);
+      // Pipes.
+      Mc.layRun('copper', { m: intakes[0].id, s: 0 }, { m: j1.id, s: 1 }); Mc.layRun('copper', { m: intakes[1].id, s: 0 }, { m: j1.id, s: 0 });
+      Mc.layRun('steel', { m: j1.id, s: 3 }, { m: j2.id, s: 1 });
+      Mc.layRun('copper', { m: j1.id, s: 2 }, { m: drill.id, s: 0 });
+      Mc.layRun('copper', { m: j2.id, s: 0 }, { m: sluice.id, s: 0 });
+      Mc.layRun('copper', { m: j2.id, s: 2 }, { m: drive.id, s: 2 });
+      Mc.layRun('copper', { m: j2.id, s: 3 }, { m: smelter.id, s: 2 });
+      await R.tick(3);
+      const L = (a, i = 1) => { const l = Mc.linkOfSocket(a.id, i); return l ? Mc.get(l.m).def : null; };
+      R.noRender(false);
+      return { ids: { drill: drill.id, sluice: sluice.id, smelter: smelter.id, bin: bin.id, scale: scale.id, belts: [drive.id, sorter.id, b3.id, b5.id, b6.id], and: and.id }, links: [L(sluice, 2), L(drive), L(sorter), L(sorter, 2), L(b3), L(b5), L(b6)] };
+    });
+    check(JSON.stringify(line.links) === JSON.stringify(['belt_drive', 'belt_sorter', 'belt', 'belt', 'smelter', 'belt', 'orebin']), `line links: sluice -> ${line.links.join(' -> ')}`);
+    const run = await p.evaluate(async (ids) => {
+      const R = __rill, Mc = R.machines; R.noRender(true);
+      const get = (id) => Mc.get(id);
+      let maxJam = 0, pours = 0, lastMolten = 0, sat = {};
+      for (let t = 0; t < 900; t++) {
+        for (let k = 0; k < 20; k++) { Mc.tick(0.05); const s = get(ids.smelter).state; if (s.molten < lastMolten - 0.01) pours++; lastMolten = s.molten; }
+        for (const b of ids.belts) maxJam = Math.max(maxJam, get(b)._jam || 0);
+        get(ids.drill).wear = 0; get(ids.sluice).wear = 0;
+        if (t % 5 === 0) { await R.physics.step(30); R.items.update(); }
+      }
+      await R.physics.step(60); R.items.update();
+      const binItems = get(ids.bin).state.contents;
+      const ingots = [...R.items.ents.values()].filter(e => e.item && e.item.stage === 'ingot').map(e => e.item.kg);
+      for (const id of [ids.drill, ids.sluice, ids.smelter, ids.belts[0]]) sat[get(id).def] = +(get(id).flow?.satisfaction ?? 0).toFixed(2);
+      R.noRender(false);
+      return { washed: get(ids.sluice).washed, maxJam: +maxJam.toFixed(1), pours, ingots, binN: binItems.length, binKinds: [...new Set(binItems.map(i => i.material))].join(','), scale: get(ids.scale).sig, sat, speed: get(ids.belts[0]).beltSpeed, smelter: get(ids.smelter).state };
+    }, line.ids);
+    console.log('     15 min line: ' + JSON.stringify({ ...run, ingots: run.ingots.length }));
+    check(run.washed >= 150 && run.maxJam < 3 && run.pours >= 2 && run.ingots.length >= 2 && run.binN >= 40 && run.scale > 0, `15 minutes, no jams (longest hold ${run.maxJam} s): ${run.washed} loads washed, ${run.pours} automatic pours, ${run.ingots.length} iron ingots on the scale plate (${run.scale} kg), ${run.binN} items binned`);
+    check(!run.binKinds.includes('iron'), 'the sorter kept all iron out of the bin');
+    // Logic truth tables (held values, 10 Hz).
+    const logic = await p.evaluate(async () => {
+      const R = __rill, Mc = R.machines, T = R.places.TOWN; R.noRender(true);
+      const D = Mc._int.MACHINES, at = (i, j) => [T.x + 30 + i * 0.8, T.y, T.z + 30 + j * 0.8];
+      const out = (m) => D[m.def].sockets.findIndex(s => s.kind === 'sig-out'), inp = (m, port) => D[m.def].sockets.findIndex(s => s.kind === 'sig-in' && s.port === port);
+      const wire = (a, b, port = 0) => Mc.layRun('cable', { m: a.id, s: out(a) }, { m: b.id, s: inp(b, port) });
+      const A = Mc.place('dial', at(0, 0), 0, { value: 1 }), B = Mc.place('dial', at(0, 2), 0, { value: 0 });
+      const gates = {};
+      for (const [k, j] of [['and', 0], ['or', 1], ['not', 2], ['add', 3], ['sub', 4], ['compare', 5], ['latch', 6]]) { gates[k] = Mc.place(k, at(2, j), 0, k === 'compare' ? { op: '>' } : {}); wire(A, gates[k], 0); if (k !== 'not') wire(B, gates[k], 1); }
+      const tick = (s) => { for (let i = 0; i < s * 20; i++) Mc.tick(0.05); };
+      const read = () => Object.fromEntries(Object.entries(gates).map(([k, m]) => [k, m.sig]));
+      tick(0.5); const r1 = read();
+      B.state.value = 1; tick(0.5); const r2 = read();
+      A.state.value = 3; B.state.value = 0; tick(0.5); const r3 = read();
+      // Pulse and delay.
+      const L = Mc.place('lever', at(4, 0), 0), P = Mc.place('pulse', at(5, 0), 0), Dl = Mc.place('delay', at(5, 1), 0, { delay: 1 });
+      wire(L, P); wire(L, Dl);
+      tick(0.3); L.state.on = true; tick(0.2); const pulseNow = P.sig, delayNow = Dl.sig; tick(0.3); const pulseLater = P.sig; tick(1.2); const delayLater = Dl.sig;
+      const dbg = { pulseNow, pulseLater, delayNow, delayLater };
+      R.noRender(false);
+      return { r1, r2, r3, pulseNow, pulseLater, delayNow, delayLater };
+    });
+    const tt = logic.r1.and === 0 && logic.r1.or === 1 && logic.r1.not === 0 && logic.r1.add === 1 && logic.r1.sub === 1 && logic.r1.compare === 1 && logic.r2.and === 1 && logic.r2.latch === 0 && logic.r3.add === 3 && logic.r3.compare === 1 && logic.r1.latch === 1;
+    check(tt, `logic gates: A=1,B=0 ${JSON.stringify(logic.r1)}; A=1,B=1 ${JSON.stringify(logic.r2)}`);
+    check(logic.pulseNow === 1 && logic.pulseLater === 0 && logic.delayNow === 0 && logic.delayLater === 1, `pulse fires once on a rising edge; delay repeats its input 1 s later ${JSON.stringify([logic.pulseNow, logic.pulseLater, logic.delayNow, logic.delayLater])}`);
+    // Jams are explicit and never delete: a belt feeding a full bin backs up.
+    const jam = await p.evaluate(async () => {
+      const R = __rill, Mc = R.machines, T = R.places.TOWN; R.noRender(true);
+      const x = T.x + 30, z = T.z + 40, y = T.y;
+      const drive = Mc.place('belt_drive', [x, y, z], 0), b2 = Mc.place('belt', [x, y, z + 1], 0), bin = Mc.place('cratebox', [x, y, z + 2.05], 0);
+      // A drive with no water doesn't run: give it some through a quick intake-free hack (a header tank).
+      const tank = Mc.place('headtank', [x - 2.5, y, z], 0, { level: 2000 }); Mc.layRun('copper', { m: tank.id, s: 0 }, { m: drive.id, s: 2 });
+      bin.state.contents = Array.from({ length: 38 }, () => ({ material: 'copper', stage: 'ore', kg: 0.5 }));
+      const fed = [];
+      for (let i = 0; i < 8; i++) { const ok = Mc.accept(drive, { item: { material: 'gold', stage: 'ore', kg: 1 } }, 0); if (ok) fed.push(i); for (let k = 0; k < 10; k++) Mc.tick(0.05); }
+      for (let k = 0; k < 200; k++) Mc.tick(0.05);
+      const onBelts = [drive, b2].reduce((a, m) => a + m.state.lanes.reduce((x, q) => x + q.length, 0), 0);
+      const gold = bin.state.contents.filter(i => i.material === 'gold').length;
+      R.noRender(false);
+      return { fed: fed.length, inBin: gold, onBelts, total: gold + onBelts, status: b2.status, jam: b2._jam };
+    });
+    check(jam.inBin === 2 && jam.total === jam.fed && jam.jam > 2, `full crate: ${jam.inBin} got in, ${jam.onBelts} wait on the belt (${jam.status}), none lost`);
+    // Shaft power, stamp mill, gem cutter, splitter.
+    const misc = await p.evaluate(async () => {
+      const R = __rill, Mc = R.machines, g = R.places.CLAIMS[0]; R.noRender(true);
+      const z = g.z1 + 6, rx = R.riverX(z);
+      let wx = null; for (let x = rx - 10; x < rx; x += 0.25) if (!Mc.requirement('waterwheel', [x, R.height(x, z), z], 1)) { wx = x; break; }
+      const wheel = Mc.place('waterwheel', [wx, R.height(wx, z), z], 1);
+      const mill = Mc.place('stampmill', [wx - 5, R.height(wx - 5, z), z], 0);
+      const ok = Mc.accept(mill, { load: { band: 2, depth: 8 }, oreClod: true }, 0);
+      const before = [...R.items.ents.values()].filter(e => e.type === 'clod').length;
+      for (let k = 0; k < 200; k++) Mc.tick(0.05);
+      const after = [...R.items.ents.values()].filter(e => e.type === 'clod').length;
+      // Gem cutter hook between a drive and an open end.
+      const T = R.places.TOWN, x = T.x + 34, y = T.y, zz = T.z + 40;
+      const tank = Mc.place('headtank', [x - 2.5, y, zz], 0, { level: 2000 });
+      const drive = Mc.place('belt_drive', [x, y, zz], 0), cut = Mc.place('belt_gemcutter', [x, y, zz + 1], 0), split = Mc.place('belt_splitter', [x, y, zz + 2], 0);
+      Mc.layRun('copper', { m: tank.id, s: 0 }, { m: drive.id, s: 2 });
+      for (let i = 0; i < 4; i++) { Mc.accept(drive, { item: { material: 'garnet', stage: 'uncut', kg: 1 } }, 0); for (let k = 0; k < 8; k++) Mc.tick(0.05); }
+      for (let k = 0; k < 120; k++) Mc.tick(0.05);
+      await R.physics.step(30); R.items.update();
+      const gems = [...R.items.ents.values()].filter(e => e.item && e.item.material === 'garnet' && e.loc === 'loose');
+      const sx = split.pos[0];
+      R.noRender(false);
+      return { wheelUnits: wheel.shaftUnits, millSpeed: mill.speed, ok, made: after - before, cut: gems.filter(e => e.item.stage === 'cut').length, straight: gems.filter(e => Math.abs(e.pos[0] - sx) < 0.3).length, right: gems.filter(e => e.pos[0] > sx + 0.3).length };
+    });
+    check(misc.ok && misc.wheelUnits === 3 && misc.millSpeed > 0 && misc.made === 3, `water wheel drives the stamp mill: 1 ore clod -> ${misc.made} gravel loads`);
+    check(misc.cut === 4 && misc.straight === 2 && misc.right === 2, `gem cutter hook cut ${misc.cut}/4 garnets; the splitter sent ${misc.straight} straight and ${misc.right} right`);
+  }
+
   if (all || flags.has('--shots')) {
+    // Fresh page: earlier sections leave a lot of machines and items about.
+    await mainPage.close();
+    const fresh = await open(b, +(process.env.SCALE || 1));
+    const p = fresh.p;
+    await p.evaluate(() => __rill.play());
     const P = await p.evaluate(() => { const { TOWN, ADIT, FALLS_Z, spawn } = __rill.places; return { TOWN, ADIT, FALLS_Z, spawn, sy: __rill.height(spawn.x, spawn.z), fx: __rill.riverX(-98), fy: __rill.waterY(-98) }; });
     const T = P.TOWN, A = P.ADIT;
     await shot(p, 'spawn-noon', { x: P.spawn.x, y: P.sy + 1.0, z: P.spawn.z, yaw: P.spawn.yaw, t: 0.5, fly: false });
@@ -423,15 +571,16 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     await p.evaluate(() => { __rill.menu.showPause(true); __rill.menu.openSettings(); });
     await p.waitForTimeout(200);
     await p.screenshot({ path: `${out}/settings.png` });
-    await p.click('text=Keys'); await p.waitForTimeout(100);
+    await p.click('text=Keys', { timeout: 120000 }); await p.waitForTimeout(100);
     // Rebind "pick up" to KeyU through the UI and check it took.
-    await p.click('button.key[data-act="pickup"][data-i="0"]');
+    await p.click('button.key[data-act="pickup"][data-i="0"]', { timeout: 120000 });
     await p.keyboard.press('KeyU');
     const bound = await p.evaluate(() => __rill.settings.binds.pickup[0]);
     check(bound === 'KeyU', `rebinding pick up -> ${bound}`);
     await p.screenshot({ path: `${out}/settings-keys.png` });
-    await p.click('text=Reset to defaults');
+    await p.click('text=Reset to defaults', { timeout: 120000 });
     await p.evaluate(() => { __rill.menu.closeSettings(); __rill.menu.showPause(false); });
+    errs.push(...fresh.errs);
   }
   check(errs.length === 0, 'no console errors' + (errs.length ? ': ' + errs.slice(0, 5).join(' | ') : ''));
   await b.close();

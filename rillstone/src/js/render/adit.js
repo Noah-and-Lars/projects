@@ -3,7 +3,8 @@
 // 3 m. The hemisphere light keeps it above the minimum ambient level; the
 // player's lantern does the rest.
 import * as THREE from 'three';
-import { ADIT, height } from '../world/valley.js';
+import { ADIT, CLAIMS, height } from '../world/valley.js';
+import { textPlane } from './buildings.js';
 import { paint, merge, place } from './geom.js';
 import { noise2 } from '../core/noise.js';
 
@@ -40,16 +41,8 @@ export function buildAdit(scene, materials) {
     }
     prev = r; prevX = x;
   }
-  // End wall: a rough rock face closing the tunnel.
-  {
-    const r = ring(x1), cx = x1, mid = [cx + 0.6, a.y + a.h * 0.45, a.z];
-    for (let k = 0; k < r.length; k++) {
-      const k2 = (k + 1) % r.length;
-      const A = [cx, a.y + r[k][1], a.z + r[k][0]], B = [cx, a.y + r[k2][1], a.z + r[k2][0]];
-      for (const p of [A, B, mid]) { pos.push(...p); col.push(deep.r * 0.9, deep.g * 0.9, deep.b * 0.9); }
-      const base = cv.length / 3; cv.push(...A, ...B, ...mid); ci.push(base, base + 1, base + 2);
-    }
-  }
+  // No end wall: the tunnel runs on into the Ember Seam claim volume, behind
+  // a timber door that opens for the deed holder.
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
@@ -91,13 +84,50 @@ export function buildAdit(scene, materials) {
     paint(place(new THREE.BoxGeometry(0.4, 0.4, a.w + 0.9), a.x - 2.5, a.y + a.h + 0.05, a.z), 0x6e4c2e, 0.1, 3),
   ]);
   const fm = new THREE.Mesh(frame, materials.vcolor); fm.castShadow = true; scene.add(fm);
+  // The Ember Seam door: two plank leaves in a heavy frame, 3 m from the end.
+  const dx = x1 - 3, leaves = [];
+  const frameD = new THREE.Mesh(merge([
+    paint(place(new THREE.BoxGeometry(0.3, a.h, 0.3), dx, a.y + a.h / 2, a.z - hw + 0.15), 0x5a3e24, 0.1, 1),
+    paint(place(new THREE.BoxGeometry(0.3, a.h, 0.3), dx, a.y + a.h / 2, a.z + hw - 0.15), 0x5a3e24, 0.1, 2),
+    paint(place(new THREE.BoxGeometry(0.34, 0.34, a.w), dx, a.y + a.h - 0.17, a.z), 0x5a3e24, 0.1, 3),
+    // Rock packing between the frame and the rough tunnel wall.
+    paint(place(new THREE.BoxGeometry(0.5, a.h + 0.6, 0.8), dx, a.y + a.h / 2, a.z - hw - 0.25), 0x6e6a64, 0.2, 4),
+    paint(place(new THREE.BoxGeometry(0.5, a.h + 0.6, 0.8), dx, a.y + a.h / 2, a.z + hw + 0.25), 0x6e6a64, 0.2, 5),
+    paint(place(new THREE.BoxGeometry(0.5, 0.9, a.w + 1.2), dx, a.y + a.h + 0.2, a.z), 0x6e6a64, 0.2, 6),
+  ]), materials.vcolor);
+  frameD.castShadow = true; scene.add(frameD);
+  const leafW = (a.w - 0.6) / 2, leafH = a.h - 0.4;
+  for (const s of [-1, 1]) {
+    const parts = [];
+    for (let i = 0; i < 4; i++) parts.push(paint(place(new THREE.BoxGeometry(0.1, leafH, leafW / 4 - 0.02), 0, leafH / 2, -s * (i + 0.5) * leafW / 4), i % 2 ? 0x8a6440 : 0x7e5a38, 0.15, i + s * 9));
+    for (const y of [0.4, leafH - 0.4]) parts.push(paint(place(new THREE.BoxGeometry(0.14, 0.14, leafW), 0.03, y, -s * leafW / 2), 0x5a3e24, 0.1, 20));
+    parts.push(paint(place(new THREE.BoxGeometry(0.14, 0.12, leafW * 1.1), 0.03, leafH / 2, -s * leafW / 2, Math.atan2(leafH - 0.8, leafW) * s, 0, 0), 0x5a3e24, 0.1, 21));
+    parts.push(paint(place(new THREE.BoxGeometry(0.06, 0.18, 0.18), -0.08, leafH / 2, -s * (leafW - 0.2)), 0x3a3a3a, 0.4, 22));
+    const leaf = new THREE.Mesh(merge(parts), materials.vcolor);
+    // Hinged at the frame post; rotates back into the tunnel to open.
+    leaf.position.set(dx, a.y + 0.05, a.z + s * (hw - 0.3));
+    leaf.castShadow = true; scene.add(leaf); leaves.push({ leaf, s });
+  }
+  const sign = textPlane(['EMBER SEAM', 'deed holders only'], { w: 1.6, h: 0.6, bg: '#3a2a1a', fg: '#f0d8a8' });
+  sign.position.set(dx - 0.09, a.y + a.h - 0.85, a.z - 0.9); sign.rotation.y = -Math.PI / 2; scene.add(sign);
+  const ember = CLAIMS.find(c => c.id === 'ember');
   const colliders = [
+    { op: 'setStaticBox', key: 'adit-door', hx: 0.15, hy: a.h / 2, hz: hw, pos: [dx, a.y + a.h / 2, a.z] },
     { op: 'setStatic', key: 'adit', vertices: new Float32Array(cv), indices: new Uint32Array(ci) },
     ...boxes.map(([x, y, z, hx, hy, hz], i) => ({ op: 'setStaticBox', key: 'adit-box' + i, hx, hy, hz, pos: [x, y, z] })),
   ];
   return {
     colliders,
-    // Is a point inside the tunnel (for the lantern and ambience)?
-    contains: (x, y, z) => x > a.x - 0.5 && x < x1 && Math.abs(z - a.z) < hw + 0.5 && y > a.y - 1 && y < a.y + a.h + 1,
+    doorX: dx,
+    doorOpen: false,
+    // Open (swing back) or close the Ember Seam door; returns the physics op.
+    setDoor(open) {
+      this.doorOpen = open;
+      for (const { leaf, s } of leaves) leaf.rotation.y = open ? -s * Math.PI * 0.47 : 0;
+      sign.visible = !open;
+      return open ? { op: 'setStaticBox', key: 'adit-door', remove: true } : colliders[0];
+    },
+    // Is a point inside the tunnel or the seam beyond (lantern and ambience)?
+    contains: (x, y, z) => x > a.x - 0.5 && x < ember.x1 && Math.abs(z - a.z) < (x < x1 - 2 ? hw + 0.5 : ember.d / 2) && y > a.y - (x < x1 - 2 ? 1 : 3.5) && y < (x < x1 - 2 ? a.y + a.h + 1 : ember.top),
   };
 }

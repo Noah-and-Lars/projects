@@ -257,3 +257,33 @@ export function crafted(kind) {
   if (kind === 'chalice') return merge([P(new THREE.LatheGeometry([[0, -0.4], [0.24, -0.4], [0.24, -0.35], [0.05, -0.3], [0.05, 0.05], [0.28, 0.2], [0.32, 0.45], [0.29, 0.45], [0.25, 0.22], [0, 0.12]].map(([x, y]) => new THREE.Vector2(x, y)), 12), 0xffffff, 0.02)]);
   return merge([P(place(new THREE.BoxGeometry(0.6, 0.18, 0.3), 0, 0, 0), 0xffffff, 0.02), P(place(new THREE.ConeGeometry(0.15, 0.3, 4), 0.42, 0, 0, 0, 0, -Math.PI / 2), 0xffffff, 0.02)]); // tool head
 }
+
+// The Old Cut relic: the Pumphouse's brass flyball governor, green with age.
+export function governor() {
+  const AGED = 0x9a8a50, VERD = 0x6a9a7a;
+  const parts = [
+    P(lathe([[0, 0], [0.14, 0], [0.15, 0.03], [0.1, 0.05], [0.05, 0.07], [0.04, 0.1], [0, 0.1]], 14), IRON, 0.1, 2),
+    rod([0, 0.08, 0], [0, 0.5, 0], 0.014, AGED),
+    P(lathe([[0, 0], [0.04, 0], [0.045, 0.03], [0.03, 0.05], [0, 0.05]], 10), AGED, 0.1, 3).translate(0, 0.46, 0),
+    P(place(new THREE.CylinderGeometry(0.035, 0.035, 0.04, 10), 0, 0.22, 0), AGED, 0.1, 4),
+  ];
+  for (const s of [-1, 1]) {
+    const ball = [s * 0.17, 0.3, 0];
+    parts.push(rod([0, 0.47, 0], ball, 0.008, AGED), rod([0, 0.22, 0], [s * 0.09, 0.36, 0], 0.007, AGED));
+    parts.push(P(place(new THREE.SphereGeometry(0.05, 10, 8), ...ball), VERD, 0.18, 5 + s));
+  }
+  parts.push(P(place(new THREE.TorusGeometry(0.06, 0.01, 6, 14), 0, 0.12, 0, Math.PI / 2), AGED, 0.1, 9));
+  return merge(parts);
+}
+
+// The Prospector's Lamp: a brass hand lamp with a violet-tinted lens.
+export function prospectorLamp() {
+  const parts = [
+    P(lathe([[0, 0], [0.07, 0], [0.075, 0.02], [0.06, 0.03], [0.06, 0.05], [0, 0.05]], 14), BRASS, 0.08, 1),
+    P(place(new THREE.CylinderGeometry(0.05, 0.05, 0.12, 12, 1, true), 0, 0.11, 0), 0xb8a8f0, 0.05, 2),
+    ...[0, 1, 2, 3].map(i => rod([Math.cos(i * 1.57) * 0.055, 0.05, Math.sin(i * 1.57) * 0.055], [Math.cos(i * 1.57) * 0.055, 0.17, Math.sin(i * 1.57) * 0.055], 0.006, BRASS)),
+    P(lathe([[0, 0], [0.065, 0], [0.04, 0.04], [0.015, 0.06], [0, 0.06]], 12), BRASS, 0.08, 3).translate(0, 0.17, 0),
+    P(place(new THREE.TorusGeometry(0.05, 0.006, 6, 14, Math.PI), 0, 0.24, 0), IRON, 0.05, 4),
+  ];
+  return merge(parts);
+}

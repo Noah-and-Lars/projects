@@ -75,3 +75,9 @@ select { font: 15px var(--font); padding: 4px 8px; border-radius: 8px; border: 1
 #hotbar .key { position: absolute; top: -9px; left: 10px; font: 700 10px var(--font); background: var(--slate); color: var(--cream); border-radius: 5px; padding: 1px 6px; }
 #hint { bottom: 92px !important; }
 .shop .sw { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -1px; }
+#veinmeter { display: flex; align-items: center; gap: 8px; }
+#veinmeter.hidden { display: none; }
+#veinmeter > span:first-child { color: #7a5ad8; font-size: 16px; }
+#veinmeter .bar { width: 70px; height: 7px; border-radius: 4px; background: var(--cream-2); overflow: hidden; }
+#veinmeter .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #9a8ae0, #6a3ad8); transition: width 0.2s; }
+#veinmeter .lbl { min-width: 72px; font-size: 13px; }

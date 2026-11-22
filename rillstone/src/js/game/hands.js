@@ -142,7 +142,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       const ts = d.y < -0.05 ? (o.y - wy) / -d.y : a.t;
       return { kind: 'water', dist: Math.min(a.t, ts), p: [o.x + d.x * ts, wy, o.z + d.z * ts], n: [0, 1, 0] };
     }
-    const vol = claims.volumeAt(x, z);
+    const vol = claims.volumeAt(x, z, y);
     if (vol && y > vol.origin[1] - 0.5 && y < vol.def.top + 3) return { kind: 'claim', vol, dist: a.t, p: a.p, n: a.n };
     return { kind: 'ground', dist: a.t, p: a.p, n: a.n };
   }
@@ -170,16 +170,19 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     H.play(tool && tool.type === 'pick' ? 'swing' : tool && tool.type === 'shovel' ? 'dig' : 'scoop');
     fx.burst(info.p, BAND_DIRT[mainBand], 10, { speed: 1.6, size: 0.06, life: 0.5 });
     H.digs = (H.digs || 0) + 1;
-    return { band: mainBand, depth: Math.max(0, info.vol.def.top - c[1]), claim: info.vol.id };
+    const load = { band: mainBand, depth: Math.max(0, info.vol.depthAt(c[0], c[1])), claim: info.vol.id };
+    const vein = info.vol.veinAt(c[0], c[1], c[2]); if (vein) load.vein = vein;
+    H.onDig?.(info.vol, c, def.dig);
+    return load;
   }
   function addLoad(e, load) { e.data.loads.push(load); items.refresh(e.id); }
-  function dumpClod(load, p, anim = true) { items.spawn('clod', [p[0], p[1] + 0.2, p[2]], { data: { band: load.band, depth: load.depth, loads: [load] } }); audio.play('pour'); if (anim) H.play('dump'); fx.burst(p, BAND_DIRT[load.band], 8, { speed: 1, size: 0.05, life: 0.4, up: 0.6 }); }
+  function dumpClod(load, p, anim = true) { items.spawn('clod', [p[0], p[1] + 0.2, p[2]], { data: { band: load.band, depth: load.depth, loads: [load], ore: !!load.ore } }); audio.play('pour'); if (anim) H.play('dump'); fx.burst(p, BAND_DIRT[load.band], 8, { speed: 1, size: 0.05, life: 0.4, up: 0.6 }); }
   function containerCanTake(e) { return e && (e.type === 'pan' || e.type === 'bucket') && e.data.loads.length < toolDef(e).loads && !(e.type === 'pan' && e.data.contents.length); }
 
   // Wash one load in the pan: one loot roll per load (BUILD_BRIEF 3.4).
   function wash(pan) {
     const load = pan.data.loads.pop();
-    const it = rollLoot(rng, { band: load.band, depth: load.depth, pan: true });
+    const it = rollLoot(rng, { band: load.band, depth: load.depth, pan: true, vein: load.vein ? { material: load.vein } : null });
     const n = items.spawn('nugget', [0, 0, 0], { item: it, loc: 'contained' });
     n.container = pan.id;
     pan.data.contents.push(n.id);
@@ -254,7 +257,8 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       return;
     }
     if (e.type === 'pick') {
-      if (info.kind === 'claim' && near) { const l = dig(info, e, def); if (l) dumpClod(l, info.p, false); return l; }
+      // The pick breaks out hard ore clods below the topsoil: crush them in a Stamp Mill.
+      if (info.kind === 'claim' && near) { const l = dig(info, e, def); if (l) { if (l.band >= 2) l.ore = true; dumpClod(l, info.p, false); } return l; }
       return;
     }
     if (e.type === 'clod') {
@@ -268,6 +272,8 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (info.kind === 'machine' && info.dist < REACH + 0.5) {
       const m = info.m;
       if (m.run) { say('Pick up a machine at either end to remove its pipe'); return false; }
+      if (m.locked && H.auto?.interact(m)) return true;
+      if (m.locked && m.def === 'lift') { H.onLift?.(m); return true; }
       if (m.locked) { say('Locked — unlock it with the mallet (RMB)', 'err'); audio.play('error'); return false; }
       if (H.hand) { const cur = heldEnt(); if (TOOLS[cur.type] && !H.slot) { H.slot = H.hand; H.hand = null; } else { say('Hands full — G to drop, Q to swap'); return false; } }
       const c = items.spawn('crate', [0, 0, 0], { data: { def: m.def, family: H.machines.family(m.def), state: m.state, wear: m.wear }, loc: 'held' });
@@ -278,6 +284,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (info.kind === 'vehicle' && info.dist < REACH + 0.8) { H.onVehicle?.(info.id); return true; }
     if (info.kind !== 'item' || info.dist > REACH) return false;
     const target = info.ent;
+    if (H.onWear?.(target)) return true;
     if (H.hand) {
       const cur = heldEnt();
       // Tools go to the swap slot to free the hand.

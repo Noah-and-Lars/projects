@@ -144,6 +144,13 @@ export const MACHINES = {
 // The model for a machine's spinning part (drill rod, flywheel, grinding stone).
 export function spinPart(def) {
   const s = def.spin; if (!s) return null;
+  if (s.wheel) { // a wooden water wheel with paddles; axle along x
+    const parts = [P(new THREE.TorusGeometry(s.r, 0.06, 6, 20).rotateY(Math.PI / 2).translate(0.2, 0, 0), WOOD_D, 0.08), P(new THREE.TorusGeometry(s.r, 0.06, 6, 20).rotateY(Math.PI / 2).translate(-0.2, 0, 0), WOOD_D, 0.08)];
+    for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; parts.push(P(place(new THREE.BoxGeometry(0.5, 0.04, 0.36), 0, Math.cos(a) * s.r, Math.sin(a) * s.r, a), WOOD, 0.1, i)); parts.push(rod([0, 0, 0], [0, Math.cos(a) * s.r, Math.sin(a) * s.r], 0.03, WOOD_D)); }
+    parts.push(P(new THREE.CylinderGeometry(0.12, 0.12, 0.5, 10).rotateZ(Math.PI / 2), DARK, 0.05));
+    const g = merge(parts); g.rotateY(Math.PI / 2); return g;
+  }
+  if (s.drum) { const g = merge([P(new THREE.CylinderGeometry(s.r, s.r, 1.8, 12, 1, true).rotateX(Math.PI / 2), 0x7a848c, 0.1), ...[-0.8, 0, 0.8].map((z, i) => P(new THREE.TorusGeometry(s.r, 0.03, 4, 14).translate(0, 0, z), BRASS, 0.04, i))]); g.rotateX(s.tilt || 0); return g; }
   if (s.rod) return merge([P(new THREE.CylinderGeometry(0.06, 0.06, s.len, 8), STEEL, 0.06), ...[0, 1, 2].map(i => P(place(new THREE.BoxGeometry(0.16, 0.03, 0.03), 0, -s.len / 2 + 0.2 + i * 0.35, 0, 0, i, 0.4), BRASS, 0.04, i))]);
   const g = new THREE.CylinderGeometry(s.r, s.r, s.stone ? 0.1 : 0.06, 18).rotateZ(Math.PI / 2);
   const parts = [P(g, s.stone ? 0xb8b0a0 : BRASS, 0.08)];

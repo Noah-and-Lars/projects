@@ -29,7 +29,7 @@ function makeContract(rng, standing, id) {
 export function createEconomy(rng) {
   const S = {
     scrip: 0, standing: 0, day: 1, soldToday: 0, totalEarned: 0, ledger: [],
-    market: [], contracts: [], nextContract: 1, owned: ['gravel'],
+    market: [], contracts: [], nextContract: 1, owned: ['gravel'], flags: {},
   };
   const api = { state: S };
   function rollMarket() {
@@ -100,11 +100,12 @@ export function createEconomy(rng) {
   api.owns = (claimId) => S.owned.includes(claimId);
   api.buyClaim = (claimId) => {
     const c = CLAIMS.find(x => x.id === claimId); if (!c || api.owns(claimId)) return 'owned';
+    if (S.standing < (c.standing || 0)) return 'standing';
     if (!api.spend(c.price)) return 'poor';
     S.owned.push(claimId); return 'ok';
   };
   api.describe = (it) => itemName(it);
   api.serialize = () => JSON.parse(JSON.stringify(S));
-  api.restore = (d) => { Object.assign(S, d); };
+  api.restore = (d) => { Object.assign(S, d); S.flags ||= {}; };
   return api;
 }

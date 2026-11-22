@@ -208,7 +208,7 @@ function driveVehicle(v) {
   const top = Math.max(0, 1 - Math.abs(speed) / (d.topSpeed || 15));
   if (throttle > 0) engine = throttle * d.engine * top * (speed < -0.5 ? 0 : 1), brake += speed < -0.5 ? d.brake : 0;
   else if (throttle < 0) { if (speed > 0.5) brake += d.brake; else engine = throttle * d.engine * 0.6; }
-  else if (!inp.driver) brake += d.brake * 0.3; // parked
+  else if (!inp.driver) brake += d.brake; // parked: handbrake on
   else brake += d.brake * 0.03; // rolling resistance
   for (let i = 0; i < vc.numWheels(); i++) {
     const front = d.wheels[i][2] > 0;

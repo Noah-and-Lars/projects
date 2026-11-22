@@ -41,8 +41,11 @@ export function createAudio(settings, onCaption) {
     rare: () => { [880, 1108, 1320, 1760].forEach((f, i) => tone('ui', { f0: f, peak: 0.12, d: 0.3, at: i * 0.07 })); },
     coins: () => { for (let i = 0; i < 6; i++) tone('ui', { f0: 2000 + Math.random() * 1500, type: 'triangle', peak: 0.08, d: 0.12, at: i * 0.05 + Math.random() * 0.03 }); },
     error: () => tone('ui', { f0: 220, f1: 180, type: 'square', peak: 0.06, d: 0.15 }),
+    siren: () => { tone('machines', { f0: 600, f1: 900, type: 'sawtooth', peak: 0.08, a: 0.3, d: 0.4 }); tone('machines', { f0: 900, f1: 600, type: 'sawtooth', peak: 0.08, a: 0.3, d: 0.4, at: 0.6 }); },
+    tick: (s = 0.5) => { tone('ui', { f0: 900 + s * 900, type: 'sine', peak: 0.04 + s * 0.04, d: 0.05 }); },
+    boom: () => { noiseHit('machines', { freq: 220, peak: 0.9, a: 0.005, d: 0.9, rate: 0.5 }); tone('machines', { f0: 90, f1: 30, peak: 0.5, d: 0.7 }); },
   };
-  const CAPTIONS = { dig: 'thunk', clink: 'clink — too hard', swish: 'pan swish', splash: 'splash', pour: 'dirt pours', find: 'something glints', rare: 'a rare find!', coins: 'coins', error: 'nope' };
+  const CAPTIONS = { dig: 'thunk', clink: 'clink — too hard', swish: 'pan swish', splash: 'splash', pour: 'dirt pours', find: 'something glints', rare: 'a rare find!', coins: 'coins', error: 'nope', siren: 'siren wails', boom: 'explosion' };
   return {
     play(cue, ...args) { if (settings.captions && CAPTIONS[cue]) onCaption?.(CAPTIONS[cue]); if (!ctx || !CUES[cue]) return; try { CUES[cue](...args); } catch (_) {} },
     apply, unlock,

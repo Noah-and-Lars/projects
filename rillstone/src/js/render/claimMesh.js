@@ -72,7 +72,7 @@ export async function createClaims(scene, materials, physics, opts = {}) {
     get busy() { let d = 0; for (const v of volumes.values()) d += v.dirty.size; return d + inFlight.size + pendingCollider.size; },
     // Wait until every chunk is meshed and collided (loading, tests).
     async settle() { while (api.busy) { api.update(null, 64, 16); await new Promise(r => setTimeout(r, 16)); } await physics.call({ op: 'batch', ops: [] }); },
-    volumeAt(x, z) { for (const v of volumes.values()) if (v.contains(x, z)) return v; return null; },
+    volumeAt(x, z, y) { for (const v of volumes.values()) if (v.contains(x, z, y)) return v; return null; },
   };
   return api;
 }

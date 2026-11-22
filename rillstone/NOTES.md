@@ -342,3 +342,86 @@ across freshly dug ground without jitter or launching.
 - **Crafting:** the kiln melted 4 kg of silver and refused gold without
   deleting it. A garnet was cut, then a hot ingot and the cut garnet became a
   silver ring worth § 130.
+
+## M5: belts and logic
+
+- **Belts are lanes in data** (`game/automation.js`).
+  - **Lanes:** each belt piece has one or more lanes (local polylines).
+    Items sit at a distance `s` along a lane and keep a 0.26 m gap.
+  - **Speed:** a line moves at 0.6 + 1.0 × the satisfaction of its
+    best-supplied Belt Drive. A drive is a belt piece with a water motor that
+    needs 10 L/s. A line is the set of belts joined by out→in links.
+  - **Leaving a belt:** when the front item reaches the end of a lane, it's
+    handed to whatever the belt's out port links to (another belt, a hopper,
+    a furnace, a bin). If that refuses it, the lane backs up and the belt
+    reports "jammed". Items become rigid bodies only when they drop off an
+    open end.
+  - **Drawing:** items on belts are drawn with the same instanced meshes as
+    loose items, positioned from lane data.
+- **Belt pieces.** Straight, corner, incline (1 m rise over 2 m), splitter
+  (alternates), merger (the left-hand side lane joins mid-belt), sorter
+  (straight on for one chosen material and stage, right for everything
+  else) and the Gem Cutter Hook (cuts uncut gems passing under it).
+- **Containers.** Ore Bin (400 kg) and Storage Crate (40 items) are data
+  lists. RMB lists their contents with "Take one" buttons.
+- **Never deleting.** Every machine output either succeeds or waits:
+  - a sluice holds finds it can't pass on and stalls;
+  - a drill holds its load;
+  - the smelter refuses mixed ore, which then waits on the belt.
+
+  An M4 bug made blocked consumers drop their water demand, so they could
+  never retry; that's fixed.
+- **Shaft power is by proximity.** A Water Wheel (in the river: 20 L/s plus
+  3 shaft units) or a Turbine (on a pipe network, 30 L/s, 3 units ×
+  satisfaction) drives shaft machines within 8 m, shown with a drawn drive
+  line. Speed is `min(1, units / machines driven)`. Shaft runs like pipe
+  runs would be truer to the brief but add a lot of fiddly placement for
+  little play value; this can be revisited.
+- **Shaft machines.**
+  - **Stamp Mill:** one ore clod becomes 3 gravel loads. The pick breaks
+    ore clods out of band 2 and deeper.
+  - **Trommel:** screened loads wash 25% faster in a sluice.
+  - **Lift:** carries items up 3 m; E rides it when it's locked.
+- **Smelter.** Belt-fed through two inputs. Holds 100 kg of one ore, melts
+  10 kg per 4 s scaled by water satisfaction (it needs 30 L/s), and burns
+  quartz. It pours only on a logic pulse or from its panel.
+- **Logic.**
+  - **Signals:** held numbers on Signal Cable, laid like pipe from an output
+    terminal (right side) to an input (left side). They're evaluated at
+    10 Hz, and each gate reads the previous tick's values, so every gate
+    adds one tick of delay.
+  - **Parts:** Button, Lever, Dial and Clock; AND, OR, NOT, Compare
+    (>, <, = against input B or a set number), Add, Subtract, Latch, Pulse
+    and Delay. Sensors are the Scale Plate (kg resting on it), Counter
+    (items leaving the nearest belt), Wear Sensor and Fill Sensor. Outputs
+    are Valve (closes the nearest intake or junction), Belt Gate, Pour
+    Trigger, Lamp, Siren, Logic Charge (blasts a 2 m hole in an owned claim),
+    Item Ejector and Display Panel.
+  - **"Nearest":** sensors and outputs act on the nearest suitable machine
+    within 2.6 m.
+  - **Hover:** hovering a cable shows its live value.
+
+### Acceptance (`node tools/test.cjs <dir> --belts`)
+
+The line, all automatic for 15 simulated minutes:
+
+1. Two intakes and two junctions supply the water.
+2. The drill feeds the sluice, which washes onto a belt drive.
+3. The sorter sends iron straight on into the smelter and everything else
+   right, over two belts, into an ore bin.
+4. Smelter ingots drop onto a scale plate.
+5. Fill sensor > 10 kg AND scale plate < 500 kg → Pulse → Pour Trigger.
+
+**Result:**
+- 179 loads washed.
+- The longest hold on any belt was 0 s.
+- 4 automatic pours left 4 iron ingots (41 kg) on the plate.
+- 154 non-iron items were binned, and no iron.
+
+**Also tested:**
+- Logic truth tables, pulse and delay.
+- A belt feeding a full crate backs up without losing anything (2 in, 6
+  waiting).
+- A water wheel drives the stamp mill: 1 ore clod → 3 loads.
+- The gem cutter hook cut 4/4 garnets, and the splitter sent 2 straight and
+  2 right.

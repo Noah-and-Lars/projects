@@ -142,6 +142,32 @@ crates.
   your swap slot to set it into a ring or chalice. The **Grinding Wheel**
   cuts gems (3 clicks).
 
+## Belts and logic
+
+- **Belts** (Millwright) carry items from machine to machine.
+  - **Placing:** butt pieces end to end; a **Belt Drive** with water runs
+    the whole line.
+  - **Routing:** **Sorters** pick one material and stage (RMB to choose),
+    **Splitters** alternate, and **Mergers** join lines.
+  - **Gems:** the **Gem Cutter Hook** cuts gems riding past.
+  - **Jams:** belts back up when the next machine is full; nothing is ever
+    deleted.
+- **Ore Bins** and **Storage Crates** collect items. RMB lists what's in
+  them.
+- **Shaft power:** a **Water Wheel** in the river (or a **Turbine** on a
+  pipe) drives the **Stamp Mill** (ore clods → 3 loads), the **Trommel**
+  (screened loads wash 25% faster) and the **Lift** within 8 m.
+- **The Smelter** (Foundry Yard) melts belt-fed ore and pours on a logic
+  pulse.
+- **Logic parts** (Signal House) hold numbers on signal cable, laid like
+  pipe from an output (right) to an input (left).
+  - **Inputs:** buttons and levers (E), dials, clocks.
+  - **Gates:** AND/OR/NOT, compare, add/subtract, latch, pulse, delay.
+  - **Sensors:** scale plate, counter, wear, fill.
+  - **Outputs:** valve, belt gate, pour trigger, lamp, siren, charge,
+    ejector, display.
+  - **Range:** sensors and outputs act on the nearest machine within 2.6 m.
+
 ## The valley
 
 Rillstone Vale is about 600 × 600 m, shaped by `src/js/world/valley.js`.
@@ -191,6 +217,7 @@ underground, and L toggles it.
 | `js/ui/panels.js` | Shop, contracts and save panels |
 | `js/sim/flow.js` | Water flow budget: networks, sources, boosters, tanks, widest-path pipe limits, silt |
 | `js/defs/machines.js`, `js/game/machines.js` | Machine models and specs; placement ghost, pipe runs, item links, production, furnaces, crafting, wear, machine panels |
+| `js/defs/machines2.js`, `js/game/automation.js` | Belts (data lanes), containers, shaft power, stamp mill, trommel, lift, smelter feeding, logic engine |
 | `js/game/player.js` | First-person controller: input to wanted velocity, view angles, smoothed camera |
 | `js/ui/hud.js`, `js/ui/menu.js`, `style.css` | HUD, title, pause and settings panels |
 | `js/core/workers.js` | Starts workers from Blob URLs (bundled strings in the build, rewritten modules in dev) |
@@ -230,6 +257,9 @@ outside request to prove the file is self-contained. Add `--src` to test
 - runs an intake → drill → sluice line for 10 simulated minutes, checks that
   halving the intake slows it by the formula, and melts, cuts and crafts a
   ring (`--machines`);
+- runs a fully automatic dig → wash → sort → smelt → bin line for 15
+  simulated minutes, gated by sensors and a pour trigger; checks logic truth
+  tables, jams and shaft power (`--belts`);
 - runs digging benchmark 1 and screenshots the depth bands, the drop ring,
   a tooltip and panning;
 - fails on any console error.
