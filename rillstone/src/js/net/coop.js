@@ -144,8 +144,9 @@ export function createCoop(ctx) {
   // Run one queued action of a guest, with their camera.
   async function runAction(g, a) {
     if (a.cam) {
-      // The guest's camera must be a real pose near where we know they are.
-      const gp = guestPos(g); if (!vec(a.cam) || !vec(a.q, 4) || Math.hypot(a.cam[0] - gp[0], a.cam[2] - gp[2]) > 12) return;
+      // The guest's camera must be a real pose (finite numbers). Distances
+      // aren't checked: the host's view of a guest lags their teleports.
+      if (!vec(a.cam) || !vec(a.q, 4)) return;
       g.cam.position.fromArray(a.cam); g.cam.quaternion.fromArray(a.q).normalize(); g.cam.updateMatrixWorld();
     }
     const d = new THREE.Vector3(0, 0, -1).applyQuaternion(g.cam.quaternion);
@@ -156,13 +157,13 @@ export function createCoop(ctx) {
       const H = g.hands;
       if (a.k === 'use') H.use();
       else if (a.k === 'pick') H.pickup();
-      else if (a.k === 'drop') { if (a.ring) { if (vec(a.ring) && g.cam.position.distanceTo(new THREE.Vector3(...a.ring)) < 8) H.dropAt(a.ring, num(a.yaw) ? a.yaw : 0, a.rot); } else { if (a.reach) H.reach = Math.max(1.5, Math.min(6, +a.reach || 3.5)); H.drop(); } }
+      else if (a.k === 'drop') { if (a.ring) { if (vec(a.ring)) H.dropAt(a.ring, num(a.yaw) ? a.yaw : 0, a.rot); } else { if (a.reach) H.reach = Math.max(1.5, Math.min(6, +a.reach || 3.5)); H.drop(); } }
       else if (a.k === 'swap') H.swap();
       else if (a.k === 'sec') { const c = H.hand ? items.get(H.hand) : null; if (c?.type === 'coil') machines.cancelRun(c); }
       else if (a.k === 'unlock') { const m = machines.get(a.id); if (m) { m.locked = false; g.hands.hud.toast(`${machines.name(m.def)} unlocked`); } }
       else if (a.k === 'place') {
         const e = H.hand ? items.get(H.hand) : null;
-        if (e && e.id === a.ent && e.type === 'crate' && e.data.def === a.def && vec(a.pos) && num(a.rot) && g.cam.position.distanceTo(new THREE.Vector3(...a.pos)) < 10) {
+        if (e && e.id === a.ent && e.type === 'crate' && e.data.def === a.def && vec(a.pos) && num(a.rot)) {
           const why = machines.requirement(a.def, a.pos, a.rot);
           if (why) H.hud.toast(why, 'err');
           else if (!(await machines.checkFree(a.def, a.pos, a.rot))) H.hud.toast('Something is in the way', 'err');

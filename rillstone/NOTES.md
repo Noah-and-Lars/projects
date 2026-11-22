@@ -858,7 +858,9 @@ A read-only review found ten issues, all now fixed:
    guest now drives one vehicle at a time.
 9. **Guest input checked on the host.**
    - Camera poses, drop rings, placement positions and the guest's own
-     position must be finite numbers and within reach.
+     position must be finite numbers of the right size. Reach isn't
+     checked: the host's view of a guest lags their teleports, and a reach
+     check refused honest actions in the co-op test.
    - Machine settings are clamped or refused, for example a NaN throttle
      that would have poisoned the water network.
    - Guest placements get the host's overlap check.

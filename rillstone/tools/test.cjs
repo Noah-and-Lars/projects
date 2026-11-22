@@ -878,7 +878,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       for (let i = 0; i < 20 && R.hands.hand != null; i++) await new Promise(r => setTimeout(r, 150));
       R.aimAt(...ing.pos); await R.refreshAim(); R.hands.remote({ k: 'pick' });
       for (let i = 0; i < 20 && R.hands.hand !== ing.id; i++) await new Promise(r => setTimeout(r, 150));
-      if (R.hands.hand !== ing.id) return { err: 'pick up failed', hand: R.hands.hand };
+      if (R.hands.hand !== ing.id) return { err: 'pick up failed', hand: R.hands.hand, said };
       // Walk to the truck's side and drop it onto the bed.
       const v = R.vehicles.list.get(t.id); v.group.updateMatrixWorld(true); const bed = new R.THREE.Vector3(0, v.def.bed.y, -1).applyMatrix4(v.group.matrixWorld);
       await R.teleport(bed.x + 2.2, bed.y + 0.6, bed.z); await R.tick(10);
