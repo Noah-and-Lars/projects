@@ -245,14 +245,8 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
   function pickup() {
     const info = aimInfo();
     if (info.kind === 'prop' && info.dist < REACH + 0.5) { H.props.interact(info.id); return true; }
-    if (info.kind === 'vehicle' && info.dist < REACH) {
-      const c = H.vehicles.cargoNear(info.id, info.p, 0.6);
-      if (!c) return false;
-      if (H.hand) { const cur = heldEnt(); if (TOOLS[cur.type] && !H.slot) { H.slot = H.hand; H.hand = null; } else { say('Hands full — G to drop, Q to swap'); return false; } }
-      H.vehicles.removeCargo(info.id, c.id);
-      c.loc = 'held'; c.container = null; H.hand = c.id; audio.play('pickup'); H.play('equip');
-      return true;
-    }
+    // E on the truck opens its bed inventory.
+    if (info.kind === 'vehicle' && info.dist < REACH + 0.8) { H.onVehicle?.(info.id); return true; }
     if (info.kind !== 'item' || info.dist > REACH) return false;
     const target = info.ent;
     if (H.hand) {
@@ -311,7 +305,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (info.kind === 'vehicle' && info.dist < 4) {
       if (e && e.type === 'sack') parts.unshift(`${k('LMB')} refuel`);
       else if (e && info.bed) parts.unshift(`${k('G')} load into bed`);
-      if (!e && H.vehicles.cargoNear(info.id, info.p, 0.6)) parts.push(`${k('E')} take`);
+      parts.push(`${k('E')} bed`);
       parts.push(`${k('F')} drive`);
     }
     if (H.slot || (e && TOOLS[e.type])) parts.push(`${k('Q')} swap`);

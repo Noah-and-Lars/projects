@@ -58,7 +58,7 @@ export function building(opts) {
   parts.push(...roof(w, d, roofH, h + 0.3, SLATE));
   if (chimney) { parts.push(P(place(new THREE.BoxGeometry(0.6, 1.6, 0.6), w / 2 - 1.2, h + roofH * 0.7, -d / 4), STONE, 0.12, 14)); parts.push(P(place(new THREE.BoxGeometry(0.7, 0.12, 0.7), w / 2 - 1.2, h + roofH * 0.7 + 0.8, -d / 4), SLATE, 0.05)); }
   // Awning over the counter in the shop's trim colour, striped.
-  if (!bay) for (let i = 0; i < 6; i++) { const g = new THREE.BoxGeometry(w * 0.5 / 6, 0.05, 1.5); place(g, -w * 0.25 + (i + 0.5) * w * 0.5 / 6, 2.95, d / 2 + 0.7, -0.35, 0, 0); parts.push(P(g, i % 2 ? trim : 0xf4ecd8, 0.03, i + 30)); }
+  if (!bay) for (let i = 0; i < 6; i++) { const g = new THREE.BoxGeometry(w * 0.5 / 6, 0.05, 1.5); place(g, -w * 0.25 + (i + 0.5) * w * 0.5 / 6, 2.62, d / 2 + 0.7, -0.35, 0, 0); parts.push(P(g, i % 2 ? trim : 0xf4ecd8, 0.03, i + 30)); }
   return merge(parts);
 }
 
@@ -103,9 +103,16 @@ export function textPlane(lines, { w = 2, h = 0.5, bg = '#1f7a7a', fg = '#f6eedb
   g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
   const L = Array.isArray(lines) ? lines : [lines];
   const lh = c.height / (L.length + 0.6);
-  L.forEach((t, i) => { g.font = `${i === 0 ? font : font.replace(/\d+px/, (m) => Math.round(parseInt(m) * 0.7) + 'px')} ui-rounded, "Nunito", "Segoe UI", sans-serif`; g.fillText(t, c.width / 2, lh * (i + 0.8)); });
+  L.forEach((t, i) => {
+    // Shrink the font until the line fits inside the border.
+    let size = parseInt(font.match(/\d+/)[0]) * (i === 0 ? 1 : 0.7);
+    const set = () => { g.font = `${font.replace(/\d+px/, Math.round(size) + 'px')} ui-rounded, "Nunito", "Segoe UI", sans-serif`; };
+    set(); while (size > 10 && g.measureText(t).width > c.width * 0.88) { size *= 0.92; set(); }
+    size = Math.min(size, lh * 0.8); set();
+    g.fillText(t, c.width / 2, lh * (i + 0.8));
+  });
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
   m.userData.redraw = (newLines) => { const mm = textPlane(newLines, { w, h, bg, fg, font, px, chalk }); m.material.map.dispose(); m.material.map = mm.material.map; };
   return m;
 }

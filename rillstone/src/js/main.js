@@ -26,6 +26,7 @@ import { createPanels } from './ui/panels.js';
 import { createSaves, SAVE_VERSION } from './core/save.js';
 import { readChunk, writeChunk } from './world/claims.js';
 import { h } from './ui/dom.js';
+import { createBed, slotCard } from './game/bed.js';
 import { createHUD } from './ui/hud.js';
 import { createMenu } from './ui/menu.js';
 import { HALF, spawnPoint, height, ADIT, TOWN, HAMLET, CLAIMS, riverX, waterY, FALLS_Z } from './world/valley.js';
@@ -88,6 +89,8 @@ async function boot() {
   await town.build();
   hands.props = town;
   const saves = createSaves();
+  const bed = createBed({ panels, items, vehicles, hands, hud, audio });
+  hands.onVehicle = (id) => bed.open(id);
 
   // Player.
   const player = createPlayer(settings);
@@ -275,6 +278,7 @@ async function boot() {
     hands.update(dt, input, controls() && !vehicles.driving);
     hands.setVisible?.(!vehicles.driving);
     town.update(dt);
+    hud.hotbar([slotCard(items, hands.hand), slotCard(items, hands.slot)]);
     const dh = vehicles.hud();
     driveEl.classList.toggle('hidden', !dh);
     if (dh) driveEl.innerHTML = `<div class="pill">${dh.speed.toFixed(0)} km/h</div><div class="pill">Fuel<div class="gauge"><i style="width:${(dh.fuel * 100).toFixed(0)}%"></i></div></div><div class="pill">Bed ${dh.cargo} · ${dh.kg.toFixed(0)} kg</div>`;
@@ -302,7 +306,7 @@ async function boot() {
   // so ?test=1 lets tests drive the game directly.
   const api = { ready: true, physics, version: physics.version, seed: SEED };
   if (TEST) Object.assign(api, {
-    THREE, view, player, input, state, settings, hud, menu, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
+    THREE, view, player, input, state, settings, hud, menu, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
     places: { TOWN, HAMLET, ADIT, CLAIMS, FALLS_Z, spawn: spawnPoint() },
     height, riverX, waterY,
     play,

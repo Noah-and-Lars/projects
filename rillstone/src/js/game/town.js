@@ -49,8 +49,9 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     const yaw = faceYaw(x, z);
     put(new THREE.Mesh(building({ w, d, trim, bay }), materials.vcolor), x, z, yaw);
     box('bld-' + key, x, gy + 2.2, z, w / 2, 2.2, d / 2, yaw);
-    const s = textPlane([sign || name], { w: Math.min(4.2, w * 0.6), h: 0.6, bg: '#' + trim.toString(16).padStart(6, '0') });
-    const [sx, sz] = local(x, z, yaw, 0, d / 2 + 0.08); put(s, sx, sz, yaw, gy + 3.7);
+    // The sign sits on the wall between the awning (top ~2.9 m) and the eaves (3.7 m).
+    const s = textPlane([sign || name], { w: Math.min(4.6, w * 0.62), h: 0.5, bg: '#' + trim.toString(16).padStart(6, '0'), px: 768 });
+    const [sx, sz] = local(x, z, yaw, 0, d / 2 + 0.1); put(s, sx, sz, yaw, gy + 3.28);
     if (bay) return { yaw };
     const cz = d / 2 + 1.3;
     const [cx, czz] = local(x, z, yaw, 0, cz);
@@ -78,6 +79,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
 
   // Layout round the square (BUILD_BRIEF 3.2).
   shop({ key: 'assay', name: 'Assay Office', x: T.x - 2, z: T.z - 22, w: 9, trim: 0x2a8a86, sells: 'assay' });
+  shop({ key: 'gems', name: 'Gem Buyer', x: T.x - 21, z: T.z - 25, w: 7, trim: 0x9a2a4a, sells: 'gems' });
   shop({ key: 'store', name: 'General Store', x: T.x + 22, z: T.z - 8, trim: 0xc8902c, shopId: 'store' });
   shop({ key: 'mill', name: 'Millwright', x: T.x + 23, z: T.z + 12, trim: 0x2a8a86, shopId: 'millwright' });
   const wag = shop({ key: 'wagons', name: 'Wagon Shed', x: T.x + 6, z: T.z + 26, w: 11, d: 7, trim: 0x56616e, bay: true });
@@ -100,7 +102,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     const frame = put(new THREE.Mesh(merge([paint(place(new THREE.BoxGeometry(2.4, 1.6, 0.1), 0, 1.6, 0), 0x6e4c2e, 0.06), paint(place(new THREE.BoxGeometry(0.12, 2.4, 0.12), -1.1, 1.2, -0.05), 0x6e4c2e, 0.06), paint(place(new THREE.BoxGeometry(0.12, 2.4, 0.12), 1.1, 1.2, -0.05), 0x6e4c2e, 0.06)]), materials.vcolor), x, z, yaw);
     void frame;
     const face = textPlane(['GUILD CONTRACTS', 'Press E to read'], { w: 2.2, h: 1.4, bg: '#efe4cc', fg: '#2b3440', font: 'bold 52px' });
-    const [fx, fz] = local(x, z, yaw, 0, 0.06); put(face, fx, fz, yaw, gy + 1.6);
+    const [fx, fz] = local(x, z, yaw, 0, 0.075); put(face, fx, fz, yaw, gy + 1.6);
     prop('guild', { name: 'Guild board' }, x, gy + 1.6, z, 1.2, 0.8, 0.15, yaw);
   }
   // Market square: three stalls with chalkboards.
@@ -118,8 +120,10 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     counters.push({ venue: i, bell: id, x, z: z - 0.7, yaw, top: gy + 1.05, w: 2.6, clerk: clerks[clerks.length - 1] });
     put(new THREE.Mesh(chalkboardFrame(), materials.vcolor), x - 2.1, z - 1.4, yaw + 0.3);
     const face = textPlane(['…'], { w: 0.9, h: 1.1, bg: '#2a3330', fg: '#f4f0e0', font: 'bold 70px', px: 256, chalk: true });
-    const [fx, fz] = [x - 2.1 - Math.sin(yaw + 0.3) * 0.045, z - 1.4 - Math.cos(yaw + 0.3) * 0.045];
-    face.position.set(fx, gy + 1.02, fz); face.rotation.set(0.12, yaw + 0.3, 0, 'YXZ'); group.add(face);
+    // Match the frame's backward lean (-0.12 about x) and sit just in front of it.
+    const by = yaw + 0.3, off = 0.04;
+    face.position.set(x - 2.1 + Math.sin(by) * off, gy + 1.0 + Math.sin(0.12) * off, z - 1.4 + Math.cos(by) * off);
+    face.rotation.set(-0.12, by, 0, 'YXZ'); group.add(face);
     boards.push({ stall: i, face });
     prop('chalk', { stall: i, name: 'Chalkboard' }, x - 2.1, gy + 1.0, z - 1.4, 0.5, 0.65, 0.12, yaw + 0.3);
   }
@@ -154,13 +158,13 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     const p = props.get(id), c = counters.find(k => k.bell === id);
     audio.play('pickup');
     const list = counterItems(c);
-    if (!list.length) { hud.toast(c.venue === 'assay' ? 'Put goods on the counter, then ring the bell' : 'Put goods on the stall counter, then ring'); return { total: 0 }; }
+    if (!list.length) { hud.toast(c.venue === 'gems' ? 'Put uncut gems on the counter, then ring the bell' : c.venue === 'assay' ? 'Put ore and goods on the counter, then ring the bell' : 'Put goods on the stall counter, then ring'); return { total: 0 }; }
     const r = economy.sell(list.map(e => e.item), c.venue);
     const soldSet = new Set(r.sold);
     for (const e of list) if (soldSet.has(e.item)) items.remove(e.id);
     c.clerk.busy = 1.2;
     if (r.total > 0) { audio.play('coins'); hud.toast(`${p.name}: ${r.sold.length} item${r.sold.length > 1 ? 's' : ''} weighed and stamped · § ${r.total.toLocaleString('en-GB')}`, 'gold'); }
-    if (r.refused.length) hud.toast(`${r.refused.length} left on the counter: ${r.refused[0].why}`, 'err');
+    if (r.refused.length) hud.toast(`${r.refused.length} left on the counter · ${r.refused[0].why}`, 'err');
     for (const k of r.completed) { audio.play('rare'); hud.toast(`Contract done: ${k.text} · § ${k.reward} · ★ +${k.standing}`, 'gold'); }
     if (c.venue !== 'assay') redrawBoards();
     return r;

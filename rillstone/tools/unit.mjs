@@ -45,7 +45,7 @@ check(Math.abs(itemValue({ material: 'silver', stage: 'crafted', craft: 'ring', 
   check(st.market.length === 3 && st.contracts.length === 3, '3 market stalls and 3 contracts');
   const m = st.market[0], w = m.want;
   const it = { material: w.kind ? 'garnet' : w.material, stage: w.stage, kg: 1 };
-  const q0 = E.quote(it, 0), base = E.quote(it, 'assay');
+  const q0 = E.quote(it, 0), base = itemValue(it);
   check(q0 >= base * 1.05 - 1e-9 && q0 <= base * 1.3 + 1e-9, `stall pays ${(q0 / base * 100).toFixed(0)}% of base`);
   m.sold = 1000; const q1 = E.quote(it, 0);
   check(Math.abs(q1 - Math.max(base, base * m.mult * 0.85)) < 1e-9, `after § 1000 sold the stall pays ${(q1 / base * 100).toFixed(0)}% (falls 1.5%/§100, floor at base)`);
@@ -60,5 +60,8 @@ check(Math.abs(itemValue({ material: 'silver', stage: 'crafted', craft: 'ring', 
   if (c.kind === 'kg') { E.sell([{ material: c.want.material, stage: 'ore', kg: c.target + 0.5 }], 'assay'); check(c.done && st.scrip > before + c.reward - 1 && st.standing >= 1, `contract "${c.text}" completes and pays § ${c.reward} + standing`); }
   check(st.contracts.filter(x => !x.done).length === 3, 'contracts refill to 3');
   check(E.buyClaim('willow') === 'poor' || E.state.scrip >= 900, 'claim deed needs § 900');
+  const gem = { material: 'garnet', stage: 'uncut', kg: 1 }, ore = { material: 'gold', stage: 'ore', kg: 1 };
+  check(E.quote(gem, 'assay') == null && E.quote(gem, 'gems') > 0 && E.quote(ore, 'gems') == null && E.quote(ore, 'assay') === 30, 'gems sell at the Gem Buyer, everything else at the Assay Office');
+  const rg = E.sell([gem], 'assay'); check(rg.total === 0 && /Gem Buyer/.test(rg.refused[0].why), 'the Assay Office sends gems to the Gem Buyer');
 }
 if (fails) { console.log(fails + ' failed'); process.exit(1); }

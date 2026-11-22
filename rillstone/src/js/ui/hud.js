@@ -10,7 +10,8 @@ export function createHUD(root) {
   const debug = h('pre', { id: 'debug', class: 'hidden' });
   const caption = h('div', { id: 'captions' });
   const tip = h('div', { id: 'tooltip', class: 'hidden' });
-  const el = h('div', { id: 'hud', class: 'hidden' }, cross, hint, h('div', { class: 'hud-tr' }, wallet, clock), toasts, debug, caption, tip);
+  const hotbar = h('div', { id: 'hotbar' });
+  const el = h('div', { id: 'hud', class: 'hidden' }, cross, hint, h('div', { class: 'hud-tr' }, wallet, clock), toasts, debug, caption, tip, hotbar);
   root.append(el);
   let lastHint = '';
   return {
@@ -40,6 +41,11 @@ export function createHUD(root) {
       tip.classList.remove('hidden');
       const html = `<b>${card.name}</b>${card.badge ? `<span class="badge">${card.badge}</span>` : ''}` + (card.lines || []).map(l => `<div>${l}</div>`).join('');
       if (tip.innerHTML !== html) tip.innerHTML = html;
+    },
+    // Two inventory slots: the hand and the quick-swap slot.
+    hotbar(slots) {
+      const html = slots.map((sl, i) => `<div class="slot${i === 0 ? ' active' : ''}${sl ? '' : ' empty'}"><span class="key">${i === 0 ? 'Hand' : 'Q'}</span>${sl ? `<i style="background:${sl.color}"></i><b>${sl.name}</b>${sl.sub ? `<small>${sl.sub}</small>` : ''}` : '<b>Empty</b>'}</div>`).join('');
+      if (hotbar.innerHTML !== html) hotbar.innerHTML = html;
     },
     toggleDebug() { debug.classList.toggle('hidden'); },
     debugOn: () => !debug.classList.contains('hidden'),
