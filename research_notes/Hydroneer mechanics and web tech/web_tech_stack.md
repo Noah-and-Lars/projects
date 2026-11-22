@@ -128,13 +128,13 @@ The two serious choices are **Rapier (JS 0.21.0, Sep 2026)** and **Jolt (`jolt-p
 
 ### Inferences
 - **Recommendation: Rapier (`@dimforge/rapier3d-simd-compat` or the non-compat package with a separate .wasm) running in a dedicated Web Worker.** Reasons:
-  1. It has a built-in `KinematicCharacterController` for the first-person player, with 2026 fixes to snap-to-ground [controller existence is background knowledge; fixes are cited].
-  2. It has `DynamicRayCastVehicleController` for trucks [class name is background knowledge, unverified; the vehicle controller fixes are cited].
+  1. It has a built-in kinematic character controller for the first-person player, with autostep, slope limits, snap-to-ground and pushing dynamic bodies, plus 2026 snap-to-ground fixes (docs + changelog).
+  2. It has `DynamicRayCastVehicleController` (a Bullet raycast-vehicle port) for trucks. It is arcade-grade, with no engine or gearbox model, and has thin docs (docs + issue #90).
   3. **Voxel colliders with `setVoxel`** can make dig edits O(1) on the physics side, avoiding trimesh rebuilds. This is experimental, so prototype early.
   4. It is deterministic, which supports replay and save consistency.
   5. Its sleeping and islands handle hundreds to low thousands of mostly-resting ore chunks well [background, unverified for JS].
 - The rapier.js JS version (0.21) does **not** match the Rust crate version (0.36). Rust v0.21 is from 2024. The JS 0.21.0 publish date (2026-09-25), one day after Rust v0.36.0 and its "bindings moved" note, suggests JS 0.21 wraps Rust 0.36. This is inferred, not confirmed. Whether the Rust `parallel` thread pool is exposed in the JS WASM build is unknown; assume single-threaded in the browser.
-- **Choose Jolt instead** if trucks, excavators or tracked vehicles are central and need realistic engine, gearbox and differential simulation, or if multithreaded physics is needed. Jolt's `WheeledVehicleController`, `TrackedVehicleController` and `CharacterVirtual` are the most complete in this space [background, unverified]. Accept manual `destroy()` discipline and COOP/COEP headers for the multithread build.
+- **Choose Jolt instead** if trucks, excavators or tracked vehicles are central and need realistic engine, gearbox and differential simulation, or if multithreaded physics is needed. Jolt's VehicleConstraint supports wheels or tracks and `CharacterVirtual` handles moving platforms (both from the docs). The specific `WheeledVehicleController`, `TrackedVehicleController` and `MotorcycleController` class names and engine/transmission features are background knowledge and were not confirmed in the docs excerpt read. Accept manual `destroy()` discipline and COOP/COEP headers for the multithread build.
 - **Choose Havok** only if the renderer is Babylon.js. The plugin is first-class there; using it with three.js means writing your own glue.
 - Avoid cannon-es (stale since 2022, JS-only and slower) and ammo.js (stale, heavy) for new projects.
 - Worker pattern: run physics at a fixed 60 Hz step in a worker. Post transforms back each step in a transferable `Float32Array` (position + quaternion per body), or use SharedArrayBuffer when cross-origin isolated. Interpolate on the main thread. Keep the authoritative world state, including voxel edits, in the worker so dig edits update the collider and mesher without round trips.
@@ -160,6 +160,9 @@ Use chunked voxel density (SDF) fields, for example 32³ chunks of uint8 or int8
 - `vanruesc/rabbit-hole` is a JS volumetric (dual contouring / hermite data) terrain-editing library. — [github.com/vanruesc/rabbit-hole](https://www.github.com/vanruesc/rabbit-hole)
 - three.js's built-in `MarchingCubes` addon is a metaball renderer, not a terrain system. — [threejs.org MarchingCubes](https://threejs.org/docs/pages/MarchingCubes.html)
 - Rapier voxel colliders support `setVoxel` edits, with seam handling between adjacent voxel colliders (`combineVoxelStates`, `propagateVoxelChange`). Heightfield colliders cannot represent caves or overhangs. Parry 0.25 (Rapier 0.30) improved voxel storage for large maps. — [rapier.rs colliders](https://rapier.rs/docs/user_guides/javascript/colliders); [Rapier CHANGELOG](https://github.com/dimforge/rapier/blob/master/CHANGELOG.md)
+- Cross-check on terrain collider types from Jolt's docs: `HeightFieldShape` must be static and is grid-only, so it can't do caves. Static `MeshShape` is the normal terrain collider, with active-edge detection (5 degree default) to reduce ghost collisions. This independently matches the Rapier/parry "internal edges" concern. — [Jolt Physics docs](https://jrouwe.github.io/JoltPhysics/); [parry3d voxels](https://docs.rs/crate/parry3d/0.28.0/source/src/shape/voxels/voxels.rs)
+- The voxel.js retrospective identifies **chunk remeshing and feeding vertex/face data to WebGL** as the main bottleneck. — [Six Months of voxel.js](https://medium.com/p/494be64dd1cc)
+- "The Poor Man's Voxel Engine" postmortem (non-browser) reports that **voxel mutations caused noticeable stutters**. — [Game Developer](https://www.gamedeveloper.com/programming/the-poor-man-s-voxel-engine)
 - `fflate` **0.8.3** (2026-05-16) and `idb-keyval` **6.3.0** (2026-07-08) are current, small libraries for compressing and storing chunk deltas. — [npm fflate](https://registry.npmjs.org/fflate); [npm idb-keyval](https://registry.npmjs.org/idb-keyval)
 
 ### Inferences
@@ -207,9 +210,15 @@ No browser demo simulates true granular dirt at game scale. The practical, prove
 ## Water: cheap stylized water and flow approximations (sluices, water wheels)
 
 ### Takeaway
-No specific 2026 sources were found in this session. The standard approach is shader-only stylized water: a flat or scrolling plane with depth-fade foam, plus scripted "flow" volumes. Real fluid simulation is not needed for sluices and wheels.
+The well-documented, cheap approach is shader-only stylized water. Depth-buffer intersection foam and depth-based colour/opacity are described consistently across several independent tutorials. Add flow-map UV scrolling for moving water, and use scripted flow values, not fluid simulation, for sluices and wheels.
 
 ### Cited Findings
+- Toon water for the web (PlayCanvas, with a three.js port at the end): vertex-shader waves, **depth-buffer foam lines** and refraction. — [Tuts+: Creating Toon Water for the Web, part 1](https://code.tutsplus.com/creating-toon-water-for-the-web-part-1--cms-30447t); [part 2](https://code.tutsplus.com/creating-toon-water-for-the-web-part-2--cms-30485t)
+- three.js forum examples: a toon water shader with depth-based fog and intersection foam, and an unlit foam water shader with a WebGPU/node-material version. — [three.js forum: toon water](https://discourse.threejs.org/t/toon-water-shader-with-depth-based-fog-and-intersection-foam/35978); [three.js forum: unlit water with foam](https://discourse.threejs.org/t/unlit-water-shader-with-foam/11641)
+- Codrops (2025) stylized water with React Three Fiber and Custom Shader Material. — [Codrops](https://tympanus.net/codrops/2025/03/04/creating-stylized-water-effects-with-react-three-fiber/)
+- Flow-map foam uses two phase-offset texture samples to animate flow without moving geometry. Shoreline/depth distance can feed the foam mask. — [GameDev.net shaderlab: foam with flow mapping](https://gamedev.net/shaderlab/53-foam-with-flow-mapping/)
+- Engine-agnostic explanation that depth drives colour, opacity, refraction and foam. — [Alexander Ameye: stylized water shader](https://alexanderameye.github.io/notes/stylized-water-shader)
+- A Babylon forum thread shows a simple stylized water shader. — [Babylon forum](https://forum.babylonjs.com/t/simple-stylized-water-shader/17672)
 - Babylon 9 particle flow maps could drive visual water spray and flow. — [Windows Developer Blog: Babylon.js 9.0](https://blogs.windows.com/windowsdeveloper/2026/03/26/announcing-babylon-js-9-0)
 
 ### Inferences
@@ -219,7 +228,7 @@ No specific 2026 sources were found in this session. The standard approach is sh
 - For pooling or flooding, use a simple 2D heightmap shallow-water or cellular automaton on a coarse grid, run in a worker, only if gameplay needs it.
 
 ### Gaps
-- No sourced 2026 examples of browser stylized water or flow systems were gathered; the tool-call budget was spent elsewhere.
+- No source was found for a browser game implementing gameplay water flow networks (sluices, wheels). The flow-graph design is inference.
 
 ## Lighting: stylized low-poly, shadows/CSM, day/night, many point lights in caves, voxel AO
 
@@ -229,15 +238,28 @@ Use one directional sun or moon with cascaded shadow maps and a hemisphere or am
 ### Cited Findings
 - Babylon.js 9.0's clustered lighting renders "hundreds or thousands of dynamic lights at smooth frame rates on both WebGPU and WebGL 2". It also adds a volumetric lighting system and a Physically Based Atmosphere addon, which suits day/night skies. — [Windows Developer Blog: Babylon.js 9.0](https://blogs.windows.com/windowsdeveloper/2026/03/26/announcing-babylon-js-9-0); [Part 2](https://blogs.windows.com/windowsdeveloper/2026/03/30/part-2-babylon-js-9-0-tooling-updates-and-new-geospatial-features/)
 
+- **Cross-check on three.js:** three.js has independent equivalents in WebGPURenderer. `TiledLighting` supports up to 1024 lights by default, `ClusteredLighting` is Forward+ with depth-aware culling, and `CSMShadowNode` handles the sun. — [threejs.org TiledLighting](https://threejs.org/docs/pages/TiledLighting.html); [ClusteredLighting](https://threejs.org/docs/pages/ClusteredLighting.html); [CSMShadowNode](https://threejs.org/docs/pages/CSMShadowNode.html)
+- A three.js forum showcase on clustered rendering in WebGPU runs **131 lights: 1 directional light with 3-cascade CSM plus 130 point lights** (work in progress). — [three.js forum: Clustered Rendering on WebGPU](https://discourse.threejs.org/t/clustered-rendering-on-webgpu/81042/5)
+- Other three.js forum threads cover many-shadow costs in WebGPU, WebGPU shadow tests, and "Sundial", a paged/virtual sun shadow library for WebGPURenderer on npm (MIT). — [Large number of shadows - WebGPU](https://discourse.threejs.org/t/large-number-of-shadows-webgpu/91223); [WebGPU shadow tests and findings](https://discourse.threejs.org/t/webgpu-shadow-tests-and-findings/82561); [Sundial](https://discourse.threejs.org/t/sundial-paged-virtual-sun-shadows-for-three-js-webgpurenderer-mit-on-npm/94912); [Point lights and performance, revisited](https://discourse.threejs.org/t/point-lights-and-performance-revisited/49316)
+- **Voxel vertex AO** (0fps, by the author of the original Minecraft AO mod):
+  - It computes per-vertex AO from the two side voxels and one corner voxel, giving 4 levels.
+  - It is view-independent and cheaper than SSAO, at the cost of slightly longer meshing.
+  - The quad diagonal must be flipped per quad to avoid anisotropy artifacts.
+  - — [0fps: Ambient occlusion for Minecraft-like worlds](https://0fps.net/2013/07/03/ambient-occlusion-for-minecraft-like-worlds/)
+  - Cross-checked by Sean Barrett's stb_voxel_render (per-vertex 6-bit AO/lighting attribute), the Exile engine write-up ("calculated at each vertex and baked into the mesh on mesh generation"), and a devlog packing 2-bit AO per vertex. — [stb_voxel_render.h](https://flutter.googlesource.com/third_party/stb/+/refs/heads/dev/stb_voxel_render.h); [Voxel Meshing in Exile](https://thenumbat.github.io/Voxel-Meshing-in-Exile); [YNL Vozel devlog](https://yunasawa.itch.io/ynl-vozel/devlog/1032006/devlog-14-voxel-style-ambient-occlusion)
+
 ### Inferences
-- three.js has a `CSM` addon for cascaded shadows on WebGLRenderer, and WebGPURenderer has its own CSM and tiled-lighting examples [background, unverified for r187]. Without tiled or clustered lighting, three.js forward-shades every light per fragment, so keep active lights at roughly 8–16 or fewer. Toggle lanterns by distance, reusing a pooled set of N real `PointLight`s assigned to the nearest lanterns, and render distant lanterns as emissive sprites or bloom.
+- With WebGLRenderer (no tiled or clustered lighting), three.js forward-shades every light per fragment, so keep active lights at roughly 8–16 or fewer. Toggle lanterns by distance, reusing a pooled set of N real `PointLight`s assigned to the nearest lanterns, and render distant lanterns as emissive sprites or bloom.
 - **Point-light shadows are expensive:** each one renders six cube faces. Allow at most 1–2, for example the player's headlamp as a `SpotLight` shadow (one frustum) and the nearest lantern.
 - **Voxel AO:** compute per-vertex AO at mesh time by sampling the density field (the 0fps "ambient occlusion for Minecraft-like worlds" approach for blocky voxels, or density-sampled occlusion for surface nets). Store it as a vertex colour attribute. It is free at runtime and gives caves strong depth. Add a cheap "depth darkness" term (light falloff by distance below the surface) so caves get dark at night or underground without shadow cost.
 - **Day/night:** animate sun direction, colour and intensity, hemisphere colours, fog colour and sky shader uniforms from a single time-of-day curve. Update CSM light direction every frame and keep shadow distance short (about 50–80 m) with 2–3 cascades.
 - **Stylized look:** flat shading, vertex colours or palette textures, fog, light bloom and tonemapping (ACES or AgX). This is cheaper than PBR texture sets and suits a low-poly mining game.
 
+- For three.js on the WebGPU path, `ClusteredLighting` (better than tiled for caves, which have real depth complexity) plus `CSMShadowNode` gives a Babylon-9-like lantern setup. Under the WebGL2 fallback, keep a pooled-lights mode.
+- For smooth surface-nets terrain, adapt the 0fps idea by sampling density in a small neighbourhood around each vertex instead of cube corners.
+
 ### Gaps
-- three.js r187 support for clustered or tiled lighting in WebGPURenderer was not verified in this session.
+- No official three.js example combining TiledLighting/ClusteredLighting with CSMShadowNode was found. Whether these addons work under the WebGL2 fallback backend was not verified.
 - No benchmark of three.js vs Babylon light counts was found.
 
 ## Controls: Pointer Lock, first-person controller patterns, Gamepad API, mobile
@@ -248,9 +270,19 @@ Use the Pointer Lock API for mouse-look, a physics kinematic character controlle
 ### Cited Findings
 - Rapier 0.35 (Aug 2026) fixed character-controller snap-to-ground so `grounded` no longer flickers on lateral motion. — [Rapier CHANGELOG](https://github.com/dimforge/rapier/blob/master/CHANGELOG.md)
 - Kinematic bodies with non-zero velocity no longer fall asleep (Rapier 0.30.1, Oct 2025). This is relevant for moving platforms and elevators. — [Rapier CHANGELOG](https://github.com/dimforge/rapier/blob/master/CHANGELOG.md)
+- The Rapier controller API includes autostep, slope limits, snap-to-ground and impulses to dynamic bodies; gravity must be added manually. Jolt `CharacterVirtual` offers stairs, slopes and moving platforms. — [rapier.rs character controller](https://rapier.rs/docs/user_guides/javascript/character_controller); [Jolt docs](https://jrouwe.github.io/JoltPhysics/)
+- **Pointer Lock facts (MDN):**
+  - `requestPointerLock({ unadjustedMovement: true })` disables OS mouse acceleration for raw input.
+  - It requires **transient activation**, meaning a user gesture.
+  - The promise-returning form is a proposed spec change "not implemented by all browsers", so also listen for `pointerlockchange` and `pointerlockerror`.
+  - The API is marked **"Limited availability" (not Baseline)**.
+  - Re-requesting immediately after the user's default unlock gesture fails.
+  - If combined with fullscreen, call `requestPointerLock()` before `requestFullscreen()`, which consumes activation.
+  - Iframes need `allow-pointer-lock`, which matters for itch.io or portal embeds.
+  - — [MDN: Element.requestPointerLock()](https://developer.mozilla.org/en-US/docs/Web/API/Element/requestPointerLock)
 
 ### Inferences
-- **Pointer Lock:** call `canvas.requestPointerLock({ unadjustedMovement: true })` on click to get raw mouse input where supported (Chromium). Read `movementX` and `movementY`, and handle `pointerlockchange`. Pressing Esc exits the lock, so show a pause menu on exit [background, unverified].
+- **Pointer Lock:** call `requestPointerLock({ unadjustedMovement: true })` inside a click handler, with a fallback to calling it without options if it rejects. Read `movementX` and `movementY`. Show a pause menu on `pointerlockchange` to unlocked, and require a click to resume because of the re-lock restriction. The unlock gesture is Esc in desktop browsers [background].
 - **First-person pattern:**
   - Separate camera yaw and pitch from the body.
   - Use a capsule kinematic body moved via `computeColliderMovement` with an autostep and slope limit.
@@ -275,6 +307,8 @@ Store saves locally in **IndexedDB**: quotas are huge (about 60% of disk in Chro
 - D1 Free allows 10 databases, 500 MB max per database and 5 GB per account. **Starting 2026-09-01, D1 queries on Workers Free fail once the daily row read or write limits are exceeded.** — [D1 limits](https://developers.cloudflare.com/d1/platform/limits); [Cloudflare changelog 2026-09-01](https://developers.cloudflare.com/changelog/post/2026-09-01-d1-free-tier-limit-enforcement/)
 - KV Free allows 100k reads per day, **1,000 writes per day** and 1 GB storage. — [KV limits](https://developers.cloudflare.com/kv/platform/limits); [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/)
 - R2 Free includes 10 GB-month of storage, 1M Class A and 10M Class B operations. Durable Objects Free includes 100k requests per day and 5 GB SQL storage. — [Cloudflare plans](https://www.cloudflare.com/plans.md); [Durable Objects limits](https://developers.cloudflare.com/durable-objects/platform/limits)
+- **Workers static assets:** "Requests to static assets are free and unlimited", and only requests that invoke the Worker script are billed. On the free plan, routes matched by `run_worker_first` return 429 once free request limits are exceeded. — [Cloudflare: static assets billing and limitations](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/)
+- Static asset limits: **25 MiB per file** (Free and Paid) and **20,000 files per Worker version on Free, 100,000 on Paid**. The Worker script limit is listed as 64 MiB uncompressed with "no compressed size limit". That figure differs from older, widely cited limits, so re-check before relying on it. — [Cloudflare Workers platform limits](https://developers.cloudflare.com/workers/platform/limits/)
 - Cloudflare static assets support a `_headers` file to add response headers, such as COOP/COEP for SharedArrayBuffer. In Workers code, request headers are immutable, so to add headers you fetch from `env.ASSETS` and build a new Response. — [Cloudflare Workers static assets headers](https://developers.cloudflare.com/workers/static-assets/headers/); [Pages headers](https://developers.cloudflare.com/pages/configuration/headers/index.md); [AnswerOverflow thread](https://www.answeroverflow.com/m/1370085130017964114)
 
 ### Inferences
@@ -290,10 +324,10 @@ Store saves locally in **IndexedDB**: quotas are huge (about 60% of disk in Chro
   - Auth via Cloudflare Access, a third-party OAuth, or anonymous device tokens.
   - Durable Objects fit later co-op, where one DO per world handles authoritative state and WebSockets.
 - **Hosting:** serve the game as static assets with long-cache, content-hashed filenames. Serve WASM as a separate `.wasm` file (non-compat builds) so it's cached, Brotli-compressed and streaming-compiled, rather than base64-inlined, which adds about 33% size and blocks streaming compile. Add COOP/COEP via `_headers` only if Jolt multithread or SharedArrayBuffer transform buffers are used. Note that COEP `require-corp` blocks third-party embeds and ads unless they send CORP headers.
-- Cloudflare's per-file static asset limit is about 25 MiB [background, unverified]. All the WASM files measured here are 2–4.4 MB raw, well under it.
+- Cloudflare's 25 MiB per-file static asset limit (cited above) is comfortably above every WASM file measured here, which range from 2 to 4.4 MB raw. Since static asset requests are free and unlimited, the whole game (HTML, JS, WASM, textures, audio) can be served from Workers static assets at no request cost. Only the cloud-save API calls hit the Worker request quota.
 
 ### Gaps
-- The exact KV max value size and current Workers static-asset file size and count limits were not confirmed in this session.
+- The exact KV max value size was not confirmed in this session.
 - Whether Cloudflare now recommends Workers static assets over Pages for new projects was not confirmed in this session; it is widely reported [background, unverified].
 
 ## Performance budgets, instancing, LOD, pooling, and shipped browser voxel/physics examples
@@ -307,6 +341,15 @@ Target 60 fps on mid-range laptops: about 16.6 ms per frame, with physics under 
 - Rapier v0.35's broad-phase same-parent filtering (about 90x on one stationary stress scene) and v0.29's solver gains of up to 25% benefit scenes with many resting bodies. — [Rapier CHANGELOG](https://github.com/dimforge/rapier/blob/master/CHANGELOG.md)
 - Havok anecdote: about 3000 entities at 60 fps single-threaded in Babylon. — [Babylon forum](https://forum.babylonjs.com/t/havok-physics-benchmark-multithreading-question/49009)
 - three.js voxel engines with workers and editable terrain exist as open-source references, for example Xyzrr/voxels. — [github.com/Xyzrr/voxels](https://github.com/Xyzrr/voxels)
+
+**Shipped browser games and devlogs (independent postmortems)**
+- **Slow Roads**, a shipped WebGL procedural driving game (web.dev case study), uses a **custom minimal physics engine "that takes every shortcut available"**. Physics is its second-largest computational cost after rendering. — [web.dev case study: Slow Roads](https://web.dev/case-studies/slow-roads)
+- **Kev Zettler's multiplayer voxel browser engine** retrospective: **garbage-collection pressure** forced **object pooling**, and performance problems forced a costly rewrite of game-state management. — [kevzettler.com: multiplayer voxel game engine](https://hn.jakechampion.name/reader/https://kevzettler.com/2023/04/25/multiplayer-voxel-game-engine)
+- **voxel.js** six-month retrospective: chunk remeshing and WebGL upload was the bottleneck. — [Six Months of voxel.js](https://medium.com/p/494be64dd1cc)
+- **Dodgem.io** devlog (WebGL build): needed "tens if not hundreds of thousands of voxels" for a deterioration effect and required an "optimisation purgatory" pass. — [Dodgem.io devlog week 4](https://codemyster.itch.io/dodgemio/devlog/734513/week-4-voxels-and-optimisation-purgatory)
+- Non-browser postmortem: the physics engine struggled after spawning about 10 boxes, and voxel mutations caused stutters. — [The Poor Man's Voxel Engine](https://www.gamedeveloper.com/programming/the-poor-man-s-voxel-engine)
+- A WebGL2 devlog notes that vertex array objects reduce binding overhead. — [Circolo devlog 2](https://itch.io/devlog/1066154/devlog-2-under-the-hood.amp)
+- Cross-source theme: **many dynamic bodies and JS GC are the recurring bottlenecks** in browser voxel/physics games. This is consistent across the Zettler, voxel.js and Dodgem.io sources above and the Babylon Havok forum thread.
 
 ### Inferences
 - **Budgets (desktop mid-range, 60 fps):**
@@ -330,7 +373,7 @@ Target 60 fps on mid-range laptops: about 16.6 ms per frame, with physics under 
 - Profile on low-end targets (integrated GPUs, Chromebooks, iPhone with Safari 26). Expose render-scale, shadow-quality and max-physics-objects settings.
 
 ### Gaps
-- No shipped 2025–2026 browser game closely matching "first-person physics mining + automation" was identified in this session. Searches surfaced only voxel-engine demos.
+- No shipped 2025–2026 browser game closely matching "first-person physics mining + automation" was identified in this session. Searches surfaced voxel-engine demos, Slow Roads, and small devlogs. No postmortem specific to Rapier or Jolt in a shipped browser game was found.
 - No sourced numeric frame budgets for browser physics games were found. The budgets above are engineering estimates.
 
 ## Overall recommended stack (synthesis)

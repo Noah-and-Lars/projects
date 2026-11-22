@@ -8,6 +8,11 @@ Confidence labels:
 - **[Official]**: Steam patch notes and dev posts, pulled from the Steam News API for app 1106840 ([API dump](https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=1106840&count=400&maxlength=0&format=json)).
 - **[Wiki]**: the Hydroneer Fandom wiki. It is sparse, some pages are stubs, and at least one page (Onyx) reads as AI-generated and wrong, so treat it as low confidence.
 - **[Community]**: Steam discussions and third-party guides.
+- **[Bridgepour DB]**: bridgepour.com, which describes itself as the "Official Hydroneer Wiki" in its page title. It is a community-run item database with a JSON API, and I queried `https://api.bridgepour.com/api/vehicles/` directly in Nov 2026.
+  - Prices are stored ×100. The site's own code renders them as `price/100`.
+  - It also gives a 1–10 stat rating per vehicle. Whether those ratings are datamined or editorial is not stated, so treat them as relative and community-assigned.
+
+Sources used: Steam patch notes and dev posts; the Steam News API; the Fandom wiki API; the Bridgepour DB API and its site bundle; Steam guides 2807322513 and 2136949714; about 25 Steam discussion threads; gameplay.tips; ShowGamer; TechRaptor (search snippet only); PC Gamer (via the Steam feed); and YouTube (titles via oEmbed and search). Reddit returned no usable results: r/Hydroneer's JSON endpoint was blocked and web search surfaced no Reddit threads.
 
 ---
 
