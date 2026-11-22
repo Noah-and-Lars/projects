@@ -514,7 +514,7 @@ async function boot() {
         const f = riverFlow(e.pos[0], e.pos[2]); if (!f) continue;
         const wy = waterY(e.pos[2]); if (e.pos[1] > wy + 0.6) continue;
         const side = Math.sign(e.pos[0] - riverX(e.pos[2])) || 1;
-        list.push({ id: e.id, y: wy - 0.05, vx: f[0] + side * 0.3, vz: f[1] });
+        list.push({ id: e.id, y: wy + 0.03, vx: f[0] + side * 0.3, vz: f[1] }); // rides with its top out of the water
       }
       if (list.length) physics.post({ op: 'flow', list });
     }

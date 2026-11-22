@@ -108,6 +108,22 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return { walk: [land, river].map(v => +v.toFixed(2)), sprint: [landS, riverS].map(v => +v.toFixed(2)), truck: [tLand, tDeep].map(v => +v.toFixed(1)) };
     });
     check(wet.walk[1] < wet.walk[0] * 0.75 && wet.sprint[1] < wet.sprint[0] * 0.75 && wet.truck[1] > 0.5 && wet.truck[1] < wet.truck[0] * 0.5, `wading slows walking ${wet.walk[0]} -> ${wet.walk[1]} m/s and sprinting ${wet.sprint[0]} -> ${wet.sprint[1]} m/s; the truck covers ${wet.truck[0]} m on land vs ${wet.truck[1]} m in deep water (still moving)`);
+    // River current: firewood and a charcoal sack float and drift downstream;
+    // a gold nugget and a dirt clod sink and stay; deep water pushes you.
+    const cur = await p.evaluate(async () => {
+      const R = __rill, I = R.items; R.noRender(true); R.fly(false);
+      let s = null; for (let z = -20; z < 160; z += 3) { const x = R.riverX(z), d = R.waterY(z) - R.height(x, z); if (d > 0.7) { s = { x, z }; break; } }
+      await R.teleport(s.x - 12, R.height(s.x - 12, s.z) + 1, s.z); await R.tick(10);
+      const wy = R.waterY(s.z);
+      const ents = { wood: I.spawn('firewood', [s.x - 1, wy + 0.3, s.z]), sack: I.spawn('sack', [s.x + 1, wy + 0.3, s.z], { data: {} }), gold: I.spawn('nugget', [s.x, wy + 0.3, s.z + 0.5], { item: { material: 'gold', stage: 'ore', kg: 0.4 } }), clod: I.spawn('clod', [s.x, wy + 0.3, s.z - 0.5], { data: { band: 1, depth: 1, loads: [{ band: 1, depth: 1 }] } }) };
+      const z0 = {}; for (const k in ents) z0[k] = ents[k].pos[2];
+      for (let i = 0; i < 60 * 6; i++) { await R.tick(1); if (i % 6 === 0) await R.frames(1); }
+      const out = {}; for (const k in ents) { const q = R.physics.poses.get(ents[k].id)?.p || ents[k].pos; out[k] = { dz: +(q[2] - z0[k]).toFixed(1), y: +(q[1] - wy).toFixed(2) }; I.remove(ents[k].id); }
+      await R.teleport(s.x, R.height(s.x, s.z) + 1, s.z + 10); for (let i = 0; i < 20; i++) await R.tick(1);
+      const a = R.player.cur.z; for (let i = 0; i < 120; i++) await R.tick(1); out.player = +(R.player.cur.z - a).toFixed(2);
+      return out;
+    });
+    check(cur.wood.dz > 3 && cur.sack.dz > 3 && cur.wood.y > -0.5 && Math.abs(cur.gold.dz) < 0.3 && Math.abs(cur.clod.dz) < 0.3 && cur.player > 0.4, `river current: firewood drifted ${cur.wood.dz} m and a sack ${cur.sack.dz} m (floating), gold ${cur.gold.dz} m and a clod ${cur.clod.dz} m (sunk); standing in deep water you drift ${cur.player} m in 2 s`);
   }
 
   if (all || flags.has('--dig')) {

@@ -1120,8 +1120,24 @@ so far:
   - moving vehicles throw spray off the bow.
   - Over 3 s at full throttle the hauler covers 25.6 m on land, 18.5 m in
     0.4 m of water, 10 m in 0.8 m, and 4.7 m in 1.5 m.
-- **Not modelled:** buoyancy and current for loose items. Things dropped in
-  the river still sink and stay put.
+- **River current:**
+  - **The current:** `riverFlow(x, z)` points downstream (+z) along the
+    channel at 1.1 m/s, and 2 m/s on the steep run below the Upper Falls.
+  - **What floats:** firewood, charcoal sacks, bedrolls, wooden machine
+    crates and empty buckets. Every 0.2 s the main thread sends each one in
+    the river to the physics worker with its water level and the current,
+    plus a 0.3 m/s drift toward the nearer bank so floaters wash up instead
+    of leaving the map.
+  - **In the worker:** each step it cancels gravity on those items, springs
+    them to the surface with damping, and eases them toward the current. An
+    entry lapses 2 s after its last update.
+  - **What sinks:** ore, ingots, gems, clods and metal tools stay on the
+    bed, like gold in a real river, so finds are never swept away.
+  - **The player:** wading deeper than 0.3 m pushes you downstream, up to
+    half the current. Standing still in deep water you drift about 1 m in
+    2 s.
+  - **Test:** `--move` checks that firewood and a sack drift 5–6 m in 6 s
+    while a gold nugget and a clod stay put.
 - **Test:** `--move` checks the wading slowdown for walking and sprinting,
   and that the truck crawls through deep water at under half its land
   distance.

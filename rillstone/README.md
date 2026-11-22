@@ -82,7 +82,10 @@ character steps up 0.35 m and climbs slopes up to 50°. There's no fall damage;
 Water slows you down: wading knee-deep drops you to about 70% speed, and
 waist-deep to under half. Vehicles slow down in the river too, throwing
 spray, and past their wading depth the engine sputters at a fifth of its
-power. Back out to shallower water.
+power. Back out to shallower water. The river flows: wood, charcoal sacks, bedrolls,
+crates and empty buckets float off downstream and wash up on a bank, while
+ore, ingots, gems and metal tools sink and stay put, and deep water pushes you
+along.
 
 ## First hour
 

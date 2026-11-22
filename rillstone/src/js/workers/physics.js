@@ -307,11 +307,12 @@ function applyFlows() {
   const now = performance.now();
   for (const [id, f] of flows) {
     const b = bodies.get(id);
-    if (!b || now - f.t > 600) { flows.delete(id); continue; }
+    if (!b || now - f.t > 2000) { flows.delete(id); continue; } // refreshed every 0.2 s; lenient for slow frames
     const rb = b.rb, t = rb.translation(), lv = rb.linvel(), sub = f.y - t.y;
     if (sub < -0.25) continue; // above the water (on a bank)
-    // Buoyant spring to the surface, damped; horizontal drift toward the current.
-    const vy = lv.y + (Math.max(-2.5, Math.min(2.5, sub * 7)) - lv.y) * 0.12;
+    // Buoyancy: cancel this step's gravity, then a damped spring to the
+    // surface; horizontal drift toward the current.
+    const vy = lv.y - world.gravity.y * DT + (Math.max(-2.5, Math.min(2.5, sub * 7)) - lv.y) * 0.12;
     rb.setLinvel({ x: lv.x + (f.vx - lv.x) * 0.04, y: vy, z: lv.z + (f.vz - lv.z) * 0.04 }, true);
     const av = rb.angvel(); rb.setAngvel({ x: av.x * 0.97, y: av.y * 0.97 + 0.004, z: av.z * 0.97 }, true);
   }
