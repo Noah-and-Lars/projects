@@ -110,6 +110,18 @@ const H = {
     return { ok: true };
   },
 
+  // Benchmark 1: build a Rapier voxel collider for a chunk's solid voxels,
+  // then time single-voxel edits, for comparison with trimesh rebuilds.
+  benchVoxels(m) {
+    const t0 = performance.now();
+    const col = world.createCollider(RAPIER.ColliderDesc.voxels(m.points, { x: 0.5, y: 0.5, z: 0.5 }).setCollisionGroups(GROUPS.terrain));
+    const create = performance.now() - t0;
+    const t1 = performance.now();
+    for (let i = 0; i < m.edits; i++) { const k = (i * 3) % (m.points.length / 3); col.setVoxel(m.points[k * 3], m.points[k * 3 + 1], m.points[k * 3 + 2], i % 2 === 1); }
+    const edit = (performance.now() - t1) / m.edits;
+    world.removeCollider(col, false);
+    return { create, edit, voxels: m.points.length / 3 };
+  },
   createPlayer(m) {
     if (player) world.removeRigidBody(player.rb);
     const rb = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(m.pos[0], m.pos[1], m.pos[2]));

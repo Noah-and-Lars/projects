@@ -126,6 +126,7 @@ export function createScene(canvas, settings) {
     terrain: litMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95, metalness: 0 })),
     vcolor: litMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.8, metalness: 0 })),
     vcolorSmooth: litMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0 })),
+    claim: litMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.97, metalness: 0 })),
     brass: litMaterial(new THREE.MeshStandardMaterial({ color: 0xc89a48, roughness: 0.38, metalness: 0.85, flatShading: true })),
     copper: litMaterial(new THREE.MeshStandardMaterial({ color: 0xc0704a, roughness: 0.4, metalness: 0.8, flatShading: true })),
   };

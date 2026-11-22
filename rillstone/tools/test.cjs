@@ -1,6 +1,6 @@
 // Headless smoke test. Serve the rillstone folder first
 // (python3 -m http.server 8765), then:
-//   node tools/test.cjs <outdir> [--src] [--shots] [--move]
+//   node tools/test.cjs <outdir> [--src] [--shots] [--move] [--dig]
 // SCALE=2 takes screenshots at deviceScaleFactor 2 (for showing people).
 // Tests the built single-file index.html; --src tests src/index.html instead.
 const { chromium } = require('playwright');
@@ -30,7 +30,7 @@ async function open(b, scale = 1) {
 async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true }) {
   await p.evaluate(async ([x, y, z, yaw, pitch, t, fly]) => { __rill.fly(fly); __rill.setTime(t); await __rill.teleport(x, y, z, yaw, pitch); await __rill.tick(2); }, [x, y, z, yaw, pitch, t, fly]);
   await p.waitForTimeout(600);
-  await p.screenshot({ path: `${out}/${name}.png` });
+  await p.screenshot({ path: `${out}/${name}.png`, timeout: 180000 });
 }
 
 (async () => {
@@ -79,6 +79,129 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return R.playerState().pos;
     });
     check(edge[2] < 300 - 10 && edge[1] > -5, `walking down the river stops at the boundary (z=${edge[2].toFixed(1)}, y=${edge[1].toFixed(1)})`);
+  }
+
+  if (all || flags.has('--dig')) {
+    // M2: dig 50 holes, then pan 20 loads in the river.
+    const r = await p.evaluate(async () => {
+      const R = __rill, g = R.places.CLAIMS[0], H = R.hands;
+      R.noRender(true); R.fly(false);
+      const act = async (x, y, z) => { R.aimAt(x, y, z); await R.refreshAim(); H.cooldown = 0; return H.use(); };
+      await R.teleport(g.cx, g.top + 1.2, g.cz, 0, 0); await R.tick(20);
+      if (R.items.get(H.hand).type !== 'shovel') H.swap();
+      let holes = 0;
+      for (let i = 0; i < 50; i++) {
+        const x = g.x0 + 3 + (i % 10) * 1.9, z = g.z0 + 3 + Math.floor(i / 10) * 4.2;
+        await R.teleport(x - 1.6, g.top + 1.2, z + 1.2); await R.tick(2);
+        const l = await act(x, g.top - 0.05, z);
+        if (l && l.band) holes++;
+        if (R.items.get(H.hand).data.loads.length) await act(x - 0.6, g.top, z + 1.6); // dump the load beside the hole
+      }
+      await R.claims.settle();
+      // Pan: scoop 2 loads in the claim, wash both in the river, tip out on the bank.
+      H.swap();
+      const pan = R.items.get(H.hand);
+      const zr = g.cz, rx = R.riverX(zr), bankX = g.x1 + 1.2, standX = rx - 8.2;
+      let washed = 0, finds = [];
+      for (let c = 0; c < 10; c++) {
+        const x = g.x0 + 3 + c * 1.8, z = g.z1 - 1.4;
+        await R.teleport(x + 0.9, g.top + 1.2, z - 1.8); await R.tick(2);
+        await act(x, g.top - 0.05, z); await act(x + 0.6, g.top - 0.05, z);
+        await R.teleport(standX, R.height(standX, zr) + 1.2, zr); await R.tick(10);
+        for (let k = 0; k < 2; k++) { const it = await act(rx - 6, R.waterY(zr) - 0.2, zr); if (it && it.material) { washed++; finds.push(it.material); } }
+        await R.teleport(standX - 2.5, R.height(standX - 2.5, zr) + 1.2, zr); await R.tick(4);
+        await act(standX - 4.2, R.height(standX - 4.2, zr + 1.2), zr + 1.2); // tip out on dry ground
+      }
+      await R.tick(120);
+      const nug = [...R.items.ents.values()].filter(e => e.type === 'nugget' && e.loc === 'loose').length;
+      const clods = [...R.items.ents.values()].filter(e => e.type === 'clod').length;
+      R.noRender(false);
+      return { holes, washed, finds, nug, clods, pan: pan.data };
+    });
+    check(r.holes >= 50, `dug ${r.holes} holes with the shovel`);
+    check(r.clods >= 50, `${r.clods} dirt clods dumped as props`);
+    check(r.washed === 20, `panned ${r.washed} loads in the river (finds: ${[...new Set(r.finds)].join(', ')})`);
+    check(r.nug >= 20, `${r.nug} finds lying loose on the bank`);
+    // Pile merging: 80 copper nuggets dropped in one spot become one Pile.
+    const pile = await p.evaluate(async () => {
+      const R = __rill, g = R.places.CLAIMS[0]; R.noRender(true);
+      const x = g.x0 - 6, z = g.z1 + 6, y = R.height(x, z);
+      for (let i = 0; i < 80; i++) R.items.spawn('nugget', [x + (i % 5) * 0.12 - 0.24, y + 0.3 + Math.floor(i / 25) * 0.15, z + (Math.floor(i / 5) % 5) * 0.12 - 0.24], { item: { material: 'copper', stage: 'ore', kg: 0.3 } });
+      for (let i = 0; i < 40; i++) { await R.tick(15); R.items.update(); if (R.physics.stats.awake === 0) break; }
+      const before = R.items.counts();
+      const made = R.items.mergePiles();
+      await R.tick(2);
+      R.noRender(false);
+      return { made, before, after: R.items.counts(), awake: R.physics.stats.awake, stepMs: R.physics.stats.stepMs };
+    });
+    check(pile.after.piles >= 1, `80 resting copper nuggets merged into ${pile.after.piles} pile(s) (${pile.before.total} -> ${pile.after.total} entities)`);
+    // Benchmark 1: continuous digging in Willow Bend (deeper claim).
+    const bench = await p.evaluate(async () => {
+      const R = __rill, w = R.places.CLAIMS[1], H = R.hands; R.noRender(true);
+      R.claims.stats.meshMs.length = 0; R.claims.stats.colliderMs.length = 0;
+      if (R.items.get(H.hand).type !== 'shovel') H.swap();
+      const vol = R.claims.volumes.get('willow');
+      const brush = (v, c, r, m, b) => R.brush('willow', c, r, m, b);
+      const t0 = performance.now(); let frames = 0, maxQ = 0;
+      // 240 digs spiralling down, ~4 per frame as if digging hard; the game rebuilds <= 2 colliders a frame.
+      for (let i = 0; i < 240; i++) {
+        const a = i * 0.7, r = 2 + (i % 40) * 0.12, depth = Math.floor(i / 40) * 0.5;
+        const c = [w.cx + Math.cos(a) * r, w.top - 0.3 - depth, w.cz + Math.sin(a) * r];
+        brush(vol, c, 0.45, 'dig', 4);
+        if (i % 4 === 3) { R.claims.update(c); frames++; maxQ = Math.max(maxQ, R.claims.busy); await R.frames(1); }
+      }
+      await R.claims.settle();
+      const med = (a) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : 0; };
+      const p95 = (a) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[Math.floor(s.length * 0.95)] : 0; };
+      // Voxel collider comparison on one full chunk of the same claim.
+      const pts = []; for (let y = 0; y < 32; y++) for (let z = 0; z < 32; z++) for (let x = 0; x < 32; x++) if (vol.dens[vol.idx(x, Math.min(vol.ny - 1, y), z)] > 0) pts.push(x, y, z);
+      const vox = await R.physics.call({ op: 'benchVoxels', points: new Int32Array(pts), edits: 500 });
+      R.noRender(false);
+      return { remeshes: R.claims.stats.remeshes, meshMed: med(R.claims.stats.meshMs), meshP95: p95(R.claims.stats.meshMs), colMed: med(R.claims.stats.colliderMs), colP95: p95(R.claims.stats.colliderMs), colliders: R.claims.stats.colliders, maxQueue: maxQ, wall: performance.now() - t0, vox };
+    });
+    console.log('     benchmark 1: ' + JSON.stringify(bench));
+    check(bench.colP95 < 8, `trimesh collider rebuild p95 ${bench.colP95.toFixed(2)} ms per chunk`);
+    // Screenshots: the benchmark's spiral pit in Willow Bend cuts through the
+    // bands; a deeper shaft shows all three.
+    await p.evaluate(async () => {
+      const R = __rill, w = R.places.CLAIMS[1], vol = R.claims.volumes.get('willow');
+      const brush = (v, c, r, m, b) => R.brush('willow', c, r, m, b);
+      for (let d = 0; d < 20; d += 0.8) for (let k = 0; k < 6; k++) brush(vol, [w.x0 + 7 + (k % 3) * 1.6, w.top - 0.5 - d, w.z0 + 7 + Math.floor(k / 3) * 1.6], 1.4, 'dig', 4);
+      await R.claims.settle();
+    });
+    const W = await p.evaluate(() => __rill.places.CLAIMS[1]);
+    await shot(p, 'm2-bands', { x: W.x0 + 8.6, y: W.top + 2.5, z: W.z0 + 11.8, yaw: 0, pitch: -1.2, t: 0.5 });
+    await shot(p, 'm2-willow', { x: W.cx + 9, y: W.top + 7, z: W.cz + 12, yaw: 0.6, pitch: -0.55, t: 0.45 });
+    const G = await p.evaluate(() => __rill.places.CLAIMS[0]);
+    // Holding a nugget over the bank: drop ring and tooltip.
+    await p.evaluate(async () => {
+      const R = __rill, g = R.places.CLAIMS[0], H = R.hands; R.fly(false);
+      const n = [...R.items.ents.values()].filter(e => e.type === 'nugget' && e.loc === 'loose').sort((a, b) => b.item.kg - a.item.kg)[0];
+      await R.teleport(n.pos[0] - 1.3, n.pos[1] + 1.0, n.pos[2] + 0.6); await R.tick(10);
+      R.aimAt(n.pos[0], n.pos[1], n.pos[2]); await R.refreshAim();
+      R.noRender(false);
+    });
+    await p.waitForTimeout(800);
+    await p.screenshot({ timeout: 180000, path: `${out}/m2-tooltip.png` });
+    await p.evaluate(async () => {
+      const R = __rill, H = R.hands, g = R.places.CLAIMS[0];
+      H.pickup(); R.noRender(true);
+      const c = R.view.camera.position;
+      R.aimAt(c.x + 1.4, R.height(c.x + 1.4, c.z - 1.2), c.z - 1.2); await R.refreshAim(); R.noRender(false);
+    });
+    await p.waitForTimeout(900);
+    await p.screenshot({ timeout: 180000, path: `${out}/m2-dropring.png` });
+    // Panning: pan with two loads, aimed at the river.
+    await p.evaluate(async () => {
+      const R = __rill, H = R.hands, g = R.places.CLAIMS[0]; R.noRender(true);
+      H.drop(); if (R.items.get(H.hand)?.type !== 'pan') H.swap();
+      const pan = R.items.get(H.hand); pan.data.loads.push({ band: 1, depth: 1 }, { band: 1, depth: 1 }); R.items.refresh(pan.id);
+      const zr = g.cz, rx = R.riverX(zr), sx = rx - 8.2;
+      await R.teleport(sx, R.height(sx, zr) + 1.2, zr); await R.tick(5);
+      R.aimAt(rx - 6, R.waterY(zr), zr + 0.3); await R.refreshAim(); R.noRender(false);
+    });
+    await p.waitForTimeout(900);
+    await p.screenshot({ timeout: 180000, path: `${out}/m2-pan.png` });
   }
 
   if (all || flags.has('--shots')) {

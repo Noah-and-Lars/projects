@@ -66,6 +66,36 @@ Settings), 2.0 m/s crouched, with a 1.1 m jump under 22 m/s² gravity. The
 character steps up 0.35 m and climbs slopes up to 50°. There's no fall damage;
 "Return to claim post" in the pause menu gets you unstuck.
 
+## Digging and washing
+
+You start on the **Gravel Bar** claim by the river, holding a shovel, with a
+pan in your quick-swap slot and a bucket by the claim post.
+
+- **Shovel** (LMB on the claim) digs one gravel load. LMB again pours it into
+  a pan or bucket you're aiming at, or dumps it as a dirt clod.
+- **Bucket** holds 4 loads. Dig straight into it, then pour into a pan.
+- **Pan** holds 2 loads. Scoop from the claim, then aim at the river and click
+  once per load to wash it. Each washed load rolls once on the band's loot
+  table and drops a find into the pan. LMB on dry ground tips the finds out.
+- **Pick** breaks ground fast and drops a dirt clod.
+- **E** picks things up, **G** drops what you hold exactly at the ring under
+  the crosshair (white means there's room, magenta means blocked), and **Q**
+  swaps hand and slot. Hover anything for its name, weight, material and
+  value.
+
+Claims are voxel volumes with depth bands:
+
+| Band | Depth | Look | Needs |
+|---|---|---|---|
+| 1 | 0–6 m | brown topsoil to ochre clay | any tool |
+| 2 | 6–14 m | grey-blue river gravel | Steel tools |
+| 3 | 14–22 m | dark slate with quartz flecks | Glimmer tools |
+| Bedrock | below | patterned, undiggable | |
+
+Deeper loads give heavier finds. Tools clink, throw sparks and tell you the
+tier you need when a band is too hard. More than 60 resting finds of one kind
+merge into a pile so the physics stays cheap.
+
 ## The valley
 
 Rillstone Vale is about 600 × 600 m, shaped by `src/js/world/valley.js`.
@@ -99,13 +129,22 @@ underground, and L toggles it.
 | `js/render/flora.js` | Instanced pines and boulders, with static colliders |
 | `js/render/adit.js` | The old adit tunnel, timber sets and portal |
 | `js/render/geom.js` | Helpers for vertex-coloured low-poly models |
+| `js/world/claims.js` | Claim voxel volumes (density + band), spherical dig/fill brushes, chunk sampling |
+| `js/workers/mesher.js` | Surface nets per 32³ chunk with baked AO and band colours |
+| `js/render/claimMesh.js` | Mesher worker pool, chunk meshes, collider rebuilds (≤ 2 per frame, nearest first) |
+| `js/defs/materials.js`, `js/sim/loot.js` | Materials, values, loot tables; weighted loot and lognormal weight rolls |
+| `js/defs/items.js`, `js/defs/models.js` | Tool and item definitions; detailed low-poly models |
+| `js/game/items.js` | Entity store for carriable things: location states, physics bodies, instanced nuggets, piles |
+| `js/game/hands.js` | Hand and swap slot, tool actions (dig, scoop, pour, wash), pick up/drop, drop ring, hover outline, tooltips |
+| `js/render/fx.js`, `js/core/audio.js` | Particle bursts; synthesised sound cues on volume buses with captions |
 | `js/game/player.js` | First-person controller: input to wanted velocity, view angles, smoothed camera |
 | `js/ui/hud.js`, `js/ui/menu.js`, `style.css` | HUD, title, pause and settings panels |
 | `js/core/workers.js` | Starts workers from Blob URLs (bundled strings in the build, rewritten modules in dev) |
 | `js/core/physics.js` | Main-thread side of the physics worker: latest poses, batched queries |
 | `js/workers/physics.js` | Rapier world at a fixed 60 Hz, character controller, bodies, queries |
 | `tools/build.mjs` | Builds the single-file `index.html` (not in `src/`) |
-| `tools/test.cjs` | Headless browser smoke test (not in `src/`) |
+| `tools/test.cjs` | Headless browser test (not in `src/`) |
+| `tools/unit.mjs` | Node unit tests: loot table, weights, values (not in `src/`) |
 | `tools/bench.cjs`, `tools/bench/` | Benchmarks from the brief's section 10 (not in `src/`) |
 | `tools/THIRD_PARTY_LICENSES.txt` | three.js, Rapier and fflate licence texts |
 
@@ -128,7 +167,15 @@ outside request to prove the file is self-contained. Add `--src` to test
   and inside, and the falls;
 - checks the night and cave screenshots stay above a minimum brightness;
 - rebinds a key through the settings panel and checks it took;
+- digs 50 holes with the shovel, then pans 20 loads in the river and checks
+  20 finds land on the bank (`--dig`);
+- drops 80 copper nuggets in one spot and checks they merge into a pile;
+- runs digging benchmark 1 and screenshots the depth bands, the drop ring,
+  a tooltip and panning;
 - fails on any console error.
+
+`node tools/unit.mjs` runs the loot unit tests, including 1,000 band-1 rolls
+matching the table within ±5 percentage points.
 
 Pointer Lock doesn't work headless, so `?test=1` exposes `window.__rill`
 with methods to teleport, fly, set the time, run physics ticks and read

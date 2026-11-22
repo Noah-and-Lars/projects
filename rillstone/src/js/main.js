@@ -11,6 +11,14 @@ import { buildWater } from './render/water.js';
 import { buildFlora } from './render/flora.js';
 import { buildAdit } from './render/adit.js';
 import { createPlayer, MOVE } from './game/player.js';
+import { claimDefs, brush } from './world/claims.js';
+import { createClaims } from './render/claimMesh.js';
+import { createItems } from './game/items.js';
+import { createHands } from './game/hands.js';
+import { createFX } from './render/fx.js';
+import { createAudio } from './core/audio.js';
+import { claimPostGeometry } from './defs/items.js';
+import { mulberry32 } from './core/rng.js';
 import { createHUD } from './ui/hud.js';
 import { createMenu } from './ui/menu.js';
 import { HALF, spawnPoint, height, ADIT, TOWN, HAMLET, CLAIMS, riverX, waterY, FALLS_Z } from './world/valley.js';
@@ -18,6 +26,7 @@ import { HALF, spawnPoint, height, ADIT, TOWN, HAMLET, CLAIMS, riverX, waterY, F
 const TEST = new URLSearchParams(location.search).has('test');
 const SEED = urlSeed();
 const SIM_HZ = 20;
+const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
 
 async function boot() {
   const settings = loadSettings();
@@ -42,6 +51,24 @@ async function boot() {
     ...[[1, 0], [-1, 0], [0, 1], [0, -1]].map(([sx, sz], i) => ({ op: 'setStaticBox', key: 'bound' + i, hx: sx ? 1 : HALF, hy: 200, hz: sz ? 1 : HALF, pos: [sx * (HALF - 12), 100, sz * (HALF - 12)] })),
   ] });
 
+  // Claims: voxel volumes, meshed in workers.
+  const claims = await createClaims(scene, view.materials, physics);
+  await claims.settle();
+  // Claim posts at each diggable plot.
+  for (const c of claimDefs()) {
+    const post = new THREE.Mesh(claimPostGeometry(c.name), view.materials.vcolor);
+    const px = c.x0 - 1.2, pz = c.cz + 2;
+    post.position.set(px, height(px, pz) - 0.05, pz); post.rotation.y = -Math.PI / 2; post.castShadow = true;
+    scene.add(post);
+    physics.post({ op: 'setStaticBox', key: 'post-' + c.id, hx: 0.1, hy: 0.8, hz: 0.1, pos: [px, height(px, pz) + 0.75, pz] });
+  }
+  const fx = createFX(scene);
+  const audio = createAudio(settings, (t) => hud.caption(t));
+  const items = createItems({ scene, physics, materials: view.materials });
+  physics.onLost = (id) => { const s = spawnPoint(); if (items.get(id)) { physics.removeBody(id); const e = items.get(id); e.loc = 'held'; items.place(id, [s.x + 1, height(s.x + 1, s.z) + 0.5, s.z]); } };
+  const lootRng = mulberry32((SEED * 2654435761) ^ 0x10ad);
+  const hands = createHands({ scene, camera, physics, items, claims, water, fx, audio, hud, rng: lootRng, materials: view.materials });
+
   // Player.
   const player = createPlayer(settings);
   const sp = spawnPoint();
@@ -49,6 +76,13 @@ async function boot() {
   await physics.call({ op: 'createPlayer', pos: [sp.x, spawnY, sp.z], stepUp: MOVE.stepUp });
   player.teleported(sp.x, spawnY, sp.z);
   player.yaw = sp.yaw;
+  // Starting gear (BUILD_BRIEF 3.6): shovel in hand, pan in the swap slot, a
+  // bucket by the claim post. The lantern is worn.
+  hands.give('pan'); hands.give('shovel');
+  {
+    const g = claimDefs()[0], bx = g.x0 - 1.6, bz = g.cz + 3.2;
+    items.spawn('bucket', [bx, height(bx, bz) + 0.4, bz], { data: { loads: [], contents: [] } });
+  }
 
   // Lantern: a warm point light near the player at night and underground.
   const lantern = new THREE.PointLight(0xffc27a, 0, 18, 1.6);
@@ -59,7 +93,7 @@ async function boot() {
   const menu = createMenu(ui, {
     settings, input,
     onPlay: () => play(),
-    onSettingsChanged: () => view.applySettings(),
+    onSettingsChanged: () => { view.applySettings(); audio.apply(); },
     items: [{ label: 'Return to claim post', onclick: () => { const s = spawnPoint(); teleport(s.x, height(s.x, s.z) + 1, s.z, s.yaw); play(); } }],
   });
   function play() {
@@ -84,7 +118,10 @@ async function boot() {
   let last = performance.now(), acc = 0, simAcc = 0, fps = 0, fpsT = 0, frames = 0;
   const timings = { physics: 0, sim: 0, render: 0 };
   const controls = () => state.mode === 'play' && (input.locked || TEST);
-  function simTick() { state.simTick++; }
+  function simTick() {
+    state.simTick++;
+    if (state.simTick % SIM_HZ === 0) items.mergePiles();
+  }
   async function frame(now) {
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     input.poll();
@@ -125,16 +162,19 @@ async function boot() {
     lantern.intensity += ((wantLantern ? 9 : 0) - lantern.intensity) * Math.min(1, dt * 6);
     lantern.position.copy(camera.position).add(new THREE.Vector3(0.25, -0.35, -0.3).applyQuaternion(camera.quaternion));
 
+    claims.update(player.cur.toArray());
+    items.update();
+    hands.update(dt, input, controls());
+    fx.update(dt);
     hud.clock(state.time, state.day);
     hud.wallet(0, null);
-    if (controls()) hud.hint(inAdit ? 'The old adit · <kbd>L</kbd> lantern' : '');
     const t2 = performance.now();
     if (!state.noRender) view.render();
     timings.render = performance.now() - t2;
     frames++; fpsT += dt; if (fpsT > 0.5) { fps = frames / fpsT; frames = 0; fpsT = 0; }
     if (hud.debugOn()) {
       const ri = view.renderer.info.render, st = physics.stats;
-      hud.debug.textContent = `${fps.toFixed(0)} fps\nphysics step ${(st.stepMs || 0).toFixed(2)} ms (rtt ${timings.physics.toFixed(1)})\nsim ${timings.sim.toFixed(2)} ms · render ${timings.render.toFixed(1)} ms\ndraw calls ${ri.calls} · tris ${(ri.triangles / 1000).toFixed(0)}k\nbodies awake ${st.awake ?? 0} / asleep ${st.asleep ?? 0}\npos ${player.cur.x.toFixed(1)} ${player.cur.y.toFixed(1)} ${player.cur.z.toFixed(1)}`;
+      hud.debug.textContent = `${fps.toFixed(0)} fps\nphysics step ${(st.stepMs || 0).toFixed(2)} ms (rtt ${timings.physics.toFixed(1)})\nsim ${timings.sim.toFixed(2)} ms · render ${timings.render.toFixed(1)} ms\ndraw calls ${ri.calls} · tris ${(ri.triangles / 1000).toFixed(0)}k\nbodies awake ${st.awake ?? 0} / asleep ${st.asleep ?? 0} · items ${items.ents.size}\nremesh queue ${claims.busy} · mesh ${avg(claims.stats.meshMs).toFixed(1)} ms · collider ${avg(claims.stats.colliderMs).toFixed(1)} ms\npos ${player.cur.x.toFixed(1)} ${player.cur.y.toFixed(1)} ${player.cur.z.toFixed(1)}`;
     }
     input.endFrame();
     requestAnimationFrame(frame);
@@ -145,7 +185,7 @@ async function boot() {
   // so ?test=1 lets tests drive the game directly.
   const api = { ready: true, physics, version: physics.version, seed: SEED };
   if (TEST) Object.assign(api, {
-    THREE, view, player, input, state, settings, hud, menu, water, flora,
+    THREE, view, player, input, state, settings, hud, menu, water, flora, claims, items, hands, audio, lootRng,
     places: { TOWN, HAMLET, ADIT, CLAIMS, FALLS_Z, spawn: spawnPoint() },
     height, riverX, waterY,
     play,
@@ -154,9 +194,15 @@ async function boot() {
     setTime: (f) => { state.time = ((f % 1) + 1) % 1; },
     fly: (v) => { player.fly = v; },
     // Skip drawing while a test runs many physics ticks (software GL is slow).
-    noRender: (v) => { state.noRender = v; },
+    noRender: (v) => { state.noRender = v; hands.manualAim = v; },
     tick: async (n = 1) => { for (let i = 0; i < n; i++) { const r = await physics.step(1, player.intent(input, true)); if (r.player) { player.stepped(r.player); player.stepped(r.player); } } return physics.player; },
     playerState: () => ({ pos: player.cur.toArray(), grounded: player.grounded, yaw: player.yaw, pitch: player.pitch }),
+    give: (type, data) => hands.give(type, data),
+    brush: (claimId, centre, radius, mode = 'dig', maxBand = 4) => brush(claims.volumes.get(claimId), centre, radius, mode, maxBand),
+    // Aim the camera at a world point from where the player stands.
+    aimAt: (x, y, z) => { player.camera(camera, 1, 0); const c = camera.position; const dx = x - c.x, dy = y - c.y, dz = z - c.z; player.yaw = Math.atan2(-dx, -dz); player.pitch = Math.atan2(dy, Math.hypot(dx, dz)); player.camera(camera, 1, 0); camera.updateMatrixWorld(); },
+    // Refresh the aim ray now (normally it lags one frame).
+    refreshAim: async () => { const o = camera.getWorldPosition(new THREE.Vector3()), d = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); const q = physics.query({ type: 'ray', o: o.toArray(), d: d.toArray(), max: 8 }); await physics.step(0, player.intent(input, false)); hands.aim = await q; return hands.aimInfo(); },
     frames: (k = 2) => new Promise(res => { let i = 0; const f = () => (++i >= k ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); }),
   });
   window.__rill = api;

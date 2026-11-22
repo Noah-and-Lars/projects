@@ -112,3 +112,55 @@ the brief's own cap of ≤ 300 awake bodies, the step stays around 1.3 ms
 - **Tests and slow frames.** In headless software GL a frame takes around
   100 ms, which made per-tick tests crawl. The test hook can switch drawing
   off (`noRender`) while it runs physics ticks.
+
+## M2: dig and wash
+
+### Benchmark 1: digging (trimesh vs voxel colliders)
+
+Measured by `node tools/test.cjs <dir> --dig`: 240 spherical digs (0.45 m)
+spiralling down into Willow Bend, about 4 per frame, with the normal limit of
+at most 2 collider rebuilds per frame.
+
+| Step | Median | p95 |
+|---|---|---|
+| Surface-nets remesh of one 32³ chunk (worker) | 3.2–4.9 ms | 5.2–7.9 ms |
+| Trimesh collider rebuild of one chunk (physics worker) | 1.7–2.2 ms | 2.5–3.0 ms |
+| Remesh queue length while digging hard | at most 4–8 chunks | |
+
+We also measured Rapier voxel colliders on one full 32³ chunk (32,768 solid
+voxels). They take 7–10 ms to create and then about 0.001–0.003 ms per
+`setVoxel` edit.
+
+**Decision: keep trimesh colliders.** A rebuild costs about 2 ms in the physics
+worker and happens at most twice a frame, so it fits easily. The colliders
+also match the smooth surface-nets mesh exactly, so nuggets and the player
+rest on what they see. A voxel collider would make edits almost free, but it
+would be blocky (0.5 m steps under smooth ground), and dropped items would
+float or sink visibly. Revisit if bigger claims or the excavator push rebuilds
+past budget.
+
+### Other notes
+
+- **Claim volumes.** Gravel Bar is 48 × 18 × 48 voxels (one 6 m band plus
+  bedrock and air). Willow Bend is 64 × 52 × 64. A 1-voxel ring at the edge
+  can never be dug, so pits always have walls. The valley terrain leaves a
+  grid-aligned hole for each volume.
+- **Colours.** The mesher writes band colours in linear space (sRGB to the
+  power 2.2). An early version wrote sRGB values straight in, and the claims
+  looked washed out next to the valley.
+- **Panning reach.** The aim ray goes through the water and hits the river
+  bed, so reach for washing is measured to the water surface instead.
+- **Piles.** More than 60 resting nuggets of one material and stage within
+  1 m of their centre merge into a Pile, checked once a second. E takes the
+  heaviest piece back out. Dirt clods don't merge yet.
+- **Item models** are our own designs:
+  - **Shovel:** ash shaft with a D-grip and a riveted brass collar, and a
+    dished round-point blade with a centre ridge and a worn edge.
+  - **Pan:** spun steel with riffle rings.
+  - **Bucket:** 14 wooden staves with two iron hoops and a bail.
+  - **Pick:** a forged curved head with a leather grip.
+  - **Nuggets:** subdivided, lobed, with darker crevices.
+  - **Gems and quartz:** crystal clusters.
+- **Test flakiness.** The hands' per-frame aim ray could overwrite a ray the
+  test had just aimed. Tests now turn the automatic aim off while they drive
+  the hands.
