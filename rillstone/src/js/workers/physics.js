@@ -212,9 +212,15 @@ function driveVehicle(v) {
   else brake += d.brake * 0.03; // rolling resistance
   for (let i = 0; i < vc.numWheels(); i++) {
     const front = d.wheels[i][2] > 0;
-    vc.setWheelSteering(i, front ? v.steer : 0);
-    vc.setWheelEngineForce(i, front ? engine * 0.35 : engine * 0.65);
-    vc.setWheelBrake(i, brake);
+    // Tracks: no steering wheels, every wheel drives (skid steer below).
+    vc.setWheelSteering(i, d.skid ? 0 : front ? v.steer : 0);
+    vc.setWheelEngineForce(i, d.skid ? engine / vc.numWheels() : front ? engine * 0.35 : engine * 0.65);
+    vc.setWheelBrake(i, d.skid && inp.steer && !throttle ? brake * 0.3 : brake);
+  }
+  if (d.skid && fuelOk) {
+    // Skid steer: turn on the spot by driving the yaw rate toward the input.
+    const av = rb.angvel();
+    rb.setAngvel({ x: av.x, y: av.y + (inp.steer * d.turnRate - av.y) * 0.25, z: av.z }, true);
   }
   vc.updateVehicle(DT, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, grp(G.VEHICLE, G.TERRAIN | G.MACHINE), (c) => c.parent() !== rb);
   // Anti-roll and mild air control: torque the chassis back toward upright.

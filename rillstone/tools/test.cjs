@@ -542,6 +542,131 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     check(misc.cut === 4 && misc.straight === 2 && misc.right === 2, `gem cutter hook cut ${misc.cut}/4 garnets; the splitter sent ${misc.straight} straight and ${misc.right} right`);
   }
 
+
+  if (all || flags.has('--progress')) {
+    // M6: claims, veins and the relic, the Ember Seam door, the lamp, the
+    // Machine Shop, the gem cutter, the Pumphouse, the Excavator and rails.
+    const pr = await p.evaluate(async () => {
+      const R = __rill, E = R.economy.state, I = R.items, out = {};
+      R.noRender(true);
+      // Every claim is a voxel volume.
+      out.claims = [...R.claims.volumes.keys()].join(',');
+      // The relic: dig near its spot in the Old Cut.
+      E.owned.push('oldcut', 'slate', 'glimmer', 'willow');
+      const rs = R.relicSpot(), vol = R.claims.volumes.get('oldcut');
+      R.hands.onDig(vol, rs, 0.4);
+      out.relic = [...I.ents.values()].some(e => e.type === 'relic') && !!E.flags.relicFound;
+      // Ember Seam door opens for the deed holder.
+      E.standing = 30; E.scrip = 1e6;
+      out.door0 = R.adit.doorOpen;
+      out.buy = R.economy.buyClaim('ember');
+      R.progress.update(1, [0, 0, 0]);
+      out.door1 = R.adit.doorOpen;
+      // Prospector's lamp: wear it, stand on the Glimmer vein.
+      const lamp = I.spawn('lamp', [0, 50, 0], { loc: 'held' });
+      R.hands.onWear(lamp);
+      const gv = R.veins.glimmer;
+      for (let i = 0; i < 20; i++) R.progress.update(0.1, [gv.x, gv.y + gv.r + 1, gv.z]);
+      out.lampOn = +R.progress.signal.toFixed(2);
+      for (let i = 0; i < 30; i++) R.progress.update(0.1, [gv.x + 60, gv.y + 30, gv.z + 60]);
+      out.lampFar = +R.progress.signal.toFixed(2);
+      // A load dug inside a vein carries it; a third of washes give its metal.
+      const rng = R.lootRng; let hits = 0;
+      for (let i = 0; i < 600; i++) if (R.rollLoot(rng, { band: 2, depth: 11, vein: { material: 'glimmerite' } }).material === 'glimmerite') hits++;
+      out.veinShare = +(hits / 600).toFixed(3);
+      // Machine Shop: blueprint, then ingots on the counter build a Drill Mk II.
+      const W = R.workshop, c = W.counters.workshop;
+      W.buyBlueprint(W.blueprints.find(b => b.id === 'drill2'));
+      // Spread along the counter's own axis (counters face different ways).
+      let slot = 0;
+      const onTop = (at, h = 0.15) => { const u = ((slot++ % 7) - 3) * 0.4, y = at.top + h + Math.floor(slot / 7) * 0.12; return [at.x + Math.cos(at.yaw) * u, y, at.z - Math.sin(at.yaw) * u]; };
+      const put = (mat, kg, at) => I.spawn('nugget', onTop(at), { item: { material: mat, stage: 'ingot', kg } });
+      for (let i = 0; i < 4; i++) put('iron', 40, c);
+      put('glimmerite', 12, c);
+      await R.physics.step(30); I.update();
+      const before = [...I.ents.values()].filter(e => e.type === 'crate').length;
+      out.build = W.build(W.blueprints.find(b => b.id === 'drill2'));
+      await R.physics.step(10); I.update();
+      out.crates = [...I.ents.values()].filter(e => e.type === 'crate' && e.data.def === 'drill2').length - 0;
+      out.leftover = W.ingotStock();
+      void before;
+      // The Mk II drill reaches band 2 in Willow Bend.
+      const wv = R.places.CLAIMS.find(k => k.id === 'willow');
+      // Standing 2 m down a pit: the 4.5 m tip is 6.5 m down, in the gravel bed.
+      const d2 = R.machines.place('drill2', [wv.cx, wv.top - 2, wv.cz], 0);
+      const tank = R.machines.place('headtank', [wv.cx - 3, wv.top - 2, wv.cz], 0, { level: 2000 });
+      R.machines.layRun('copper', { m: tank.id, s: 0 }, { m: d2.id, s: 0 });
+      for (let k = 0; k < 120; k++) R.machines.tick(0.05);
+      out.drill2 = { band: d2.band, status: d2.status, made: d2.made || 0 };
+      // Upper Falls gem cutter: cuts what's on the counter for a fee.
+      const cc = W.counters.cutter;
+      I.spawn('nugget', [cc.x, cc.top + 0.15, cc.z], { item: { material: 'garnet', stage: 'uncut', kg: 1.2 } });
+      await R.physics.step(30); I.update();
+      const s0 = E.scrip; W.ringCutter(); await R.physics.step(10); I.update();
+      out.cut = [...I.ents.values()].filter(e => e.item?.material === 'garnet' && e.item.stage === 'cut').length;
+      out.cutFee = s0 - E.scrip;
+      // Pumphouse: deliver each stage (the relic goes in stage 2).
+      const pc = W.counters.pump, relic = [...I.ents.values()].find(e => e.type === 'relic');
+      const stages = [];
+      const NEEDS = R.pumpStages;
+      for (let st = 0; st < NEEDS.length; st++) {
+        slot = 0;
+        for (const n of NEEDS[st].needs) {
+          if (n.kind === 'ingot') for (let kg = n.kg; kg > 0; kg -= 50) put(n.material, Math.min(50, kg), pc);
+          else if (n.kind === 'relic') I.place(relic.id, onTop(pc, 0.3));
+          else for (let i = 0; i < n.n; i++) I.spawn('nugget', onTop(pc, 0.2), { item: n.kind === 'cut' ? { material: 'peridot', stage: 'cut', kg: 0.5 } : { material: 'silver', stage: 'crafted', craft: n.craft, kg: 2 } });
+        }
+        await R.physics.step(40); I.update();
+        W.ringPump(); stages.push(E.flags.pump.stage);
+        await R.physics.step(5); I.update();
+      }
+      out.pump = stages.join(',');
+      out.finale = !!E.flags.finale && R.panels.current === 'finale';
+      R.panels.close();
+      out.goldwheel = [...I.ents.values()].some(e => e.type === 'crate' && e.data.def === 'goldwheel');
+      // Excavator: dig three cells in a row in Willow Bend, then dump.
+      const ex = await R.vehicles.spawn('excavator', [wv.cx - 6, wv.top + 1.5, wv.cz], Math.PI / 2);
+      for (let i = 0; i < 60; i++) await R.tick(1);
+      const cells = [];
+      for (let k = 0; k < 3; k++) { ex.arm.t = 0; const t = R.heavy.excavatorTarget(ex); cells.push(`${t.x},${t.z}`); R.heavy.dig(ex); }
+      out.hopper = ex.hopper.length; out.cells = cells.join(' ');
+      const clods0 = [...I.ents.values()].filter(e => e.type === 'clod').length;
+      R.heavy.dump(ex);
+      out.dumped = [...I.ents.values()].filter(e => e.type === 'clod').length - clods0;
+      // Rails and a tram: lay 20 m, set a tram on, load it, send it.
+      const T = R.places.TOWN, a = [T.x - 36, 0, T.z + 47], b = [T.x - 16, 0, T.z + 47];
+      a[1] = R.height(a[0], a[2]); b[1] = R.height(b[0], b[2]);
+      const kit = I.spawn('railkit', [0, 50, 0], { loc: 'held', data: { n: 10 } });
+      out.rails = R.heavy.layRails(kit, a, b);
+      out.railLen = +(R.heavy.lines[0]?.len ?? 0).toFixed(1);
+      if (out.rails !== 'ok') { R.noRender(false); return out; }
+      const tk = I.spawn('tramkit', [0, 50, 0], { loc: 'held' }); R.hands.hand = tk.id;
+      R.hands.useHook(tk, { p: [a[0] + 1, a[1], a[2]], dist: 3 });
+      for (let i = 0; i < 20 && ![...R.vehicles.list.values()].some(v => v.tram); i++) await R.tick(1);
+      const tram = [...R.vehicles.list.values()].find(v => v.tram);
+      const nug = I.spawn('nugget', [0, 50, 0], { item: { material: 'gold', stage: 'ore', kg: 3 }, loc: 'held' });
+      out.load = R.vehicles.addCargo(tram.id, nug, tram.group.localToWorld(new R.THREE.Vector3(0, 0.6, 0)).toArray());
+      R.vehicles.enter(tram.id);
+      for (let i = 0; i < 400; i++) R.heavy.update(0.05);
+      out.tram = { s: +tram.tram.s.toFixed(1), moving: tram.tram.moving, x: +tram.group.position.x.toFixed(1), cargo: tram.cargo.length };
+      out.bx = +b[0].toFixed(1);
+      R.noRender(false);
+      return out;
+    });
+    console.log('     progress: ' + JSON.stringify(pr));
+    check(pr.claims === 'gravel,willow,oldcut,slate,glimmer,ember', `all six claims are voxel volumes (${pr.claims})`);
+    check(pr.relic, 'digging by the relic in the Old Cut turns up the brass governor');
+    check(!pr.door0 && pr.buy === 'ok' && pr.door1, 'the Ember Seam door opens once you own its deed');
+    check(pr.lampOn > 0.85 && pr.lampFar < 0.05, `Prospector's Lamp signal ${pr.lampOn} on the Glimmer vein, ${pr.lampFar} far away`);
+    check(Math.abs(pr.veinShare - (1 / 3 + 2 / 3 * 0.024)) < 0.06, `vein rolls give glimmerite ${(pr.veinShare * 100).toFixed(1)}% of the time (want ≈ 35%)`);
+    check(pr.build === 'ok' && pr.crates === 1 && Math.abs((pr.leftover.iron || 0) - 10) < 0.01 && Math.abs((pr.leftover.glimmerite || 0) - 2) < 0.01, `Machine Shop built a Drill Mk II and gave back ${pr.leftover.iron} kg iron + ${pr.leftover.glimmerite} kg glimmerite`);
+    check(pr.drill2.band === 2 && pr.drill2.made > 0, `Drill Mk II reaches band ${pr.drill2.band} (${pr.drill2.status}, ${pr.drill2.made} loads)`);
+    check(pr.cut === 1 && pr.cutFee > 0, `Upper Falls gem cutter cut the garnet for § ${pr.cutFee}`);
+    check(pr.pump === '1,2,3,4,5' && pr.finale && pr.goldwheel, `Pumphouse stages ${pr.pump}, end screen shown, gold-plated wheel delivered`);
+    check(pr.hopper === 3 && pr.dumped === 3 && pr.cells.split(' ').every(c => c.split(',').every(v => Math.abs(v % 1) === 0.5)), `excavator dug 3 loads from world-grid cell ${pr.cells.split(' ')[0]} into its hopper and dumped them`);
+    check(pr.rails === 'ok' && pr.railLen > 19 && pr.load === 'ok' && !pr.tram.moving && pr.tram.cargo === 1 && Math.abs((pr.tram?.x ?? 1e9) - pr.bx) < 1, `20 m of rails (${pr.rails}); the tram carried 1 nugget to the far end (x ${pr.tram?.x} vs ${pr.bx})`);
+  }
+
   if (all || flags.has('--shots')) {
     // Fresh page: earlier sections leave a lot of machines and items about.
     await mainPage.close();

@@ -42,7 +42,7 @@ check(Math.abs(itemValue({ material: 'silver', stage: 'crafted', craft: 'ring', 
   const { createEconomy } = await import('../src/js/sim/economy.js');
   const E = createEconomy(mulberry32(4)); E.init();
   const st = E.state;
-  check(st.market.length === 3 && st.contracts.length === 3, '3 market stalls and 3 contracts');
+  check(st.market.length === 4 && st.contracts.length === 3 && ['ingot', 'cut', 'crafted'].includes(st.market[3].want.stage), '4 market stalls (the Upper Falls one wants refined goods) and 3 contracts');
   const m = st.market[0], w = m.want;
   const it = { material: w.kind ? 'garnet' : w.material, stage: w.stage, kg: 1 };
   const q0 = E.quote(it, 0), base = itemValue(it);

@@ -12,7 +12,7 @@ export function createPanels(root, { onOpen, onClose }) {
     show(id, title, body, opts = {}) {
       current = id;
       const close = h('button', { class: 'btn', onclick: () => api.close() }, opts.closeLabel || 'Close');
-      el.replaceChildren(h('div', { class: 'panel wide shop' }, h('div', { class: 'panel-head' }, h('h2', {}, title), opts.badge ? h('span', { class: 'pill' }, opts.badge) : null), body, h('div', { class: 'col' }, close)));
+      el.replaceChildren(h('div', { class: 'panel wide shop' + (opts.cls ? ' ' + opts.cls : '') }, h('div', { class: 'panel-head' }, h('h2', {}, title), opts.badge ? h('span', { class: 'pill' }, opts.badge) : null), body, h('div', { class: 'col' }, close)));
       el.classList.remove('hidden');
       onOpen?.(id);
     },

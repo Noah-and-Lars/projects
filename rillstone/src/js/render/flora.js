@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { paint, merge, place } from './geom.js';
 import { mulberry32 } from '../core/rng.js';
 import { noise2 } from '../core/noise.js';
-import { HALF, height, riverX, RIVER_HALF_WIDTH, TOWN, HAMLET, CLAIMS, ADIT } from '../world/valley.js';
+import { HALF, height, riverX, RIVER_HALF_WIDTH, TOWN, HAMLET, CLAIMS, ADIT , roadAt, PUMPHOUSE } from '../world/valley.js';
 
 function pineGeometry() {
   const parts = [paint(place(new THREE.CylinderGeometry(0.16, 0.24, 1.6, 6), 0, 0.8, 0), 0x7a5a3a, 0.1)];
@@ -33,6 +33,8 @@ function blocked(x, z, margin) {
   if (Math.hypot(x - HAMLET.x, z - HAMLET.z) < HAMLET.r + 6 + margin) return true;
   for (const c of CLAIMS) if (x > c.x0 - 6 - margin && x < c.x1 + 6 + margin && z > c.z0 - 6 - margin && z < c.z1 + 6 + margin) return true;
   if (x > ADIT.x - 32 && x < ADIT.x + 6 && Math.abs(z - ADIT.z) < 24) return true;
+  if (Math.abs(x - PUMPHOUSE.x - 2) < 13 + margin && Math.abs(z - PUMPHOUSE.z) < 11 + margin) return true;
+  const r = roadAt(x, z); if (r && r.d < 7 + margin) return true;
   return Math.abs(x) > HALF - 8 || Math.abs(z) > HALF - 8;
 }
 const slopeAt = (x, z) => Math.hypot(height(x + 1, z) - height(x - 1, z), height(x, z + 1) - height(x, z - 1)) / 2;

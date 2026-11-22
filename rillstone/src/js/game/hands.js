@@ -209,6 +209,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
   function use() {
     const e = heldEnt(); const info = aimInfo();
     if (!e) return;
+    if (H.useHook?.(e, info)) return true;
     const def = toolDef(e);
     const near = info.dist !== undefined && info.dist < REACH;
     // Placing a machine from its crate.
@@ -338,6 +339,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     }
     if (info.kind === 'item' && near) parts.push(`${k('E')} pick up`);
     if (e && e.type === 'crate') parts.unshift(`${k('LMB')} place · ${k('R')} rotate`);
+    { const t = e && H.hintHook?.(e, info); if (t) parts.unshift(t.replace(/\{(\w+)\}/g, (_, a) => k(a))); }
     if (e && e.type === 'coil') parts.unshift(H.machines?.runStart() ? `${k('LMB')} finish run · ${k('RMB')} cancel` : `${k('LMB')} start a pipe run at a port`);
     if (info.kind === 'machine' && info.dist < REACH + 0.5 && !info.m.run) {
       if (e && e.type === 'mallet') parts.unshift(`${k('LMB')} lock · ${k('RMB')} unlock`);

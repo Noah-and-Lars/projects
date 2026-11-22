@@ -145,8 +145,10 @@ export const MACHINES = {
 export function spinPart(def) {
   const s = def.spin; if (!s) return null;
   if (s.wheel) { // a wooden water wheel with paddles; axle along x
-    const parts = [P(new THREE.TorusGeometry(s.r, 0.06, 6, 20).rotateY(Math.PI / 2).translate(0.2, 0, 0), WOOD_D, 0.08), P(new THREE.TorusGeometry(s.r, 0.06, 6, 20).rotateY(Math.PI / 2).translate(-0.2, 0, 0), WOOD_D, 0.08)];
-    for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; parts.push(P(place(new THREE.BoxGeometry(0.5, 0.04, 0.36), 0, Math.cos(a) * s.r, Math.sin(a) * s.r, a), WOOD, 0.1, i)); parts.push(rod([0, 0, 0], [0, Math.cos(a) * s.r, Math.sin(a) * s.r], 0.03, WOOD_D)); }
+    // The Pumphouse's reward wheel is gold-plated (s.gold).
+    const RIM = s.gold ? 0xd8a420 : WOOD_D, PADDLE = s.gold ? 0xf0c040 : WOOD;
+    const parts = [P(new THREE.TorusGeometry(s.r, 0.06, 6, 20).rotateY(Math.PI / 2).translate(0.2, 0, 0), RIM, 0.08), P(new THREE.TorusGeometry(s.r, 0.06, 6, 20).rotateY(Math.PI / 2).translate(-0.2, 0, 0), RIM, 0.08)];
+    for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; parts.push(P(place(new THREE.BoxGeometry(0.5, 0.04, 0.36), 0, Math.cos(a) * s.r, Math.sin(a) * s.r, a), PADDLE, 0.1, i)); parts.push(rod([0, 0, 0], [0, Math.cos(a) * s.r, Math.sin(a) * s.r], 0.03, RIM)); }
     parts.push(P(new THREE.CylinderGeometry(0.12, 0.12, 0.5, 10).rotateZ(Math.PI / 2), DARK, 0.05));
     const g = merge(parts); g.rotateY(Math.PI / 2); return g;
   }

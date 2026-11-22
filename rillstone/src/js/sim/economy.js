@@ -4,12 +4,20 @@
 import { MATERIALS, itemValue, itemName } from '../defs/materials.js';
 import { CLAIMS } from '../world/valley.js';
 
-const WANTS = [
+// What market buyers want (BUILD_BRIEF 3.6): raw ore of Y, ingots of X, cut
+// gems or crafted goods. Millbrook's stalls start with raw goods; the Upper
+// Falls buyer (stall 4) always wants something refined.
+const RAW_WANTS = [
   { stage: 'ore', material: 'copper' }, { stage: 'ore', material: 'iron' }, { stage: 'ore', material: 'silver' },
   { stage: 'ore', material: 'gold' }, { stage: 'uncut', kind: 'gem' },
 ];
-export const wantLabel = (w) => (w.kind === 'gem' ? 'Uncut gems' : `${MATERIALS[w.material].name} ${w.stage === 'ore' ? 'ore' : w.stage + 's'}`);
-const matches = (w, it) => it.stage === w.stage && (w.kind ? MATERIALS[it.material].kind === w.kind : it.material === w.material);
+const REFINED_WANTS = [
+  { stage: 'ingot', material: 'copper' }, { stage: 'ingot', material: 'iron' }, { stage: 'ingot', material: 'silver' },
+  { stage: 'ingot', material: 'gold' }, { stage: 'cut', kind: 'gem' }, { stage: 'crafted' },
+];
+const CRAFT_NAMES = { toolhead: 'tool head', ring: 'ring', chain: 'chain', chalice: 'chalice' };
+export const wantLabel = (w) => (w.stage === 'crafted' ? (w.material ? `${MATERIALS[w.material].name} ${CRAFT_NAMES[w.craft] || 'piece'}` : 'Crafted goods') : w.kind === 'gem' ? (w.stage === 'cut' ? 'Cut gems' : 'Uncut gems') : `${MATERIALS[w.material].name} ${w.stage === 'ore' ? 'ore' : w.stage + 's'}`);
+const matches = (w, it) => it.stage === w.stage && (w.kind ? MATERIALS[it.material]?.kind === w.kind : !w.material || it.material === w.material) && (!w.craft || it.craft === w.craft);
 
 // Contract templates, scaled by standing. kind: 'kg' (deliver kg of a
 // material/stage), 'count' (items matching), 'big' (one piece over X kg), 'day' (sell § in a day).
@@ -18,6 +26,15 @@ function makeContract(rng, standing, id) {
   const t = rng();
   const metal = ['copper', 'iron', 'silver', 'gold'][Math.min(3, Math.floor(rng() * (1.5 + tier)))];
   let c;
+  // From tier 2, contracts ask for refined goods too (ingots, cut gems, crafts).
+  if (tier >= 2 && rng() < 0.45) {
+    const u = rng();
+    if (u < 0.5 || tier < 3) { const kg = Math.round((10 + rng() * 15) * tier * (metal === 'gold' ? 0.4 : metal === 'silver' ? 0.6 : 1)); c = { kind: 'kg', want: { stage: 'ingot', material: metal }, target: kg, text: `Deliver ${kg} kg of ${MATERIALS[metal].name.toLowerCase()} ingots` }; }
+    else if (u < 0.75) { const n = 2 + Math.floor(rng() * tier); c = { kind: 'count', want: { stage: 'cut', kind: 'gem' }, target: n, text: `Deliver ${n} cut gems` }; }
+    else { const craft = ['ring', 'chain', 'chalice'][Math.floor(rng() * 3)]; c = { kind: 'count', want: { stage: 'crafted', material: metal, craft }, target: 1, text: `Deliver ${/^[aeiou]/i.test(metal) ? 'an' : 'a'} ${MATERIALS[metal].name.toLowerCase()} ${CRAFT_NAMES[craft]}` }; }
+    const reward = Math.round((c.kind === 'kg' ? c.target * MATERIALS[metal].refined * 0.7 : c.want.stage === 'cut' ? c.target * 45 : 150 * tier) / 5) * 5 + 20;
+    return { id, ...c, progress: 0, reward, standing: tier, done: false };
+  }
   if (t < 0.4) { const kg = Math.round((6 + rng() * 10) * tier * (metal === 'gold' ? 0.4 : metal === 'silver' ? 0.6 : 1)); c = { kind: 'kg', want: { stage: 'ore', material: metal }, target: kg, text: `Deliver ${kg} kg of ${MATERIALS[metal].name.toLowerCase()} ore` }; }
   else if (t < 0.6) { const n = 2 + Math.floor(rng() * 2 * tier); c = { kind: 'count', want: { stage: 'uncut', kind: 'gem' }, target: n, text: `Deliver ${n} uncut gems` }; }
   else if (t < 0.8) { const kg = Math.round((0.8 + rng() * 0.8) * tier * 10) / 10; c = { kind: 'big', want: { stage: 'ore', material: metal }, target: kg, text: `Deliver ${/^[aeiou]/i.test(metal) ? 'an' : 'a'} ${MATERIALS[metal].name.toLowerCase()} nugget over ${kg} kg` }; }
@@ -33,8 +50,12 @@ export function createEconomy(rng) {
   };
   const api = { state: S };
   function rollMarket() {
-    const pool = WANTS.slice();
-    S.market = [0, 1, 2].map((i) => { const w = pool.splice(Math.floor(rng() * pool.length), 1)[0]; return { stall: i, want: w, mult: Math.round((1.05 + rng() * 0.25) * 100) / 100, sold: 0 }; });
+    // Once the guild trusts you (★ 4), Millbrook's stalls mix in refined wants.
+    const pool = S.standing >= 4 ? RAW_WANTS.concat(REFINED_WANTS.slice(0, 4)) : RAW_WANTS.slice();
+    const refined = REFINED_WANTS.slice();
+    const mk = (i, w) => ({ stall: i, want: w, mult: Math.round((1.05 + rng() * 0.25) * 100) / 100, sold: 0 });
+    S.market = [0, 1, 2].map((i) => mk(i, pool.splice(Math.floor(rng() * pool.length), 1)[0]));
+    S.market.push(mk(3, refined[Math.floor(rng() * refined.length)]));
   }
   function refillContracts() {
     S.contracts = S.contracts.filter(c => !c.done);
@@ -106,6 +127,6 @@ export function createEconomy(rng) {
   };
   api.describe = (it) => itemName(it);
   api.serialize = () => JSON.parse(JSON.stringify(S));
-  api.restore = (d) => { Object.assign(S, d); S.flags ||= {}; };
+  api.restore = (d) => { Object.assign(S, d); S.flags ||= {}; if (S.market.length < 4) rollMarket(); };
   return api;
 }

@@ -3,7 +3,7 @@
 // vehicle (BUILD_BRIEF 3.7): items in the bed are drawn as props parented to
 // the chassis, have no collision, and add their weight to the chassis.
 import * as THREE from 'three';
-import { VEHICLES, FUEL_PER_SACK, haulerBody, wheel, sack } from '../defs/vehicles.js';
+import { VEHICLES, FUEL_PER_SACK, vehicleBody, wheel, sack, scannerDish, excavatorArm } from '../defs/vehicles.js';
 import { EXTRA_MESH, EXTRA_BOX, EXTRA_CARD, EXTRA_MASS } from './items.js';
 
 EXTRA_MESH.sack = () => sack();
@@ -22,18 +22,30 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
     const def = VEHICLES[type], id = state.id || nextId++;
     nextId = Math.max(nextId, id + 1);
     const quat = state.quat || [0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)];
-    await physics.call({ op: 'createVehicle', id, pos, quat, def });
+    // Trams ride rails on a script: a static box (owned by the tram) lets
+    // the aim ray find them; game/tram.js moves them.
+    if (def.kinematic) physics.post({ op: 'setStaticBox', key: 'veh' + id, hx: def.hx, hy: def.hy, hz: def.hz, pos: [pos[0], pos[1] + def.bodyY, pos[2]], quat, owner: id, group: 'machine' });
+    else await physics.call({ op: 'createVehicle', id, pos, quat, def });
     const group = new THREE.Group();
-    const body = new THREE.Mesh(haulerBody(), materials.vcolor); body.castShadow = body.receiveShadow = true; group.add(body);
+    const body = new THREE.Mesh(vehicleBody(def.model), materials.vcolor); body.castShadow = body.receiveShadow = true; group.add(body);
     const wg = wheel(def.wheelR);
-    const wheels = def.wheels.map(([x, y, z]) => { const w = new THREE.Mesh(wg, materials.vcolor); w.castShadow = true; w.position.set(x, y - def.suspRest, z); group.add(w); return w; });
+    const wheels = def.wheels.map(([x, y, z]) => { const w = new THREE.Mesh(wg, materials.vcolor); w.castShadow = true; w.position.set(x, y - def.suspRest, z); w.visible = !def.skid; group.add(w); return w; });
+    let dish = null, arm = null;
+    if (def.scanner) { dish = new THREE.Mesh(scannerDish(), materials.vcolor); dish.position.set(0.45, 2.15, -0.9); group.add(dish); }
+    if (def.model === 'excavator') {
+      const a = excavatorArm(), M = (g) => { const m = new THREE.Mesh(g, materials.vcolor); m.castShadow = true; return m; };
+      const boom = M(a.boom), stick = M(a.stick), bucket = M(a.bucket);
+      boom.position.set(0.35, 1.6, 0.9); stick.position.set(0, 0, 2.4); bucket.position.set(0, 0, 1.7);
+      boom.add(stick); stick.add(bucket); group.add(boom);
+      arm = { boom, stick, bucket, t: 0 };
+    }
     const cargoGroup = new THREE.Group(); group.add(cargoGroup);
     // Headlamps for night driving.
     const lamp = new THREE.SpotLight(0xfff0c8, 0, 40, 0.5, 0.5, 1.2); lamp.position.set(0, 1.4, 2.4); lamp.target.position.set(0, 0.5, 12); group.add(lamp, lamp.target);
     scene.add(group);
-    const v = { id, type, def, group, wheels, cargoGroup, lamp, fuel: state.fuel ?? def.fuelMax, cargo: [], state: null, flipHold: 0, sputter: 0 };
+    const v = { id, type, def, group, wheels, cargoGroup, lamp, dish, arm, fuel: state.fuel ?? def.fuelMax, cargo: [], state: null, flipHold: 0, sputter: 0, hopper: (state.hopper || []).slice(), tram: state.tram ? { ...state.tram } : null };
     list.set(id, v);
-    physics.poses.set(id, { p: pos.slice(), q: quat.slice(), asleep: false });
+    if (!def.kinematic) physics.poses.set(id, { p: pos.slice(), q: quat.slice(), asleep: false });
     group.position.fromArray(pos); group.quaternion.fromArray(quat);
     for (const c of state.cargo || []) { const e = items.get(c); if (e) attachCargoMesh(v, e); v.cargo.push(c); }
     syncMass(v);
@@ -50,7 +62,7 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
   }
   // Does a world point land in this vehicle's bed? Returns the local point.
   api.bedPoint = (id, p) => {
-    const v = list.get(id); if (!v) return null;
+    const v = list.get(id); if (!v || !v.def.bed) return null;
     const inv = _m.copy(v.group.matrixWorld).invert();
     const lp = _v.fromArray(p).applyMatrix4(inv);
     const b = v.def.bed;
@@ -89,7 +101,7 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
   api.cargoKg = (id) => cargoKg(list.get(id));
 
   api.refuel = (id) => {
-    const v = list.get(id); if (!v) return false;
+    const v = list.get(id); if (!v || !v.def.fuelMax) return false;
     if (v.fuel > v.def.fuelMax - FUEL_PER_SACK * 0.5) return false;
     v.fuel = Math.min(v.def.fuelMax, v.fuel + FUEL_PER_SACK);
     return true;
@@ -97,7 +109,7 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
   api.unflip = (id) => physics.call({ op: 'unflip', id });
   api.teleport = (id, pos, yaw) => physics.call({ op: 'teleportVehicle', id, pos, quat: [0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)] });
 
-  api.enter = (id) => { const v = list.get(id); if (!v) return false; api.driving = id; api.camYaw = 0; audio.play('pickup'); return true; };
+  api.enter = (id) => { const v = list.get(id); if (!v) return false; if (v.def.kinematic) { api.onTram?.(v); return false; } api.driving = id; api.camYaw = 0; audio.play('pickup'); return true; };
   // Where to put the player when they get out: beside the driver's door.
   api.exitPoint = () => {
     const v = list.get(api.driving); if (!v) return null;
@@ -124,6 +136,9 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
         if (enabled && input.held('unflip')) { v.flipHold += dt; if (v.flipHold > 1) { v.flipHold = -10; api.unflip(v.id); hud.toast('Back on its wheels'); } } else v.flipHold = 0;
       } else if (v.wasDriven) physics.post({ op: 'vehicleInput', id: v.id, input: { throttle: 0, steer: 0, brake: 0, driver: false } });
       v.wasDriven = driver;
+      if (v.dish) v.dish.rotation.y += dt * 2.2;
+      if (v.arm) api.animateArm?.(v, dt);
+      if (v.def.kinematic) continue;
       if (!st) continue;
       // Interpolate between the last two physics states so the truck glides
       // instead of jumping whenever a physics step lands between frames.
@@ -166,13 +181,20 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
   };
   api.hud = () => {
     const v = list.get(api.driving); if (!v || !v.state) return null;
-    return { speed: Math.abs(v.state.speed) * 3.6, fuel: v.fuel / v.def.fuelMax, cargo: v.cargo.length, kg: cargoKg(v) };
+    return { speed: Math.abs(v.state.speed) * 3.6, fuel: v.fuel / v.def.fuelMax, cargo: v.cargo.length, kg: cargoKg(v), bed: !!v.def.bed, scanner: !!v.def.scanner, hopper: v.def.hopper ? v.hopper.length : null, hopperMax: v.def.hopper, v };
   };
   api.nearest = (p, maxD = 4) => {
     let best = null, bd = maxD;
     for (const v of list.values()) { const d = v.group.position.distanceTo(_v.fromArray(p)); if (d < bd) { bd = d; best = v; } }
     return best;
   };
-  api.serialize = () => [...list.values()].map(v => ({ id: v.id, type: v.type, pos: v.group.position.toArray(), quat: v.group.quaternion.toArray(), fuel: v.fuel, cargo: v.cargo.slice() }));
+  api.serialize = () => [...list.values()].map(v => ({ id: v.id, type: v.type, pos: v.group.position.toArray(), quat: v.group.quaternion.toArray(), fuel: v.fuel, cargo: v.cargo.slice(), hopper: v.hopper.slice(), tram: v.tram ? { ...v.tram } : null }));
+  // Remove a vehicle (selling it back, or a load).
+  api.remove = async (id) => {
+    const v = list.get(id); if (!v) return;
+    if (v.def.kinematic) physics.post({ op: 'setStaticBox', key: 'veh' + id, remove: true });
+    else await physics.call({ op: 'removeVehicle', id });
+    scene.remove(v.group); list.delete(id);
+  };
   return api;
 }

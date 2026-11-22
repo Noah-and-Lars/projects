@@ -81,3 +81,10 @@ select { font: 15px var(--font); padding: 4px 8px; border-radius: 8px; border: 1
 #veinmeter .bar { width: 70px; height: 7px; border-radius: 4px; background: var(--cream-2); overflow: hidden; }
 #veinmeter .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #9a8ae0, #6a3ad8); transition: width 0.2s; }
 #veinmeter .lbl { min-width: 72px; font-size: 13px; }
+.panel.finale { text-align: center; max-width: 620px; background: linear-gradient(180deg, #fbf3df, #f1e2bd); }
+.finale-wheel { font-size: 64px; color: #d8a420; line-height: 1; margin: 6px 0 10px; text-shadow: 0 2px 0 #8a6a10; }
+.finale-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 14px 0; }
+.finale-stats > div { background: rgba(255, 255, 255, 0.6); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; }
+.finale-stats span { font-size: 12px; opacity: 0.75; }
+.finale-stats b { font-size: 18px; }
+#scanner { position: absolute; right: 0; bottom: 52px; width: 200px; height: 200px; border-radius: 50%; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); border: 3px solid #c89a48; }

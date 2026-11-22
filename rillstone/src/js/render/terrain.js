@@ -2,7 +2,7 @@
 // per face (grass treads, sandstone risers, slate crags, snow, river gravel),
 // with a trimesh collider per tile that skips claim plots and the adit mouth.
 import * as THREE from 'three';
-import { SIZE, HALF, GRID, height, isHole, floorY, riverX, RIVER_HALF_WIDTH } from '../world/valley.js';
+import { SIZE, HALF, GRID, height, isHole, floorY, riverX, RIVER_HALF_WIDTH , roadAt } from '../world/valley.js';
 import { noise2 } from '../core/noise.js';
 
 const TILE = 50; // cells per tile edge (100 m)
@@ -20,6 +20,8 @@ function faceColor(cx, cy, cz, ny) {
   const n = noise2(cx / 9, cz / 9, 11), n2 = noise2(cx / 31, cz / 31, 12);
   if (rd < 1.5 && above < 0.2) return tmp.copy(C.bed).lerp(C.gravel, n * 0.5);
   if (rd < 5 && above < 1.2) return tmp.copy(C.gravel).lerp(C.sand, n * 0.4);
+  const road = roadAt(cx, cz);
+  if (road && road.d < 3.4) return tmp.copy(C.gravel).lerp(C.sandDark, 0.35 + n * 0.3);
   if (cy > 92 && slope < 0.5) return tmp.copy(C.snow).lerp(C.slate, n * 0.25);
   if (slope > 0.32) {
     // Risers: pale sandstone low down, slate higher up.

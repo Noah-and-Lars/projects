@@ -79,6 +79,12 @@ export const SHOPS = {
     items: [
       { id: 'charcoal', name: 'Sack of Charcoal', price: 15, spawn: 'sack', desc: 'About 8 minutes of driving.' },
       { id: 'hauler', name: 'Old Hauler (replacement)', price: 500, spawn: 'vehicle', data: { type: 'hauler' }, desc: 'A second hauler, delivered to the yard.' },
+      { id: 'buggy', name: 'Trail Buggy', price: 700, spawn: 'vehicle', data: { type: 'buggy' }, desc: 'Light, quick and bouncy. No cargo bed.' },
+      { id: 'hauler2', name: 'Hauler Mk II', price: 1800, spawn: 'vehicle', data: { type: 'hauler2' }, desc: 'Bigger bed (3,000 kg, 90 items) and better handling.' },
+      { id: 'survey', name: 'Survey Buggy', price: 3000, standing: 6, spawn: 'vehicle', data: { type: 'survey' }, desc: 'A scanner on a mast shows ore veins near you while you drive.' },
+      { id: 'excavator', name: 'Excavator', price: 6500, standing: 10, spawn: 'vehicle', data: { type: 'excavator' }, desc: 'Tracks and a bucket arm: LMB digs a world-grid cell into its 10-load hopper, RMB empties it.' },
+      { id: 'railkit', name: 'Rails · 10 segments', price: 300, spawn: 'railkit', data: { n: 10 }, desc: '4 m a segment (§ 30 each). Click a start, then an end, to lay a line.' },
+      { id: 'tramkit', name: 'Ore Tram', price: 400, spawn: 'tramkit', desc: 'Carries 600 kg along a rail line. Click a rail to set it on; F sends it to the other end.' },
     ],
     callVehicle: true,
   },

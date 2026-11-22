@@ -24,8 +24,12 @@ import { createVehicles } from './game/vehicles.js';
 import { createTown } from './game/town.js';
 import { createPanels } from './ui/panels.js';
 import { createSaves, SAVE_VERSION } from './core/save.js';
-import { readChunk, writeChunk } from './world/claims.js';
+import { readChunk, writeChunk, relicSpot, VEINS } from './world/claims.js';
+import { rollLoot } from './sim/loot.js';
+import { PUMP_STAGES } from './defs/progression.js';
 import { createProgress } from './game/progress.js';
+import { createWorkshop } from './game/workshop.js';
+import { createHeavy } from './game/heavy.js';
 import { h } from './ui/dom.js';
 import { createBed, slotCard } from './game/bed.js';
 import { createMachines } from './game/machines.js';
@@ -132,6 +136,8 @@ async function boot() {
   scene.add(lantern);
   let lanternManual = null;
   const progress = createProgress({ items, hands, economy, hud, audio, adit, physics, lantern });
+  const heavy = createHeavy({ scene, physics, items, vehicles, claims, economy, machines, hud, audio, fx, materials: view.materials, height, hands });
+  const workshop = createWorkshop({ scene, physics, materials: view.materials, items, economy, town, hud, audio, panels, fx, getStats: () => ({ playTime: state.playTime }) });
 
   const state = { mode: 'title', time: 0.32, day: 1, simTick: 0, playing: false, slot: 1, playTime: 0, autosaveT: 0 };
   const menu = createMenu(ui, {
@@ -163,7 +169,7 @@ async function boot() {
       saveVersion: SAVE_VERSION, seed: SEED, time: state.time, day: state.day, playTime: state.playTime,
       player: { pos: player.cur.toArray(), yaw: player.yaw, pitch: player.pitch }, hands: { hand: hands.hand, slot: hands.slot },
       items: items.serialize(), vehicles: vehicles.serialize(), economy: economy.serialize(), chunks,
-      machines: machines.serialize(), clock: items.clock,
+      machines: machines.serialize(), clock: items.clock, rails: heavy.serialize(),
     };
   }
   async function restore(snap) {
@@ -173,9 +179,11 @@ async function boot() {
     items.clock = snap.clock || 0;
     machines.restore(snap.machines || []);
     hands.hand = snap.hands?.hand ?? null; hands.slot = snap.hands?.slot ?? null;
-    for (const v of [...vehicles.list.values()]) { await physics.call({ op: 'removeVehicle', id: v.id }); scene.remove(v.group); vehicles.list.delete(v.id); }
+    for (const v of [...vehicles.list.values()]) await vehicles.remove(v.id);
     for (const v of snap.vehicles || []) await vehicles.spawn(v.type, v.pos, 0, v);
+    heavy.restore(snap.rails);
     economy.restore(snap.economy || {});
+    workshop.applyStage();
     state.time = snap.time ?? state.time; state.day = snap.day ?? 1; state.playTime = snap.playTime || 0;
     const p = snap.player?.pos; if (p) await teleport(p[0], p[1] + 0.05, p[2], snap.player.yaw);
     town.newDay();
@@ -240,6 +248,7 @@ async function boot() {
   // Frame loop.
   let caveF = 0;
   const driveEl = h('div', { id: 'drive', class: 'hidden' }); hud.el.append(driveEl);
+  const scanCanvas = h('canvas', { id: 'scanner', width: 220, height: 220 });
   let last = performance.now(), acc = 0, simAcc = 0, fps = 0, fpsT = 0, frames = 0;
   const timings = { physics: 0, sim: 0, render: 0 };
   const controls = () => state.mode === 'play' && (input.locked || TEST);
@@ -302,11 +311,22 @@ async function boot() {
     hands.setVisible?.(!vehicles.driving);
     town.update(dt);
     machines.update(dt);
-    progress.update(dt, camera.position.toArray());
+    const dv = vehicles.driving ? vehicles.list.get(vehicles.driving) : null;
+    if (dv && controls()) {
+      if (dv.def.hopper && input.pressed('use')) heavy.dig(dv);
+      if (dv.def.hopper && input.pressed('secondary')) heavy.dump(dv);
+    }
+    heavy.update(dt);
+    progress.update(dt, dv ? dv.group.position.toArray() : camera.position.toArray(), { scanner: !!dv?.def.scanner });
+    workshop.update(dt);
     hud.hotbar([slotCard(items, hands.hand), slotCard(items, hands.slot)]);
     const dh = vehicles.hud();
     driveEl.classList.toggle('hidden', !dh);
-    if (dh) driveEl.innerHTML = `<div class="pill">${dh.speed.toFixed(0)} km/h</div><div class="pill">Fuel<div class="gauge"><i style="width:${(dh.fuel * 100).toFixed(0)}%"></i></div></div><div class="pill">Bed ${dh.cargo} · ${dh.kg.toFixed(0)} kg</div>`;
+    if (dh) {
+      const html = `<div class="pill">${dh.speed.toFixed(0)} km/h</div><div class="pill">Fuel<div class="gauge"><i style="width:${(dh.fuel * 100).toFixed(0)}%"></i></div></div>` + (dh.bed ? `<div class="pill">Bed ${dh.cargo} · ${dh.kg.toFixed(0)} kg</div>` : '') + (dh.hopper != null ? `<div class="pill">Hopper ${dh.hopper} / ${dh.hopperMax} · <kbd>LMB</kbd> dig · <kbd>RMB</kbd> empty</div>` : '');
+      if (driveEl.dataset.html !== html) { driveEl.dataset.html = html; driveEl.innerHTML = html; if (dh.scanner) driveEl.append(scanCanvas); }
+      if (dh.scanner) heavy.drawScanner(scanCanvas, dh.v);
+    }
     if (state.mode === 'play') { state.playTime += dt; state.autosaveT += dt; if (state.autosaveT > 180) { state.autosaveT = 0; saveTo(state.slot, true); } }
     fx.update(dt);
     hud.clock(state.time, state.day);
@@ -331,8 +351,9 @@ async function boot() {
   // so ?test=1 lets tests drive the game directly.
   const api = { ready: true, physics, version: physics.version, seed: SEED };
   if (TEST) Object.assign(api, {
-    THREE, view, player, input, state, settings, hud, menu, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, machines, auto, progress, adit, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
+    THREE, view, player, input, state, settings, hud, menu, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, machines, auto, progress, workshop, heavy, adit, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
     places: { TOWN, HAMLET, ADIT, CLAIMS, FALLS_Z, spawn: spawnPoint() },
+    relicSpot, veins: VEINS, rollLoot, pumpStages: PUMP_STAGES,
     height, riverX, waterY,
     play,
     teleport: (x, y, z, yaw, pitch) => { if (pitch !== undefined) player.pitch = pitch; return teleport(x, y ?? height(x, z) + 1, z, yaw); },

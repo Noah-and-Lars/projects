@@ -32,6 +32,12 @@ TOWN.y = floorY(TOWN_Z) + 1.4;
 export const HAMLET = { x: riverX(-205) - 40, z: -205, r: 26, name: 'Upper Falls' };
 HAMLET.y = floorY(-205) + 1.2;
 
+// The old Rillstone Pumphouse on the bank below Millbrook: the end goal.
+// Its wheel hangs over the river on the -x (river) side.
+export const PUMPHOUSE = { z: -8, x: 0, y: 0 };
+PUMPHOUSE.x = Math.round(riverX(PUMPHOUSE.z) + 16);
+PUMPHOUSE.y = floorY(PUMPHOUSE.z) + 1.3;
+
 // Claim plots (sizes in metres, BUILD_BRIEF 3.2). Rectangles are aligned to
 // the terrain grid. `top` is the flat plot height the voxel volume starts at.
 const snap = (v) => Math.round(v / GRID) * GRID;
@@ -62,6 +68,26 @@ for (const c of CLAIMS) c.top = Math.max(floorY(c.cz) + 0.6, 0) + (c.id === 'sla
   e.floor = ADIT.y; e.top = ADIT.y + 9;
 }
 
+
+// The switchback road up the falls step to Upper Falls (BUILD_BRIEF 3.2):
+// three legs across the slope, about a 10% grade, where the truck matters.
+// [x, z, y] vertices; the road is 6 m wide with 3 m shoulders.
+export const ROAD = [[-62, -108, 9.6], [-66, -126, 10.1], [-112, -133, 15.2], [-117, -139, 16.4], [-70, -144, 21.4], [-65, -149, 22.6], [-108, -156, 27.4], [-101, -172, 27.8], [-86, -182, 27.8]];
+ROAD[ROAD.length - 1][2] = HAMLET.y;
+const ROAD_BOX = [-126, -192, -52, -100];
+// Nearest point on the road: { d (m), y (road height) } or null when far.
+export function roadAt(x, z) {
+  if (x < ROAD_BOX[0] || x > ROAD_BOX[2] || z < ROAD_BOX[1] || z > ROAD_BOX[3]) return null;
+  let best = null;
+  for (let i = 0; i < ROAD.length - 1; i++) {
+    const [ax, az, ay] = ROAD[i], [bx, bz, by] = ROAD[i + 1];
+    const dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2));
+    const d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+    if (!best || d < best.d) best = { d, y: ay + (by - ay) * t };
+  }
+  return best;
+}
 
 // Slate Shelf's terrace floors, by x (shared with world/claims.js): the
 // hillside outside its open (+x) end follows the lowest step.
@@ -112,6 +138,9 @@ export function height(x, z) {
   let h = baseHeight(x, z);
   h = flatDisc(h, x, z, TOWN.x, TOWN.z, TOWN.r, TOWN.y);
   h = flatDisc(h, x, z, HAMLET.x, HAMLET.z, HAMLET.r, HAMLET.y, 14);
+  { const P = PUMPHOUSE; h = flatRect(h, x, z, P.x - 4.5, P.z - 7, P.x + 9, P.z + 7, P.y, 4); }
+  const r = roadAt(x, z);
+  if (r && r.d < 6.5) h = lerp(h, r.y, smooth(6.5, 3.2, r.d));
   for (const c of CLAIMS) {
     if (c.tunnel) continue;
     if (c.id === 'slate' && x > c.x1 - 16) {

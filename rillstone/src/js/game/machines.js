@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import { MACHINES, PIPE_TIERS, FAMILY, spinPart, needle } from '../defs/machines.js';
 import { MACHINES2 } from '../defs/machines2.js';
-Object.assign(MACHINES, MACHINES2);
+import { MACHINES3 } from '../defs/machines3.js';
+Object.assign(MACHINES, MACHINES2, MACHINES3);
 PIPE_TIERS.cable = { name: 'Signal', cap: 0, hex: 0x8a6ad8, r: 0.022, cable: true };
 import { solveFlow, speedFrom, wearRate } from '../sim/flow.js';
 import { rollLoot } from '../sim/loot.js';
@@ -211,7 +212,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
       const n = { id: m.id, kind: def.drive ? 'consumer' : ['none', 'belt', 'logic', 'container', 'shaftuser'].includes(def.role) ? 'other' : def.role === 'tank' ? 'tank' : def.role };
       if (def.drive) n.demand = def.demand, n.on = m.on;
       if (def.role === 'source') { m.valid = !requirement(m.def, m.pos, m.rot); n.flow = m.on && m.valid ? def.flow * (m.state.throttle ?? 1) : 0; }
-      if (def.role === 'consumer') { n.demand = def.demand; n.on = m.on && m.wear < 1 && m.status !== 'too hard' && m.status !== 'no claim'; }
+      if (def.role === 'consumer') { n.demand = def.demand; n.on = m.on && m.wear < 1 && m.status !== 'too hard' && m.status !== 'no claim' && m.status !== 'Ember Seam only'; }
       if (def.role === 'pipe') n.cap = m.closed ? 0 : def.cap;
       if (def.role === 'source' && m.closed) n.flow = 0;
       if (def.role === 'tank') n.tank = { level: m.state.level, cap: def.tankCap };
@@ -248,6 +249,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
   function drillTick(m, def, dt) {
     const vol = claims.volumeAt(m.pos[0], m.pos[2], m.pos[1]);
     if (!vol || !economy.owns(vol.id)) { m.status = 'no claim'; return; }
+    if (def.emberOnly && vol.id !== 'ember') { m.status = 'Ember Seam only'; return; }
     const tipY = m.pos[1] - def.tipDepth, depth = vol.depthAt(m.pos[0], tipY);
     const band = depth > vol.def.depth ? BEDROCK : bandAtDepth(Math.max(0, depth));
     m.band = band; m.depth = depth;

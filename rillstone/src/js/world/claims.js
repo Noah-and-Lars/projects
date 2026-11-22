@@ -199,6 +199,41 @@ export function brush(vol, centre, radius, mode = 'dig', maxBand = 1) {
   return { removed, blockedBand, bands };
 }
 
+// Axis-aligned box brush (the Excavator): cuts cells fixed to the world
+// grid, so trenches come out straight whatever the chassis does.
+export function boxBrush(vol, min, max, maxBand = 1) {
+  const a = vol.toVoxel(min[0], min[1], min[2]), b = vol.toVoxel(max[0], max[1], max[2]);
+  const x0 = Math.max(MARGIN, Math.floor(a[0]) - 1), x1 = Math.min(vol.nx - 1 - MARGIN, Math.ceil(b[0]) + 1);
+  const y0 = Math.max(0, Math.floor(a[1]) - 1), y1 = Math.min(vol.ny - 1, Math.ceil(b[1]) + 1);
+  const z0 = Math.max(MARGIN, Math.floor(a[2]) - 1), z1 = Math.min(vol.nz - 1 - MARGIN, Math.ceil(b[2]) + 1);
+  const cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, cz = (a[2] + b[2]) / 2, hx = (b[0] - a[0]) / 2, hy = (b[1] - a[1]) / 2, hz = (b[2] - a[2]) / 2;
+  let removed = 0, blockedBand = 0, touched = false;
+  const bands = {}, cell = VOXEL ** 3;
+  for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) {
+    const qx = Math.abs(x - cx) - hx, qy = Math.abs(y - cy) - hy, qz = Math.abs(z - cz) - hz;
+    const d = Math.hypot(Math.max(qx, 0), Math.max(qy, 0), Math.max(qz, 0)) + Math.min(Math.max(qx, qy, qz), 0);
+    if (d > 1) continue;
+    const i = vol.idx(x, y, z), target = Math.max(-127, Math.min(127, Math.round(d * 64))), old = vol.dens[i];
+    if (old <= target) continue;
+    const bd = vol.band[i];
+    if (bd === BEDROCK || bd > maxBand) { if (old > 0 && d < 0) blockedBand = Math.max(blockedBand, bd); continue; }
+    vol.dens[i] = target;
+    const fOld = Math.min(1, Math.max(0, old / 128 + 0.5)), fNew = Math.min(1, Math.max(0, target / 128 + 0.5)), dv = (fOld - fNew) * cell;
+    removed += dv; bands[bd] = (bands[bd] || 0) + dv; touched = true;
+  }
+  if (touched) { markDirty(vol, x0, y0, z0, x1, y1, z1); vol.editSeq++; }
+  return { removed, blockedBand, bands };
+}
+// Height of the solid surface in a column (world y), or null.
+// fromY: start the search below this height (tunnels have a rock ceiling).
+export function surfaceY(vol, x, z, fromY = Infinity) {
+  const v = vol.toVoxel(x, fromY === Infinity ? 0 : fromY, z), ix = Math.round(v[0]), iz = Math.round(v[2]);
+  if (ix < 0 || iz < 0 || ix >= vol.nx || iz >= vol.nz) return null;
+  const top = fromY === Infinity ? vol.ny - 1 : Math.min(vol.ny - 1, Math.floor(v[1]));
+  for (let y = top; y >= 0; y--) if (vol.dens[vol.idx(ix, y, iz)] > 0) return vol.origin[1] + (y + 0.5) * VOXEL + 0.25;
+  return null;
+}
+
 // Copy the sample region a chunk mesher needs: cells [-1, CHUNK] around the
 // chunk, i.e. (CHUNK + 3)^3 samples, clamped at the volume edges.
 export function chunkSamples(vol, i, j, k) {

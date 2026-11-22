@@ -3,7 +3,7 @@
 // physical (BUILD_BRIEF 3.6): put goods on a counter and ring the bell; the
 // clerk weighs and stamps them and the ledger pays out.
 import * as THREE from 'three';
-import { TOWN, riverX, waterY, height, CLAIMS } from '../world/valley.js';
+import { TOWN, HAMLET, riverX, waterY, height, CLAIMS } from '../world/valley.js';
 import { building, counter, bell, stall, chalkboardFrame, textPlane, clerk, pad, bridge } from '../render/buildings.js';
 import { paint, merge, place } from '../render/geom.js';
 import { SHOPS } from '../defs/shops.js';
@@ -46,34 +46,37 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
   function prop(kind, data, x, y, z, hx, hy, hz, yaw = 0) { const id = nextProp++; props.set(id, { id, kind, ...data, pos: [x, y, z] }); box('prop' + id, x, y, z, hx, hy, hz, yaw, id); return id; }
 
   // A shop: building + counter + clerk (+ bell for selling, + pad for deliveries).
-  function shop({ key, name, x, z, w = 8, d = 6, trim, sells = null, shopId = null, bay = false, sign }) {
-    const yaw = faceYaw(x, z);
-    put(new THREE.Mesh(building({ w, d, trim, bay }), materials.vcolor), x, z, yaw);
-    box('bld-' + key, x, gy + 2.2, z, w / 2, 2.2, d / 2, yaw);
+  // `c` is the settlement it faces (Millbrook by default, or Upper Falls).
+  function shop({ key, name, x, z, w = 8, d = 6, trim, sells = null, shopId = null, bay = false, sign, c = T, bellKind = 'bell' }) {
+    const y0 = c.y ?? gy;
+    const yaw = Math.atan2(c.x - x, c.z - z);
+    put(new THREE.Mesh(building({ w, d, trim, bay }), materials.vcolor), x, z, yaw, y0);
+    box('bld-' + key, x, y0 + 2.2, z, w / 2, 2.2, d / 2, yaw);
     // The sign sits on the wall between the awning (top ~2.9 m) and the eaves (3.7 m).
     const s = textPlane([sign || name], { w: Math.min(4.6, w * 0.62), h: 0.5, bg: '#' + trim.toString(16).padStart(6, '0'), px: 768 });
-    const [sx, sz] = local(x, z, yaw, 0, d / 2 + 0.1); put(s, sx, sz, yaw, gy + 3.28);
+    const [sx, sz] = local(x, z, yaw, 0, d / 2 + 0.1); put(s, sx, sz, yaw, y0 + 3.28);
     if (bay) return { yaw };
     const cz = d / 2 + 1.3;
     const [cx, czz] = local(x, z, yaw, 0, cz);
-    put(new THREE.Mesh(counter(3.2), materials.vcolor), cx, czz, yaw);
-    box('ctr-' + key, cx, gy + 0.53, czz, 1.6, 0.53, 0.45, yaw);
+    put(new THREE.Mesh(counter(3.2), materials.vcolor), cx, czz, yaw, y0);
+    box('ctr-' + key, cx, y0 + 0.53, czz, 1.6, 0.53, 0.45, yaw);
     const [kx, kz] = local(x, z, yaw, 0, d / 2 + 0.55);
-    const ck = put(new THREE.Mesh(clerk(trim), materials.vcolor), kx, kz, yaw);
+    const ck = put(new THREE.Mesh(clerk(trim), materials.vcolor), kx, kz, yaw, y0);
     clerks.push({ mesh: ck, base: ck.position.y, phase: clerks.length * 1.7, busy: 0 });
-    const out = { yaw, counter: [cx, czz] };
+    const out = { yaw, counter: { x: cx, z: czz, yaw, w: 3.2, top: y0 + 1.05 }, clerk: clerks[clerks.length - 1] };
     if (sells != null) {
       const [bx, bz] = local(x, z, yaw, 1.25, cz + 0.15);
-      put(new THREE.Mesh(bell(), materials.vcolor), bx, bz, yaw, gy + 1.05);
-      const id = prop('bell', { venue: sells, name, counter: { x: cx, z: czz, yaw, w: 3.2, d: 0.9, top: gy + 1.05 } }, bx, gy + 1.13, bz, 0.12, 0.1, 0.12, yaw);
-      counters.push({ venue: sells, bell: id, x: cx, z: czz, yaw, top: gy + 1.05, clerk: clerks[clerks.length - 1] });
+      put(new THREE.Mesh(bell(), materials.vcolor), bx, bz, yaw, y0 + 1.05);
+      const id = prop(bellKind, { venue: sells, name, counter: { x: cx, z: czz, yaw, w: 3.2, d: 0.9, top: y0 + 1.05 } }, bx, y0 + 1.13, bz, 0.12, 0.1, 0.12, yaw);
+      counters.push({ venue: sells, bell: id, x: cx, z: czz, yaw, top: y0 + 1.05, clerk: clerks[clerks.length - 1] });
+      out.bell = id;
     }
     if (shopId) {
-      prop('shop', { shop: shopId, name }, kx, gy + 1.1, kz, 0.3, 0.9, 0.3, yaw);
+      prop('shop', { shop: shopId, name }, kx, y0 + 1.1, kz, 0.3, 0.9, 0.3, yaw);
       const [px, pz] = local(x, z, yaw, w / 2 + 2.4, d / 2 + 1.0);
-      put(new THREE.Mesh(pad(), materials.vcolor), px, pz, yaw, gy + 0.01);
-      pads[shopId] = [px, gy + 0.2, pz];
-      box('pad-' + key, px, gy + 0.05, pz, 1.3, 0.06, 1.3, yaw);
+      put(new THREE.Mesh(pad(), materials.vcolor), px, pz, yaw, y0 + 0.01);
+      pads[shopId] = [px, y0 + 0.2, pz];
+      box('pad-' + key, px, y0 + 0.05, pz, 1.3, 0.06, 1.3, yaw);
     }
     return out;
   }
@@ -97,6 +100,13 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
   shop({ key: 'guild', name: 'Guild Hall', x: T.x - 22, z: T.z - 6, w: 10, d: 7, trim: 0x6e56a8 });
   shop({ key: 'foundry', name: 'Foundry Yard', x: T.x - 18, z: T.z + 18, trim: 0xa84a3a, shopId: 'foundry' });
   shop({ key: 'signal', name: 'Signal House', x: T.x + 16, z: T.z - 26, w: 7, trim: 0x6e56a8, shopId: 'signal' });
+  // The Machine Shop: blueprints plus ingots on its counter make Mk II-IV machines.
+  const workshop = shop({ key: 'machineshop', name: 'Machine Shop', x: T.x - 12, z: T.z + 31, w: 9, d: 6, trim: 0x4f7396, shopId: 'machineshop' });
+  // Upper Falls (BUILD_BRIEF 3.2): a gem cutter and a fourth market buyer.
+  const H = HAMLET;
+  const cutter = shop({ key: 'cutter', name: 'Gem Cutter', x: H.x - 8, z: H.z - 9, w: 7, trim: 0x9a2a4a, sells: 'cutter', c: H, bellKind: 'cutbell' });
+  shop({ key: 'hamlet-inn', name: 'The Falls Inn', x: H.x + 10, z: H.z - 7, w: 9, d: 6, trim: 0x56616e, bay: true, c: H });
+  for (const [dx, dz, w, trim] of [[-14, 6, 6, 0x6e4c2e], [12, 9, 6, 0xa84a3a]]) { const x = H.x + dx, z = H.z + dz, yaw = Math.atan2(H.x - x, H.z - z); put(new THREE.Mesh(building({ w, d: 5, trim, bay: true }), materials.vcolor), x, z, yaw, H.y); box('ham' + dx, x, H.y + 2.2, z, w / 2, 2.2, 2.5, yaw); }
   // Guild board (contracts + claim deeds) in front of the Guild Hall.
   {
     const x = T.x - 15.5, z = T.z - 6, yaw = faceYaw(x, z);
@@ -106,20 +116,21 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     const [fx, fz] = local(x, z, yaw, 0, 0.075); put(face, fx, fz, yaw, gy + 1.6);
     prop('guild', { name: 'Guild board' }, x, gy + 1.6, z, 1.2, 0.8, 0.15, yaw);
   }
-  // Market square: three stalls with chalkboards.
-  const STALL_TRIM = [0xa84a3a, 0x2a8a86, 0xc8902c];
-  for (let i = 0; i < 3; i++) {
-    const x = T.x - 7 + i * 7, z = T.z + 6, yaw = Math.PI; // facing north (toward the assay office)
-    put(new THREE.Mesh(stall(STALL_TRIM[i]), materials.vcolor), x, z, yaw);
-    put(new THREE.Mesh(counter(2.6), materials.vcolor), x, z - 0.7, yaw);
+  // Market square: three stalls with chalkboards, and a fourth at Upper Falls.
+  const STALL_TRIM = [0xa84a3a, 0x2a8a86, 0xc8902c, 0x6e56a8];
+  for (let i = 0; i < 4; i++) {
+    const hamlet = i === 3, gy = hamlet ? H.y : T.y;
+    const x = hamlet ? H.x + 1 : T.x - 7 + i * 7, z = hamlet ? H.z + 8 : T.z + 6, yaw = Math.PI; // facing north
+    put(new THREE.Mesh(stall(STALL_TRIM[i]), materials.vcolor), x, z, yaw, gy);
+    put(new THREE.Mesh(counter(2.6), materials.vcolor), x, z - 0.7, yaw, gy);
     box('stall' + i, x, gy + 0.53, z - 0.7, 1.3, 0.53, 0.45, yaw);
     for (const [px, pz] of [[-1.3, -0.6], [1.3, -0.6], [-1.3, 0.6], [1.3, 0.6]]) box(`stallpost${i}${px}${pz}`, x - px, gy + 1.3, z - pz, 0.07, 1.3, 0.07);
-    const ck = put(new THREE.Mesh(clerk(STALL_TRIM[i]), materials.vcolor), x, z + 0.1, yaw);
+    const ck = put(new THREE.Mesh(clerk(STALL_TRIM[i]), materials.vcolor), x, z + 0.1, yaw, gy);
     clerks.push({ mesh: ck, base: ck.position.y, phase: i * 2.3 + 1, busy: 0 });
     put(new THREE.Mesh(bell(), materials.vcolor), x + 1.0, z - 0.75, yaw, gy + 1.05);
-    const id = prop('bell', { venue: i, name: `Market stall ${i + 1}` }, x + 1.0, gy + 1.13, z - 0.75, 0.12, 0.1, 0.12);
+    const id = prop('bell', { venue: i, name: hamlet ? 'Upper Falls stall' : `Market stall ${i + 1}` }, x + 1.0, gy + 1.13, z - 0.75, 0.12, 0.1, 0.12);
     counters.push({ venue: i, bell: id, x, z: z - 0.7, yaw, top: gy + 1.05, w: 2.6, clerk: clerks[clerks.length - 1] });
-    put(new THREE.Mesh(chalkboardFrame(), materials.vcolor), x - 2.1, z - 1.4, yaw + 0.3);
+    put(new THREE.Mesh(chalkboardFrame(), materials.vcolor), x - 2.1, z - 1.4, yaw + 0.3, gy);
     const face = textPlane(['…'], { w: 0.9, h: 1.1, bg: '#2a3330', fg: '#f4f0e0', font: 'bold 70px', px: 256, chalk: true });
     // Match the frame's backward lean (-0.12 about x) and sit just in front of it.
     const by = yaw + 0.3, off = 0.04;
@@ -188,6 +199,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
   }
   function buy(shopId, itemId) {
     const entry = SHOPS[shopId].items.find(i => i.id === itemId);
+    if (entry.standing && economy.state.standing < entry.standing) { audio.play('error'); hud.toast(`${entry.name} needs ★ ${entry.standing} Guild Standing`, 'err'); return false; }
     if (!economy.spend(entry.price)) { audio.play('error'); hud.toast(`Not enough Scrip for ${entry.name}`, 'err'); return false; }
     deliver(shopId, entry); audio.play('coins');
     hud.toast(`${entry.name} · delivered to the pad`, 'gold');
@@ -197,7 +209,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     const S = SHOPS[shopId];
     const render = () => {
       const body = h('div', {}, h('p', { class: 'small' }, S.blurb + ' · deliveries go to the pad beside the counter'),
-        ...S.items.map(it => h('div', { class: 'entry' }, h('b', {}, it.name), h('button', { class: 'btn primary', disabled: economy.state.scrip < it.price, onclick: () => { buy(shopId, it.id); render(); } }, `§ ${it.price.toLocaleString('en-GB')}`), h('span', { class: 'desc' }, it.desc))),
+        ...S.items.map(it => h('div', { class: 'entry' }, h('b', {}, it.name), it.standing && economy.state.standing < it.standing ? h('span', { class: 'pill' }, `Needs ★ ${it.standing}`) : h('button', { class: 'btn primary', disabled: economy.state.scrip < it.price, onclick: () => { buy(shopId, it.id); render(); } }, `§ ${it.price.toLocaleString('en-GB')}`), h('span', { class: 'desc' }, it.desc))),
         S.callVehicle ? h('div', { class: 'entry' }, h('b', {}, 'Call my hauler'), h('button', { class: 'btn', onclick: () => { callVehicle(); panels.close(); } }, 'Call'), h('span', { class: 'desc' }, 'Brings your truck to the yard outside.')) : null);
       panels.show('shop:' + shopId, S.name, body, { badge: `§ ${economy.state.scrip.toLocaleString('en-GB')}` });
     };
@@ -223,18 +235,21 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
   }
 
   const api = {
-    group, props, counters, pads, statics,
+    group, props, counters, pads, statics, custom: {}, customProp: {}, customHint: {}, customCard: {},
     async build() { await physics.call({ op: 'batch', ops: statics }); redrawBoards(); },
     has: (id) => props.has(id),
     interact(id) {
       const p = props.get(id); if (!p) return;
       if (p.kind === 'bell') return ringBell(id);
+      if (p.kind === 'shop' && api.custom[p.shop]) return api.custom[p.shop]();
+      if (p.kind === 'cutbell' || api.customProp[p.kind]) return (api.customProp[p.kind] || api.customProp.cutbell)?.(p, id);
       if (p.kind === 'shop') return openShop(p.shop);
       if (p.kind === 'guild') return openGuild();
     },
-    hint(id) { const p = props.get(id); if (!p) return ''; return p.kind === 'bell' ? 'ring the bell to sell' : p.kind === 'shop' ? `browse the ${p.name}` : p.kind === 'guild' ? 'read the contracts' : ''; },
+    hint(id) { const p = props.get(id); if (!p) return ''; if (api.customHint[p.kind]) return api.customHint[p.kind](p); return p.kind === 'bell' ? 'ring the bell to sell' : p.kind === 'shop' ? `browse the ${p.name}` : p.kind === 'guild' ? 'read the contracts' : ''; },
     card(id) {
       const p = props.get(id); if (!p) return null;
+      if (api.customCard[p.kind]) return api.customCard[p.kind](p, id);
       if (p.kind === 'chalk') { const m = economy.state.market[p.stall]; return { name: `Stall ${p.stall + 1} wants`, lines: [wantLabel(m.want), `Pays ${Math.round(economy.stallMult(p.stall) * 100)}% of base today`] }; }
       if (p.kind === 'bell') { const c = counters.find(k => k.bell === id), list = counterItems(c); const q = list.reduce((a, e) => a + (economy.quote(e.item, c.venue) ?? 0), 0); return { name: p.name, lines: [list.length ? `${list.length} on the counter · ≈ § ${Math.round(q)}` : 'Counter is empty'] }; }
       return { name: p.name };
@@ -243,7 +258,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     update(dt) {
       for (const c of clerks) { c.phase += dt; c.busy = Math.max(0, c.busy - dt); c.mesh.position.y = c.base + Math.sin(c.phase * 1.6) * 0.012 + (c.busy > 0 ? Math.abs(Math.sin(c.busy * 9)) * 0.05 : 0); c.mesh.rotation.z = Math.sin(c.phase * 0.7) * 0.02; }
     },
-    ringBell, buy, deliver, callVehicle, counterItems, openGuild, openShop,
+    ringBell, buy, deliver, callVehicle, counterItems, openGuild, openShop, workshop, cutter, faceYaw, local, put, box, prop,
   };
   void MATERIALS; void itemName;
   return api;
