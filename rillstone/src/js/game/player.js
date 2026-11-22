@@ -2,7 +2,7 @@
 // controller with step-up and slope limits); this side turns input into a
 // wanted velocity, owns the view angles and smooths the camera.
 import * as THREE from 'three';
-import { riverX, waterY, RIVER_HALF_WIDTH } from '../world/valley.js';
+import { riverX, waterY, RIVER_HALF_WIDTH, riverFlow } from '../world/valley.js';
 
 export const MOVE = { walk: 4.2, sprint: 6.8, crouch: 2.0, jumpApex: 1.1, gravity: 22, stepUp: 0.35, maxSlope: 50 };
 // Launch speed for the apex height under the worker's semi-implicit 60 Hz
@@ -33,8 +33,10 @@ export function createPlayer(settings) {
       const sp = (p.fly ? (p.sprinting ? 30 : 12) : p.crouching ? MOVE.crouch : p.sprinting ? MOVE.sprint : MOVE.walk) * wet;
       const s = Math.sin(p.yaw), c = Math.cos(p.yaw);
       // Forward is -z at yaw 0.
-      const vx = (mv.x * c - mv.y * s) * sp, vz = (-mv.x * s - mv.y * c) * sp;
+      let vx = (mv.x * c - mv.y * s) * sp, vz = (-mv.x * s - mv.y * c) * sp;
       p.speed = Math.hypot(vx, vz);
+      // Deep water pushes you downstream (up to about half the current).
+      if (p.wade > 0.3) { const f = riverFlow(cx, cz); if (f) { const k = Math.min(0.5, (p.wade - 0.3) * 0.6); vx += f[0] * k; vz += f[1] * k; } }
       if (enabled && input.pressed('jump')) p.jumpQueued = true;
       const jump = p.jumpQueued; p.jumpQueued = false;
       const vy = p.fly ? ((enabled && input.held('jump') ? 1 : 0) - (p.crouching ? 1 : 0)) * sp : 0;

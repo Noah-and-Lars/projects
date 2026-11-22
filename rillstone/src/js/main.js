@@ -44,7 +44,7 @@ import { createMachines } from './game/machines.js';
 import { createAutomation } from './game/automation.js';
 import { createHUD } from './ui/hud.js';
 import { createMenu } from './ui/menu.js';
-import { HALF, spawnPoint, height, ADIT, TOWN, HAMLET, CLAIMS, PUMPHOUSE, riverX, waterY, FALLS_Z, RIVER_HALF_WIDTH } from './world/valley.js';
+import { HALF, spawnPoint, height, ADIT, TOWN, HAMLET, CLAIMS, PUMPHOUSE, riverX, waterY, FALLS_Z, RIVER_HALF_WIDTH, riverFlow } from './world/valley.js';
 
 const TEST = new URLSearchParams(location.search).has('test');
 const SEED = urlSeed();
@@ -428,7 +428,9 @@ async function boot() {
   const scanCanvas = h('canvas', { id: 'scanner', width: 220, height: 220 });
   let last = performance.now(), acc = 0, simAcc = 0, fps = 0, fpsT = 0, frames = 0, netRate = 0, netLast = 0, netKB = 0, netBytesLast = 0;
   const timings = { physics: 0, sim: 0, render: 0 };
-  let wadeT = 0;
+  let wadeT = 0, flowT = 0;
+  // What floats: wood, canvas and sacks. Everything else sinks.
+  const FLOATS = new Set(['firewood', 'sack', 'bedroll', 'crate', 'bucket']);
   const controls = () => state.mode === 'play' && (input.locked || TEST);
   function simTick() {
     if (coop.isGuest()) return; // the host runs the world
@@ -501,6 +503,21 @@ async function boot() {
     if (!coop.isGuest()) heavy.update(dt);
     soundT -= dt; if (soundT <= 0) { soundT = 0.1; updateSound(dv); }
     camp.update(dt);
+    // River current (host or single player): floating things in the river
+    // ride the current downstream and drift toward a bank, where they wash
+    // up; ore, ingots, gems, clods and metal tools sink and stay put.
+    if (!coop.isGuest() && (flowT -= dt) <= 0) {
+      flowT = 0.2;
+      const list = [];
+      for (const e of items.ents.values()) {
+        if (e.loc !== 'loose' || !FLOATS.has(e.type) || (e.type === 'bucket' && e.data?.loads?.length)) continue;
+        const f = riverFlow(e.pos[0], e.pos[2]); if (!f) continue;
+        const wy = waterY(e.pos[2]); if (e.pos[1] > wy + 0.6) continue;
+        const side = Math.sign(e.pos[0] - riverX(e.pos[2])) || 1;
+        list.push({ id: e.id, y: wy - 0.05, vx: f[0] + side * 0.3, vz: f[1] });
+      }
+      if (list.length) physics.post({ op: 'flow', list });
+    }
     // Wading: a splash at your shins now and then while you move through water.
     if (!vehicles.driving && player.wade > 0.08 && player.speed > 0.8 && (wadeT -= dt) <= 0) {
       wadeT = player.sprinting ? 0.32 : 0.5;

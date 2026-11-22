@@ -24,6 +24,7 @@ const GROUPS = {
 let world, kcc, player = null;
 const vehicles = new Map(); // id -> { rb, vc, def, input, hold }
 const bodies = new Map();   // id -> { rb, col, sentAsleep }
+const flows = new Map();    // id -> { y, vx, vz, t } floating items in the river
 const statics = new Map();  // key -> collider
 const colliderOwner = new Map(); // collider handle -> body id
 let stepMs = 0;
@@ -140,6 +141,10 @@ const H = {
     return { ok: true };
   },
   removeVehicle(m) { const v = vehicles.get(m.id); if (!v) return { ok: true }; colliderOwner.delete(v.body.handle); world.removeVehicleController(v.vc); world.removeRigidBody(v.rb); vehicles.delete(m.id); return { ok: true }; },
+  // River current for floating items: [{ id, y (water surface), vx, vz }].
+  // Each step they're held at the surface and eased toward the current;
+  // an entry lapses if the main thread stops sending it (out of the water).
+  flow(m) { const t = performance.now(); for (const f of m.list) flows.set(f.id, { ...f, t }); return { ok: true }; },
   vehicleInput(m) { const v = vehicles.get(m.id); if (v) Object.assign(v.input, m.input); return { ok: true }; },
   // Cargo is data on the vehicle; its weight is added to the chassis.
   vehicleMass(m) { const v = vehicles.get(m.id); if (v) { v.extra = m.kg; v.rb.setAdditionalMass(m.kg, true); } return { ok: true }; },
@@ -297,12 +302,27 @@ function query(q) {
   return null;
 }
 
+function applyFlows() {
+  if (!flows.size) return;
+  const now = performance.now();
+  for (const [id, f] of flows) {
+    const b = bodies.get(id);
+    if (!b || now - f.t > 600) { flows.delete(id); continue; }
+    const rb = b.rb, t = rb.translation(), lv = rb.linvel(), sub = f.y - t.y;
+    if (sub < -0.25) continue; // above the water (on a bank)
+    // Buoyant spring to the surface, damped; horizontal drift toward the current.
+    const vy = lv.y + (Math.max(-2.5, Math.min(2.5, sub * 7)) - lv.y) * 0.12;
+    rb.setLinvel({ x: lv.x + (f.vx - lv.x) * 0.04, y: vy, z: lv.z + (f.vz - lv.z) * 0.04 }, true);
+    const av = rb.angvel(); rb.setAngvel({ x: av.x * 0.97, y: av.y * 0.97 + 0.004, z: av.z * 0.97 }, true);
+  }
+}
 function step(m) {
   const t0 = performance.now();
   const n = Math.max(0, Math.min(m.n ?? 1, 600));
   for (let i = 0; i < n; i++) {
     for (const v of vehicles.values()) driveVehicle(v);
     movePlayer(m.player);
+    applyFlows();
     world.step();
   }
   // Collect transforms of awake bodies, plus one final pose when a body

@@ -137,6 +137,15 @@ function flatRect(h, x, z, x0, z0, x1, z1, y, soft = 8) {
   return lerp(h, y, t);
 }
 
+// River current at a point: downstream (+z) along the channel, about
+// 1.1 m/s, and faster on the steep run below the Upper Falls.
+// Returns [vx, vz] in m/s, or null outside the river.
+export function riverFlow(x, z) {
+  if (Math.abs(x - riverX(z)) > RIVER_HALF_WIDTH(z) + 0.6) return null;
+  const dx = (riverX(z + 1) - riverX(z - 1)) / 2, l = Math.hypot(dx, 1);
+  const speed = z < FALLS_Z + 50 ? 2.0 : 1.1;
+  return [dx / l * speed, 1 / l * speed];
+}
 // Depth of river water over the bed at a point (0 out of the river).
 export function riverDepth(x, z) {
   if (Math.abs(x - riverX(z)) > RIVER_HALF_WIDTH(z) + 1.5) return 0;
