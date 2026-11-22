@@ -143,6 +143,9 @@ Millbrook sits across the bridge from the Gravel Bar.
 - **The Old Hauler.** F gets in and out, WASD drives, Space brakes and H
   (hold) unflips. Drop items onto the bed with G to carry them to town; E takes
   them out again. It burns charcoal: LMB with a sack on the truck refuels it.
+- **Barrow and chute.** A Barrow (General Store) carries 10 loads or 20
+  finds while you push it. A Chute (Millwright) is a slick steel ramp:
+  things dropped on its high end slide off the low end.
 - **Camp gear.** The General Store also sells:
   - a **Bedroll**: RMB on it at night sleeps until 06:00; in co-op, everyone
     has to be in a bed;

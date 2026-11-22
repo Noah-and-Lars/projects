@@ -16,11 +16,13 @@ export const TOOLS = {
   mallet: { name: 'Mallet', tier: 0, loads: 0, cooldown: 0.3, kg: 1.2, verb: 'lock' },
   wrench: { name: 'Wrench', tier: 0, loads: 0, cooldown: 0.5, kg: 0.8, verb: 'repair' },
   repairkit: { name: 'Repair Kit', tier: 0, loads: 0, cooldown: 0.8, kg: 3, verb: 'repair' },
+  // Pushed by hand: 10 loads or 20 finds (BUILD_BRIEF 3.5). It doesn't dig.
+  barrow: { name: 'Barrow', tier: 0, loads: 10, finds: 20, cooldown: 0.3, kg: 18 },
 };
 // A tool's effective stats: upgrades store tier/capacity/name on the entity.
 export const toolDef = (e) => (e && TOOLS[e.type] ? { ...TOOLS[e.type], ...(e.data?.tier ? { tier: e.data.tier } : {}), ...(e.data?.cap ? { loads: e.data.cap } : {}), name: e.data?.name || TOOLS[e.type].name } : null);
 // Collider half-extents for loose tools lying on the ground.
-export const TOOL_BOX = { shovel: [0.13, 0.06, 0.55], bucket: [0.18, 0.17, 0.18], pan: [0.24, 0.05, 0.24], pick: [0.32, 0.06, 0.12], mallet: [0.1, 0.06, 0.25], wrench: [0.05, 0.02, 0.2], repairkit: [0.18, 0.1, 0.11] };
+export const TOOL_BOX = { shovel: [0.13, 0.06, 0.55], bucket: [0.18, 0.17, 0.18], pan: [0.24, 0.05, 0.24], pick: [0.32, 0.06, 0.12], mallet: [0.1, 0.06, 0.25], wrench: [0.05, 0.02, 0.2], repairkit: [0.18, 0.1, 0.11], barrow: [0.33, 0.3, 0.85] };
 
 // Visual size of a nugget: real metal is small, so give it a floor so
 // small pieces stay visible and clickable (BUILD_BRIEF 3.3).
@@ -79,6 +81,7 @@ export function toolGeometry(type, data = {}) {
   if (type === 'mallet') return M.mallet();
   if (type === 'wrench') return M.wrench();
   if (type === 'repairkit') return M.repairKit();
+  if (type === 'barrow') return M.barrow(loads / cap, fill, data.contents?.length || 0);
   return new THREE.BoxGeometry(0.2, 0.2, 0.2);
 }
 export function clodGeometry(band) { return M.clod(BAND_DIRT[band] || BAND_DIRT[1]); }

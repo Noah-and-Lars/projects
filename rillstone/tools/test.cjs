@@ -153,7 +153,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       const R = __rill, H = R.hands, I = R.items, g = R.places.CLAIMS[0], vol = R.claims.volumes.get('gravel'); R.noRender(true);
       const sx = g.x0 + 3, sz = g.z1 - 3, top = g.top;
       const solid = () => { let n = 0; for (let i = 0; i < vol.dens.length; i++) if (vol.dens[i] > 0) n++; return n; };
-      for (const id of [H.hand, H.slot]) if (id) I.place(id, [g.cx, R.height(g.cx, g.cz) + 1, g.cz]); H.hand = H.slot = null;
+      const keep = [H.hand, H.slot]; H.hand = H.slot = null;
       const sh = H.give('shovel'); sh.data.loads.push({ band: 1, depth: 1 });
       const s0 = solid();
       H.shovelRmb({ kind: 'claim', vol, dist: 1.5, p: [sx, top, sz], n: [0, 1, 0] });
@@ -169,6 +169,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       const pile = [...I.ents.values()].find(e => e.type === 'dirtpile');
       const n0 = pile?.data.loads.length || 0;
       if (pile) { const l = I.takeLoad(pile.id); if (l) sh.data.loads.push(l); }
+      I.remove(sh.id); H.hand = keep[0]; H.slot = keep[1]; // give the player their own tools back
       return { filled: s1 - s0, levelled: s2 - s1, pile: n0, scooped: pile ? n0 - (I.get(pile.id)?.data.loads.length ?? 0) : 0 };
     });
     check(terr.filled > 0 && terr.levelled < 0 && terr.pile >= 12 && terr.scooped === 1, `RMB fill adds ground (+${terr.filled} voxels), RMB level cuts the mound (${terr.levelled}); 14 clods merged into a ${terr.pile}-load dirt pile, one load scooped back`);
@@ -242,7 +243,8 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       const rot = H.dropRot.join(','), ring = [!!H.ringPos, H.ringOk, H.precise, R.items.get(id)?.type]; await step('drop', false);
       const e = R.items.get(id), loc = e.loc; H.dropRot = [0, 0, 0];
       // B over the dropped nugget opens its look-up entry.
-      R.aimAt(e.pos[0], e.pos[1], e.pos[2]); await R.refreshAim(); await R.frames(3);
+      R.aimAt(e.pos[0], e.pos[1], e.pos[2]); await R.refreshAim();
+      for (let i = 0; i < 30 && !H.hover?.ref; i++) await R.frames(1);
       await step('guide', true); await step('guide', false);
       const panel = R.panels.current; R.panels.close();
       H.pickup(); R.noRender(false);
@@ -789,7 +791,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       R.state.time = 0.5; H.secHook(info, H); out.dayRefused = /only sleep at night/.test(said.at(-1));
       R.state.time = 0.9; const d0 = R.state.day; H.secHook(info, H); out.slept = R.state.day - d0 === 1 && R.state.time === 0.25;
       const n = I.spawn('nugget', [x - 1.5, R.height(x - 1.5, z + 1) + 0.3, z + 1], { item: { material: 'gold', kg: 0.5, stage: 'ore' } });
-      for (const id of [H.hand, H.slot]) if (id) I.place(id, [g.cx, R.height(g.cx, g.cz) + 1, g.cz]); H.hand = H.slot = null;
+      const keep = [H.hand, H.slot]; H.hand = H.slot = null;
       const sc = H.give('scale'); H.useHook(sc, { kind: 'item', ent: n, dist: 1 }, H); out.scale = said.at(-1);
       const sb = R.machines.place('sawbench', [x + 2, R.height(x + 2, z), z], 0, { cutKg: 2 });
       I.remove(H.hand); H.hand = null; const ing = H.give('nugget', {}); ing.item = { material: 'iron', stage: 'ingot', kg: 5 };
@@ -806,6 +808,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       await R.tick(40);
       out.scrap = R.workshop.scrap(); out.scrapSaid = said.at(-1);
       for (const m of [sb, kiln, sm]) R.machines.remove(m.id);
+      if (H.hand) I.remove(H.hand); H.hand = keep[0]; H.slot = keep[1];
       R.hud.toast = t0; R.state.time = 0.45;
       return out;
     });

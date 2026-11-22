@@ -36,6 +36,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     else if (e.type === 'pick') { held3d.rotation.set(0.35, Math.PI + 0.2, 0.25); held3d.position.set(0, 0.1, -0.1); }
     else if (e.type === 'pan') { held3d.position.set(-0.02, -0.06, -0.02); held3d.rotation.set(0.4, 0, 0); held3d.scale.setScalar(0.72); }
     else if (e.type === 'bucket') held3d.position.set(0, -0.08, 0);
+    else if (e.type === 'barrow') { held3d.rotation.set(0.05, Math.PI, 0); held3d.position.set(-0.34, -0.72, -0.55); held3d.scale.setScalar(0.85); } // pushed: handles in your hands, the tray out in front
     holder.add(held3d);
   }
   // Pan contents drawn as tiny nuggets in the pan.
@@ -200,7 +201,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
   H.shovelRmb = shovelRmb;
   function addLoad(e, load) { e.data.loads.push(load); items.refresh(e.id); }
   function dumpClod(load, p, anim = true) { items.spawn('clod', [p[0], p[1] + 0.2, p[2]], { data: { band: load.band, depth: load.depth, loads: [load], ore: !!load.ore } }); audio.play('pour'); if (anim) H.play('dump'); fx.burst(p, BAND_DIRT[load.band], 8, { speed: 1, size: 0.05, life: 0.4, up: 0.6 }); }
-  function containerCanTake(e) { return e && (e.type === 'pan' || e.type === 'bucket') && e.data.loads.length < toolDef(e).loads && !(e.type === 'pan' && e.data.contents.length >= PAN_FINDS); }
+  function containerCanTake(e) { return e && (e.type === 'pan' || e.type === 'bucket' || (e.type === 'barrow' && !e.data.contents?.length)) && e.data.loads.length < toolDef(e).loads && !(e.type === 'pan' && e.data.contents.length >= PAN_FINDS); }
 
   // Wash one load in the pan: one loot roll per load (BUILD_BRIEF 3.4).
   function wash(pan) {
@@ -259,6 +260,19 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
         if (H.vehicles.refuel(info.id)) { items.remove(e.id); H.hand = null; audio.play('pour'); H.play('pour'); hud.toast('Topped up with charcoal'); return true; }
         say('The hopper is already full'); return;
       }
+      return;
+    }
+    // The barrow: dump its loads one at a time, or tip out its finds.
+    if (e.type === 'barrow') {
+      const loads = e.data.loads;
+      if (loads.length && info.kind === 'item' && near && containerCanTake(info.ent) && info.ent.id !== e.id) {
+        const t = info.ent;
+        while (loads.length && t.data.loads.length < toolDef(t).loads) t.data.loads.push(loads.pop());
+        items.refresh(t.id); items.refresh(e.id); audio.play('pour'); return true;
+      }
+      if (loads.length && near && info.kind !== 'water') { dumpClod(loads.pop(), info.p, false); items.refresh(e.id); return true; }
+      if (e.data.contents?.length && near && info.kind !== 'water') return tipOut(e, info.p);
+      if (near) say(loads.length || e.data.contents?.length ? 'Not into the river' : 'The barrow is empty: pour loads in with a shovel, or E finds into it');
       return;
     }
     if (e.type === 'shovel' || e.type === 'bucket' || e.type === 'pan') {
@@ -334,9 +348,9 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       if (TOOLS[cur.type] && !H.slot) { H.slot = H.hand; H.hand = null; }
       else if (target.type === 'nugget') {
         // A find goes into the pan, held or in the swap slot.
-        const pan = [cur, H.slot ? items.get(H.slot) : null].find(p => p && p.type === 'pan' && !p.data.loads.length && p.data.contents.length < PAN_FINDS);
+        const pan = [cur, H.slot ? items.get(H.slot) : null].find(p => p && ((p.type === 'pan' && !p.data.loads.length && p.data.contents.length < PAN_FINDS) || (p.type === 'barrow' && !p.data.loads.length && p.data.contents.length < TOOLS.barrow.finds)));
         if (!pan) { say('Hands full — G to drop, Q to swap'); audio.play('error'); return false; }
-        items.take(target.id, 'contained', pan.id); pan.data.contents.push(target.id); items.refresh(pan.id); audio.play('pickup'); H.play('grab'); say(`Into the pan (${pan.data.contents.length}/${PAN_FINDS})`); return true;
+        items.take(target.id, 'contained', pan.id); pan.data.contents.push(target.id); items.refresh(pan.id); audio.play('pickup'); H.play('grab'); say(`Into the ${pan.type} (${pan.data.contents.length}/${pan.type === 'barrow' ? TOOLS.barrow.finds : PAN_FINDS})`); return true;
       } else { say('Hands full — G to drop, Q to swap'); audio.play('error'); return false; }
     }
     if (target.type === 'pile') { const n = items.takeFromPile(target.id); H.hand = n.id; audio.play('pickup'); H.play('equip'); return true; }
@@ -393,6 +407,12 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
         else if (finds && !loads && near && info.kind !== 'water') parts.push(`${k('LMB')} tip out ${finds} find${finds > 1 ? 's' : ''}`);
         else if (loads) parts.push('Dip the pan in the river');
         else if (finds) parts.push(`${finds} find${finds > 1 ? 's' : ''} in the pan · tip them out on dry ground or a counter`);
+      } else if (e.type === 'barrow') {
+        const n = e.data.loads.length, f = e.data.contents?.length || 0;
+        if (n && near && info.kind === 'item' && containerCanTake(info.ent)) parts.push(`${k('LMB')} pour into ${TOOLS[info.ent.type].name.toLowerCase()}`);
+        else if (n && near) parts.push(`${k('LMB')} dump a load (${n}/${def.loads})`);
+        else if (f && near) parts.push(`${k('LMB')} tip out ${f} find${f > 1 ? 's' : ''}`);
+        else parts.push(`Empty barrow: shovel loads in, or E finds into it`);
       } else if (def && def.loads) {
         if (info.kind === 'item' && info.ent?.type === 'dirtpile' && near && e.data.loads.length < def.loads) parts.push(`${k('LMB')} scoop a load`);
         else if (info.kind === 'claim' && near && e.data.loads.length < def.loads) parts.push(`${k('LMB')} dig`);

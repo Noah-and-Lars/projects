@@ -5,6 +5,10 @@
 // a minimum level, so nights and caves stay readable (BUILD_BRIEF 3.1).
 import * as THREE from 'three';
 import { CSM } from 'three/addons/csm/CSM.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 export const DAY_SECONDS = 24 * 60;
 const MIN_AMBIENT = 0.9;
@@ -177,10 +181,26 @@ export function createScene(canvas, settings) {
     env.waterLight = 0.35 + 0.65 * Math.min(1, Math.max(0, (e + 0.1) / 0.35));
   }
 
+  // Selective bloom (BUILD_BRIEF 3.1): a high threshold in linear HDR, so
+  // only what is brighter than white glows (molten metal, hot ingots, gems,
+  // glimmerite). Off on Low graphics. The composer renders to a 4x MSAA
+  // half-float target so edges stay as smooth as the plain renderer's.
+  let composer = null;
+  function setupBloom() {
+    if (composer) { composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); composer = null; }
+    if (settings.graphics === 'low') return;
+    const pr = renderer.getPixelRatio(), w = Math.floor(innerWidth * pr), h = Math.floor(innerHeight * pr);
+    const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: 4 });
+    composer = new EffectComposer(renderer, rt);
+    composer.addPass(new RenderPass(scene, camera));
+    composer.addPass(new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), 0.55, 0.35, 1.05));
+    composer.addPass(new OutputPass());
+  }
   function resize() {
     const pr = Math.min(devicePixelRatio, settings.graphics === 'low' ? 1 : settings.graphics === 'medium' ? 1.5 : 2);
     renderer.setPixelRatio(pr);
     renderer.setSize(innerWidth, innerHeight, false);
+    if (composer) { composer.setPixelRatio(pr); composer.setSize(innerWidth, innerHeight); }
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     if (csm) csm.updateFrustums();
@@ -188,15 +208,17 @@ export function createScene(canvas, settings) {
   addEventListener('resize', resize);
   setupShadows();
   resize();
+  setupBloom();
 
   return {
     renderer, scene, camera, hemi, sky, materials, env, grain,
     setTime, resize,
-    applySettings() { camera.fov = settings.fov; setupShadows(); resize(); },
+    applySettings() { camera.fov = settings.fov; setupShadows(); resize(); setupBloom(); },
+    get bloom() { return !!composer; },
     render() {
       sky.position.copy(camera.position);
       if (csm) csm.update();
-      renderer.render(scene, camera);
+      if (composer) composer.render(); else renderer.render(scene, camera);
     },
   };
 }

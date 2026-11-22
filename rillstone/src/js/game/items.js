@@ -58,6 +58,7 @@ export function createItems({ scene, physics, materials }) {
   }
 
   const isNugget = (e) => e.type === 'nugget';
+  const moving = new Set(), _q2 = new THREE.Quaternion();
   function shapeOf(e) {
     if (isNugget(e)) { const s = nuggetSize(e.item.kg, e.item.material, e.item.stage) * 0.5; if (e.item.stage === 'ingot') return { type: 'box', hx: s * 0.66, hy: s * 0.16, hz: s * 0.34 }; return { type: 'box', hx: s * 0.95, hy: s * 0.65, hz: s * 0.95 }; }
     if (e.type === 'clod') return { type: 'box', hx: 0.18, hy: 0.12, hz: 0.18 };
@@ -327,10 +328,31 @@ const PLAIN_KEYS = new Set(['material', 'stage', 'kg', 'hotUntil']);
       return best;
     },
     // Apply a pose from the host (guests).
+    // Guests: a pose from the host's snapshot becomes a target the item
+    // glides to (smooth() each frame), instead of jumping 12 times a second.
+    // Big jumps (a teleport, a respawn) snap.
     setPose(id, p, q) {
       const e = ents.get(id); if (!e) return;
-      e.pos[0] = p[0]; e.pos[1] = p[1]; e.pos[2] = p[2]; if (q) { e.quat[0] = q[0]; e.quat[1] = q[1]; e.quat[2] = q[2]; e.quat[3] = q[3]; }
-      if (e.loc === 'loose' || e.loc === 'belt') api.showAt(e);
+      const far = Math.hypot(p[0] - e.pos[0], p[1] - e.pos[1], p[2] - e.pos[2]) > 4 || !(e.loc === 'loose' || e.loc === 'belt');
+      if (far) {
+        e.pos[0] = p[0]; e.pos[1] = p[1]; e.pos[2] = p[2]; if (q) { e.quat[0] = q[0]; e.quat[1] = q[1]; e.quat[2] = q[2]; e.quat[3] = q[3]; }
+        moving.delete(id); e._tp = null;
+        if (e.loc === 'loose' || e.loc === 'belt') api.showAt(e);
+        return;
+      }
+      e._tp = p.slice(); e._tq = q ? q.slice() : null; moving.add(id);
+    },
+    smooth(dt) {
+      const k = 1 - Math.exp(-dt * 16);
+      for (const id of moving) {
+        const e = ents.get(id);
+        if (!e || !e._tp || !(e.loc === 'loose' || e.loc === 'belt')) { moving.delete(id); continue; }
+        const t = e._tp; let d = 0;
+        for (let i = 0; i < 3; i++) { const v = t[i] - e.pos[i]; d += v * v; e.pos[i] += v * k; }
+        if (e._tq) { _q.fromArray(e.quat).slerp(_q2.fromArray(e._tq), k); e.quat[0] = _q.x; e.quat[1] = _q.y; e.quat[2] = _q.z; e.quat[3] = _q.w; }
+        api.showAt(e);
+        if (d < 1e-6) { moving.delete(id); e._tp = null; }
+      }
     },
     // Create or update an entity from the host's data (guests).
     upsert(d) {

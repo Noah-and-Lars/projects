@@ -70,6 +70,9 @@ const H = {
     const d = RAPIER.ColliderDesc.cuboid(m.hx, m.hy, m.hz).setTranslation(m.pos[0], m.pos[1], m.pos[2]).setCollisionGroups(GROUPS[m.group || 'terrain']);
     if (m.quat) d.setRotation({ x: m.quat[0], y: m.quat[1], z: m.quat[2], w: m.quat[3] });
     if (m.sensor) d.setSensor(true);
+    // Slick surfaces (a chute): low friction, combined by the minimum so
+    // items slide whatever their own friction.
+    if (m.friction != null) d.setFriction(m.friction).setFrictionCombineRule(RAPIER.CoefficientCombineRule.Min);
     const col = world.createCollider(d);
     statics.set(m.key, col);
     if (m.owner != null) colliderOwner.set(col.handle, m.owner);

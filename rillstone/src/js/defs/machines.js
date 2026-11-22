@@ -132,6 +132,19 @@ export const MACHINES = {
       bbox(0.2, 0.18, 0.12, 0.6, 1.06, 0.3, STEEL, 0.02, 6), rod([0.5, 1.12, 0.38], [0.7, 1.12, 0.38], 0.012, STEEL),
       box(0.3, 0.02, 0.2, 0.2, 0.98, -0.2, 0x5a4a3a, 0.05, 7),
     ]) },
+  // Chute (BUILD_BRIEF 3.5): a static, slick ramp. Things dropped on the
+  // high end slide down and off the low end (+z); no power, no belt.
+  chute: { name: 'Chute', family: 'extraction', role: 'none', cell: [2, 4], slick: 0.02,
+    boxes: [[0, 0.72, 0, 0.32, 0.025, 1.0, 0.36], [-0.34, 0.86, 0, 0.02, 0.12, 1.0, 0.36], [0.34, 0.86, 0, 0.02, 0.12, 1.0, 0.36]], sockets: [],
+    build: () => {
+      const tilt = (g) => g.rotateX(0.36).translate(0, 0.72, 0);
+      return merge([
+        P(tilt(new THREE.BoxGeometry(0.64, 0.04, 2.0)), STEEL, 0.05, 1),
+        P(tilt(new THREE.BoxGeometry(0.04, 0.24, 2.0).translate(-0.34, 0.14, 0)), STEEL, 0.05, 2),
+        P(tilt(new THREE.BoxGeometry(0.04, 0.24, 2.0).translate(0.34, 0.14, 0)), STEEL, 0.05, 3),
+        ...[[-0.3, -0.8, 1.05], [0.3, -0.8, 1.05], [-0.3, 0.8, 0.45], [0.3, 0.8, 0.45]].map(([x, z, h]) => box(0.06, h, 0.06, x, h / 2, z, WOOD_D, 0.05, 4)),
+      ]);
+    } },
   // Saw Bench (BUILD_BRIEF 3.5): splits an ingot or gem by a set weight.
   sawbench: { name: 'Saw Bench', family: 'heat', role: 'none', cell: [2, 2], accepts: 'ingot+gem',
     boxes: [[0, 0.45, 0, 0.45, 0.45, 0.3]], sockets: [],

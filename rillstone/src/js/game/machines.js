@@ -79,6 +79,13 @@ export function createMachines({ scene, physics, materials, items, claims, water
     const def = MACHINES[m.def], ops = [];
     def.boxes.forEach((b, i) => {
       const c = toWorld(m, [b[0], b[1], b[2]]);
+      // A tilted box (b[6]: pitch about the machine's local x, e.g. a chute
+      // bed) goes in rotated; plain boxes swap extents for 90° turns.
+      if (b[6]) {
+        const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(b[6], rotY(m.rot), 0, 'YXZ'));
+        ops.push({ op: 'setStaticBox', key: `m${m.id}:${i}`, hx: b[3], hy: b[4], hz: b[5], pos: c, quat: [q.x, q.y, q.z, q.w], owner: m.id, group: 'machine', friction: def.slick ?? undefined, remove });
+        return;
+      }
       const swap = m.rot % 2 === 1;
       ops.push({ op: 'setStaticBox', key: `m${m.id}:${i}`, hx: swap ? b[5] : b[3], hy: b[4], hz: swap ? b[3] : b[5], pos: c, owner: m.id, group: 'machine', remove });
     });
@@ -532,6 +539,28 @@ export function createMachines({ scene, physics, materials, items, claims, water
   // ---- Placement ghost (holding a crate) ----
   let ghost = null, ghostDef = null;
   const placeRot = { r: 0 };
+  // Socket snapping (BUILD_BRIEF 4): an item socket of the ghost within
+  // 0.6 m of a facing, opposite socket on a placed machine pulls the ghost
+  // onto it, so belts, bins and furnaces line up and link.
+  function snapToSocket(defId, pos, rot) {
+    const gdef = MACHINES[defId], fake = { pos, rot };
+    let best = null, bd = 0.6;
+    for (const gs of gdef.sockets || []) {
+      if (gs.kind !== 'in' && gs.kind !== 'out') continue;
+      const gp = toWorld(fake, gs.p), gd = dirWorld(fake, gs.d);
+      for (const m of list.values()) {
+        if (m.run || Math.hypot(m.pos[0] - pos[0], m.pos[2] - pos[2]) > 5) continue;
+        for (const ms of MACHINES[m.def].sockets || []) {
+          if (ms.kind !== (gs.kind === 'in' ? 'out' : 'in')) continue;
+          const md = dirWorld(m, ms.d);
+          if (gd[0] * md[0] + gd[2] * md[2] > -0.9) continue; // they must face each other
+          const mp = toWorld(m, ms.p), dx = mp[0] - gp[0], dy = mp[1] - gp[1], dz = mp[2] - gp[2], d = Math.hypot(dx, dz);
+          if (d < bd && Math.abs(dy) < 0.6) { bd = d; best = [dx, dy, dz]; }
+        }
+      }
+    }
+    return best ? [pos[0] + best[0], pos[1] + best[1], pos[2] + best[2]] : pos;
+  }
   api.ghost = (defId, aim, input, dt) => {
     if (!defId) { if (ghost) { scene.remove(ghost); ghost = null; ghostDef = null; } return null; }
     if (defId !== ghostDef) {
@@ -544,6 +573,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
     let pos = [Math.round(aim.p[0] / GRID) * GRID, aim.p[1], Math.round(aim.p[2] / GRID) * GRID];
     // Face snapping: aiming at the side of a machine places flush against it.
     if (aim.machine && Math.abs(aim.n[1]) < 0.5) { pos[0] = Math.round((aim.p[0] + aim.n[0] * 0.5) / GRID) * GRID; pos[2] = Math.round((aim.p[2] + aim.n[2] * 0.5) / GRID) * GRID; pos[1] = list.get(aim.machine)?.pos[1] ?? pos[1]; }
+    pos = snapToSocket(defId, pos, placeRot.r);
     const why = requirement(defId, pos, placeRot.r);
     ghost.position.fromArray(pos); ghost.rotation.y = rotY(placeRot.r);
     api._ghostPos = pos; api._ghostWhy = why;

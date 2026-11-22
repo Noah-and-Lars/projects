@@ -379,3 +379,30 @@ export function gemCut(form) {
   if (form === 'star') { const s = new THREE.Shape(); for (let i = 0; i < 12; i++) { const r = i % 2 ? 0.24 : 0.5, a = i * Math.PI / 6; s[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r); } const g = new THREE.ExtrudeGeometry(s, { depth: 0.2, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.05, bevelSegments: 1 }); g.rotateX(-Math.PI / 2); return P(g, 0xffffff, 0.04); }
   return cutGem();
 }
+
+// ---- Barrow (BUILD_BRIEF 3.5 logistics): a steel tray on an ash frame with
+// one spoked wheel at the front (+z) and two handles at the back (-z).
+export function barrow(fillFrac = 0, fill = 0, finds = 0) {
+  const TRAY = 0x5f7f6a, TRAY_IN = 0x4a6655;
+  const parts = [];
+  // Tray: a tapered open box made of five plates.
+  const plate = (w, h, x, y, z, rx, ry, hex, seed) => P(place(new THREE.BoxGeometry(w, h, 0.02), x, y, z, rx, ry, 0), hex, 0.06, seed);
+  parts.push(P(place(new THREE.BoxGeometry(0.46, 0.02, 0.62), 0, 0.42, 0.05), TRAY_IN, 0.06, 1));
+  parts.push(plate(0.62, 0.3, 0, 0.56, 0.45, -0.5, 0, TRAY, 2), plate(0.58, 0.28, 0, 0.55, -0.3, 0.35, 0, TRAY, 3));
+  for (const s of [-1, 1]) parts.push(P(place(new THREE.BoxGeometry(0.02, 0.3, 0.8), s * 0.3, 0.56, 0.06, 0, 0, s * 0.3), TRAY, 0.06, 4));
+  // Frame and handles.
+  for (const s of [-1, 1]) {
+    parts.push(rod([s * 0.2, 0.36, 0.55], [s * 0.26, 0.42, -0.95], 0.022, WOOD));
+    parts.push(rod([s * 0.26, 0.42, -0.95], [s * 0.27, 0.43, -1.1], 0.026, WOOD_DARK));
+    parts.push(rod([s * 0.2, 0.38, -0.35], [s * 0.2, 0.0, -0.4], 0.018, IRON));
+  }
+  // Wheel: tyre, hub and spokes.
+  parts.push(P(place(new THREE.TorusGeometry(0.17, 0.04, 6, 16), 0, 0.2, 0.6, 0, Math.PI / 2, 0), 0x2a2a2a, 0.08, 5));
+  parts.push(P(place(new THREE.CylinderGeometry(0.035, 0.035, 0.12, 8), 0, 0.2, 0.6, 0, 0, Math.PI / 2), IRON, 0.05, 6));
+  for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; parts.push(rod([0, 0.2, 0.6], [0, 0.2 + Math.sin(a) * 0.15, 0.6 + Math.cos(a) * 0.15], 0.008, STEEL)); }
+  for (const s of [-1, 1]) parts.push(rod([s * 0.2, 0.36, 0.55], [s * 0.04, 0.2, 0.6], 0.015, IRON));
+  // Load: a heap of dirt that rises with the fill.
+  if (fillFrac > 0) parts.push(P(place(new THREE.SphereGeometry(0.3, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0, 0.42 + fillFrac * 0.14, 0.06, 0, 0, 0, 0.95, 0.35 + fillFrac * 0.6, 1.15), fill || 0x8a6a44, 0.15, 7));
+  else if (finds) for (let i = 0; i < Math.min(finds, 8); i++) parts.push(P(place(new THREE.DodecahedronGeometry(0.035, 0), (i % 3 - 1) * 0.12, 0.47, (Math.floor(i / 3) - 1) * 0.14), 0xb8a070, 0.2, 10 + i));
+  return merge(parts);
+}

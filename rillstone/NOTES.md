@@ -962,3 +962,43 @@ so far:
   - starstone: spiky star cluster, six-point star cut, ★.
   - Glimmerite and emberite ingots no longer reuse silver's and iron's
     shapes: glimmerite is a triangular prism, emberite a stepped block.
+- **Barrow (§3.5):**
+  - §150 at the General Store, held as a tool and pushed in front of you;
+  - holds 10 loads (pour them in with a shovel, bucket or pan) or 20 finds
+    (E on a find puts it in);
+  - LMB dumps a load or tips the finds out; it doesn't dig;
+  - truck-hitched carts are not done: the truck bed and the barrow cover
+    hauling.
+- **Chute (§3.5):**
+  - §90: a static steel ramp, 2 m long at 20°, with low-friction tilted
+    colliders (a new tilted-box option on machine colliders, plus a
+    friction setting on static boxes in the physics worker);
+  - things dropped on the high end slide off the low end.
+- **Socket snapping (§4):** the placement ghost snaps onto a placed
+  machine's facing, opposite item socket within 0.6 m, so belts, bins and
+  furnaces line up and link.
+- **Guest smoothing (§7):** guests now glide items to each snapshot pose,
+  with exponential smoothing (about 60 ms), instead of jumping 12 times a
+  second. Moves over 4 m still snap.
+- **Bloom (§3.1):**
+  - an UnrealBloomPass with a threshold above white (1.05 in linear HDR),
+    so only emissive things glow: molten metal, hot ingots, glimmerite and
+    gems;
+  - it renders to a 4× MSAA half-float target, keeping edges as smooth as
+    before;
+  - on at Medium and High, off at Low.
+- **Not done, with reasons:**
+  - **Machine rotation on three axes (§4):** machines only turn about the
+    vertical. Their hoppers, spouts, water and the belt surface assume an
+    upright machine, so pitch and roll would make them meaningless. Held
+    items turn on all three axes (hold G).
+  - **Placement distance on the wheel for crates:** the ghost goes where
+    you aim (up to 6 m), and the wheel sets drop reach for held items.
+  - **Network encoding (§7):** poses go as rounded JSON numbers, not
+    quantised i16 or smallest-three. At about 6.5 KB/s with four players it
+    is well inside budget (see benchmark 5).
+  - **Belt items as lane parameters:** belt items still go as poses
+    (within 60 m of a guest).
+  - **Pacing test (§11 M6):** it fast-forwards each tier's machines rather
+    than playing contracts, Standing and blueprints in order. The
+    progression gates are covered by the `--progress` checks instead.

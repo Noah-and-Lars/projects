@@ -458,6 +458,7 @@ async function boot() {
     if (!coop.isGuest()) heavy.update(dt);
     soundT -= dt; if (soundT <= 0) { soundT = 0.1; updateSound(dv); }
     camp.update(dt);
+    if (coop.isGuest()) items.smooth(dt);
     progress.update(dt, dv ? dv.group.position.toArray() : camera.position.toArray(), { scanner: !!dv?.def.scanner, guest: coop.isGuest() });
     workshop.update(dt);
     hud.hotbar([slotCard(items, hands.hand), slotCard(items, hands.slot)]);
