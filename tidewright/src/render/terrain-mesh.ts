@@ -1,6 +1,6 @@
 // Island terrain mesh (toon, vertex colours, chart contour lines) and the stylised sea.
 import * as THREE from 'three';
-import type { Terrain } from '../sim-core/terrain';
+import { fbm, type Terrain } from '../sim-core/terrain';
 import { toonRamp } from './materials';
 
 const SAND = new THREE.Color('#e3cf9a');
@@ -32,6 +32,8 @@ export function buildTerrainMesh(t: Terrain): THREE.Mesh {
         if (slope > 0.55) c.lerp(ROCK, Math.min(1, (slope - 0.55) * 3));
         if (h > 70) c.lerp(SNOWCAP, Math.min(1, (h - 70) / 12));
       }
+      // Patchy meadow tones so slopes read at speed.
+      if (h > 2.2) { const v = fbm(x / 38, z / 38, 99, 3); c.multiplyScalar(0.86 + 0.26 * v); }
       const dp = Math.hypot(x - t.pad.x, z - t.pad.z);
       if (dp < t.pad.r) c.copy(PAD);
       col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
@@ -127,7 +129,8 @@ export function buildSea(t: Terrain): { mesh: THREE.Mesh; update(time: number): 
         // Animated depth contours drifting toward shore
         float c = fract(depth * 9.0 + uTime * 0.07);
         float w = fwidth(depth * 9.0) * 1.2;
-        float line = (1.0 - smoothstep(0.0, w + 0.02, c)) * (1.0 - smoothstep(0.35, 0.95, depth));
+        float distFade = 1.0 - smoothstep(150.0, 700.0, length(vW - cameraPosition));
+        float line = (1.0 - smoothstep(0.0, w + 0.02, c)) * (1.0 - smoothstep(0.35, 0.95, depth)) * distFade * step(w, 0.4);
         // Surf line at the shore
         float surf = (1.0 - smoothstep(0.0, 0.035 + 0.01 * sin(uTime * 1.3 + vW.x * 0.05), depth)) * inside;
         col = mix(col, uLine, max(line * 0.55, surf * 0.85));
@@ -135,7 +138,7 @@ export function buildSea(t: Terrain): { mesh: THREE.Mesh; update(time: number): 
         vec2 gpos = abs(fract(vW.xz / 100.0 + 0.5) - 0.5) * 100.0;
         float gw = fwidth(vW.x) * 1.0;
         float grid = 1.0 - smoothstep(gw * 0.5, gw * 1.5, min(gpos.x, gpos.y));
-        col = mix(col, uLine, grid * 0.12 * smoothstep(0.4, 1.0, depth));
+        col = mix(col, uLine, grid * 0.12 * smoothstep(0.4, 1.0, depth) * distFade);
         float dist = length(vW - cameraPosition);
         float fog = smoothstep(uFogNear, uFogFar, dist);
         gl_FragColor = vec4(mix(col, uFogColor, fog), 1.0);
