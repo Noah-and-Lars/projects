@@ -33,9 +33,19 @@ export function nuggetSize(kg, material, stage) {
 }
 
 // ---- Meshes (unit-sized; scaled per instance) ----
-export function nuggetGeometry(kind, seed = 3, shape = '') {
+// Shape per metal, so materials read without colour (BUILD_BRIEF M8).
+export const FORMS = {
+  copper: { nugget: 'lump', ingot: 'round', glyph: '●' }, iron: { nugget: 'block', ingot: 'bar', glyph: '■' },
+  silver: { nugget: 'flake', ingot: 'hex', glyph: '⬢' }, gold: { nugget: 'pebble', ingot: 'trap', glyph: '▲' },
+  glimmerite: { nugget: 'crystal', ingot: 'hex', glyph: '✦' }, emberite: { nugget: 'shard', ingot: 'bar', glyph: '✸' },
+  quartz: { glyph: '◇' }, garnet: { glyph: '◆' }, peridot: { glyph: '◆' }, aquamarine: { glyph: '◆' }, starstone: { glyph: '★' },
+};
+export function nuggetGeometry(kind, seed = 3, shape = '', material = '') {
+  const F = FORMS[material] || {};
   if (shape === 'cut') return M.cutGem();
-  if (shape === 'ingot' || shape === 'hot') return M.ingot();
+  if (shape === 'ingot' || shape === 'hot') return M.ingot(F.ingot);
+  if (F.nugget === 'crystal') { const g = M.crystals(seed, 4); g.scale(0.85, 0.85, 0.85); return g; }
+  if (kind === 'metal') return M.nugget(seed, F.nugget);
   if (kind === 'gem' || kind === 'fuel') { const g = M.crystals(seed, kind === 'gem' ? 3 : 5); g.scale(0.9, 0.9, 0.9); return g; }
   return M.nugget(seed);
 }

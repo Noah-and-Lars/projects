@@ -31,6 +31,10 @@ import { PUMP_STAGES } from './defs/progression.js';
 import { createProgress } from './game/progress.js';
 import { createWorkshop } from './game/workshop.js';
 import { createHeavy } from './game/heavy.js';
+import { createNet } from './net/net.js';
+import { createCoop } from './net/coop.js';
+import { createGuide } from './game/guide.js';
+import { createMap } from './game/map.js';
 import { h } from './ui/dom.js';
 import { createBed, slotCard } from './game/bed.js';
 import { createMachines } from './game/machines.js';
@@ -83,7 +87,8 @@ async function boot() {
   const items = createItems({ scene, physics, materials: view.materials });
   physics.onLost = (id) => { const s = spawnPoint(); if (items.get(id)) { physics.removeBody(id); const e = items.get(id); e.loc = 'held'; items.place(id, [s.x + 1, height(s.x + 1, s.z) + 0.5, s.z]); } };
   const lootRng = mulberry32((SEED * 2654435761) ^ 0x10ad);
-  const hands = createHands({ scene, camera, physics, items, claims, water, fx, audio, hud, rng: lootRng, materials: view.materials });
+  const handsArgs = { scene, camera, physics, items, claims, water, fx, audio, hud, rng: lootRng, materials: view.materials };
+  const hands = createHands(handsArgs);
 
   const economy = createEconomy(mulberry32((SEED * 31 + 7) >>> 0)); economy.init();
   hands.owns = (id) => economy.owns(id);
@@ -141,13 +146,46 @@ async function boot() {
   const workshop = createWorkshop({ scene, physics, materials: view.materials, items, economy, town, hud, audio, panels, fx, getStats: () => ({ playTime: state.playTime }) });
 
   const state = { mode: 'title', time: 0.32, day: 1, simTick: 0, playing: false, slot: 1, playTime: 0, autosaveT: 0 };
+  // Co-op (M7): rooms over the arcade realtime server; this browser hosts or joins.
+  const net = createNet();
+  const coop = createCoop({ net, scene, camera, physics, items, hands, machines, vehicles, economy, town, workshop, heavy, claims, hud, audio, panels, bed, auto, player, state, input, saves, materials: view.materials,
+    makeHands: (o) => createHands({ ...handsArgs, ...o }),
+    snapshot: () => snapshot(), restore: (s) => restore(s), teleport: (x, y, z, yaw) => teleport(x, y, z, yaw),
+    onJoined: () => { panels.close(); play(); },
+    onHostLeft: () => { const body = h('div', {}, h('p', {}, 'The host left, so this co-op session has ended. Their save holds the world.')); panels.show('hostleft', 'Host left', body, { closeLabel: 'Back to the title' }); const close = panels.close; panels.close = () => { panels.close = close; location.reload(); }; },
+    onMembers: () => { if (panels.current === 'coop') openCoop(); },
+  });
+  const guide = createGuide({ hud, panels, economy, hands, items, machines, vehicles, audio });
+  const map = createMap({ panels, economy, vehicles, player, coop });
+  function openCoop() {
+    const members = net.members.map(m => h('div', { class: 'entry' }, h('b', {}, (m.n || 'Miner') + (m.id === net.id ? ' (you)' : '')), h('span', { class: 'pill' }, m.h ? 'Host' : 'Guest')));
+    let body;
+    if (coop.role === 'off') {
+      const inp = h('input', { type: 'text', maxlength: 5, placeholder: 'CODE', style: { width: '7em', textTransform: 'uppercase', fontSize: '18px', padding: '6px 10px' } });
+      const msg = h('p', { class: 'small' }, '');
+      body = h('div', {},
+        h('p', { class: 'small' }, 'Play this world with up to 3 friends. You host: your browser runs the world, and your save keeps it. Online play needs an Arcade account.'),
+        h('div', { class: 'entry' }, h('b', {}, 'Host a co-op game'), h('button', { class: 'btn primary', onclick: async () => { msg.textContent = 'Opening a room…'; try { const c = await coop.host(); if (typeof c === 'string' && c.length === 5) openCoop(); else msg.textContent = 'Could not open a room.'; } catch (e) { msg.textContent = 'Could not reach the realtime server (offline, or no Arcade account).'; } } }, 'Host'), h('span', { class: 'desc' }, 'Gives you a 5-letter room code to share.')),
+        h('div', { class: 'entry' }, h('b', {}, 'Join a friend'), h('span', {}, inp, ' ', h('button', { class: 'btn primary', onclick: async () => { msg.textContent = 'Joining…'; try { const r = await coop.join(inp.value); msg.textContent = r === 'ok' ? 'Loading the host\'s world…' : r === 'full' ? 'That room is full (4 players).' : r === 'nohost' ? 'No host in that room.' : 'Check the code: 5 letters.'; } catch (e) { msg.textContent = 'Could not reach the realtime server (offline, or no Arcade account).'; } } }, 'Join')), h('span', { class: 'desc' }, 'Your own world is set aside while you play in theirs.')),
+        msg);
+    } else {
+      body = h('div', {},
+        coop.role === 'host' ? h('div', { class: 'coop-code' }, h('span', {}, 'Room code'), h('b', {}, net.room)) : h('p', { class: 'small' }, `In ${net.host()?.n || 'the host'}'s world.`),
+        h('h3', {}, `Players (${net.members.length} / 4)`), ...members,
+        h('div', { class: 'entry' }, h('b', {}, coop.role === 'host' ? 'Stop hosting' : 'Leave'), h('button', { class: 'btn', onclick: () => { coop.leave(); location.reload(); } }, coop.role === 'host' ? 'Stop' : 'Leave'), h('span', { class: 'desc' }, coop.role === 'host' ? 'Guests are sent home. Save first!' : 'Back to your own world.')));
+    }
+    panels.show('coop', 'Co-op', body, { badge: coop.role === 'off' ? 'offline' : coop.role });
+  }
   const menu = createMenu(ui, {
     settings, input,
     onPlay: () => play(),
     onSettingsChanged: () => { view.applySettings(); audio.apply(); },
+    // Settings: clear loose dirt clods and nugget piles (BUILD_BRIEF 9).
+    onCleanup: () => { if (coop.isGuest()) return 0; let n = 0; for (const e of [...items.ents.values()]) if ((e.type === 'clod' || e.type === 'pile') && e.loc === 'loose') { items.remove(e.id); n++; } return n; },
     items: [
       { label: 'Save game', onclick: () => openSaves('save') },
       { label: 'Load game', onclick: () => openSaves('load') },
+      { label: 'Co-op', onclick: () => openCoop() },
       { label: 'Return to claim post', onclick: () => { if (vehicles.driving) exitVehicle(); const s = spawnPoint(); teleport(s.x, height(s.x, s.z) + 1, s.z, s.yaw); play(); } },
     ],
   });
@@ -233,6 +271,7 @@ async function boot() {
     if (p) await teleport(p[0], Math.max(p[1], height(p[0], p[2]) + 1.0), p[2]);
   }
   function toggleVehicle() {
+    if (coop.isGuest()) { const info = hands.aimInfo(); return coop.toggleVehicle(info.kind === 'vehicle' && info.dist < 4.5 ? info.id : null); }
     if (vehicles.driving) return exitVehicle();
     const info = hands.aimInfo();
     const v = info.kind === 'vehicle' && info.dist < 4.5 ? vehicles.list.get(info.id) : vehicles.nearest(player.cur.toArray(), 3.5);
@@ -270,10 +309,11 @@ async function boot() {
     audio.update({ pos, fwd, up }, river, src);
   }
   const scanCanvas = h('canvas', { id: 'scanner', width: 220, height: 220 });
-  let last = performance.now(), acc = 0, simAcc = 0, fps = 0, fpsT = 0, frames = 0;
+  let last = performance.now(), acc = 0, simAcc = 0, fps = 0, fpsT = 0, frames = 0, netRate = 0, netLast = 0;
   const timings = { physics: 0, sim: 0, render: 0 };
   const controls = () => state.mode === 'play' && (input.locked || TEST);
   function simTick() {
+    if (coop.isGuest()) return; // the host runs the world
     state.simTick++;
     machines.tick(1 / SIM_HZ);
     items.clock += 1 / SIM_HZ;
@@ -287,6 +327,8 @@ async function boot() {
     if (input.pressed('debug')) hud.toggleDebug();
     if (input.pressed('lantern')) lanternManual = !(lanternManual ?? lantern.intensity > 0);
     if (controls() && input.pressed('vehicle')) toggleVehicle();
+    if (controls() && input.pressed('guide')) guide.open();
+    if (controls() && input.pressed('map')) map.open();
 
     // Physics: steps owed at 60 Hz, one message in flight at a time.
     acc += dt;
@@ -304,7 +346,7 @@ async function boot() {
     while (simAcc >= 1 / SIM_HZ) { simAcc -= 1 / SIM_HZ; const t1 = performance.now(); simTick(); timings.sim = performance.now() - t1; }
 
     // Time of day.
-    if (state.mode === 'play') { state.time += dt / DAY_SECONDS; if (state.time >= 1) { state.time -= 1; state.day++; economy.newDay(state.day); town.newDay(); hud.toast(`Day ${state.day}: new market wants on the chalkboards`); } }
+    if (state.mode === 'play' && !coop.isGuest()) { state.time += dt / DAY_SECONDS; if (state.time >= 1) { state.time -= 1; state.day++; economy.newDay(state.day); town.newDay(); hud.toast(`Day ${state.day}: new market wants on the chalkboards`); } }
     player.camera(camera, Math.min(1, acc * 60), dt);
     if (vehicles.driving) vehicles.camera(camera, controls() ? lookD : { x: 0, y: 0 }, dt);
     // Safety net: fell through the world somehow? Back to the claim post.
@@ -337,7 +379,7 @@ async function boot() {
       if (dv.def.hopper && input.pressed('use')) heavy.dig(dv);
       if (dv.def.hopper && input.pressed('secondary')) heavy.dump(dv);
     }
-    heavy.update(dt);
+    if (!coop.isGuest()) heavy.update(dt);
     soundT -= dt; if (soundT <= 0) { soundT = 0.1; updateSound(dv); }
     progress.update(dt, dv ? dv.group.position.toArray() : camera.position.toArray(), { scanner: !!dv?.def.scanner });
     workshop.update(dt);
@@ -349,17 +391,21 @@ async function boot() {
       if (driveEl.dataset.html !== html) { driveEl.dataset.html = html; driveEl.innerHTML = html; if (dh.scanner) driveEl.append(scanCanvas); }
       if (dh.scanner) heavy.drawScanner(scanCanvas, dh.v);
     }
-    if (state.mode === 'play') { state.playTime += dt; state.autosaveT += dt; if (state.autosaveT > 180) { state.autosaveT = 0; saveTo(state.slot, true); } }
+    if (state.mode === 'play') { state.playTime += dt; state.autosaveT += dt; if (state.autosaveT > 180 && !coop.isGuest()) { state.autosaveT = 0; saveTo(state.slot, true); } }
+    coop.update(dt);
+    // (tests switch the guide on only when they check it: it pays out Scrip)
+    guide.auth = !coop.isGuest() && (!TEST || !!state.guideOn);
+    guide.update(dt, state.mode === 'play');
     fx.update(dt);
     hud.clock(state.time, state.day);
     hud.wallet(economy.state.scrip, economy.state.standing);
     const t2 = performance.now();
     if (!state.noRender) view.render();
     timings.render = performance.now() - t2;
-    frames++; fpsT += dt; if (fpsT > 0.5) { fps = frames / fpsT; frames = 0; fpsT = 0; }
+    frames++; fpsT += dt; if (fpsT > 0.5) { fps = frames / fpsT; frames = 0; netRate = (net.stats.in + net.stats.out - netLast) / fpsT; netLast = net.stats.in + net.stats.out; fpsT = 0; }
     if (hud.debugOn()) {
       const ri = view.renderer.info.render, st = physics.stats;
-      hud.debug.textContent = `${fps.toFixed(0)} fps\nphysics step ${(st.stepMs || 0).toFixed(2)} ms (rtt ${timings.physics.toFixed(1)})\nsim ${timings.sim.toFixed(2)} ms · render ${timings.render.toFixed(1)} ms\ndraw calls ${ri.calls} · tris ${(ri.triangles / 1000).toFixed(0)}k\nbodies awake ${st.awake ?? 0} / asleep ${st.asleep ?? 0} · items ${items.ents.size} · machines ${machines.counts().mach}\nremesh queue ${claims.busy} · mesh ${avg(claims.stats.meshMs).toFixed(1)} ms · collider ${avg(claims.stats.colliderMs).toFixed(1)} ms\npos ${player.cur.x.toFixed(1)} ${player.cur.y.toFixed(1)} ${player.cur.z.toFixed(1)}`;
+      hud.debug.textContent = `${fps.toFixed(0)} fps\nphysics step ${(st.stepMs || 0).toFixed(2)} ms (rtt ${timings.physics.toFixed(1)})\nsim ${timings.sim.toFixed(2)} ms · render ${timings.render.toFixed(1)} ms\ndraw calls ${ri.calls} · tris ${(ri.triangles / 1000).toFixed(0)}k\nbodies awake ${st.awake ?? 0} / asleep ${st.asleep ?? 0} · items ${items.ents.size} · machines ${machines.counts().mach}\nremesh queue ${claims.busy} · mesh ${avg(claims.stats.meshMs).toFixed(1)} ms · collider ${avg(claims.stats.colliderMs).toFixed(1)} ms\npos ${player.cur.x.toFixed(1)} ${player.cur.y.toFixed(1)} ${player.cur.z.toFixed(1)}${net.on ? `\nnet ${coop.role} · ${net.members.length} players · ${netRate.toFixed(1)} msg/s` : ''}`;
     }
     input.endFrame();
     requestAnimationFrame(frame);
@@ -373,7 +419,7 @@ async function boot() {
   // so ?test=1 lets tests drive the game directly.
   const api = { ready: true, physics, version: physics.version, seed: SEED };
   if (TEST) Object.assign(api, {
-    THREE, view, player, input, state, settings, hud, menu, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, machines, auto, progress, workshop, heavy, adit, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
+    THREE, view, player, input, state, settings, hud, menu, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, machines, auto, progress, workshop, heavy, adit, coop, net, guide, map, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
     places: { TOWN, HAMLET, ADIT, CLAIMS, FALLS_Z, PUMPHOUSE, spawn: spawnPoint() },
     relicSpot, veins: VEINS, rollLoot, itemValue, pumpStages: PUMP_STAGES,
     height, riverX, waterY,

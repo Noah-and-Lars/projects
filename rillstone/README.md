@@ -7,9 +7,9 @@ built with [Three.js](https://threejs.org/) for rendering and
 [Rapier](https://rapier.rs/) for physics, running in a Web Worker.
 
 Work in progress: see `BUILD_BRIEF.md` for the plan and `NOTES.md` for
-measurements and decisions so far. Milestones M0–M6 are done: digging,
+measurements and decisions so far. Milestones M0–M7 are done: digging,
 washing, the town, water machines, belts and logic, all six claims,
-Mk II–IV machines, vehicles and the Pumphouse end goal.
+Mk II–IV machines, vehicles, the Pumphouse end goal and 4-player co-op.
 
 ## Play
 
@@ -218,6 +218,18 @@ Each stage pays Scrip and Standing, and the building comes back piece by piece. 
 
 **Sound.** Machines play spatial loops by type. Machines of one type within 6 m share a voice, at most 8 play at once, and worn ones grind. The river sounds louder as you near it, and the engine follows your speed. Captions can show every cue.
 
+## Co-op
+
+Up to 4 players share one world. Open **Co-op** from the pause menu.
+
+- **Hosting.** Press Host to get a 5-letter room code to share. Your browser runs the world, and your save keeps it.
+- **Joining.** Type a friend's code and press Join. Their world loads in a moment; your own world is set aside until you leave.
+- **Sharing.** Scrip, Guild Standing and claims are shared. Everyone can dig, build and drive anywhere the group owns.
+- **Accounts.** Online play goes through the arcade's realtime server and needs an Arcade account.
+- **If the host leaves,** the session ends for everyone else with a "host left" message.
+
+How it works: the host's browser runs the only simulation (physics, machines, economy, terrain). Guests move their own character at once and send what they do (dig, pick up, drop, place, drive, buy) about 20 times a second. The host runs those actions through its own copy of the guest's hands, then sends snapshots 12 times a second. Snapshots carry players, moving bodies within 60 m of a guest, vehicles, terrain edits, entity changes, machine status and the shared ledger. A joiner gets the whole world as one compressed package, sent in 16 KB chunks.
+
 ## The valley
 
 Rillstone Vale is about 600 × 600 m, shaped by `src/js/world/valley.js`.
@@ -267,6 +279,7 @@ underground, and L toggles it.
 | `js/game/workshop.js`, `js/defs/progression.js`, `js/render/pumphouse.js` | Machine Shop blueprints and builds, the Upper Falls gem cutter, the Pumphouse stages and end screen |
 | `js/defs/machines3.js` | Mk II–IV machines and the gold-plated wheel |
 | `js/game/heavy.js` | Excavator arm and hopper, Survey Buggy scanner, rails and the Ore Tram |
+| `js/net/net.js`, `js/net/coop.js` | Co-op rooms over the arcade realtime server (rt.js); host-authoritative replication, guest actions, avatars |
 | `js/core/save.js` | IndexedDB save slots with A/B halves, migrations, `.rillsave` export/import |
 | `js/ui/panels.js` | Shop, contracts and save panels |
 | `js/sim/flow.js` | Water flow budget: networks, sources, boosters, tanks, widest-path pipe limits, silt |
@@ -281,6 +294,7 @@ underground, and L toggles it.
 | `tools/test.cjs` | Headless browser test (not in `src/`) |
 | `tools/unit.mjs` | Node unit tests: loot table, weights, values (not in `src/`) |
 | `tools/bench.cjs`, `tools/bench/` | Benchmarks from the brief's section 10, and `model.html` (renders a model from six angles: `?m=shovel&load=1`) (not in `src/`) |
+| `tools/relay.mjs`, `tools/fixtures/rt.js` | A local stand-in for the arcade realtime server, and a copy of its client, for the co-op test (not in `src/`) |
 | `tools/THIRD_PARTY_LICENSES.txt` | three.js, Rapier and fflate licence texts |
 
 ## Testing
@@ -323,6 +337,11 @@ outside request to prove the file is self-contained. Add `--src` to test
   base (`--pacing`);
 - runs digging benchmark 1 and screenshots the depth bands, the drop ring,
   a tooltip and panning;
+- runs co-op in two browser contexts over the local relay: the guest joins
+  a well-used world, both dig in the same claim, the guest carries an ingot
+  to the truck, the host drives it, the guest sells it and buys a bucket,
+  and claims, positions and Scrip must agree; then the host leaves
+  (`--coop`);
 - fails on any console error.
 
 `node tools/unit.mjs` runs the loot unit tests, including 1,000 band-1 rolls

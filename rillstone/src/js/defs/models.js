@@ -169,8 +169,16 @@ export function pick() {
 
 // ---- Finds ----
 // Lumpy nugget: subdivided, displaced, with darker crevices (vertex AO).
-export function nugget(seed = 3) {
-  const g = new THREE.IcosahedronGeometry(0.5, 1);
+// Nuggets also differ in shape by metal: 'lump' (lobed), 'block' (angular),
+// 'flake' (flat), 'pebble' (smooth), 'shard' (spiky).
+export function nugget(seed = 3, form = 'lump') {
+  if (form === 'block') { let g = new THREE.DodecahedronGeometry(0.5, 0).scale(1.15, 0.75, 0.85); if (g.index) g = g.toNonIndexed(); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 3).fill(0.85), 3)); g.computeVertexNormals(); return g; }
+  if (form === 'shard') {
+    const parts = [];
+    for (let i = 0; i < 4; i++) parts.push(P(place(new THREE.OctahedronGeometry(0.28, 0).scale(0.6, 1.4, 0.6), Math.cos(i * 1.7) * 0.15, 0, Math.sin(i * 1.7) * 0.15, Math.cos(i) * 0.5, i, Math.sin(i) * 0.5), 0xffffff, 0.15, i + 1));
+    return merge(parts);
+  }
+  const g = new THREE.IcosahedronGeometry(0.5, form === 'pebble' ? 2 : 1);
   const p = g.attributes.position, map = new Map();
   let s = seed;
   const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
@@ -181,12 +189,13 @@ export function nugget(seed = 3) {
     const k = `${v.x.toFixed(3)},${v.y.toFixed(3)},${v.z.toFixed(3)}`;
     if (!map.has(k)) {
       const dir = v.clone().normalize();
-      let f = 0.78 + rnd() * 0.22;
-      for (const l of lobes) f += Math.max(0, dir.dot(l)) ** 3 * 0.35;
+      let f = form === 'pebble' ? 0.95 + rnd() * 0.06 : 0.78 + rnd() * 0.22;
+      if (form !== 'pebble') for (const l of lobes) f += Math.max(0, dir.dot(l)) ** 3 * 0.35;
       map.set(k, f);
     }
     const f = map.get(k);
-    p.setXYZ(i, v.x * f, v.y * f * 0.7, v.z * f);
+    const fy = form === 'flake' ? 0.3 : form === 'pebble' ? 0.62 : 0.7, fx = form === 'flake' ? 1.25 : 1;
+    p.setXYZ(i, v.x * f * fx, v.y * f * fy, v.z * f);
     const shade = 0.62 + Math.min(1, (f - 0.78) / 0.5) * 0.45;
     cols[i * 3] = cols[i * 3 + 1] = cols[i * 3 + 2] = shade;
   }
@@ -244,8 +253,15 @@ export function coil(hex) {
   return merge(parts);
 }
 // An ingot bar (unit size; scaled per item).
-export function ingot() {
-  const g = new THREE.CylinderGeometry(0.42, 0.55, 0.3, 4, 1).rotateY(Math.PI / 4).scale(1.2, 1, 0.6);
+// Ingot casts differ by metal so they read without colour (M8 accessibility):
+// 'trap' the classic trapezoid, 'bar' a plain block, 'round' a rounded loaf,
+// 'hex' a hexagonal bar.
+export function ingot(form = 'trap') {
+  let g;
+  if (form === 'bar') g = new THREE.BoxGeometry(1.15, 0.3, 0.55);
+  else if (form === 'round') g = new THREE.CylinderGeometry(0.3, 0.3, 1.1, 8, 1).rotateZ(Math.PI / 2).scale(1, 0.62, 1);
+  else if (form === 'hex') g = new THREE.CylinderGeometry(0.3, 0.3, 1.1, 6, 1).rotateZ(Math.PI / 2).scale(1, 0.75, 1);
+  else g = new THREE.CylinderGeometry(0.42, 0.55, 0.3, 4, 1).rotateY(Math.PI / 4).scale(1.2, 1, 0.6);
   g.computeVertexNormals();
   const c = new Float32Array(g.toNonIndexed().attributes.position.count * 3).fill(1);
   const ng = g.toNonIndexed(); ng.setAttribute('color', new THREE.BufferAttribute(c, 3)); return ng;

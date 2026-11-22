@@ -47,7 +47,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     panBits.clear();
     list.forEach((id, i) => {
       const it = items.get(id); if (!it) return;
-      const m = new THREE.Mesh(nuggetGeometry(MATERIALS[it.item.material].kind, 3), new THREE.MeshStandardMaterial({ color: MATERIALS[it.item.material].color, metalness: MATERIALS[it.item.material].metal, roughness: 0.4, flatShading: true, vertexColors: true }));
+      const m = new THREE.Mesh(nuggetGeometry(MATERIALS[it.item.material].kind, 3, '', it.item.material), new THREE.MeshStandardMaterial({ color: MATERIALS[it.item.material].color, metalness: MATERIALS[it.item.material].metal, roughness: 0.4, flatShading: true, vertexColors: true }));
       const s = 0.035 + Math.min(0.03, Math.cbrt(it.item.kg) * 0.015); m.scale.setScalar(s);
       const a = i * 2.4; m.position.set(-0.02 + Math.cos(a) * 0.05, -0.05, -0.02 + Math.sin(a) * 0.05);
       panBits.add(m);

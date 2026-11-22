@@ -533,3 +533,86 @@ A drill and sluice of each tier run for 2 simulated minutes in their own claim a
   120–180 §/min is already 7–11k/h, so 20 of them make 150k–200k/h. The
   check therefore uses "two orders of magnitude over hand labour" (100×
   ±30%), which the same paragraph also states.
+
+## M7: co-op
+
+- **Transport.** The arcade realtime server (`rt.js`), with the room and
+  presence pattern from throttle-ridge.
+  - **Rooms:** the channel is `rill1-r-CODE`, where CODE is 5 characters
+    from the arcade alphabet.
+  - **Presence:** `{ id, n, t, h }`. The host is the member with `h: 1`, and
+    a room holds at most 4.
+  - **Loading:** the client library loads only when you open a room, so the
+    offline single file still makes no outside requests.
+  - **Accounts:** `rt.js` refuses channels without an Arcade account and asks
+    the player to make one.
+- **Authority.** The host runs everything.
+  - **Each guest has a headless hands instance on the host:** its own
+    hand and slot, a virtual camera at the guest's last pose, and toasts and
+    sounds routed back to that guest.
+  - **Running actions:** a guest action (use, pick up, drop at the ring they
+    saw, swap, place a crate at their ghost, drive) is replayed through that
+    instance after a ray from their camera. So digging, panning, selling at
+    a bell, loading the bed and laying rails all run the same code as for
+    the host.
+  - **Panels open on the guest's own screen:** shops, the guild board,
+    machine panels, the truck bed and the workbench menu. Their buttons send
+    UI actions (`buy`, `claim`, `bp`, `build`, `mset`, `bedTake` and so on).
+  - **Guests never tick the sim:** no machines, economy, day roll-over,
+    trams or autosave. Items and vehicles are puppets (`items.remote`,
+    `vehicles.remote`), with no physics bodies.
+- **Snapshots** go out at 12 Hz:
+  - players (pose, held items, vehicle);
+  - moving bodies within 60 m of a guest (mm and 1e-4 quaternion
+    precision), sent again only when they change;
+  - vehicles (pose, wheels, fuel);
+  - an op list: entity upserts and removals (found by a 5 Hz signature
+    scan), terrain brush ops (deterministic replays), machines placed or
+    removed, vehicles spawned or removed, cargo, rails, and gold toasts;
+  - machine status diffs at 2 Hz;
+  - the economy when it changes.
+- **Late join.**
+  - **Package:** the host sends the save format (`exportBlob`, fflate)
+    as base64 in 16 KB chunks.
+  - **Catch-up:** the guest buffers snapshots while loading, then replays
+    those newer than the package's sequence number.
+- **Prediction and interpolation.**
+  - **Guests:** each guest's own character runs in their own physics worker
+    against the same static colliders, and the host accepts plausible poses
+    (under 40 m/s).
+  - **Avatars:** drawn 120 ms behind.
+  - **Vehicles:** reuse the M3 arrival-time interpolation.
+- **Host leaves:** guests see "host left" and go back to the title. There is
+  no host migration, as in the brief.
+
+### Benchmark 5 (network)
+
+| | Measured (local relay) |
+| --- | --- |
+| World package (403 items, 8 dug chunks, 15 machines) | 47 KB in 4 chunks, built in about 80 ms |
+| Join, from Join to playing | 0.8 s |
+| Steady state, 2 players idle | 27 messages/s, 6.5 KB/s through the relay |
+| Largest message | 24 KB (the first snapshot after a join) |
+
+- **The live server wasn't measured.**
+  - **Why:** the arcade Worker accepts channels only from an Arcade account
+    with a token, and this session has none (and shouldn't use the owner's
+    daily allowance for load tests).
+  - **What the test does instead:** it runs the real `rt.js` client
+    (`tools/fixtures/rt.js`), pointed with `window.ARCADE_RT_URL` at
+    `tools/relay.mjs`, which speaks the same protocol.
+  - **Cloudflare's limit:** received WebSocket messages can be up to 32 MiB
+    ([changelog, 2025-10-31](https://developers.cloudflare.com/changelog/post/2025-10-31-increased-websocket-message-size-limit/)),
+    so 16 KB chunks and ~25 KB snapshots sit far inside it.
+  - **If the arcade Worker turns out to cap message size or rate lower:**
+    `CHUNK` in `net.js` and the snapshot rate are single constants. The
+    brief's fallback (a Durable Object relay) isn't needed unless that
+    happens, and creating one needs the owner's go-ahead.
+- **Acceptance (`--coop`).** Two contexts:
+  - both dig in the Gravel Bar, and the claim voxel hashes match;
+  - the guest carries an ingot into the truck bed;
+  - the host drives the truck, and both agree within 2 mm;
+  - the guest sells the ingot and buys a bucket, and Scrip is identical on
+    both;
+  - 400+ loose bodies near the guest agree within 1 mm;
+  - the host leaving ends the guest's session.

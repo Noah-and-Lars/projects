@@ -9,7 +9,7 @@
 // one InstancedMesh per material.
 import * as THREE from 'three';
 import { MATERIALS, itemValue, itemName } from '../defs/materials.js';
-import { TOOLS, toolDef, TOOL_BOX, nuggetSize, nuggetGeometry, nuggetMaterial, toolGeometry, clodGeometry } from '../defs/items.js';
+import { TOOLS, toolDef, TOOL_BOX, nuggetSize, nuggetGeometry, nuggetMaterial, toolGeometry, clodGeometry, FORMS } from '../defs/items.js';
 
 // Other modules register meshes and colliders for their entity types
 // (sacks, machine crates...).
@@ -35,7 +35,7 @@ export function createItems({ scene, physics, materials }) {
     const kind = MATERIALS[material].kind;
     const mat = nuggetMaterial(material, shape);
     materials.litMaterial(mat);
-    const mesh = new THREE.InstancedMesh(nuggetGeometry(kind, material.length * 7, shape), mat, CAP);
+    const mesh = new THREE.InstancedMesh(nuggetGeometry(kind, material.length * 7, shape, material), mat, CAP);
     mesh.count = CAP; mesh.castShadow = true; mesh.receiveShadow = true; mesh.frustumCulled = false;
     for (let i = 0; i < CAP; i++) mesh.setMatrixAt(i, ZERO);
     group.add(mesh);
@@ -146,7 +146,7 @@ export function createItems({ scene, physics, materials }) {
     halfHeight(e) { return shapeOf(e).hy; },
     // A standalone mesh for an entity (cargo on a vehicle, crate contents).
     buildMesh(e) {
-      if (isNugget(e)) { const k = keyOf(e.item); const g = nuggetGeometry(MATERIALS[e.item.material].kind, e.item.material.length * 7, k.split(':')[1]); const s = nuggetSize(e.item.kg, e.item.material, e.item.stage); g.scale(s, s, s); return new THREE.Mesh(g, instFor(k).mesh.material); }
+      if (isNugget(e)) { const k = keyOf(e.item); const g = nuggetGeometry(MATERIALS[e.item.material].kind, e.item.material.length * 7, k.split(':')[1], e.item.material); const s = nuggetSize(e.item.kg, e.item.material, e.item.stage); g.scale(s, s, s); return new THREE.Mesh(g, instFor(k).mesh.material); }
       return makeMesh(e);
     },
     shapeOf,
@@ -171,7 +171,7 @@ export function createItems({ scene, physics, materials }) {
       const e = ents.get(id); if (!e) return null;
       if (e.item) {
         const m = MATERIALS[e.item.material];
-        return { name: itemName(e.item), lines: [`${e.item.kg.toFixed(2)} kg · ${m.name} · ${e.item.stage === 'ore' ? (m.kind === 'fuel' ? 'fuel' : 'ore') : e.item.stage}`, m.kind === 'fuel' ? 'Burns in kilns and boosters' : `≈ § ${itemValue(e.item).toFixed(0)}`] };
+        return { name: itemName(e.item), badge: FORMS[e.item.material]?.glyph, lines: [`${e.item.kg.toFixed(2)} kg · ${m.name} · ${e.item.stage === 'ore' ? (m.kind === 'fuel' ? 'fuel' : 'ore') : e.item.stage}`, m.kind === 'fuel' ? 'Burns in kilns and boosters' : `≈ § ${itemValue(e.item).toFixed(0)}`] };
       }
       if (e.type === 'pile') {
         const kg = e.data.kgs.reduce((a, b) => a + b, 0), m = MATERIALS[e.data.material];

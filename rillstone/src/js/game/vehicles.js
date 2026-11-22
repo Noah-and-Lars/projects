@@ -172,6 +172,7 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
       v.group.position.set(v.prevP[0] + (v.curP[0] - v.prevP[0]) * a, v.prevP[1] + (v.curP[1] - v.prevP[1]) * a, v.prevP[2] + (v.curP[2] - v.prevP[2]) * a);
       if (Math.hypot(v.curP[0] - v.prevP[0], v.curP[2] - v.prevP[2]) > 5) v.group.position.fromArray(v.curP); // teleports snap
       v.group.quaternion.fromArray(v.prevQ).slerp(_q.fromArray(v.curQ), a);
+      v.group.updateMatrixWorld(); // bed and seat maths must not wait for a render
       st.wheels.forEach(([susp, rot, steerA], i) => {
         const w = v.wheels[i], [x, y, z] = v.def.wheels[i];
         w.position.set(x, y - susp, z);

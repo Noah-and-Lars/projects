@@ -3,7 +3,7 @@
 import { h, $ } from './dom.js';
 import { ACTION_LABELS, DEFAULT_BINDS, keyLabel, saveSettings } from '../core/settings.js';
 
-export function createMenu(root, { settings, input, onPlay, onSettingsChanged, items = [], titleItems = [] }) {
+export function createMenu(root, { settings, input, onPlay, onSettingsChanged, onCleanup, items = [], titleItems = [] }) {
   const title = h('section', { id: 'scr-title', class: 'screen interactive' },
     h('div', { class: 'panel title' },
       h('h1', { class: 'logo' }, 'Rillstone'),
@@ -42,6 +42,7 @@ export function createMenu(root, { settings, input, onPlay, onSettingsChanged, i
       row('Sprint toggles', check('sprintToggle')),
       row('Head-bob', check('headBob')),
       row('Captions for sounds', check('captions')),
+      onCleanup ? row('Tidy up', h('button', { class: 'btn', onclick: (e) => { const n = onCleanup(); e.currentTarget.textContent = `Cleared ${n}`; } }, 'Clear loose clods and piles')) : null,
       row('Graphics', h('select', { onchange: (e) => { settings.graphics = e.target.value; changed(); } }, ...['low', 'medium', 'high'].map(q => h('option', { value: q, selected: settings.graphics === q }, q[0].toUpperCase() + q.slice(1))))));
     else if (tab === 'keys') body = h('div', { class: 'rows keys' },
       ...Object.keys(ACTION_LABELS).map(a => row(ACTION_LABELS[a], h('span', { class: 'binds' }, ...[0, 1].map(i => h('button', {

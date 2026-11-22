@@ -156,6 +156,20 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     }
   }
 
+  // Performance (BUILD_BRIEF 8): bake every static vertex-coloured town mesh
+  // into one geometry, so buildings, counters, stalls and the bridge cost a
+  // single draw call (plus its shadow passes) instead of a hundred.
+  function mergeStatic() {
+    const moving = new Set(clerks.map(c => c.mesh));
+    const list = group.children.filter(m => m.isMesh && m.material === materials.vcolor && !moving.has(m) && !m.children.length);
+    if (list.length < 2) return;
+    const geos = list.map(m => { m.updateMatrixWorld(true); const g = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone()); g.applyMatrix4(m.matrixWorld); return g; });
+    const merged = new THREE.Mesh(merge(geos), materials.vcolor);
+    merged.castShadow = merged.receiveShadow = true; merged.name = 'town-static';
+    for (const m of list) { group.remove(m); m.geometry.dispose(); }
+    group.add(merged);
+  }
+
   // ---- Interaction ----
   const counterItems = (c) => {
     const out = [], hw = (c.w || 3.2) / 2 + 0.05, cos = Math.cos(c.yaw), sin = Math.sin(c.yaw);
@@ -238,7 +252,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
 
   const api = {
     group, props, counters, pads, statics, custom: {}, customProp: {}, customHint: {}, customCard: {},
-    async build() { await physics.call({ op: 'batch', ops: statics }); redrawBoards(); },
+    async build() { await physics.call({ op: 'batch', ops: statics }); redrawBoards(); mergeStatic(); },
     has: (id) => props.has(id),
     kindOf: (id) => props.get(id)?.kind,
     interact(id) {
