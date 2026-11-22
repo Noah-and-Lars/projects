@@ -24,6 +24,34 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'mile-zero',
+    title: 'Mile Zero',
+    category: 'Driving',
+    tagline: 'Build an old car from parts, then drive an endless desert road. Scavenge, survive, convoy with friends. Beta.',
+    description: 'A road-trip survival game. Build an old car from parts in a junk garage, then drive an endless desert road, scavenging places and fighting off squatters, raiders and coyotes. Play solo or convoy online with up to 4 friends in one car.',
+    controls: 'Keyboard and mouse, gamepad or steering wheel',
+    keys: [['W A S D', 'Walk · drive'], ['Mouse', 'Look'], ['E', 'Use · hold for tools · drag doors'], ['F', 'Get in / out'], ['Hold I', 'Start the engine'], ['Space', 'Handbrake'], ['L / K / R', 'Lights / wipers / radio'], ['Tab', 'Pockets'], ['B', 'Craft'], ['Z', 'Sleep in the car'], ['Esc', 'Pause']],
+    path: 'mile-zero/index.html',
+    thumb: 'mile-zero/thumb.jpg',
+    added: '2026-11-23T08:55:00+11:00',
+    updated: '2026-11-23T08:55:00+11:00',
+    stat() { const s = readSave('milezero.save.v1', true); if (!s || !s.best || !(s.best.km > 0)) return null; return 'Best ' + s.best.km + ' km' + (s.runs > 1 ? ' · ' + s.runs + ' runs' : ''); },
+  },
+  {
+    id: 'closing-time',
+    title: 'Closing Time',
+    category: 'Survival',
+    tagline: 'Trapped in a furniture store that never ends. Build forts by day, hide from the night staff.',
+    description: 'A survival game in a furniture store that goes on forever. By day gather food and build forts out of beds, shelves and pallets; at 22:00 the lights go out and the staff come hunting. Play solo or online with friends.',
+    controls: 'Keyboard + mouse or controller',
+    keys: [['W A S D', 'Move'], ['Mouse', 'Look'], ['Shift', 'Sprint'], ['Space', 'Jump'], ['E (hold)', 'Grab / place furniture'], ['R / right click', 'Rotate the held piece'], ['Left click', 'Use item / shove staff'], ['F', 'Use things (lamps, doors, food)'], ['G', 'Inventory'], ['Z', 'Waypoint'], ['H', 'Whistle (hold for help)'], ['V', 'First / third person'], ['Enter', 'Chat (online)'], ['F1', 'Controls'], ['Esc', 'Pause']],
+    path: 'closing-time/index.html',
+    thumb: 'closing-time/thumb.jpg',
+    added: '2026-11-23T08:55:00+11:00',
+    updated: '2026-11-23T08:55:00+11:00',
+    stat() { const s = readSave('es-stats', true); return s && s.best ? 'Best ' + s.best + (s.best === 1 ? ' night' : ' nights') : null; },
+  },
+  {
     id: 'sproutling',
     title: 'Sproutling',
     category: 'Platformer',
@@ -381,29 +409,11 @@ window.GAMES = [
 // with a live countdown to `release`, and a Details pop-up. They are NOT in GAMES (nothing else on the site can open them).
 // On release day, move the entry into GAMES with its path and delete it here.
 window.COMING_SOON = [
-  {
-    id: 'mile-zero',
-    title: 'Mile Zero',
-    category: 'Driving',
-    tagline: 'Build an old car from parts, then drive an endless desert road. Scavenge, survive, convoy with friends.',
-    description: 'Mile Zero is a road-trip survival game. Start in a junk garage at mile zero with a car on stands and its parts scattered round the yard: fit the engine, battery, radiator, tank, seat and wheels, fill it up and crank it into life. Then drive. The road never ends: gas stations, diners and motels, farms, junkyards, ghost towns and abandoned houses with squatters inside. Keep the car running, keep yourself fed and watered, fight off raiders and coyotes, and see how far you get. Up to 4 players can convoy together online in one car.',
-    controls: 'Keyboard and mouse, gamepad or steering wheel',
-    thumb: 'mile-zero/thumb.jpg',
-    release: '2026-11-23T08:55:00+11:00',
-  },
-  {
-    id: 'closing-time',
-    title: 'Closing Time',
-    category: 'Survival',
-    tagline: 'Trapped in a furniture store that never ends. Build forts by day, hide from the night staff.',
-    description: 'Closing Time is a survival game set in a furniture store that goes on forever. By day, gather food from the cafeterias and build forts out of beds, shelves and pallets. At 22:00 the lights go out and the staff come hunting: hide, climb, shove them over and run. Play solo or online with friends.',
-    controls: 'Keyboard + mouse or controller',
-    thumb: 'closing-time/thumb.jpg',
-    release: '2026-11-23T08:55:00+11:00',
-  },
 ];
 
 window.NEWS = [
+  { date: '2026-11-23', game: 'mile-zero', imgs: ['mile-zero/news/1.0-gas-station.jpg', 'mile-zero/news/1.0-diner.jpg', 'mile-zero/news/1.0-motel.jpg', 'mile-zero/news/1.0-crash.jpg'], headline: 'Mile Zero is out', text: 'New game: Mile Zero. A road-trip survival game, out now as Beta 1.1.1. Build an old car from parts in a junk garage, then drive an endless desert road. Scavenge gas stations, diners, motels, farms, junkyards and ghost towns, every one filled with things to search. Keep the car running and yourself fed, watered and rested. Crash at over 100 km/h and you go through the windscreen. Squatters with crowbars, raiders and coyotes want you gone. Grab the spray paint and draw on your car, the road and the houses. Convoy with up to 4 friends in one car. Your best distance goes on the leaderboard.', post: '\ud83d\ude97 MILE ZERO IS OUT!\n\n\ud83d\udd27 Build an old car from parts in a junk garage\n\ud83c\udfdc\ufe0f Then drive an endless desert road\n\u26fd Gas stations, diners, motels and ghost towns, all full of things to search\n\ud83d\udee0\ufe0f Keep the car running (it\u2019s a diesel: cooking oil works too)\n\ud83d\udca5 Crash at over 100 km/h and you go through the windscreen\n\ud83e\ude93 Squatters with crowbars, raiders and coyotes want you gone\n\ud83c\udfa8 Spray paint anything you like on your car, the road and the houses\n\ud83d\udc65 Convoy with up to 4 friends in one car\n\ud83d\udccf How far can you get? Your best distance goes on the leaderboard\n\nBeta 1.1.1. \u25b6\ufe0f Play it now in the Games tab!\n\n#milezero #TheArcade #NewGame' },
+  { date: '2026-11-23', game: 'closing-time', imgs: ['closing-time/news/1.0-night-staff.jpg', 'closing-time/news/1.0-lights-out.jpg', 'closing-time/news/1.0-menu.jpg'], headline: 'Closing Time is out', text: 'New game: Closing Time. You are stuck in a furniture store that never ends. By day, gather food and build forts out of beds, shelves and pallets; at 22:00 the lights go out and the night staff come hunting. Hide, climb, shove them over and run. Play solo or online with friends.', post: '\ud83d\udd26 CLOSING TIME is out now!\n\n\ud83c\udfec A furniture store that never ends\n\ud83d\udee0\ufe0f Build forts out of beds, shelves and pallets\n\ud83c\udf5d Find food before the shelves run dry\n\ud83d\udd5b At 22:00 the lights go out\n\ud83d\udc41\ufe0f The night staff come hunting. Hide, climb, shove and run\n\ud83d\udc65 Survive solo or online with friends\n\nHow many nights can you last? \ud83d\udc47\n\n#closingtime #TheArcade #NewGame' },
   { date: '2026-11-22', href: 'app/#android', headline: 'Android TV app 1.0.1a: smoother, and forms work with the remote', text: 'The Android TV app has its own version now, 1.0.1a, made to run smoothly on TVs: the home screen draws about five times faster on older TVs and uses far less memory. Moving the remote onto a text box no longer pops the keyboard up and traps you there; press OK to type, and the phone remote app can type too. Up and Down also move between text boxes properly now on every TV and console (Down from Username goes to Password). Get it on the app page, or in Downloader: noah-and-lars.github.io/projects/app/TheArcade-androidtv.apk',
     post: '\ud83d\udcfa The Android TV app 1.0.1a is out!\n\n\u26a1 Made for TVs: much smoother on older TVs\n\u2328\ufe0f The keyboard only opens when you press OK, so you can move through sign-in and chat boxes with the remote (and type from the phone remote app)\n\u2b07\ufe0f Up/Down now go Username \u2192 Password on every TV and console\n\n\ud83d\udce5 In Downloader: noah-and-lars.github.io/projects/app/TheArcade-androidtv.apk' },
   { date: '2026-11-22', href: 'app/#samsung', headline: 'The Arcade app for Samsung TVs', text: 'There is now a Samsung TV app (Tizen, TVs from 2015 on): it opens The Arcade in the TV layout as its own app, played with the TV remote, including the colour buttons. Samsung only allows apps from outside its store with a free developer certificate, so it is installed from a computer with Tizen Studio (the steps are on the app page). The quick way still works on every Samsung TV: open the TV\u2019s Internet app and go to noah-and-lars.github.io/projects.',

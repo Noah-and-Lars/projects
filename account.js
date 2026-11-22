@@ -30,6 +30,8 @@
 
   /* ---------- which saved entries belong to which game ---------- */
   var GROUPS = [
+    ['mile-zero', /^milezero\./],
+    ['closing-time', /^es-(ach|name|settings|shirt|solo|stats)$/],
     ['throttle-ridge', /^throttle-ridge\./],
     ['turn-turn-turn', /^turnturnturn\./],
     ['siege', /^siege\./],

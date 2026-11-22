@@ -10,6 +10,8 @@ The Social tab (`social.html`) is the arcade's Instagram: clip the last 30 secon
 
 | Game | Type | Controls |
 |---|---|---|
+| [Mile Zero](mile-zero/) | Road-trip survival (pre-alpha): build a car, drive an endless desert road, solo or a convoy of 4 online | Keyboard and mouse, gamepad or steering wheel |
+| [Closing Time](closing-time/) | Survive an endless furniture store: build forts by day, hide from the night staff, solo or online | Keyboard + mouse or controller |
 | [Throttle Ridge](throttle-ridge/) | Side-scrolling motocross against three computer riders on five tracks | Keyboard or touch |
 | [Card Royale](card-royale/) | Real-time 1v1 card battles online (or vs bots for trophies): 75 cards, chests, a Trophy Road through ten arenas, player profiles | Mouse or touch |
 | [Space Strike](space-strike/) | Top-down space shooter: 30 levels, 3 worlds, bosses | Keyboard or touch |

@@ -224,8 +224,8 @@
   </div>
 </div>
 
-<script src="games.js?v=282"></script>
-<script src="account.js?v=44"></script>
+<script src="games.js?v=283"></script>
+<script src="account.js?v=45"></script>
 <script src="assistant.js?v=7"></script>
 <script src="console.js?v=6"></script>
 <script src="call.js?v=8"></script>
@@ -276,7 +276,7 @@ const shortControls = c => (c || '').replace(/Keyboard \+ mouse/i, 'Keyboard & m
 const headOf = n => n.headline || ((m => m && m[1].length <= 42 ? m[1] : '')(/^([^:.]+):/.exec(n.text || '')) || (byId[n.game] ? byId[n.game].title + ' update' : 'The Arcade'));
 const badgeHtml = b => b ? `<span class="pill${b === 'UPDATED' ? ' upd' : b === 'DISCONTINUED' ? ' off' : b === 'BETA' ? ' beta' : ''}">${b}</span>` : '';
 // the order games are shown in: these first, then everything else as listed in games.js
-const FIRST = ['chess', 'havoc-bay', 'turn-turn-turn', 'krill-dive', 'storm-drop', 'cube-assault', 'gamble-your-life-away', 'throttle-ridge', 'uno', 'russian-roulette', 'free-criminal', 'space-strike', 'sproutling', 'football', 'siege', 'poly-racer', 'rocket-rivals', 'bull-run', 'cube-tower-defense', 'block-drop', 'card-royale'];
+const FIRST = ['mile-zero', 'closing-time', 'chess', 'havoc-bay', 'turn-turn-turn', 'krill-dive', 'storm-drop', 'cube-assault', 'gamble-your-life-away', 'throttle-ridge', 'uno', 'russian-roulette', 'free-criminal', 'space-strike', 'sproutling', 'football', 'siege', 'poly-racer', 'rocket-rivals', 'bull-run', 'cube-tower-defense', 'block-drop', 'card-royale'];
 const rank = g => { const i = FIRST.indexOf(g.id); return i < 0 ? FIRST.length + GAMES.indexOf(g) : i; };
 // 2026-11-12: game trailers. These games' opening cinematics play here (the game opened with ?trailer), not in the game
 const TRAILERS = new Set(['gamble-your-life-away', 'russian-roulette', 'turn-turn-turn']);
@@ -578,7 +578,7 @@ function tickSoon() {
 }
 if (SOON.length) setInterval(tickSoon, 1000);
 // the patch-notes card links here (#soon-<id>)
-const soonHash = () => { const m = /^#soon-(.+)$/.exec(location.hash); const s = m && SOON.find(x => x.id === m[1]); if (s) openSoon(s); };
+const soonHash = () => { const m = /^#soon-(.+)$/.exec(location.hash); const s = m && SOON.find(x => x.id === m[1]); if (s) openSoon(s); else if (m && byId[m[1]]) openSheet(m[1]); };
 addEventListener('hashchange', soonHash);
 const soonFor = cat => SOON.filter(s => cat === 'All' || s.category === cat);
 
