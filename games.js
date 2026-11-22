@@ -391,9 +391,20 @@ window.COMING_SOON = [
     thumb: 'mile-zero/thumb.jpg',
     release: '2026-11-23T08:55:00+11:00',
   },
+  {
+    id: 'closing-time',
+    title: 'Closing Time',
+    category: 'Survival',
+    tagline: 'Trapped in a furniture store that never ends. Build forts by day, hide from the night staff.',
+    description: 'Closing Time is a survival game set in a furniture store that goes on forever. By day, gather food from the cafeterias and build forts out of beds, shelves and pallets. At 22:00 the lights go out and the staff come hunting: hide, climb, shove them over and run. Play solo or online with friends.',
+    controls: 'Keyboard + mouse or controller',
+    thumb: 'closing-time/thumb.jpg',
+    release: '2026-11-23T08:55:00+11:00',
+  },
 ];
 
 window.NEWS = [
+  { date: '2026-11-22', href: '#soon-closing-time', imgs: ['closing-time/thumb.jpg'], headline: 'Closing Time comes out Monday', text: 'Coming soon: Closing Time, a survival game in a furniture store that never ends. Gather food and build forts out of beds, shelves and pallets by day; at 22:00 the lights go out and the night staff come hunting. Play solo or online with friends. It comes out on Monday 23 November at 8:55 am (Sydney time), together with Mile Zero. The countdown is on its card in the Library.', post: '\ud83d\udecb\ufe0f Coming Monday: CLOSING TIME\n\n\ud83c\udfec A furniture store that never ends\n\ud83d\udee0\ufe0f Build forts out of beds, shelves and pallets\n\ud83c\udf5d Find food before the shelves run dry\n\ud83d\udd26 At 22:00 the lights go out\n\ud83d\udc41\ufe0f The night staff come hunting\n\ud83d\udc65 Survive solo or online with friends\n\n\u23f0 Out Monday 23 November, 8:55 am Sydney time, the same moment as Mile Zero. The countdown is on its card in the Library.\n\n#closingtime #TheArcade #ComingSoon' },
   { date: '2026-11-21', href: '#soon-mile-zero', imgs: ['mile-zero/thumb.jpg'], headline: 'Mile Zero comes out Monday', text: 'Coming soon: Mile Zero, a road-trip survival game. Build an old car from parts in a junk garage, then drive an endless desert road: scavenge gas stations, diners, motels and ghost towns, keep the car running, fight off raiders and squatters, and convoy with up to 4 friends in one car. It comes out on Monday 23 November at 8:55 am (Sydney time). The countdown is on its card in the Library.', post: '\ud83d\ude97 Coming Monday: MILE ZERO\n\n\ud83d\udd27 Build an old car from parts in a junk garage\n\ud83c\udfdc\ufe0f Then drive an endless desert road\n\u26fd Gas stations, diners, motels and ghost towns to scavenge\n\ud83d\udee0\ufe0f Keep the car running, keep yourself fed and watered\n\ud83e\ude93 Squatters, raiders and coyotes want you gone\n\ud83d\udc65 Convoy with up to 4 friends in one car\n\n\u23f0 Out Monday 23 November, 8:55 am Sydney time. The countdown is on its card in the Library.\n\n#milezero #TheArcade #ComingSoon' },
   { date: '2026-11-21', href: 'app/', headline: 'The Arcade apps now open the GitHub site', text: 'Every Arcade app (Mac, Windows, Windows 7/8, older Macs, Android, Android TV and Chromebook) is now version 1.0.1 and opens the GitHub site, noah-and-lars.github.io/projects, instead of thearcade.pages.dev. The Mac and Windows apps offer the update by themselves; on the other apps, download 1.0.1 from the app page and install it over the old one. Log in with your Arcade account once in the new version and all your progress is there.',
     post: '\ud83d\udcf2 All The Arcade apps are now 1.0.1!\n\n\ud83c\udf10 They open the GitHub site now: noah-and-lars.github.io/projects\n\ud83d\udcbb Mac + Windows: the update pops up by itself\n\ud83e\udd16 Android, TV, Chromebook, Windows 7/8 and old Macs: grab 1.0.1 from the app page\n\ud83d\udd11 Log in once and all your progress is there.' },
