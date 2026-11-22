@@ -43,11 +43,64 @@ and minifies the game with esbuild and inlines it with the CSS and icon. It
 stops with an error if the import map's library versions drift from the ones
 in `tools/package.json`, or if the file grows past 8 MB.
 
+## Controls
+
+Click the game to capture the mouse (Pointer Lock). Every key can be rebound
+in Settings → Keys; bindings and settings are saved in `localStorage`.
+
+| Action | Keyboard / mouse | Gamepad |
+| --- | --- | --- |
+| Move / look | WASD / mouse | left stick / right stick |
+| Sprint / crouch / jump | Shift / C / Space | L3 / B / A |
+| Pick up | E | X |
+| Drop / place held item | G | |
+| Use held tool | LMB | RT |
+| Secondary | RMB | LT |
+| Quick-swap tool | Q | Y |
+| Lantern | L | |
+| Debug overlay | F3 | |
+| Menu | Esc | Start |
+
+Movement is 4.2 m/s walking, 6.8 m/s sprinting (Shift, or a toggle in
+Settings), 2.0 m/s crouched, with a 1.1 m jump under 22 m/s² gravity. The
+character steps up 0.35 m and climbs slopes up to 50°. There's no fall damage;
+"Return to claim post" in the pause menu gets you unstuck.
+
+## The valley
+
+Rillstone Vale is about 600 × 600 m, shaped by `src/js/world/valley.js`.
+
+- **River.** A glacier-fed river winds north to south down the middle,
+  dropping 16 m over the falls below Upper Falls.
+- **Terraces.** The valley sides climb in pale sandstone terraces to slate
+  mountains with snow on the peaks.
+- **Places.** Millbrook sits flat on the east bank of a bend, and Upper Falls
+  sits on a shelf above the falls. Claim plots are flattened into the terrain.
+- **The old adit.** A timbered tunnel cut into the terrace cliff east of
+  town. It will lead to the Ember Seam claim later.
+
+A day lasts 24 real minutes. The sky, fog, sun colour and hemisphere light
+follow the sun's height. At night the sun becomes a cool moonlight from the
+opposite side. The sky light never drops below a minimum level, so nights and
+the adit stay readable. Your lantern lights up by itself at night and
+underground, and L toggles it.
+
 ## Code layout
 
 | File (in `src/` unless noted) | What it does |
 | --- | --- |
-| `js/main.js` | Entry point |
+| `js/main.js` | Entry point: boot, frame loop (60 Hz physics, 20 Hz sim tick), lantern, test hook (`window.__rill`) |
+| `js/core/rng.js`, `js/core/noise.js` | Seeded RNG (`?seed=`) and value noise |
+| `js/core/settings.js`, `js/core/input.js` | Saved settings and key bindings; keyboard, Pointer Lock mouse and gamepad mapped to actions |
+| `js/world/valley.js` | The valley's shape: height function, river, falls, town, hamlet, claim plots, adit |
+| `js/render/scene.js` | Renderer, sky dome, sun/moon with cascaded shadows, day/night colour curves, shared materials with grain |
+| `js/render/terrain.js` | Flat-shaded valley terrain in 100 m tiles with per-face colours, plus trimesh colliders |
+| `js/render/water.js` | River ribbon with the depth-tint, flow and foam shader |
+| `js/render/flora.js` | Instanced pines and boulders, with static colliders |
+| `js/render/adit.js` | The old adit tunnel, timber sets and portal |
+| `js/render/geom.js` | Helpers for vertex-coloured low-poly models |
+| `js/game/player.js` | First-person controller: input to wanted velocity, view angles, smoothed camera |
+| `js/ui/hud.js`, `js/ui/menu.js`, `style.css` | HUD, title, pause and settings panels |
 | `js/core/workers.js` | Starts workers from Blob URLs (bundled strings in the build, rewritten modules in dev) |
 | `js/core/physics.js` | Main-thread side of the physics worker: latest poses, batched queries |
 | `js/workers/physics.js` | Rapier world at a fixed 60 Hz, character controller, bodies, queries |
@@ -66,4 +119,17 @@ node tools/test.cjs <screenshot-dir>
 
 By default it tests the built `index.html`, and blocks and fails on any
 outside request to prove the file is self-contained. Add `--src` to test
-`src/index.html` instead. It fails on any console error.
+`src/index.html` instead, and `--move` or `--shots` to run one part only.
+`SCALE=2` takes the screenshots at double resolution. It:
+
+- measures walk, sprint and crouch speeds and the jump apex against the
+  numbers above;
+- screenshots the title, the start, noon, dusk, night, the adit from outside
+  and inside, and the falls;
+- checks the night and cave screenshots stay above a minimum brightness;
+- rebinds a key through the settings panel and checks it took;
+- fails on any console error.
+
+Pointer Lock doesn't work headless, so `?test=1` exposes `window.__rill`
+with methods to teleport, fly, set the time, run physics ticks and read
+state.

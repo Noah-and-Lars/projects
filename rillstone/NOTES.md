@@ -89,3 +89,26 @@ the brief's own cap of ≤ 300 awake bodies, the step stays around 1.3 ms
   in flight at a time, so the player sees at most one frame of latency.
 - Request ids travel as `rq` and replies as `re`, so they never clash with
   entity ids (an early bug).
+
+## M1: walk the valley
+
+- **Valley terrain** is a static trimesh in 100 m tiles (2 m cells, about
+  180k triangles), not a Rapier heightfield, because it needs holes: claim
+  plots are replaced by voxel volumes in M2, and the adit mouth is cut out.
+- **Shadows.** Cascaded shadows use three's `CSM` addon: 3 cascades at
+  2,048² out to 240 m on High, and 2 at 1,024² out to 160 m on Medium. Low turns
+  shadows off. CSM sets `onBeforeCompile` on each material, so our grain shader
+  hook is chained after it. Each CSM rebuild bumps a `customProgramCacheKey`:
+  without it, three reused a cached program whose uniforms CSM had just
+  deleted, and threw when the graphics setting changed.
+- **Moonlight.** Below the horizon the CSM light turns into a cool moon
+  opposite the sun at 0.9 intensity, with a minimum elevation, so nights keep
+  shape and shadows. The hemisphere light never goes below 0.9. The test
+  checks that night and cave screenshots average over 30/255 luminance; they
+  measure 48 and 45.
+- **Jump.** The worker integrates velocity before position at 60 Hz, which
+  lowers the apex of `v = √(2gh)` to 1.04 m. The launch speed adds `g·dt/2` to
+  correct for that, giving 1.10 m.
+- **Tests and slow frames.** In headless software GL a frame takes around
+  100 ms, which made per-tick tests crawl. The test hook can switch drawing
+  off (`noRender`) while it runs physics ticks.

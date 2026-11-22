@@ -33,7 +33,7 @@ for (const [name, v] of Object.entries(versions)) {
 
 const common = {
   bundle: true, format: 'iife', minify: true, target: ['es2020', 'safari15'],
-  legalComments: 'none', nodePaths: [join(here, 'node_modules')], write: false, logLevel: 'warning',
+  legalComments: 'none', logOverride: { 'empty-import-meta': 'silent' }, nodePaths: [join(here, 'node_modules')], write: false, logLevel: 'warning',
 };
 
 // 1. Workers, each into a string.
