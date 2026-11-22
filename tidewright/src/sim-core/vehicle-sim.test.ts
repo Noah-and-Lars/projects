@@ -50,7 +50,7 @@ const C = (o: Partial<Controls>): Controls => ({ ...NO_CONTROLS, ...o });
 describe('VehicleSim on flat ground', () => {
   it('settles on its springs without drifting or jitter', () => {
     const r = makeRig();
-    for (let i = 0; i < 12; i++) { r.run(0.25, NO_CONTROLS); if (process.env.DBG) console.log(i, r.b.linvel.map(v=>v.toFixed(3)).join(), r.b.angvel.map(v=>v.toFixed(3)).join(), r.b.pos.map(v=>v.toFixed(2)).join()); }
+    for (let i = 0; i < 12; i++) { r.run(0.25, NO_CONTROLS); }
     expect(Math.abs(r.b.linvel[1])).toBeLessThan(0.02);
     expect(Math.hypot(r.b.linvel[0], r.b.linvel[2])).toBeLessThan(0.05);
     expect(r.sim.telemetry({ ...r.b, com: [0, 0, 0] }).grounded).toBe(4);

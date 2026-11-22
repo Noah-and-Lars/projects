@@ -66,7 +66,10 @@ export function buildTerrain(spec: TerrainSpec = DEFAULT_TERRAIN): Terrain {
   return { ...spec, step, heights, pad };
 }
 
-/** Height at a world point, bilinear between grid samples. */
+/**
+ * Height at a world point. Matches the physics heightfield's triangulation exactly:
+ * each cell is split along the diagonal from (ix+1, iz) to (ix, iz+1).
+ */
 export function heightAt(t: Terrain, x: number, z: number): number {
   const fx = clamp((x + t.size / 2) / t.step, 0, t.res - 1.0001);
   const fz = clamp((z + t.size / 2) / t.step, 0, t.res - 1.0001);
@@ -74,5 +77,6 @@ export function heightAt(t: Terrain, x: number, z: number): number {
   const ux = fx - ix, uz = fz - iz;
   const h = t.heights, n = t.res;
   const a = h[iz * n + ix], b = h[iz * n + ix + 1], c = h[(iz + 1) * n + ix], d = h[(iz + 1) * n + ix + 1];
-  return a * (1 - ux) * (1 - uz) + b * ux * (1 - uz) + c * (1 - ux) * uz + d * ux * uz;
+  if (ux + uz <= 1) return a + (b - a) * ux + (c - a) * uz;
+  return d + (c - d) * (1 - ux) + (b - d) * (1 - uz);
 }
