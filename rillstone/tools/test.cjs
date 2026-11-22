@@ -242,11 +242,15 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       await step('rotY', true); await step('rotY', false); await step('rotY', true); await step('rotY', false);
       const rot = H.dropRot.join(','), ring = [!!H.ringPos, H.ringOk, H.precise, R.items.get(id)?.type]; await step('drop', false);
       const e = R.items.get(id), loc = e.loc; H.dropRot = [0, 0, 0];
-      // B over the dropped nugget opens its look-up entry.
-      R.aimAt(e.pos[0], e.pos[1], e.pos[2]); await R.refreshAim();
+      // B over a hovered item opens its look-up entry (a crate: a big,
+      // sure target for the aim ray; a dropped shovel lies flat and thin).
+      const cp = R.view.camera.position, crate = R.items.spawn('crate', [cp.x + 1.6, R.height(cp.x + 1.6, cp.z - 0.8) + 0.4, cp.z - 0.8], { data: { def: 'sluice1', family: 'water' } });
+      for (let i = 0; i < 40; i++) await R.tick(1);
+      R.aimAt(crate.pos[0], crate.pos[1], crate.pos[2]); await R.refreshAim();
       for (let i = 0; i < 30 && !H.hover?.ref; i++) await R.frames(1);
       await step('guide', true); await step('guide', false);
-      const panel = R.panels.current; R.panels.close();
+      const panel = R.panels.current; R.panels.close(); R.items.remove(crate.id);
+      R.aimAt(e.pos[0], e.pos[1], e.pos[2]); await R.refreshAim();
       H.pickup(); R.noRender(false);
       return { held, rot, loc, panel, back: H.hand === id, ring };
     });
