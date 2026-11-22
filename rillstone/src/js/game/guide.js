@@ -5,6 +5,7 @@
 import { h } from '../ui/dom.js';
 import { MACHINES } from '../defs/machines.js';
 import { SHOPS } from '../defs/shops.js';
+import { BLUEPRINTS } from '../defs/progression.js';
 import { MATERIALS } from '../defs/materials.js';
 
 export function createGuide({ hud, panels, economy, hands, items, machines, vehicles, audio }) {
@@ -23,7 +24,7 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
     { title: 'A better shovel', text: 'Buy the Sturdy Shovel at the General Store: it holds 2 loads.', done: () => has(e => e.type === 'shovel' && (e.data?.cap || 1) >= 2), pay: 20 },
     { title: 'Your first contract', text: 'Read the board by the Guild Hall and finish a contract. Contracts pay Scrip and Guild Standing.', done: () => E.standing > 0, pay: 40 },
     { title: 'The starter kit', text: 'Save up § 1,000. At the Millwright buy a Sluice Box, a Drill, a River Intake and copper pipe.', done: () => has(e => e.type === 'crate' && e.data.def === 'drill1') || !!machine(m => m.def === 'drill1'), pay: 50 },
-    { title: 'Set up a line', text: 'Place the drill in your claim with its spout over the sluice hopper, and lock both with the mallet.', done: () => { const d = machine(m => m.def.startsWith('drill')); return !!(d && machines.linkOf(d.id)); }, pay: 60 },
+    { title: 'Set up a line', text: 'Place the drill in your claim with its spout over the sluice hopper, and lock both with the mallet.', done: () => !!machine(m => m.def.startsWith('drill') && machines.linkOf(m.id)), pay: 60 },
     { title: 'Bring the water', text: 'Put the intake in the river and lay copper pipe from it to the drill and the sluice. Watch it run.', done: () => !!machine(m => m.def.startsWith('drill') && m.status === 'running'), pay: 80 },
     { title: 'Dig deeper', text: 'Buy the Willow Bend deed at the Guild Hall (§ 900). It goes down to the gravel bed and slate.', done: () => economy.owns('willow'), pay: 100 },
   ];
@@ -42,7 +43,7 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
       if (g.step >= STEPS.length) return;
       const s = STEPS[g.step];
       if (title.textContent !== s.title) { title.textContent = s.title; text.textContent = s.text; count.textContent = `${g.step + 1} / ${STEPS.length}`; }
-      if (vehicles.driving) g.drove = true;
+      if (vehicles.driving && g.step === 4) g.drove = true; // only a drive during "Load the truck" counts
       t -= dt; if (t > 0 || !api.auth) return; t = 0.5;
       if (s.done()) {
         g.step++; E.scrip += s.pay;
@@ -57,8 +58,15 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
       const shopEntry = (pred) => { for (const s of Object.values(SHOPS)) for (const it of s.items) if (pred(it)) return { it, shop: s.name }; return null; };
       let hit = null;
       if (ref.def) hit = shopEntry(it => it.data?.def === ref.def);
-      else if (ref.type) hit = shopEntry(it => it.spawn === ref.type && !it.data?.tier && !it.data?.cap) || shopEntry(it => it.spawn === ref.type);
-      if (hit) desc.push(hit.it.desc, `Sold at the ${hit.shop}.`);
+      // Same type and the same tier/capacity (a Steel Shovel isn't a Sturdy one;
+      // a steel pipe coil isn't a copper one). The starter shovel has no entry.
+      else if (ref.type) hit = shopEntry(it => it.spawn === ref.type && (it.data?.tier ?? null) === (ref.tier ?? null) && (it.data?.cap ?? null) === (ref.cap ?? null))
+        || (ref.type === 'coil' ? shopEntry(it => it.spawn === 'coil' && it.data?.tier === ref.tier) : null)
+        || (ref.type !== 'shovel' && ref.type !== 'coil' && ref.tier == null ? shopEntry(it => it.spawn === ref.type) : null);
+      if (!hit && ref.type) { const bp = BLUEPRINTS.find(b => b.spawn === ref.type && (b.data?.tier ?? null) === (ref.tier ?? null) && (b.data?.cap ?? null) === (ref.cap ?? null)); if (bp) hit = { it: bp, shop: 'Machine Shop (blueprint)' }; }
+      if (!hit && ref.def) { const bp = BLUEPRINTS.find(b => b.data?.def === ref.def); if (bp) hit = { it: bp, shop: 'Machine Shop (blueprint)' }; }
+      if (hit) desc.push(hit.it.desc, `From the ${hit.shop}.`);
+      else if (ref.type === 'shovel') desc.push('Your starter shovel: 1 load of topsoil or clay. Better shovels are at the General Store.');
       const m = ref.material && MATERIALS[ref.material];
       if (m) {
         if (m.kind === 'gem') desc.push(ref.stage === 'uncut' ? 'Uncut gems sell at the Gem Buyer, or cut them on a grinding wheel (or at the Upper Falls cutter) to roughly double their price.' : 'Cut gems sell at the Gem Buyer, or set one in a ring or chalice at a workbench.');

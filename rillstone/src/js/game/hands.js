@@ -448,7 +448,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     // Hover: outline and tooltip.
     const hov = info.kind === 'item' && info.dist < REACH ? info.ent.id : null;
     setOutline(hov);
-    let card = hov != null ? items.card(hov) : null, ref = hov != null ? { type: info.ent.type, def: info.ent.data?.def, material: info.ent.item?.material || info.ent.data?.material, stage: info.ent.item?.stage || info.ent.data?.stage } : null;
+    let card = hov != null ? items.card(hov) : null, ref = hov != null ? { type: info.ent.type, tier: info.ent.data?.tier, cap: info.ent.data?.cap, def: info.ent.data?.def, material: info.ent.item?.material || info.ent.data?.material, stage: info.ent.item?.stage || info.ent.data?.stage } : null;
     if (!card && info.kind === 'prop' && info.dist < 6) { card = H.props.card(info.id); ref = { prop: info.id }; }
     if (!card && info.kind === 'machine' && info.dist < 6) { card = H.machines.card(info.id); ref = { def: info.m.def }; }
     if (!card && info.kind === 'vehicle' && info.dist < 5) {

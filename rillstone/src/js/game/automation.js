@@ -289,7 +289,7 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
       if (L === 'beltgate') { const t = nearestMachine(m, d => d.role === 'belt'); if (t) t.gateClosed = !(a > 0); }
       if (L === 'pourer' && rising) { const t = nearestMachine(m, d => !!d.meltRate); if (t) machines.pour(t.id); }
       if (L === 'siren' && a > 0 && (s.next || 0) < clock) { s.next = clock + 1.2; audio.play('siren'); }
-      if (L === 'charge' && rising) { const vol = claims.volumeAt(m.pos[0], m.pos[2], m.pos[1]); if (vol && economy.owns(vol.id)) brush(vol.id, [m.pos[0], m.pos[1] - 0.5, m.pos[2]], 2.0, 'dig', 3); fx?.burst([m.pos[0], m.pos[1] + 0.3, m.pos[2]], 0xffb050, 40, { speed: 6, size: 0.08, life: 0.8 }); audio.play('boom'); hud.toast('Boom!'); machines.remove(m.id); }
+      if (L === 'charge' && rising) { const vol = claims.volumeAt(m.pos[0], m.pos[2], m.pos[1]); if (vol && economy.owns(vol.id)) { const c = [m.pos[0], m.pos[1] - 0.5, m.pos[2]]; brush(vol.id, c, 2.0, 'dig', 3); auto.onDig?.(vol, c, 2.0); } fx?.burst([m.pos[0], m.pos[1] + 0.3, m.pos[2]], 0xffb050, 40, { speed: 6, size: 0.08, life: 0.8 }); audio.play('boom'); hud.toast('Boom!'); machines.remove(m.id); }
       if (L === 'ejector' && rising) { const t = nearestMachine(m, d => d.role === 'container'); if (t && t.state.contents.length) { const it = t.state.contents.shift(); if (!machines.output(t, { item: it })) t.state.contents.unshift(it); } }
     }
     for (const m of logic) {

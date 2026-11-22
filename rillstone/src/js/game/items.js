@@ -84,9 +84,12 @@ export function createItems({ scene, physics, materials }) {
     m.userData.ent = e.id;
     return m;
   }
+const PLAIN_KEYS = new Set(['material', 'stage', 'kg', 'hotUntil']);
   function show(e) {
     // A full instanced mesh (thousands of one material) falls back to a mesh of its own.
-    if (isInst(e) && (e.slot !== undefined || instFor(instKey(e)).free.length)) {
+    // An entity already drawn by a fallback mesh keeps it (taking a freed slot
+    // too would leave that mesh behind as a frozen ghost).
+    if (isInst(e) && (e.slot !== undefined || (!meshes.has(e.id) && instFor(instKey(e)).free.length))) {
       e.ikey = instKey(e);
       const I = instFor(e.ikey);
       if (e.slot === undefined) { e.slot = I.free.pop(); I.used[e.slot] = 1; (I.ids ||= [])[e.slot] = e.id; }
@@ -191,7 +194,7 @@ export function createItems({ scene, physics, materials }) {
       }
       if (e.type === 'pile') {
         const kg = e.data.kgs.reduce((a, b) => a + b, 0), m = MATERIALS[e.data.material];
-        return { name: `Pile of ${m.name.toLowerCase()} ${e.data.stage === 'ore' ? 'nuggets' : e.data.stage}`, lines: [`${e.data.kgs.length} pieces · ${kg.toFixed(1)} kg`, m.kind === 'fuel' ? 'Fuel' : `≈ § ${(kg * (e.data.stage === 'ore' ? m.ore : m.refined)).toFixed(0)}`, 'E takes one'] };
+        return { name: `Pile of ${m.name.toLowerCase()} ${e.data.stage === 'ore' ? 'nuggets' : e.data.stage}`, lines: [`${e.data.kgs.length} pieces · ${kg.toFixed(1)} kg`, m.kind === 'fuel' ? 'Fuel' : `≈ § ${e.data.kgs.reduce((a, k) => a + itemValue({ material: e.data.material, stage: e.data.stage, kg: k }), 0).toFixed(0)}`, 'E takes one'] };
       }
       if (EXTRA_CARD[e.type]) return EXTRA_CARD[e.type](e);
       if (e.type === 'clod') return e.data.ore ? { name: 'Ore clod', lines: ['Hard rock from deep down', 'Crush it in a Stamp Mill for 3 loads'] } : { name: 'Dirt clod', lines: ['1 gravel load', 'Wash it in a pan or sluice'] };
@@ -210,6 +213,9 @@ export function createItems({ scene, physics, materials }) {
         const pose = physics.poses.get(e.id); if (!pose || !pose.asleep) continue;
         // Counters sell or use single items: nothing merges into a pile there.
         if (api.noMerge.some(f => f(e.pos))) continue;
+        // A pile keeps only material, stage and weight: items carrying more
+        // (a hot ingot, a half-ground gem) stay single.
+        if (e.item.hotUntil > api.clock || Object.keys(e.item).some(k => !PLAIN_KEYS.has(k))) continue;
         const k = `${e.item.material}|${e.item.stage}|${Math.floor(e.pos[0])}|${Math.floor(e.pos[1])}|${Math.floor(e.pos[2])}`;
         if (!cells.has(k)) cells.set(k, []);
         cells.get(k).push(e);

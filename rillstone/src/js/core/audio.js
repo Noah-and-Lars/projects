@@ -91,7 +91,7 @@ export function createAudio(settings, onCaption) {
     const g2 = noiseSrc(), gf = ctx.createBiquadFilter(), gg = ctx.createGain(); gf.type = 'bandpass'; gf.frequency.value = 3200; gf.Q.value = 6; gg.gain.value = 0; g2.connect(gf); gf.connect(gg); gg.connect(mod);
     return { type, pan, out, osc, V, gg, lfo, stop() { const t = ctx.currentTime; out.gain.setTargetAtTime(0, t, 0.2); setTimeout(() => { try { lfo.stop(); n.stop(); g2.stop(); osc?.stop(); pan.disconnect(); } catch (_) {} }, 1200); } };
   }
-  // listener: { pos, fwd, up }; river: distance (m) to water; sources: [{ type, pos, level, wear, rate }].
+  // listener: { pos, fwd, up }; river: distance (m) to water; sources: [{ type, key, pos, level, wear, rate }].
   function update(listener, river, sources) {
     if (!ctx) return;
     const t = ctx.currentTime, L = ctx.listener;
@@ -104,7 +104,7 @@ export function createAudio(settings, onCaption) {
     const clusters = [];
     for (const s of sources) {
       let c = clusters.find(k => k.type === s.type && Math.hypot(k.pos[0] - s.pos[0], k.pos[2] - s.pos[2]) < 6);
-      if (!c) { c = { type: s.type, pos: s.pos.slice(), n: 0, level: 0, wear: 0, rate: 0 }; clusters.push(c); }
+      if (!c) { c = { type: s.type, key: s.key ?? `${Math.round(s.pos[0] / 6)}:${Math.round(s.pos[2] / 6)}`, pos: s.pos.slice(), n: 0, level: 0, wear: 0, rate: 0 }; clusters.push(c); }
       c.n++; c.level = Math.min(1.4, c.level + s.level * (c.n > 1 ? 0.35 : 1)); c.wear = Math.max(c.wear, s.wear || 0); c.rate = Math.max(c.rate, s.rate || 1);
     }
     for (const c of clusters) c.d = Math.hypot(c.pos[0] - listener.pos[0], c.pos[1] - listener.pos[1], c.pos[2] - listener.pos[2]);
@@ -112,7 +112,10 @@ export function createAudio(settings, onCaption) {
     const keep = new Set();
     for (const c of clusters.slice(0, MAX_VOICES)) {
       if (c.d > 60) continue;
-      const key = `${c.type}:${Math.round(c.pos[0] / 6)}:${Math.round(c.pos[2] / 6)}`;
+      // Keyed by the cluster's first source (a machine id, or 'engine'), not
+      // by position: a moving engine would otherwise restart its voice every
+      // 6 m, and two clusters could round into one grid cell.
+      const key = `${c.type}:${c.key}`;
       let v = voices.get(key);
       if (!v) { v = makeVoice(c.type); voices.set(key, v); }
       keep.add(key);

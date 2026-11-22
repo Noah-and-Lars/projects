@@ -21,6 +21,7 @@ const matches = (w, it) => it.stage === w.stage && (w.kind ? MATERIALS[it.materi
 
 // Contract templates, scaled by standing. kind: 'kg' (deliver kg of a
 // material/stage), 'count' (items matching), 'big' (one piece over X kg), 'day' (sell § in a day).
+const CRAFT_MIN_KG = 1;
 function makeContract(rng, standing, id) {
   const tier = Math.min(4, 1 + Math.floor(standing / 4));
   const t = rng();
@@ -31,7 +32,7 @@ function makeContract(rng, standing, id) {
     const u = rng();
     if (u < 0.5 || tier < 3) { const kg = Math.round((10 + rng() * 15) * tier * (metal === 'gold' ? 0.4 : metal === 'silver' ? 0.6 : 1)); c = { kind: 'kg', want: { stage: 'ingot', material: metal }, target: kg, text: `Deliver ${kg} kg of ${MATERIALS[metal].name.toLowerCase()} ingots` }; }
     else if (u < 0.75) { const n = 2 + Math.floor(rng() * tier); c = { kind: 'count', want: { stage: 'cut', kind: 'gem' }, target: n, text: `Deliver ${n} cut gems` }; }
-    else { const craft = ['ring', 'chain', 'chalice'][Math.floor(rng() * 3)]; c = { kind: 'count', want: { stage: 'crafted', material: metal, craft }, target: 1, text: `Deliver ${/^[aeiou]/i.test(metal) ? 'an' : 'a'} ${MATERIALS[metal].name.toLowerCase()} ${CRAFT_NAMES[craft]}` }; }
+    else { const craft = ['ring', 'chain', 'chalice'][Math.floor(rng() * 3)]; c = { kind: 'count', want: { stage: 'crafted', material: metal, craft }, target: 1, text: `Deliver ${/^[aeiou]/i.test(metal) ? 'an' : 'a'} ${MATERIALS[metal].name.toLowerCase()} ${CRAFT_NAMES[craft]} (1 kg or more)` }; }
     const reward = Math.round((c.kind === 'kg' ? c.target * MATERIALS[metal].refined * 0.7 : c.want.stage === 'cut' ? c.target * 45 : 150 * tier) / 5) * 5 + 20;
     return { id, ...c, progress: 0, reward, standing: tier, done: false };
   }
@@ -108,7 +109,9 @@ export function createEconomy(rng) {
       if (c.done || c.kind === 'day') continue;
       if (!matches(c.want, it)) continue;
       if (c.kind === 'kg') c.progress += it.kg;
-      else if (c.kind === 'count') c.progress += 1;
+      // A crafted good must be a real piece of work (1 kg or more), not a
+      // chalice made from a 0.05 kg scrap ingot.
+      else if (c.kind === 'count' && !(c.want.stage === 'crafted' && it.kg < CRAFT_MIN_KG)) c.progress += 1;
       else if (c.kind === 'big' && it.kg >= c.target) c.progress = c.target;
     }
   }

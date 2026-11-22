@@ -18,7 +18,7 @@ EXTRA_BOX.lamp = () => [0.08, 0.12, 0.08];
 EXTRA_MASS.lamp = () => 1.2;
 EXTRA_CARD.lamp = () => ({ name: "Prospector's Lamp", lines: ['E to wear it', 'Hums and glows near a vein'] });
 
-export function createProgress({ items, hands, economy, hud, audio, adit, physics, lantern }) {
+export function createProgress({ items, hands, economy, hud, audio, adit, physics, lantern, claims }) {
   const F = () => (economy.state.flags ||= {});
   const relic = relicSpot();
   const api = { signal: 0, nearVein: null };
@@ -61,6 +61,12 @@ export function createProgress({ items, hands, economy, hud, audio, adit, physic
     doorT -= dt;
     if (doorT <= 0) {
       doorT = 0.5;
+      // However the ground around the relic went (any tool, a charge, the
+      // excavator), once it's open to the air the relic turns up.
+      if (!F().relicFound && economy.owns('oldcut') && !opts.guest) {
+        const vol = claims?.volumes.get('oldcut');
+        if (vol && vol.bandAt(relic[0], relic[1], relic[2]) === 0) hands.onDig(vol, relic, 0);
+      }
       const own = economy.owns('ember');
       if (own !== adit.doorOpen) physics.post(adit.setDoor(own));
     }

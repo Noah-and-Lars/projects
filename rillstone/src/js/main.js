@@ -139,6 +139,7 @@ async function boot() {
   const auto = createAutomation({ machines, items, scene, materials: view.materials, hud, audio, panels, fx, claims, economy, brush: (id, c, r, mode, b) => brush(claims.volumes.get(id), c, r, mode, b) });
   machines.panelRows = auto.panelRows;
   hands.auto = auto;
+  auto.onDig = (vol, c, r) => hands.onDig?.(vol, c, r); // a logic charge can turn up the relic too
   // Take one thing out of a bin or crate into your hands (or drop it if they're full).
   auto.takeFrom = (m, i, H = hands) => {
     const it = m.state.contents.splice(i, 1)[0]; if (!it) return;
@@ -172,7 +173,7 @@ async function boot() {
   const lantern = new THREE.PointLight(0xffc27a, 0, 18, 1.6);
   scene.add(lantern);
   let lanternManual = null;
-  const progress = createProgress({ items, hands, economy, hud, audio, adit, physics, lantern });
+  const progress = createProgress({ items, hands, economy, hud, audio, adit, physics, lantern, claims });
   const heavy = createHeavy({ scene, physics, items, vehicles, claims, economy, machines, hud, audio, fx, materials: view.materials, height, hands });
   const workshop = createWorkshop({ scene, physics, materials: view.materials, items, economy, town, hud, audio, panels, fx, getStats: () => ({ playTime: state.playTime }) });
 
@@ -362,9 +363,9 @@ async function boot() {
       const on = type === 'heat' ? m.status === 'melting' : type === 'wheel' ? m.on !== false : m.status === 'running';
       if (on && m._wasOn === false && startupT <= 0 && Math.hypot(m.pos[0] - pos[0], m.pos[2] - pos[2]) < 25) { audio.play('startup'); startupT = 1; }
       m._wasOn = on;
-      if (on) src.push({ type, pos: [m.pos[0], m.pos[1] + 1, m.pos[2]], level: type === 'pump' ? 0.5 : 1, wear: m.wear || 0, rate: m.speed || 1 });
+      if (on) src.push({ type, key: m.id, pos: [m.pos[0], m.pos[1] + 1, m.pos[2]], level: type === 'pump' ? 0.5 : 1, wear: m.wear || 0, rate: m.speed || 1 });
     }
-    if (dv && dv.state) src.push({ type: 'engine', pos: dv.group.position.toArray(), level: 0.7, rate: Math.min(1.6, 0.4 + Math.abs(dv.state.speed) / (dv.def.topSpeed || 15)) });
+    if (dv && dv.state) src.push({ type: 'engine', key: 'engine', pos: dv.group.position.toArray(), level: 0.7, rate: Math.min(1.6, 0.4 + Math.abs(dv.state.speed) / (dv.def.topSpeed || 15)) });
     const river = Math.max(0, Math.abs(pos[0] - riverX(pos[2])) - RIVER_HALF_WIDTH(pos[2]));
     audio.update({ pos, fwd, up }, river, src);
   }
@@ -442,7 +443,7 @@ async function boot() {
     }
     if (!coop.isGuest()) heavy.update(dt);
     soundT -= dt; if (soundT <= 0) { soundT = 0.1; updateSound(dv); }
-    progress.update(dt, dv ? dv.group.position.toArray() : camera.position.toArray(), { scanner: !!dv?.def.scanner });
+    progress.update(dt, dv ? dv.group.position.toArray() : camera.position.toArray(), { scanner: !!dv?.def.scanner, guest: coop.isGuest() });
     workshop.update(dt);
     hud.hotbar([slotCard(items, hands.hand), slotCard(items, hands.slot)]);
     const dh = vehicles.hud();

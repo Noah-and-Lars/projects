@@ -870,3 +870,33 @@ A read-only review found ten issues, all now fixed:
     - A host whose tab is hidden keeps the world running on a 50 ms timer
       while guests are connected, without rendering, so guests don't
       freeze.
+
+### Fifth review pass (items, guide, audio, data and economy)
+
+1. **Relic lost to a charge.** A logic charge could blast the ground
+   around the buried governor without turning it up. After that no dig
+   could get near enough, and Pumphouse stage 2 was blocked. Charges now
+   run the relic check. As a backstop, the relic turns up whenever the
+   ground around it is open to the air, whatever removed it.
+2. **Engine sound pulsing.** Voices were keyed by a 6 m grid cell, so a
+   moving engine restarted its sound every 6 m, and two machine clusters
+   could share one voice. Voices are now keyed by the cluster's first
+   source: a machine id, or "engine".
+3. **Guide "Set up a line".** It looked only at the first drill. It now
+   completes when any drill is linked.
+4. **Ghost items.** An item drawn by a fallback mesh (its instanced mesh
+   was full) took a freed instance slot and left the old mesh behind. It
+   now keeps its own mesh.
+5. **Guide "Load the truck".** It completed at once if you had driven
+   during an earlier step. Now only a drive during that step counts.
+6. **Look-up entries.** B on a Steel or Glimmer shovel, a steel pipe coil
+   or a Steel Pick showed the plain item's entry. Entries now match on
+   tier and capacity, Machine Shop blueprints included. The starter
+   shovel has its own note.
+7. **Pile value.** The tooltip priced a pile of uncut gems at the cut
+   rate. It now sums each piece's real value.
+8. **Piles losing details.** Piles keep only material, stage and weight,
+   so hot ingots and half-ground gems no longer merge into them.
+9. **Craft contracts.** A chalice made from a 0.05 kg scrap ingot paid a
+   full contract. Crafted goods for contracts must now weigh 1 kg or more,
+   and the contract text says so.
