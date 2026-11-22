@@ -13,7 +13,7 @@ import { buildAdit } from './render/adit.js';
 import { createPlayer, MOVE } from './game/player.js';
 import { createHUD } from './ui/hud.js';
 import { createMenu } from './ui/menu.js';
-import { spawnPoint, height, ADIT, TOWN, HAMLET, CLAIMS, riverX, waterY, FALLS_Z } from './world/valley.js';
+import { HALF, spawnPoint, height, ADIT, TOWN, HAMLET, CLAIMS, riverX, waterY, FALLS_Z } from './world/valley.js';
 
 const TEST = new URLSearchParams(location.search).has('test');
 const SEED = urlSeed();
@@ -37,6 +37,9 @@ async function boot() {
   await physics.call({ op: 'batch', ops: [
     ...terrain.colliders.map(c => ({ op: 'setStatic', ...c })),
     ...flora.colliders, ...adit.colliders,
+    // Invisible walls round the valley, so following the river (which cuts
+    // through the edge mountains) can't take you off the map.
+    ...[[1, 0], [-1, 0], [0, 1], [0, -1]].map(([sx, sz], i) => ({ op: 'setStaticBox', key: 'bound' + i, hx: sx ? 1 : HALF, hy: 200, hz: sz ? 1 : HALF, pos: [sx * (HALF - 12), 100, sz * (HALF - 12)] })),
   ] });
 
   // Player.
@@ -106,6 +109,12 @@ async function boot() {
     // Time of day.
     if (state.mode === 'play') { state.time += dt / DAY_SECONDS; if (state.time >= 1) { state.time -= 1; state.day++; } }
     player.camera(camera, Math.min(1, acc * 60), dt);
+    // Safety net: fell through the world somehow? Back to the claim post.
+    if (!player.fly && ((player.cur.y < height(player.cur.x, player.cur.z) - 25 && !adit.contains(player.cur.x, player.cur.y, player.cur.z)) || player.cur.y < -40) && !state.rescuing) {
+      state.rescuing = true;
+      const s = spawnPoint();
+      teleport(s.x, height(s.x, s.z) + 1, s.z, s.yaw).then(() => { state.rescuing = false; hud.toast('Back at your claim post'); });
+    }
     const inAdit = adit.contains(camera.position.x, camera.position.y, camera.position.z);
     // Underground the sky light fades (never below the minimum ambient).
     caveF += ((inAdit ? Math.min(1, (camera.position.x - ADIT.x + 2) / 8) : 0) - caveF) * Math.min(1, dt * 4);

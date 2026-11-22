@@ -50,7 +50,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       const a = R.playerState().pos;
       for (const k of hold) R.input.simulate(k, true);
       let maxY = a[1];
-      for (let i = 0; i < Math.round(secs * 60); i++) { await R.tick(1); maxY = Math.max(maxY, R.playerState().pos[1]); if (hold.includes('jump')) R.input.simulate('jump', false); }
+      for (let i = 0; i < Math.round(secs * 60); i++) { await R.tick(1); R.input.endFrame(); maxY = Math.max(maxY, R.playerState().pos[1]); if (hold.includes('jump')) R.input.simulate('jump', false); }
       for (const k of hold) R.input.simulate(k, false);
       R.input.endFrame(); R.noRender(false);
       const c = R.playerState().pos;
@@ -67,6 +67,18 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     // Stand at the Gravel Bar and check we're on the ground, not falling forever.
     const st = await p.evaluate(() => __rill.playerState());
     check(st.grounded && st.pos[1] > 0, `player grounded at y=${st.pos[1].toFixed(2)}`);
+    // Walk down the river to the map edge: the boundary must stop us.
+    const edge = await p.evaluate(async () => {
+      const R = __rill; R.fly(false); R.noRender(true);
+      const z = 255, x = R.riverX(z);
+      await R.teleport(x, R.height(x, z) + 1.2, z, Math.PI, 0); // yaw PI faces +z (south)
+      await R.tick(30);
+      R.input.simulate('forward', true); R.input.simulate('sprint', true);
+      for (let i = 0; i < 60 * 12; i++) await R.tick(1);
+      R.input.simulate('forward', false); R.input.simulate('sprint', false); R.input.endFrame(); R.noRender(false);
+      return R.playerState().pos;
+    });
+    check(edge[2] < 300 - 10 && edge[1] > -5, `walking down the river stops at the boundary (z=${edge[2].toFixed(1)}, y=${edge[1].toFixed(1)})`);
   }
 
   if (all || flags.has('--shots')) {
