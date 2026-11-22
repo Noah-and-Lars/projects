@@ -1,0 +1,13 @@
+{
+  "name": "rillstone-tools",
+  "private": true,
+  "type": "module",
+  "description": "Build and test tooling for Rillstone (not shipped).",
+  "scripts": { "build": "node build.mjs" },
+  "devDependencies": {
+    "esbuild": "0.24.2",
+    "three": "0.187.0",
+    "@dimforge/rapier3d-compat": "0.21.0",
+    "fflate": "0.8.3"
+  }
+}

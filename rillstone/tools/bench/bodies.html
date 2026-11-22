@@ -1,0 +1,45 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Rillstone body benchmark</title>
+<script type="importmap">
+{ "imports": { "@dimforge/rapier3d-compat": "https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs" } }
+</script></head><body>
+<script type="module">
+// Benchmark 2 (BUILD_BRIEF section 10): 2,000 nuggets dropped into a pit must
+// settle and fall asleep with the physics step at or under 6 ms.
+import { createPhysics } from '../../src/js/core/physics.js';
+const CCD = new URLSearchParams(location.search).has('ccd');
+const Q = new URLSearchParams(location.search), SHAPE = Q.get('shape') || 'convex', RATE = +(Q.get('rate') || 40);
+const N = +(new URLSearchParams(location.search).get('n') || 2000);
+const ph = await createPhysics();
+// A 10 x 10 m pit, 4 m deep, as one trimesh (floor + 4 walls).
+const v = [], idx = [];
+const quad = (a, b, c, d) => { const i = v.length / 3; v.push(...a, ...b, ...c, ...d); idx.push(i, i + 1, i + 2, i, i + 2, i + 3); };
+const s = 5, h = 4;
+quad([-s, 0, -s], [-s, 0, s], [s, 0, s], [s, 0, -s]);
+quad([-s, 0, -s], [s, 0, -s], [s, h, -s], [-s, h, -s]);
+quad([-s, 0, s], [-s, h, s], [s, h, s], [s, 0, s]);
+quad([-s, 0, -s], [-s, h, -s], [-s, h, s], [-s, 0, s]);
+quad([s, 0, -s], [s, 0, s], [s, h, s], [s, h, -s]);
+await ph.call({ op: 'setStatic', key: 'pit', vertices: new Float32Array(v), indices: new Uint32Array(idx) });
+// Nuggets: small convex hulls of 8 jittered points (like the game's), 0.06-0.12 m.
+let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const nug = () => { const r = 0.06 + rnd() * 0.06, pts = []; for (let i = 0; i < 8; i++) pts.push((rnd() * 2 - 1) * r, (rnd() * 2 - 1) * r * 0.7, (rnd() * 2 - 1) * r); return pts; };
+const steps = []; let lost = 0; ph.onLost = () => lost++;
+let added = 0, frames = 0, maxAwake = 0;
+const t0 = performance.now();
+while (true) {
+  // Pour 40 per step from a 3 x 3 m spout, like dumping buckets.
+  for (let k = 0; k < RATE && added < N; k++, added++) ph.addBody({ id: added + 1, shape: SHAPE === 'ball' ? { type: 'ball', r: 0.05 + rnd() * 0.04 } : SHAPE === 'box' ? { type: 'box', hx: 0.04 + rnd() * 0.04, hy: 0.03 + rnd() * 0.03, hz: 0.04 + rnd() * 0.04 } : { type: 'convex', points: nug() }, angDamp: SHAPE === 'ball' ? 3 : 0.4, pos: [(rnd() - 0.5) * 6, 5 + rnd() * 3, (rnd() - 0.5) * 6], mass: 0.5, ccd: CCD });
+  const r = await ph.step(1);
+  frames++;
+  steps.push(r.stats.stepMs);
+  maxAwake = Math.max(maxAwake, r.stats.awake);
+  if (added >= N && r.stats.awake === 0) break;
+    if (frames > 60 * 120) break;
+}
+const sorted = steps.slice().sort((a, b) => a - b);
+const pct = (p) => +sorted[Math.floor(sorted.length * p)].toFixed(2);
+// Steady state: all asleep.
+const idle = []; for (let i = 0; i < 60; i++) idle.push((await ph.step(1)).stats.stepMs);
+window.__bench = { shape: SHAPE, perStep: RATE, bodies: N, escaped: lost, ccd: CCD, framesToSleep: frames, secondsToSleep: +(frames / 60).toFixed(1), stepMedian: pct(0.5), stepP95: pct(0.95), stepMax: pct(0.999), maxAwake, idleStepMs: +(idle.reduce((a, b) => a + b) / idle.length).toFixed(3), wallSeconds: +((performance.now() - t0) / 1000).toFixed(1) };
+</script></body></html>

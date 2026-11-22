@@ -1,0 +1,10 @@
+:root {
+  --cream: #f6eedb; --cream-2: #ece0c4; --slate: #2b3440; --slate-2: #56616e;
+  --teal: #1f7a7a; --ochre: #c8902c; --brick: #a84a3a; --violet: #6e56a8; --brass: #b8913f;
+  --font: ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #9cc6d8; font-family: var(--font); color: var(--slate); }
+canvas#game { display: block; width: 100vw; height: 100vh; outline: none; }
+#ui { position: fixed; inset: 0; pointer-events: none; }
+#ui .interactive, #ui button, #ui input, #ui select { pointer-events: auto; }
