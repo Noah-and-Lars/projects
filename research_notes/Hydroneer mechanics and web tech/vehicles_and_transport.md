@@ -69,13 +69,78 @@ The most common items are moved by hand carts, pallets and the cargo zones of ve
 - **Vehicles cannot be scrapped or sold.** Players "just park them aside" or build garages. The Creative Wand can destroy vehicles but blocks achievement progress. Carts also do not scrap. [Community] — [Steam: Scrapping vehicles](https://steamcommunity.com/app/1106840/discussions/0/4147320536951650582/); [Steam: Scrap Vehicles?](https://steamcommunity.com/app/1106840/discussions/0/4339860450387601579/)
 - **Scrapyard burn zone.** It destroys items stored in a truck that is driven into it. A 3.0.4 fix addressed truck items that left the zone. Players report accidentally scrapping coins kept in the truck, including "about 12k" and "800k". [Official] — [3.0.4](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5756237364318958392); [Community] — [Steam: Scrap Vehicles?](https://steamcommunity.com/app/1106840/discussions/0/4339860450387601579/)
 
+**Price and stat table (cross-checked)**
+
+The Bridgepour DB values below come from [api.bridgepour.com/api/vehicles/](https://api.bridgepour.com/api/vehicles/). Prices are divided by 100, as the site displays them. Stats are 1–10 ratings in the order Acc, Top, Hand, Brake, Storage, Weight.
+
+| Vehicle | Island | Price (currency) | Store | Acc | Top | Hand | Brake | Storage | Weight |
+|---|---|---|---|---|---|---|---|---|---|
+| Hydro Truck (starter, free) | Bastion | 550 coins if re-bought | Bridgepour Vehicle Store | 5 | 6 | 5 | 5 | 10 | 7 |
+| Hydro Truck Mk II (Striped/red, Construction/yellow, Bare Metal/blue) | Bastion | 1,420 coins | Bridgepour Vehicle Store | 8 | 8 | 6 | 6 | 10 | 6 |
+| Hydro Quad | Bastion | 680 coins | Bridgepour Vehicle Store | 10 | 10 | 7 | 6 | 2 | 2 |
+| Hydro Roller | Bastion | 2,460 coins | Bridgepour Vehicle Store | 2 | 3 | 4 | 6 | 0 | 10 |
+| Hydro Cropper | Bastion | 2,680 Farm Guild tokens | Grangefield Vehicles | 3 | 4 | 3 | 6 | 7 | 8 |
+| Hydro Mole | Bastion | 3,500 Prospect Guild tokens | Prospecting Guild Vehicles (Bridgepour Harbour) | 3 | 3 | 8 | 4 | 0 | 8 |
+| Hydro Prospector | Bastion | 4,300 Prospect Guild tokens | Prospecting Guild Vehicles | 4 | 5 | 3 | 4 | 0 | 8 |
+| Lava Truck (free from quest) | Volcalidus | 550 coins | Mot's Vehicle Store and a second Vehicle Store | 8 | 8 | 6 | 6 | 10 | 6 |
+| Lava Bike | Volcalidus | 640 Scout Guild tokens | Mot's Vehicle Store | 10 | 10 | 7 | 6 | 2 | 2 |
+| Lava Roller | Volcalidus | 2,460 coins | Mot's Vehicle Store | 2 | 3 | 4 | 6 | 0 | 10 |
+| Lava Hauler | Volcalidus | 4,200 Scout Guild tokens | Mot's Vehicle Store | 8 | 10 | 4 | 6 | 10 | 10 |
+| Lava Thaw | Volcalidus | 6,800 Scout Guild tokens | Mot's Vehicle Store | 6 | 6 | 8 | 7 | 0 | 8 |
+
+**Cross-checks of these prices**
+- **Steam "Map and Store Guide (Updated to 2.2)", May 2023** — [Steam guide 2807322513](https://steamcommunity.com/sharedfiles/filedetails/?id=2807322513). It independently lists:
+  - Vehicle Store: Green, Red, Yellow and Blue Truck at 1420 each; Hydro Roller 2460; Hydro Quad 680
+  - Prospect Guild Vehicle Token Store: Hydro Mole 3500 tokens; Hydro Prospector 4300 tokens
+  - Farm Guild Vehicle Token Store: Hydro Cropper 2680 tokens
+  - Itchy Carts: Agile Cart 740, Fast Cart 740, Wooden Cart 350
+  - Cottage Supply Co: Pallet 450.
+
+  This matches the Bridgepour DB exactly.
+- **Steam "Price Reference Guide", Jun–Jul 2020 (pre-2.0)** — [Steam guide 2136949714](https://steamcommunity.com/sharedfiles/filedetails/?id=2136949714). It lists Bridgepour VEHICLES as Hydro Truck C550, Hydro Miner C1050 and "Altered Color Hydro Truck C1420". The truck prices have been stable since 2020. The "Hydro Miner" was the pre-2.0 excavator-type digger, and Bridgepour DB's store inventory still lists "Hydro Miner 105000" as a legacy item.
+- **Player memory.** A player recalls the upgraded truck at "around 1400 Hc". This is consistent with 1,420. — [Steam: bouncing vehicles](https://steamcommunity.com/app/1106840/discussions/0/3395163747112385470/)
+- **One conflict.** A search-surfaced achievement guide reportedly listed the Roller at 680 and the Mole at 2460 coins. That conflicts with both the Bridgepour DB and the 2.2 store guide, so it looks like a transcription error. — [Steam achievement guide (OUTDATED)](https://steamcommunity.com/sharedfiles/filedetails/?id=2962749196) (not fetched; snippet only)
+- **Official descriptions** [Bridgepour DB, apparently in-game text]
+  - Truck: "Used to move objects around the world. Refuelled from the water tank."
+  - Quad: "Fast four wheeler which can carry a limited amount of items."
+  - Cropper: "RMB lowers/raises equipment. E ejects resources."
+  - Roller: "Slow moving utility vehicle for flattening ground. RMB lowers/raises roller."
+  - Mole: "Use rotation keys to change the digging angle."
+  - Thaw: "tunneling holes with its side mounted lava cannons. Can be upgraded to dig at deeper tiers with boosters."
+  - Hauler: "The ultimate transport vehicle. Can lift heavy items, and store regular items."
+
+  — [Bridgepour DB API](https://api.bridgepour.com/api/vehicles/)
+- **Mk II variants are cosmetic only.** "The 3 MK2's in the dealers lot are just different colors. Same MK2 truck." Dealer trucks feel "fractionally faster and definitely more stable than the basic Truck". [Community] — [Steam: Hydrotruck](https://steamcommunity.com/app/1106840/discussions/0/693125279500231280/); [Bridgepour (Fandom)](https://hydroneer.fandom.com/wiki/Bridgepour)
+- **Mot's Island racetrack (DLC).** A Steam achievement fires for "Completing the lap time on Mots island in under 1:11", and 3.0.6 fixed "racetrack Steam achievements". Driving is also a time-trial activity. [Official] — [3.0.2](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5756237364313246785); [3.0.6](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/6474562312195671416)
+
+**Verification of the coordinator's specific leads**
+
+| Lead | Verdict | Evidence |
+|---|---|---|
+| Pickup truck and its price | **Confirmed, with a different name.** The vehicle is the "Hydro Truck" (Bridgepour DB uses a pickup-truck icon). It is free at start, or 550 coins to re-buy. The Mk II costs 1,420. | Bridgepour DB; Steam guides 2807322513 and 2136949714 |
+| Trailers | **No trailer item exists.** Players request trailers. The workaround: hand carts "hook" onto the back of the truck and move with it (2–3 carts side by side), and pallets stack in the bed. | [Steam: Idea: Trailers](https://steamcommunity.com/app/1106840/discussions/0/601891224286150167/); [Steam: Carts are underrated](https://steamcommunity.com/app/1106840/discussions/0/3833171151462988797/) |
+| Tractors | **No tractor item (2.0+).** The starter truck looks tractor-like, and players call it a "tractor". Pre-2.0 threads mention a "tractor" vehicle. The farming vehicle is the Hydro Cropper. | [Steam: tractor with a 2 on it](https://steamcommunity.com/app/1106840/discussions/0/6756004301619664952/) (the "2" is actually the Q key prompt); [Steam: Truck flies away](https://steamcommunity.com/app/1106840/discussions/0/2254559285375830696/) |
+| Forklift | **Not found.** No wiki page, patch note, Bridgepour DB entry or store listing. The nearest equivalents are the pallet (carried by hand) and the Lava Hauler crane. | Fandom API search, patch-note dump, Bridgepour DB |
+| Minecarts, rails, tracks, switches, powered carts | **Not found.** No such items in patch notes 2020–2026, the store guides or the Bridgepour DB vehicle list. "Hand carts" are pushed carts, not rail carts. A 2020 player suggested a train, but it was never added. | See section 5 |
+| Boats and rafts | **No player-drivable boats.** There are fixed ship links: Bridgepour Harbour to Volcalidus, and a t200 ticket boat to Mot's Island. You can fish from a parked truck. | DLC launch post; gameplay.tips |
+| Cranes as vehicles | **Confirmed (DLC only).** The Lava Hauler crane truck has hook controls and can carry one vehicle on its hook. | Official DLC posts; Steam threads |
+| Excavators as vehicles | **Confirmed historically.** The Excavator / "Hydro Miner" (C1050) existed pre-2.0, was overhauled in 1.5 and removed in 2.0. It was replaced by the Hydro Mole (2.2) and the Lava Thaw (DLC). | 1.5 and 2.0 patch notes; 2020 price guide |
+| Elevators and lifts | **No vehicle elevator found.** Vertical conveyor belts can carry items and players: "Players can now walk up a Vertical Conveyor Belt" (2.0.5). The Masterworks forge "press" lifts and can launch a Hauler. | [2.0.5](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4292505348839841359); gameplay.tips |
+| Teleport and fast travel | **Partial.** There is no free fast-travel map. The menu has "Unstuck", which teleports the player or vehicle to fixed unstuck points, and "Recall nearest vehicle". Icehelm "transporter pipes" teleport items only. Ships link islands. | 2.0 patch notes; Fandom Hydro Truck page |
+| Place names "Bridgeview, Ironfall, Firestone Reef, Arcania" | **Not found. These look misremembered.** None appear in any patch note (64 posts) or wiki page. | See the list of real place names below |
+
+Real place names that do appear in the patch notes, wiki and guides:
+- **Bastion island:** Bridgepour (and Bridgepour Harbour), Ember Cradle, Bastion Keep, Burnscroft, Ironil, Crossroads, Icehelm, Snowrune Falls, Grangefield, South Hope, Mildew's Aquifer.
+- **Volcalidus:** New Glade, Mot's Island, Lumberton Harbor and Lumberton Bluff, Shattered Outpost and Shattered Breach, Dawn's Rest, Cinder Crossing, Scoria Chamber.
+
 ### Inferences
 - The roster follows a "one vehicle, one job" pattern: haul, flatten, dig, prospect, harvest, lift. Each specialist vehicle is bought with soft currency or tokens and adds a single verb.
 - The crane-truck-that-lifts-other-vehicles is a key loop in the DLC. It solves "heavy item logistics" without an inventory system.
 - Vehicles behave like permanent physical objects, not consumables. There is no way to destroy them (outside creative mode), which causes clutter. An original game could add a sell-back or scrap option.
 
 ### Gaps
-- No reliable coin prices for most vehicles. The only figure is a community estimate of about 1400 for the upgraded truck. The fandom wiki has no vehicle list page, and the wiki.gg wiki returned "Not authorized".
+- Prices are now well cross-checked for the base game, from the Bridgepour DB plus two Steam guides. DLC prices rest on the Bridgepour DB alone, with no second source found.
+- The Bridgepour 1–10 stat ratings have no documented provenance.
 - No exact cargo-zone dimensions or item limits.
 - No exact speed, mass or torque values were found anywhere public.
 
