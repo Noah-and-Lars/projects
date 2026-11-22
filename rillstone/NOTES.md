@@ -785,3 +785,6 @@ A read-only review found ten issues, all now fixed:
 10. **Piles on counters.** A load tipped onto a counter could merge into a
     pile, which counters ignore ("Counter is empty"). Piles no longer form
     on shop, cutter or Pumphouse counters.
+- **HUD:** toasts used to draw behind the guide card, which sits in the
+  same top-left corner. The card and the toasts now share one column, with
+  toasts underneath.

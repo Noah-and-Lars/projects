@@ -30,7 +30,9 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
   // HUD card.
   const title = h('b'), text = h('span'), count = h('i');
   const card = h('div', { id: 'guide', class: 'hidden' }, h('div', { class: 'g-head' }, h('span', {}, 'Guide'), count), title, text, h('small', {}, 'B: look-up guide'));
-  hud.el.append(card);
+  // The card and the toasts share the top-left column, toasts underneath.
+  const toasts = hud.el.querySelector('#toasts');
+  if (toasts) { const col = h('div', { id: 'hud-left' }); toasts.replaceWith(col); col.append(card, toasts); } else hud.el.append(card);
   let t = 0;
   const api = {
     steps: STEPS,
