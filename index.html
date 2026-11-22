@@ -562,6 +562,16 @@ function openSoon(s) {
 }
 function closeSoon() { if (!soonDlg) return; soonDlg.d.remove(); soonDlg = null; if (/^#soon-/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); }
 addEventListener('keydown', e => { if (e.key === 'Escape' && soonDlg) closeSoon(); });
+{ let n = 0, t = 0, hv = null;
+  addEventListener('pointerover', e => { const a = e.target.closest && e.target.closest('[data-soon]'); hv = a ? a.dataset.soon : null; });
+  addEventListener('keydown', e => {
+    if (e.target.closest && e.target.closest('input,textarea,[contenteditable]')) return;
+    if (e.key !== '0') { n = 0; return; }
+    const now = Date.now(); n = now - t < 2500 ? n + 1 : 1; t = now;
+    if (n < 6) return; n = 0;
+    const id = soonDlg ? soonDlg.s.id : hv; const s = id && SOON.find(x => x.id === id);
+    if (s) location.href = s.id + '/index.html';
+  }); }
 function tickSoon() {
   for (const b of document.querySelectorAll('[data-soon-cd]')) { const s = SOON.find(x => x.id === b.closest('[data-soon]').dataset.soon); if (s) b.textContent = soonShort(s); }
   if (soonDlg) { const ms = soonLeft(soonDlg.s), p = soonParts(ms); for (const b of soonDlg.d.querySelectorAll('[data-k]')) { const k = +b.dataset.k; b.textContent = k ? pad2(p[k]) : p[k]; } if (ms <= 0) txt(soonDlg.d, '.when', 'Out any minute now'); }
