@@ -65,8 +65,15 @@ export function createItems({ scene, physics, materials }) {
     if (isNugget(e)) {
       const I = instFor(e.item.material);
       if (e.slot === undefined) e.slot = I.free.pop();
+      const s = nuggetSize(e.item.kg, e.item.material);
+      I.mesh.setMatrixAt(e.slot, _m.compose(_v.fromArray(e.pos), _q.fromArray(e.quat), _s.set(s, s, s)));
       I.dirty = true;
-    } else if (!meshes.has(e.id)) { const m = makeMesh(e); meshes.set(e.id, m); group.add(m); }
+    } else if (!meshes.has(e.id)) {
+      // Place the new mesh where the entity is: a rebuilt mesh (a bucket
+      // that just got a load) must not wait for a physics update to move.
+      const m = makeMesh(e); m.position.fromArray(e.pos); m.quaternion.fromArray(e.quat);
+      meshes.set(e.id, m); group.add(m);
+    }
   }
   function hide(e) {
     if (isNugget(e)) {

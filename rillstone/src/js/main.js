@@ -164,6 +164,7 @@ async function boot() {
 
     claims.update(player.cur.toArray());
     items.update();
+    hands.moveSpeed = player.grounded ? player.speed : 0;
     hands.update(dt, input, controls());
     fx.update(dt);
     hud.clock(state.time, state.day);

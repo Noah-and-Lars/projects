@@ -74,12 +74,54 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (e.type === 'nugget') { const s = nuggetSize(e.item.kg, e.item.material); geo = nuggetGeometry(MATERIALS[e.item.material].kind, e.item.material.length * 7).scale(s, s, s); }
     else { const m = items.meshes.get(id); if (!m) return; geo = m.geometry.clone(); }
     geo.computeBoundingSphere();
-    const grow = Math.max(1.06, 1 + 0.02 / Math.max(0.05, geo.boundingSphere.radius));
+    const grow = 1 + Math.min(0.08, 0.008 / Math.max(0.02, geo.boundingSphere.radius)); // thin, roughly constant width
     geo.scale(grow, grow, grow);
     outline = new THREE.Mesh(geo, outlineMat);
     outline.position.fromArray(e.pos); outline.quaternion.fromArray(e.quat);
     scene.add(outline);
   }
+
+  // ---- Viewmodel animations ----
+  // Keyframes: [t, px, py, pz, rx, ry, rz] offsets from the rest pose.
+  const ANIMS = {
+    dig:   { dur: 0.42, k: [[0, 0, 0, 0, 0, 0, 0], [0.35, -0.04, -0.14, -0.26, -0.55, 0, 0.05], [0.62, 0, 0.03, -0.06, 0.28, 0, 0], [1, 0, 0, 0, 0, 0, 0]] },
+    scoop: { dur: 0.45, k: [[0, 0, 0, 0, 0, 0, 0], [0.4, 0, -0.2, -0.16, -0.62, 0, 0], [0.7, 0, 0.02, -0.04, 0.18, 0, 0], [1, 0, 0, 0, 0, 0, 0]] },
+    swing: { dur: 0.32, k: [[0, 0, 0, 0, 0, 0, 0], [0.3, 0.02, 0.16, 0.05, 0.95, 0, -0.1], [0.55, -0.03, -0.16, -0.22, -0.9, 0, 0.12], [1, 0, 0, 0, 0, 0, 0]] },
+    pour:  { dur: 0.55, k: [[0, 0, 0, 0, 0, 0, 0], [0.35, -0.08, 0.04, -0.12, -0.35, 0, 0.95], [0.7, -0.08, 0.04, -0.12, -0.35, 0, 0.95], [1, 0, 0, 0, 0, 0, 0]] },
+    dump:  { dur: 0.45, k: [[0, 0, 0, 0, 0, 0, 0], [0.4, 0, 0.02, -0.18, -1.0, 0, 0.2], [0.65, 0, 0.0, -0.15, -0.9, 0, 0.2], [1, 0, 0, 0, 0, 0, 0]] },
+    tip:   { dur: 0.5, k: [[0, 0, 0, 0, 0, 0, 0], [0.4, 0, -0.04, -0.12, -1.15, 0, 0], [0.7, 0, -0.04, -0.12, -1.1, 0, 0], [1, 0, 0, 0, 0, 0, 0]] },
+    clink: { dur: 0.28, k: [[0, 0, 0, 0, 0, 0, 0], [0.25, 0, -0.1, -0.2, -0.5, 0, 0], [0.45, 0.02, 0.06, 0.03, 0.35, 0, -0.08], [1, 0, 0, 0, 0, 0, 0]] },
+    grab:  { dur: 0.3, k: [[0, 0, 0, 0, 0, 0, 0], [0.45, 0, -0.26, -0.12, -0.3, 0, 0], [1, 0, 0, 0, 0, 0, 0]] },
+    place: { dur: 0.32, k: [[0, 0, 0, 0, 0, 0, 0], [0.5, 0, -0.22, -0.22, -0.35, 0, 0], [1, 0, 0, 0, 0, 0, 0]] },
+    equip: { dur: 0.35, k: [[0, 0, -0.45, 0.05, -0.7, 0, 0.2], [1, 0, 0, 0, 0, 0, 0]] },
+  };
+  const anim = { name: null, t: 0 };
+  H.play = (name) => { anim.name = name; anim.t = 0; };
+  const sm = (x) => x * x * (3 - 2 * x);
+  function animPose(out, dt) {
+    out.fill(0);
+    if (!anim.name) return;
+    if (anim.name === 'wash') {
+      // Dip into the river, swirl the pan in circles, lift out.
+      const dur = 0.8; anim.t += dt / dur;
+      const t = Math.min(1, anim.t), dip = sm(Math.min(1, t / 0.15)) * sm(Math.min(1, (1 - t) / 0.15));
+      const a = t * Math.PI * 6;
+      out[0] = Math.cos(a) * 0.035 * dip; out[1] = -0.17 * dip; out[2] = -0.1 * dip + Math.sin(a) * 0.035 * dip;
+      out[3] = -0.25 * dip + Math.sin(a) * 0.08 * dip; out[5] = Math.cos(a) * 0.12 * dip;
+      if (anim.t >= 1) anim.name = null;
+      return;
+    }
+    const A = ANIMS[anim.name]; anim.t += dt / A.dur;
+    const t = Math.min(1, anim.t);
+    let i = 0; while (i < A.k.length - 2 && t > A.k[i + 1][0]) i++;
+    const a = A.k[i], b = A.k[i + 1], u = sm(Math.min(1, Math.max(0, (t - a[0]) / (b[0] - a[0]))));
+    for (let j = 0; j < 6; j++) out[j] = a[j + 1] + (b[j + 1] - a[j + 1]) * u;
+    if (anim.name === 'clink') { const sh = Math.max(0, 1 - t * 2); out[0] += Math.sin(t * 90) * 0.012 * sh; }
+    if (anim.t >= 1) anim.name = null;
+  }
+  const pose = new Float32Array(6);
+  let swayT = 0;
+  H.moveSpeed = 0;
 
   const say = (text, kind) => { const now = performance.now(); if (now - H.lastMsg < 400) return; H.lastMsg = now; hud.toast(text, kind); };
   const heldEnt = () => (H.hand ? items.get(H.hand) : null);
@@ -107,25 +149,26 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     const c = [info.p[0] + d.x * def.dig * 0.45, info.p[1] + d.y * def.dig * 0.45, info.p[2] + d.z * def.dig * 0.45];
     const band = info.vol.bandAt(info.p[0], info.p[1], info.p[2]);
     if (band > def.tier || band === BEDROCK) {
-      audio.play('clink');
+      audio.play('clink'); H.play('clink');
       fx.burst(info.p, 0xffd27a, 14, { speed: 3, size: 0.03, life: 0.35, gravity: 6, up: 1 });
       say(band === BEDROCK ? 'Bedrock — nothing digs this' : `Too hard: ${BAND_NAMES[band]} needs a ${TIER_NAMES[band]} tool`, 'err');
       return null;
     }
     const r = brush(info.vol, c, def.dig, 'dig', def.tier);
     if (r.removed < 0.004) {
-      if (r.blockedBand) { audio.play('clink'); fx.burst(info.p, 0xffd27a, 10, { speed: 3, size: 0.03, life: 0.3 }); say(`Too hard: ${BAND_NAMES[r.blockedBand]} needs a ${TIER_NAMES[r.blockedBand]} tool`, 'err'); }
+      if (r.blockedBand) { audio.play('clink'); H.play('clink'); fx.burst(info.p, 0xffd27a, 10, { speed: 3, size: 0.03, life: 0.3 }); say(`Too hard: ${BAND_NAMES[r.blockedBand]} needs a ${TIER_NAMES[r.blockedBand]} tool`, 'err'); }
       return null;
     }
     // The load remembers its band and depth: that decides loot and weight.
     const mainBand = +Object.entries(r.bands).sort((a, b) => b[1] - a[1])[0][0];
     audio.play('dig', mainBand);
+    H.play(tool && tool.type === 'pick' ? 'swing' : tool && tool.type === 'shovel' ? 'dig' : 'scoop');
     fx.burst(info.p, BAND_DIRT[mainBand], 10, { speed: 1.6, size: 0.06, life: 0.5 });
     H.digs = (H.digs || 0) + 1;
     return { band: mainBand, depth: Math.max(0, info.vol.def.top - c[1]), claim: info.vol.id };
   }
   function addLoad(e, load) { e.data.loads.push(load); items.refresh(e.id); }
-  function dumpClod(load, p) { items.spawn('clod', [p[0], p[1] + 0.2, p[2]], { data: { band: load.band, depth: load.depth, loads: [load] } }); audio.play('pour'); }
+  function dumpClod(load, p, anim = true) { items.spawn('clod', [p[0], p[1] + 0.2, p[2]], { data: { band: load.band, depth: load.depth, loads: [load] } }); audio.play('pour'); if (anim) H.play('dump'); fx.burst(p, BAND_DIRT[load.band], 8, { speed: 1, size: 0.05, life: 0.4, up: 0.6 }); }
   function containerCanTake(e) { return e && (e.type === 'pan' || e.type === 'bucket') && e.data.loads.length < TOOLS[e.type].loads && !(e.type === 'pan' && e.data.contents.length); }
 
   // Wash one load in the pan: one loot roll per load (BUILD_BRIEF 3.4).
@@ -136,7 +179,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     n.container = pan.id;
     pan.data.contents.push(n.id);
     items.refresh(pan.id);
-    audio.play('swish');
+    audio.play('swish'); H.play('wash');
     fx.burst(aimInfo().p, 0xdff4f4, 10, { speed: 1.4, size: 0.04, life: 0.5, up: 1.2 });
     const m = MATERIALS[it.material];
     const rare = ['glimmerite', 'emberite', 'starstone'].includes(it.material) || m.kind === 'gem';
@@ -151,7 +194,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     const list = pan.data.contents.splice(0);
     list.forEach((id, i) => { const a = i * 2.4, r = 0.06 + i * 0.015; items.place(id, [p[0] + Math.cos(a) * r, p[1] + 0.12 + i * 0.04, p[2] + Math.sin(a) * r]); });
     items.refresh(pan.id);
-    audio.play('drop');
+    audio.play('drop'); H.play('tip');
     return list.length;
   }
 
@@ -172,7 +215,8 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       if (loads.length && info.kind === 'item' && near && containerCanTake(info.ent)) {
         const t = info.ent;
         while (e.data.loads.length && t.data.loads.length < TOOLS[t.type].loads) t.data.loads.push(e.data.loads.shift());
-        items.refresh(t.id); items.refresh(e.id); audio.play('pour'); return true;
+        items.refresh(t.id); items.refresh(e.id); audio.play('pour'); H.play('pour');
+        fx.burst([t.pos[0], t.pos[1] + 0.3, t.pos[2]], BAND_DIRT[t.data.loads[t.data.loads.length - 1].band], 10, { speed: 0.8, size: 0.04, life: 0.45, up: 0.4 }); return true;
       }
       if (loads.length && near && info.kind !== 'water') { dumpClod(loads.pop(), info.p); items.refresh(e.id); return true; }
       if (info.kind === 'claim' && near && loads.length >= cap) say(`${def.name} is full (${cap} load${cap > 1 ? 's' : ''})`);
@@ -180,11 +224,11 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       return;
     }
     if (e.type === 'pick') {
-      if (info.kind === 'claim' && near) { const l = dig(info, e, def); if (l) dumpClod(l, info.p); return l; }
+      if (info.kind === 'claim' && near) { const l = dig(info, e, def); if (l) dumpClod(l, info.p, false); return l; }
       return;
     }
     if (e.type === 'clod') {
-      if (info.kind === 'item' && near && containerCanTake(info.ent)) { info.ent.data.loads.push(e.data.loads[0]); items.refresh(info.ent.id); items.remove(e.id); H.hand = null; audio.play('pour'); return true; }
+      if (info.kind === 'item' && near && containerCanTake(info.ent)) { info.ent.data.loads.push(e.data.loads[0]); items.refresh(info.ent.id); items.remove(e.id); H.hand = null; audio.play('pour'); H.play('place'); return true; }
     }
   }
 
@@ -197,13 +241,13 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       // Tools go to the swap slot to free the hand.
       if (TOOLS[cur.type] && !H.slot) { H.slot = H.hand; H.hand = null; }
       else if (target.type !== 'pile' && cur.type === 'pan' && target.type === 'nugget' && !cur.data.loads.length) { // scoop a nugget into the pan
-        items.take(target.id, 'contained', cur.id); cur.data.contents.push(target.id); audio.play('pickup'); return true;
+        items.take(target.id, 'contained', cur.id); cur.data.contents.push(target.id); items.refresh(cur.id); audio.play('pickup'); H.play('grab'); return true;
       } else { say('Hands full — G to drop, Q to swap'); audio.play('error'); return false; }
     }
-    if (target.type === 'pile') { const n = items.takeFromPile(target.id); H.hand = n.id; audio.play('pickup'); return true; }
+    if (target.type === 'pile') { const n = items.takeFromPile(target.id); H.hand = n.id; audio.play('pickup'); H.play('equip'); return true; }
     items.take(target.id, 'held');
     H.hand = target.id;
-    audio.play('pickup');
+    audio.play('pickup'); H.play('equip');
     return true;
   }
   function drop() {
@@ -213,10 +257,10 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     const hh = items.halfHeight(e);
     const yaw = Math.atan2(-camDir().x, -camDir().z);
     items.place(e.id, [H.ringPos[0], H.ringPos[1] + hh + 0.02, H.ringPos[2]], [0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)]);
-    H.hand = null; audio.play('drop');
+    H.hand = null; audio.play('drop'); H.play('equip');
     return true;
   }
-  function swap() { const a = H.hand; H.hand = H.slot; H.slot = a; audio.play('pickup'); }
+  function swap() { const a = H.hand; H.hand = H.slot; H.slot = a; audio.play('pickup'); H.play('equip'); }
 
   function hint(info) {
     const e = heldEnt(), k = (x) => `<kbd>${x}</kbd>`;
@@ -251,7 +295,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (enabled) {
       if (input.pressed('use') || (input.held('use') && H.cooldown <= -0.15)) {
         const e = heldEnt();
-        if (e && H.cooldown <= 0) { H.cooldown = TOOLS[e.type]?.cooldown || 0.3; H.swing = 1; use(); }
+        if (e && H.cooldown <= 0) { H.cooldown = TOOLS[e.type]?.cooldown || 0.3; use(); }
       }
       if (input.pressed('pickup')) pickup();
       if (input.pressed('drop')) drop();
@@ -276,10 +320,13 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     hud.hint(enabled ? hint(info) : '');
     // Viewmodel: swing on use.
     rebuildHeld(); rebuildPanBits();
-    H.swing = Math.max(0, H.swing - dt * 5);
-    const sw = Math.sin(H.swing * Math.PI);
-    holder.rotation.set(-sw * 0.6, 0, sw * 0.1);
-    holder.position.set(0.34, -0.32 - sw * 0.06, -0.62 + sw * 0.08);
+    animPose(pose, dt);
+    // Walking sway.
+    const spd = Math.min(1, H.moveSpeed / 6.8);
+    swayT += dt * (4 + spd * 6);
+    const bx = Math.sin(swayT) * 0.012 * spd, by = -Math.abs(Math.cos(swayT)) * 0.012 * spd;
+    holder.position.set(0.34 + pose[0] + bx, -0.32 + pose[1] + by, -0.62 + pose[2]);
+    holder.rotation.set(pose[3], pose[4] + bx * 0.6, pose[5]);
   };
   H.give = (type, data = {}) => {
     const base = TOOLS[type] ? { loads: [], contents: [], ...data } : data;
