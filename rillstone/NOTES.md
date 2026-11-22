@@ -751,3 +751,37 @@ Measured in headless Chromium with software GL (SwiftShader), at medium graphics
 - **Guest rail hint:** guests track the first click of a rail line
   themselves, so the hint reads "lay rails to here" after the first click.
   The host still keeps the real start point.
+
+### Second review pass (save, economy, workshop, bed, heavy, town)
+
+A read-only review found ten issues, all now fixed:
+
+1. **Guest items lost in host saves.** Things a co-op guest was holding were
+   saved as "held", with no hand to hold them, and vanished after a load.
+   That included the brass governor, which made Pumphouse stage 2
+   impossible. A load now sets any unclaimed held item down by the player.
+2. **Day contracts.** A "Sell § X in one day" contract that appeared mid-day
+   counted that day's earlier sales and finished on the next sale. It now
+   counts only sales made after it appears.
+3. **Joining with a dug world.** A guest who had dug in their own world
+   before joining kept those holes. Joining now resets the guest's dug
+   chunks to fresh ground before the host's chunks are written.
+4. **Tram bed.** The "Put in bed" layout ran off the tram's small bed after
+   12 items. The grid now fits each bed, and items stack once the floor is
+   full.
+5. **Double sell.** Two quick clicks on Sell could pay for a vehicle twice
+   while the physics worker removed it. A vehicle is now marked as selling
+   on the first click.
+6. **Repeating rolls.** The loot, market and machine generators restarted
+   from the seed on every load, so the same rolls came up each time. A load
+   now reseeds them from the seed, day and play time.
+7. **Scrip earned.** Contract rewards now count towards it; guide payouts
+   still don't.
+8. **Starter hauler.** It was free, but the Wagon Shed paid § 250 for it.
+   It now sells for nothing.
+9. **Loading.** If the newest half of a slot's A/B pair won't read, the
+   older half loads instead. A save from a newer version is refused with a
+   clear message.
+10. **Piles on counters.** A load tipped onto a counter could merge into a
+    pile, which counters ignore ("Counter is empty"). Piles no longer form
+    on shop, cutter or Pumphouse counters.

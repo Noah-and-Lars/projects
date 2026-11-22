@@ -200,12 +200,16 @@ export function createItems({ scene, physics, materials }) {
     },
     // Merge resting nuggets into piles when more than PILE_MIN of one
     // material and stage sit within 1 m. Keeps awake bodies under budget.
+    // Predicates (pos) => true for places piles must not form (counters).
+    noMerge: [],
     mergePiles() {
       // Resting nuggets bucketed into 1 m cells by material and stage.
       const cells = new Map();
       for (const e of ents.values()) {
         if (!isNugget(e) || e.loc !== 'loose') continue;
         const pose = physics.poses.get(e.id); if (!pose || !pose.asleep) continue;
+        // Counters sell or use single items: nothing merges into a pile there.
+        if (api.noMerge.some(f => f(e.pos))) continue;
         const k = `${e.item.material}|${e.item.stage}|${Math.floor(e.pos[0])}|${Math.floor(e.pos[1])}|${Math.floor(e.pos[2])}`;
         if (!cells.has(k)) cells.set(k, []);
         cells.get(k).push(e);

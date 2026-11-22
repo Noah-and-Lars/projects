@@ -27,6 +27,7 @@ const unb64 = (s) => { const b = atob(s), u = new Uint8Array(b.length); for (let
 
 export function migrate(snap) {
   let s = snap;
+  if ((s.saveVersion || 0) > SAVE_VERSION) throw new Error(`This save is from a newer version of Rillstone (save version ${s.saveVersion})`);
   while ((s.saveVersion || 0) < SAVE_VERSION) { const f = MIGRATIONS[s.saveVersion || 0]; if (!f) throw new Error('No migration from save version ' + s.saveVersion); s = f(s); }
   return s;
 }
@@ -70,14 +71,23 @@ export function createSaves() {
       });
       return meta;
     },
+    // Newest half first; if it won't read (a damaged write, a bad
+    // migration), fall back to the older complete half of the pair.
     async load(slot) {
       await ready; if (!db) return null;
-      const list = await api.list(); const m = list.find(x => x.slot === slot);
-      if (!m || m.empty) return null;
-      const key = `${slot}:${m.ab}`, tx = db.transaction(STORES, 'readonly');
-      const [ent, ch, eco] = await Promise.all([get(tx, 'entities', key), get(tx, 'chunks', key), get(tx, 'economy', key)]);
-      const snap = { ...unpack(ent), economy: unpack(eco), chunks: (ch || []).map(c => ({ claim: c.claim, key: c.key, dens: new Int8Array(inflateSync(c.dens).buffer), band: inflateSync(c.band) })) };
-      return migrate(snap);
+      const mtx = db.transaction('meta', 'readonly');
+      const metas = (await Promise.all(['A', 'B'].map(ab => get(mtx, 'meta', `${slot}:${ab}`)))).filter(Boolean).sort((a, b) => b.savedAt - a.savedAt);
+      if (!metas.length) return null;
+      let err = null;
+      for (const m of metas) {
+        try {
+          const key = `${slot}:${m.ab}`, tx = db.transaction(STORES, 'readonly');
+          const [ent, ch, eco] = await Promise.all([get(tx, 'entities', key), get(tx, 'chunks', key), get(tx, 'economy', key)]);
+          const snap = { ...unpack(ent), economy: unpack(eco), chunks: (ch || []).map(c => ({ claim: c.claim, key: c.key, dens: new Int8Array(inflateSync(c.dens).buffer), band: inflateSync(c.band) })) };
+          return migrate(snap);
+        } catch (e) { err = e; console.warn(`Save ${slot}:${m.ab} would not load, trying the older half`, e); }
+      }
+      throw err;
     },
     // .rillsave files: a deflated JSON document (Safari clears site data after 7 days unused).
     exportBlob(snap) {

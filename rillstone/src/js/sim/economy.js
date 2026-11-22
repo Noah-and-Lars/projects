@@ -59,10 +59,11 @@ export function createEconomy(rng) {
   }
   function refillContracts() {
     S.contracts = S.contracts.filter(c => !c.done);
-    while (S.contracts.length < 3) S.contracts.push(makeContract(rng, S.standing, S.nextContract++));
+    // A day contract that turns up mid-day counts sales from now on.
+    while (S.contracts.length < 3) { const c = makeContract(rng, S.standing, S.nextContract++); if (c.kind === 'day') c.base = S.soldToday; S.contracts.push(c); }
   }
   api.init = () => { rollMarket(); refillContracts(); };
-  api.newDay = (day) => { S.day = day; S.soldToday = 0; rollMarket(); for (const c of S.contracts) if (c.kind === 'day' && !c.done) c.progress = 0; refillContracts(); };
+  api.newDay = (day) => { S.day = day; S.soldToday = 0; rollMarket(); for (const c of S.contracts) if (c.kind === 'day' && !c.done) { c.progress = 0; c.base = 0; } refillContracts(); };
 
   // A market stall pays 105-130% of base, falling 1.5% per § 100 sold there
   // today, never below base.
@@ -97,7 +98,7 @@ export function createEconomy(rng) {
     }
     total = Math.round(total);
     if (total > 0) { S.scrip += total; S.totalEarned += total; S.soldToday += total; S.ledger.unshift({ day: S.day, venue, total, n: sold.length }); S.ledger.length = Math.min(S.ledger.length, 30); }
-    for (const c of S.contracts) if (c.kind === 'day' && !c.done) c.progress = S.soldToday;
+    for (const c of S.contracts) if (c.kind === 'day' && !c.done) c.progress = S.soldToday - (c.base || 0);
     const completed = checkContracts();
     return { total, sold, refused, completed };
   };
@@ -113,7 +114,7 @@ export function createEconomy(rng) {
   }
   function checkContracts() {
     const done = [];
-    for (const c of S.contracts) if (!c.done && c.progress >= c.target) { c.done = true; S.scrip += c.reward; S.standing += c.standing; done.push(c); }
+    for (const c of S.contracts) if (!c.done && c.progress >= c.target) { c.done = true; S.scrip += c.reward; S.totalEarned += c.reward; S.standing += c.standing; done.push(c); }
     if (done.length) refillContracts();
     return done;
   }

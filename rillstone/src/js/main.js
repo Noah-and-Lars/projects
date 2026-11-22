@@ -88,11 +88,13 @@ async function boot() {
   const audio = createAudio(settings, (t) => hud.caption(t));
   const items = createItems({ scene, physics, materials: view.materials });
   physics.onLost = (id) => { const s = spawnPoint(); if (items.get(id)) { physics.removeBody(id); const e = items.get(id); e.loc = 'held'; items.place(id, [s.x + 1, height(s.x + 1, s.z) + 0.5, s.z]); } };
-  const lootRng = mulberry32((SEED * 2654435761) ^ 0x10ad);
+  // Generators that a load reseeds (from the seed, day and play time), so
+  // the same loot, market and contract rolls don't repeat after every load.
+  const lootRng = mulberry32((SEED * 2654435761) ^ 0x10ad), econRng = mulberry32((SEED * 31 + 7) >>> 0), machRng = mulberry32((SEED * 977 + 3) >>> 0);
   const handsArgs = { scene, camera, physics, items, claims, water, fx, audio, hud, rng: lootRng, materials: view.materials };
   const hands = createHands(handsArgs);
 
-  const economy = createEconomy(mulberry32((SEED * 31 + 7) >>> 0)); economy.init();
+  const economy = createEconomy(econRng); economy.init();
   hands.owns = (id) => economy.owns(id);
   const panels = createPanels(ui, {
     onOpen: () => { if (state.mode === 'play') state.mode = 'panel'; input.unlock(); },
@@ -119,7 +121,7 @@ async function boot() {
   hands.props = town;
   const saves = createSaves();
   const bed = createBed({ panels, items, vehicles, hands, hud, audio });
-  const machines = createMachines({ scene, physics, materials: view.materials, items, claims, water, economy, hud, audio, panels, rng: mulberry32((SEED * 977 + 3) >>> 0), fx, height });
+  const machines = createMachines({ scene, physics, materials: view.materials, items, claims, water, economy, hud, audio, panels, rng: machRng, fx, height });
   hands.machines = machines;
   const auto = createAutomation({ machines, items, scene, materials: view.materials, hud, audio, panels, fx, claims, economy, brush: (id, c, r, mode, b) => brush(claims.volumes.get(id), c, r, mode, b) });
   machines.panelRows = auto.panelRows;
@@ -150,7 +152,7 @@ async function boot() {
     items.spawn('bucket', [bx, height(bx, bz) + 0.4, bz], { data: { loads: [], contents: [] } });
     // The old hauler, parked beside the claim.
     const tx = g.x0 - 5, tz = g.z0 - 2;
-    await vehicles.spawn('hauler', [tx, height(tx, tz) + 1.4, tz], Math.PI / 2);
+    await vehicles.spawn('hauler', [tx, height(tx, tz) + 1.4, tz], Math.PI / 2, { free: true });
   }
 
   // Lantern: a warm point light near the player at night and underground.
@@ -235,12 +237,22 @@ async function boot() {
     items.clock = snap.clock || 0;
     machines.restore(snap.machines || []);
     hands.hand = snap.hands?.hand ?? null; hands.slot = snap.hands?.slot ?? null;
+    // A save made while hosting holds what guests were carrying as 'held'
+    // with no hand to put it in: set those things down by the player.
+    if (!snap.coop) {
+      const p = snap.player?.pos || player.cur.toArray(); let k = 0;
+      for (const e of [...items.ents.values()]) if (e.loc === 'held' && e.id !== hands.hand && e.id !== hands.slot) {
+        const a = k++ * 2.4; items.place(e.id, [p[0] + Math.cos(a) * (0.8 + k * 0.1), p[1] + 0.3, p[2] + Math.sin(a) * (0.8 + k * 0.1)]);
+      }
+    }
     for (const v of [...vehicles.list.values()]) await vehicles.remove(v.id);
     for (const v of snap.vehicles || []) await vehicles.spawn(v.type, v.pos, 0, v);
     heavy.restore(snap.rails);
     economy.restore(snap.economy || {});
     workshop.applyStage();
     state.time = snap.time ?? state.time; state.day = snap.day ?? 1; state.playTime = snap.playTime || 0;
+    const salt = (Math.floor(state.playTime * 1000) ^ (state.day * 0x9e3779b1)) >>> 0;
+    [lootRng, econRng, machRng].forEach((g, i) => g.setState((SEED * (i * 2 + 3)) ^ salt ^ (i * 0x5bd1e995)));
     const p = snap.player?.pos; if (p) await teleport(p[0], p[1] + 0.05, p[2], snap.player.yaw);
     town.newDay();
   }

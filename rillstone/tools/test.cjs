@@ -356,6 +356,15 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     // A/B: the slot keeps a complete older half too; export round-trips.
     const ab = await p.evaluate(async () => { const R = __rill; await R.saveTo(1, true); const l = await R.saves.list(); const blob = R.saves.exportBlob(R.snapshot()); const snap = await R.saves.importFile(new File([blob], 'x.rillsave')); return { ab: l[0].ab, size: blob.size, scrip: snap.economy.scrip }; });
     check(ab.size > 100 && ab.scrip === after.scrip, `export/import round-trips a ${(ab.size / 1024).toFixed(0)} KB .rillsave (slot 1 now on half ${ab.ab})`);
+    // A save made while hosting: what a guest held comes back loose, not lost.
+    // The free starter hauler sells for nothing.
+    const orphan = await p.evaluate(async () => {
+      const R = __rill, n = R.items.spawn('nugget', [0, 0, 0], { item: { material: 'gold', kg: 0.3, stage: 'ore' }, loc: 'held' });
+      const snap = R.snapshot(); await R.restore(snap); await R.tick(5);
+      const v = [...R.vehicles.list.values()].find(v => v.type === 'hauler');
+      return { loc: R.items.get(n.id)?.loc, refund: v ? R.vehicles.refund(v) : null, free: v?.free };
+    });
+    check(orphan.loc === 'loose' && orphan.refund === 0, `a guest's held item comes back loose after a host save (${orphan.loc}); the starter hauler sells for § ${orphan.refund}`);
   }
 
   if (all || flags.has('--machines')) {

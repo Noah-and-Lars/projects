@@ -66,8 +66,12 @@ export function createBed({ panels, items, vehicles, hands, hud, audio }) {
   function putIn(vid, e, H = hands) {
     const v = vehicles.list.get(vid), b = v?.def.bed;
     if (!b || !e) return 'none';
-    const n = v.cargo.length, cols = 4;
-    const lx = -b.x + 0.2 + (n % cols) * ((2 * b.x - 0.4) / (cols - 1)), lz = b.z1 - 0.25 - Math.floor(n / cols) % 6 * 0.38;
+    // A grid sized to this bed's floor (the tram's is much smaller than a
+    // hauler's); once the floor is covered, addCargo stacks on top.
+    const n = v.cargo.length;
+    const cols = Math.max(2, Math.min(4, Math.floor((2 * b.x - 0.4) / 0.3) + 1)), rows = Math.max(1, Math.floor((b.z1 - b.z0 - 0.4) / 0.38) + 1);
+    const i = n % (cols * rows);
+    const lx = -b.x + 0.2 + (i % cols) * ((2 * b.x - 0.4) / (cols - 1)), lz = b.z1 - 0.2 - Math.floor(i / cols) * 0.38;
     const wp = new THREE.Vector3(lx, b.y, lz).applyMatrix4(v.group.matrixWorld).toArray();
     const r = vehicles.addCargo(vid, e, wp);
     if (r === 'ok') { if (H.hand === e.id) H.hand = null; audio.play('drop'); }

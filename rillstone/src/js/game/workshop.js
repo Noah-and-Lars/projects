@@ -20,6 +20,10 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
   const pump = () => (F().pump ||= { stage: 0, got: {} });
 
   // Loose entities resting on a counter (ingots, gems, the relic...).
+  onCounter.near = (c, p) => {
+    const hw = (c.w || 3.2) / 2 + 0.05, dx = p[0] - c.x, dz = p[2] - c.z, lx = dx * Math.cos(c.yaw) - dz * Math.sin(c.yaw), lz = dx * Math.sin(c.yaw) + dz * Math.cos(c.yaw);
+    return Math.abs(lx) < hw + 0.5 && Math.abs(lz) < 1 && p[1] > c.top - 0.5 && p[1] < c.top + 2;
+  };
   function onCounter(c, test = () => true) {
     const out = [], hw = (c.w || 3.2) / 2 + 0.05, cos = Math.cos(c.yaw), sin = Math.sin(c.yaw);
     for (const e of items.ents.values()) {
@@ -128,6 +132,8 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
   town.put(new THREE.Mesh(bell(), materials.vcolor), cx + 0.15, cz - 1.25, cyaw, P.y + 1.05);
   const pumpBell = town.prop('pumpbell', { name: 'Pumphouse delivery' }, cx + 0.15, P.y + 1.13, cz - 1.25, 0.12, 0.1, 0.12, cyaw);
   const PC = { x: cx, z: cz, yaw: cyaw, w: 3.2, top: P.y + 1.05 };
+  // No piles on the shop, cutter or Pumphouse counters (they take single items).
+  items.noMerge.push((p) => [WS, CUT, PC].some(c => c && onCounter.near(c, p)));
   const sign = textPlane(['RILLSTONE PUMPHOUSE', 'Restoration · E to read'], { w: 3.0, h: 0.8, bg: '#3a4a5a', fg: '#f4ecd8' });
   town.put(sign, P.x + W / 2 + 0.02, P.z, Math.PI / 2, P.y + 3.3);
   const board = town.prop('pumpboard', { name: 'Pumphouse board' }, P.x + W / 2 + 0.1, P.y + 3.3, P.z, 0.1, 0.4, 1.5, 0);

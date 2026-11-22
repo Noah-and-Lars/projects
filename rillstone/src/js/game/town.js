@@ -171,6 +171,11 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
   }
 
   // ---- Interaction ----
+  const onCounterTop = (c, p) => {
+    const hw = (c.w || 3.2) / 2 + 0.05, dx = p[0] - c.x, dz = p[2] - c.z, lx = dx * Math.cos(c.yaw) - dz * Math.sin(c.yaw), lz = dx * Math.sin(c.yaw) + dz * Math.cos(c.yaw);
+    return Math.abs(lx) < hw + 0.5 && Math.abs(lz) < 1 && p[1] > c.top - 0.5 && p[1] < c.top + 2;
+  };
+  items.noMerge.push((p) => counters.some(c => onCounterTop(c, p)));
   const counterItems = (c) => {
     const out = [], hw = (c.w || 3.2) / 2 + 0.05, cos = Math.cos(c.yaw), sin = Math.sin(c.yaw);
     for (const e of items.ents.values()) {
@@ -225,18 +230,20 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
       const body = h('div', {}, h('p', { class: 'small' }, S.blurb + ' · deliveries go to the pad beside the counter'),
         ...S.items.map(it => h('div', { class: 'entry' }, h('b', {}, it.name), it.standing && economy.state.standing < it.standing ? h('span', { class: 'pill' }, `Needs ★ ${it.standing}`) : h('button', { class: 'btn primary', disabled: economy.state.scrip < it.price, onclick: () => { api.buy(shopId, it.id); render(); } }, `§ ${it.price.toLocaleString('en-GB')}`), h('span', { class: 'desc' }, it.desc))),
         ...(S.callVehicle ? [h('h3', {}, 'Your vehicles'), ...[...vehicles.list.values()].filter(v => !v.def.kinematic).map(v => h('div', { class: 'entry' }, h('b', {}, v.def.name),
-          h('span', { class: 'row' }, h('button', { class: 'btn', onclick: () => { api.callVehicle(v.id); panels.close(); } }, 'Call'), ' ', h('button', { class: 'btn', onclick: async () => { await api.sellVehicle(v.id); render(); } }, `Sell § ${Math.round((v.def.price || 0) * 0.5)}`)),
+          h('span', { class: 'row' }, h('button', { class: 'btn', onclick: () => { api.callVehicle(v.id); panels.close(); } }, 'Call'), ' ', h('button', { class: 'btn', onclick: async () => { await api.sellVehicle(v.id); render(); } }, `Sell § ${vehicles.refund(v)}`)),
           h('span', { class: 'desc' }, `Fuel ${v.def.fuelMax ? Math.round(v.fuel / v.def.fuelMax * 100) + '%' : '—'}${v.cargo.length ? ` · ${v.cargo.length} in the bed` : ''} · Call brings it to the yard.`)))] : []));
       panels.show('shop:' + shopId, S.name, body, { badge: `§ ${economy.state.scrip.toLocaleString('en-GB')}` });
     };
     render();
   }
-  // Sell a vehicle back for half its price (bed and hopper must be empty).
+  // Sell a vehicle back for half its price (bed and hopper must be empty;
+  // the starter hauler was free, so it fetches nothing).
   async function sellVehicle(id) {
-    const v = vehicles.list.get(id); if (!v) return false;
+    const v = vehicles.list.get(id); if (!v || v.selling) return false;
     if (v.cargo.length || v.hopper?.length) { audio.play('error'); hud.toast('Empty it first', 'err'); return false; }
     if (vehicles.driving === v.id || vehicles.remoteDrivers?.has(v.id)) { hud.toast('Someone is driving it', 'err'); return false; }
-    const back = Math.round((v.def.price || 0) * 0.5);
+    const back = vehicles.refund(v);
+    v.selling = true; // a second click while the worker removes it pays nothing
     await vehicles.remove(v.id); economy.state.scrip += back; audio.play('coins'); hud.toast(`Sold the ${v.def.name} back for § ${back}`, 'gold');
     return true;
   }

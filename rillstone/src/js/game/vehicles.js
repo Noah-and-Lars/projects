@@ -44,7 +44,7 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
     // Headlamps for night driving.
     const lamp = new THREE.SpotLight(0xfff0c8, 0, 40, 0.5, 0.5, 1.2); lamp.position.set(0, 1.4, 2.4); lamp.target.position.set(0, 0.5, 12); group.add(lamp, lamp.target);
     scene.add(group);
-    const v = { id, type, def, group, wheels, cargoGroup, lamp, dish, arm, fuel: state.fuel ?? def.fuelMax, cargo: [], state: null, flipHold: 0, sputter: 0, hopper: (state.hopper || []).slice(), tram: state.tram ? { ...state.tram } : null };
+    const v = { id, type, def, group, wheels, cargoGroup, lamp, dish, arm, fuel: state.fuel ?? def.fuelMax, cargo: [], state: null, flipHold: 0, sputter: 0, hopper: (state.hopper || []).slice(), tram: state.tram ? { ...state.tram } : null, free: !!state.free };
     list.set(id, v);
     if (!def.kinematic) physics.poses.set(id, { p: pos.slice(), q: quat.slice(), asleep: false });
     group.position.fromArray(pos); group.quaternion.fromArray(quat);
@@ -205,7 +205,9 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
     for (const v of list.values()) { const d = v.group.position.distanceTo(_v.fromArray(p)); if (d < bd) { bd = d; best = v; } }
     return best;
   };
-  api.serialize = () => [...list.values()].map(v => ({ id: v.id, type: v.type, pos: v.group.position.toArray(), quat: v.group.quaternion.toArray(), fuel: v.fuel, cargo: v.cargo.slice(), hopper: v.hopper.slice(), tram: v.tram ? { ...v.tram } : null }));
+  // What the Wagon Shed pays back: half the price (nothing for the free starter).
+  api.refund = (v) => v.free ? 0 : Math.round((v.def.price || 0) * 0.5);
+  api.serialize = () => [...list.values()].map(v => ({ id: v.id, type: v.type, pos: v.group.position.toArray(), quat: v.group.quaternion.toArray(), fuel: v.fuel, cargo: v.cargo.slice(), hopper: v.hopper.slice(), tram: v.tram ? { ...v.tram } : null, free: v.free || undefined }));
   // Remove a vehicle (selling it back, or a load).
   api.remove = async (id) => {
     const v = list.get(id); if (!v) return;

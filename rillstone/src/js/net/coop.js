@@ -15,7 +15,7 @@
 //                         changes and the economy when it changed
 //   'to'  host -> guest   things for one guest: toasts, sounds, teleports, menus
 import * as THREE from 'three';
-import { editLog, brush, boxBrush } from '../world/claims.js';
+import { editLog, brush, boxBrush, createClaimVolume, readChunk, writeChunk } from '../world/claims.js';
 import { clerk, textPlane } from '../render/buildings.js';
 import { BLUEPRINTS } from '../defs/progression.js';
 import { SHOPS } from '../defs/shops.js';
@@ -327,6 +327,14 @@ export function createCoop(ctx) {
     for (const v of [...vehicles.list.values()]) await origRemoveVehicle(v.id);
     items.restore([]);
     items.remote = true; vehicles.remote = true;
+    // Digging done in this browser's own world (before joining) is put back
+    // to fresh ground; the host's package then writes their dug chunks.
+    for (const vol of claims.volumes.values()) {
+      if (!vol.modified.size) continue;
+      const fresh = createClaimVolume(vol.def);
+      for (const ck of [...vol.modified]) { const c = readChunk(fresh, ck); writeChunk(vol, ck, c.dens, c.band); }
+      vol.modified.clear();
+    }
     await restore(snap);
     const seq = snap.coop?.seq ?? 0;
     for (const s of buffered) if (s.q > seq) applySnapshot(s);
