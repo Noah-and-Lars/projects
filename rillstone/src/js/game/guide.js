@@ -9,13 +9,15 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
   const E = economy.state;
   const G = () => (E.flags.guide ||= { step: 0, seen: {} });
   const has = (pred) => { for (const e of items.ents.values()) if (pred(e)) return true; return false; };
+  // Real sales are in the ledger (guide payouts and contract rewards aren't).
+  const sold = () => E.ledger.length > 0;
   const machine = (pred) => { for (const m of machines.list.values()) if (!m.run && pred(m)) return m; return null; };
   const STEPS = [
     { title: 'Scoop some gravel', text: 'Hold your pan (Q swaps tools) and click the Gravel Bar to scoop 2 loads into it.', done: () => (hands.digs || 0) > 0 || (hands.washed || 0) > 0, pay: 5 },
     { title: 'Wash it in the river', text: 'Walk to the water and click it with the full pan. Each load washes into a find.', done: () => (hands.washed || 0) > 0, pay: 10 },
-    { title: 'Pick up a find', text: 'Click dry ground to tip the finds out, then E picks one up.', done: () => { const e = hands.hand ? items.get(hands.hand) : null; return !!(e && e.item) || E.totalEarned > 0; }, pay: 10 },
-    { title: 'Sell at the Assay Office', text: 'Cross the bridge to Millbrook. Put finds on the Assay Office counter (G) and ring the bell (E).', done: () => E.totalEarned > 0, pay: 20 },
-    { title: 'Load the truck', text: 'Your old hauler is parked by the claim. Drop finds onto its bed with G, then F to drive. Carry a whole load to town.', done: () => [...vehicles.list.values()].some(v => v.cargo.length > 0) || G().drove, pay: 20 },
+    { title: 'Fill the pan with finds', text: 'Finds stay in the pan (up to 20). Keep scooping and washing; E drops a loose find into it too.', done: () => { for (const e of items.ents.values()) if (e.type === 'pan' && e.data.contents?.length >= 3) return true; return (hands.tipped || 0) > 0 || sold(); }, pay: 10 },
+    { title: 'Sell at the Assay Office', text: 'Cross the bridge to Millbrook. Click the Assay Office counter with the pan to tip your finds out, then ring the bell (E).', done: sold, pay: 20 },
+    { title: 'Load the truck', text: 'Your old hauler is parked by the claim. Click its bed with the pan to tip your finds in (or drop things on it with G), then F to drive to town.', done: () => [...vehicles.list.values()].some(v => v.cargo.length > 0) || G().drove, pay: 20 },
     { title: 'A better shovel', text: 'Buy the Sturdy Shovel at the General Store: it holds 2 loads.', done: () => has(e => e.type === 'shovel' && (e.data?.cap || 1) >= 2), pay: 20 },
     { title: 'Your first contract', text: 'Read the board by the Guild Hall and finish a contract. Contracts pay Scrip and Guild Standing.', done: () => E.standing > 0, pay: 40 },
     { title: 'The starter kit', text: 'Save up § 1,000. At the Millwright buy a Sluice Box, a Drill, a River Intake and copper pipe.', done: () => has(e => e.type === 'crate' && e.data.def === 'drill1') || !!machine(m => m.def === 'drill1'), pay: 50 },
@@ -39,7 +41,7 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
       if (vehicles.driving) g.drove = true;
       t -= dt; if (t > 0 || !api.auth) return; t = 0.5;
       if (s.done()) {
-        g.step++; E.scrip += s.pay; E.totalEarned += s.pay;
+        g.step++; E.scrip += s.pay;
         audio.play('contract'); hud.toast(`Guide: ${s.title} · § ${s.pay}`, 'gold');
       }
     },

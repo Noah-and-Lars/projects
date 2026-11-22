@@ -9,6 +9,8 @@ import { rollLoot } from '../sim/loot.js';
 import { waterY } from '../world/valley.js';
 
 const REACH = 3.2;
+// A pan carries its finds until you tip them out (dry ground or a counter).
+export const PAN_FINDS = 20;
 
 export function createHands({ scene, camera, physics, items, claims, water, fx, audio, hud, rng, materials, onFind }) {
   const H = { hand: null, slot: null, aim: null, cooldown: 0, swing: 0, ringOk: false, ringPos: null, lastMsg: 0 };
@@ -177,7 +179,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
   }
   function addLoad(e, load) { e.data.loads.push(load); items.refresh(e.id); }
   function dumpClod(load, p, anim = true) { items.spawn('clod', [p[0], p[1] + 0.2, p[2]], { data: { band: load.band, depth: load.depth, loads: [load], ore: !!load.ore } }); audio.play('pour'); if (anim) H.play('dump'); fx.burst(p, BAND_DIRT[load.band], 8, { speed: 1, size: 0.05, life: 0.4, up: 0.6 }); }
-  function containerCanTake(e) { return e && (e.type === 'pan' || e.type === 'bucket') && e.data.loads.length < toolDef(e).loads && !(e.type === 'pan' && e.data.contents.length); }
+  function containerCanTake(e) { return e && (e.type === 'pan' || e.type === 'bucket') && e.data.loads.length < toolDef(e).loads && !(e.type === 'pan' && e.data.contents.length >= PAN_FINDS); }
 
   // Wash one load in the pan: one loot roll per load (BUILD_BRIEF 3.4).
   function wash(pan) {
@@ -200,6 +202,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
   // Tip the pan's finds out at the drop ring as loose nuggets.
   function tipOut(pan, p) {
     const list = pan.data.contents.splice(0);
+    H.tipped = (H.tipped || 0) + 1;
     list.forEach((id, i) => { const a = i * 2.4, r = 0.06 + i * 0.015; items.place(id, [p[0] + Math.cos(a) * r, p[1] + 0.12 + i * 0.04, p[2] + Math.sin(a) * r]); });
     items.refresh(pan.id);
     audio.play('drop'); H.play('tip');
@@ -239,11 +242,21 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     }
     if (e.type === 'shovel' || e.type === 'bucket' || e.type === 'pan') {
       const loads = e.data.loads, cap = def.loads;
-      if (e.type === 'pan' && info.kind === 'water' && near && loads.length) return wash(e);
-      if (e.type === 'pan' && e.data.contents.length && !loads.length) {
-        if (info.kind === 'water') { say('Pan is full of finds — tip them out on dry ground first'); return; }
-        if (near) return tipOut(e, info.p);
-        return;
+      if (e.type === 'pan') {
+        const finds = e.data.contents.length;
+        if (info.kind === 'water' && near && loads.length) { if (finds >= PAN_FINDS) { say(`The pan holds ${PAN_FINDS} finds — tip them out first`, 'err'); return; } return wash(e); }
+        if (info.kind === 'claim' && near && loads.length < cap && finds < PAN_FINDS) { const l = dig(info, e, def); if (l) addLoad(e, l); return l; }
+        if (finds && !loads.length && info.kind === 'vehicle' && info.bed && info.dist < REACH) {
+          // Tip the finds straight into a truck bed, as cargo.
+          let n = 0;
+          for (const id of e.data.contents.slice()) { const f = items.get(id); if (!f) continue; f.loc = 'held'; if (H.vehicles.addCargo(info.id, f, info.p) !== 'ok') { f.loc = 'contained'; break; } e.data.contents.splice(e.data.contents.indexOf(id), 1); n++; }
+          items.refresh(e.id); audio.play('pour'); H.play('tip');
+          say(n ? `${n} find${n > 1 ? 's' : ''} into the bed` : 'The bed is full', n ? '' : 'err');
+          return n > 0;
+        }
+        if (finds && !loads.length && near && info.kind !== 'water') return tipOut(e, info.p);
+        if (info.kind === 'water' && near && !loads.length) { say(finds ? 'Scoop more gravel, or tip your finds out on dry ground' : 'Scoop some gravel into the pan first'); return; }
+        if (info.kind === 'claim' && near && finds >= PAN_FINDS) { say(`The pan holds ${PAN_FINDS} finds — tip them out first`, 'err'); return; }
       }
       if (info.kind === 'claim' && near && loads.length < cap) { const l = dig(info, e, def); if (l) addLoad(e, l); return l; }
       if (loads.length && info.kind === 'item' && near && containerCanTake(info.ent)) {
@@ -290,8 +303,11 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       const cur = heldEnt();
       // Tools go to the swap slot to free the hand.
       if (TOOLS[cur.type] && !H.slot) { H.slot = H.hand; H.hand = null; }
-      else if (target.type !== 'pile' && cur.type === 'pan' && target.type === 'nugget' && !cur.data.loads.length) { // scoop a nugget into the pan
-        items.take(target.id, 'contained', cur.id); cur.data.contents.push(target.id); items.refresh(cur.id); audio.play('pickup'); H.play('grab'); return true;
+      else if (target.type === 'nugget') {
+        // A find goes into the pan, held or in the swap slot.
+        const pan = [cur, H.slot ? items.get(H.slot) : null].find(p => p && p.type === 'pan' && !p.data.loads.length && p.data.contents.length < PAN_FINDS);
+        if (!pan) { say('Hands full — G to drop, Q to swap'); audio.play('error'); return false; }
+        items.take(target.id, 'contained', pan.id); pan.data.contents.push(target.id); items.refresh(pan.id); audio.play('pickup'); H.play('grab'); say(`Into the pan (${pan.data.contents.length}/${PAN_FINDS})`); return true;
       } else { say('Hands full — G to drop, Q to swap'); audio.play('error'); return false; }
     }
     if (target.type === 'pile') { const n = items.takeFromPile(target.id); H.hand = n.id; audio.play('pickup'); H.play('equip'); return true; }
@@ -325,10 +341,13 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (e) {
       const def = toolDef(e);
       if (e.type === 'pan') {
-        if (e.data.loads.length && info.kind === 'water' && near) parts.push(`${k('LMB')} wash (${e.data.loads.length} left)`);
-        else if (e.data.contents.length && !e.data.loads.length) parts.push(`${k('LMB')} tip out finds`);
-        else if (info.kind === 'claim' && near && e.data.loads.length < def.loads) parts.push(`${k('LMB')} scoop gravel`);
-        else if (e.data.loads.length) parts.push('Dip the pan in the river');
+        const finds = e.data.contents.length, loads = e.data.loads.length;
+        if (loads && info.kind === 'water' && near) parts.push(`${k('LMB')} wash (${loads} left)`);
+        else if (info.kind === 'claim' && near && loads < def.loads && finds < PAN_FINDS) parts.push(`${k('LMB')} scoop gravel${finds ? ` (${finds} finds in the pan)` : ''}`);
+        else if (finds && !loads && info.kind === 'vehicle' && info.bed) parts.push(`${k('LMB')} tip ${finds} find${finds > 1 ? 's' : ''} into the bed`);
+        else if (finds && !loads && near && info.kind !== 'water') parts.push(`${k('LMB')} tip out ${finds} find${finds > 1 ? 's' : ''}`);
+        else if (loads) parts.push('Dip the pan in the river');
+        else if (finds) parts.push(`${finds} find${finds > 1 ? 's' : ''} in the pan · tip them out on dry ground or a counter`);
       } else if (def && def.loads) {
         if (info.kind === 'claim' && near && e.data.loads.length < def.loads) parts.push(`${k('LMB')} dig`);
         else if (e.data.loads.length && info.kind === 'item' && containerCanTake(info.ent) && near) parts.push(`${k('LMB')} pour into ${TOOLS[info.ent.type].name.toLowerCase()}`);

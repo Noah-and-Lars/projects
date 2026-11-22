@@ -710,3 +710,13 @@ Measured in headless Chromium with software GL (SwiftShader), at medium graphics
   instead of hiding the item.
 - **Title screen:** the co-op panel opened from the title no longer sits
   behind the title card.
+- **Pan (playtest).**
+  - **The problem:** a new player holds a shovel with the pan in the swap
+    slot. With both slots taken by tools, E on a find said "Hands full", and
+    the pan had to be tipped out after every 2 loads.
+  - **Now:** the pan carries up to 20 finds while you keep scooping and
+    washing. E on a loose find drops it into your pan, held or in the swap
+    slot. LMB tips the finds out on dry ground or a counter, or straight into
+    a truck bed as cargo.
+- **Guide.** Its payouts no longer count as "Scrip earned". Before, the
+  "sell" step completed itself as soon as an earlier step paid out.

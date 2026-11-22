@@ -118,8 +118,9 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
           const inf = H.aimInfo(); R._panLog = (R._panLog || '') + `c${c}:washmiss(${inf.kind},${inf.dist?.toFixed(2)},p${R.player.cur.toArray().map(v => v.toFixed(1))}) `;
           await R.teleport(standX, R.height(standX, zr) + 1.2, zr); await R.tick(10);
         }
-        await R.teleport(standX - 2.5, R.height(standX - 2.5, zr) + 1.2, zr); await R.tick(4);
-        await act(standX - 4.2, R.height(standX - 4.2, zr + 1.2), zr + 1.2); // tip out on dry ground
+        // Tip out on dry ground on the bank (clicking the claim would scoop more gravel).
+        await R.teleport(standX - 0.5, R.height(standX - 0.5, zr) + 1.2, zr); await R.tick(4);
+        await act(standX - 1.8, R.height(standX - 1.8, zr + 1.2), zr + 1.2);
       }
       await R.tick(120);
       const nug = [...R.items.ents.values()].filter(e => e.type === 'nugget' && e.loc === 'loose').length;
@@ -665,6 +666,20 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       R.town.interact(post.id); for (let i = 0; i < 30; i++) await R.tick(1);
       const hv = [...R.vehicles.list.values()].find(v => v.type === 'hauler');
       out.called = +Math.hypot(hv.group.position.x - post.at.x, hv.group.position.z - post.at.z).toFixed(1);
+      // A pan of finds tips straight into the truck bed.
+      {
+        const H = R.hands, pan = I.spawn('pan', [0, 50, 0], { loc: 'held', data: { loads: [], contents: [] } });
+        for (let i = 0; i < 3; i++) { const n = I.spawn('nugget', [0, 50, 0], { item: { material: 'copper', stage: 'ore', kg: 0.5 }, loc: 'contained' }); n.container = pan.id; pan.data.contents.push(n.id); }
+        const old = H.hand; H.hand = pan.id;
+        for (let i = 0; i < 30; i++) await R.tick(1);
+        await R.frames(8); hv.group.updateMatrixWorld(true);
+        const bed = new R.THREE.Vector3(0, hv.def.bed.y, -1).applyMatrix4(hv.group.matrixWorld);
+        await R.teleport(bed.x + 2.2, bed.y + 0.6, bed.z); await R.tick(5);
+        R.aimAt(bed.x, bed.y, bed.z); await R.refreshAim(); H.cooldown = 0;
+        const c0 = hv.cargo.length; H.use();
+        const ai = H.aimInfo(); out.panToBed = { added: hv.cargo.length - c0, left: pan.data.contents.length, kind: ai.kind, bed: !!ai.bed, dist: ai.dist, toasts: [...document.querySelectorAll('.toast')].map(t => t.textContent).slice(-2) };
+        H.hand = old;
+      }
       // The guide: with its checks on, finished steps pay out.
       const g0s = R.guide.steps.length, s0g = E.scrip;
       E.flags.guide = { step: 0 }; R.hands.digs = 1; R.hands.washed = 1;
@@ -692,6 +707,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     check(pr.cut === 1 && pr.cutFee > 0, `Upper Falls gem cutter cut the garnet for § ${pr.cutFee}`);
     check(pr.pump === '1,2,3,4,5' && pr.finale && pr.goldwheel, `Pumphouse stages ${pr.pump}, end screen shown, gold-plated wheel delivered`);
     check(pr.hopper === 3 && pr.dumped === 3 && pr.cells.split(' ').every(c => c.split(',').every(v => Math.abs(v % 1) === 0.5)), `excavator dug 3 loads from world-grid cell ${pr.cells.split(' ')[0]} into its hopper and dumped them`);
+    check(pr.panToBed.added === 3 && pr.panToBed.left === 0, `a pan of 3 finds tips into the truck bed (${pr.panToBed.added} added)`);
     check(pr.called < 6, `a claim post calls the hauler to it (${pr.called} m away)`);
     check(pr.guide.step >= 2 && pr.guide.paid >= 15, `the guide's first steps complete and pay (step ${pr.guide.step} of ${pr.guide.of}, § ${pr.guide.paid})`);
     check(pr.voices2 === 2 && pr.voicesMax === 8, `machine audio: 2 drills + a sluice play ${pr.voices2} voices; 12 drills are capped at ${pr.voicesMax}`);

@@ -88,7 +88,10 @@ pan in your quick-swap slot and a bucket by the claim post.
 - **Bucket** holds 4 loads. Dig straight into it, then pour into a pan.
 - **Pan** holds 2 loads. Scoop from the claim, then aim at the river and click
   once per load to wash it. Each washed load rolls once on the band's loot
-  table and drops a find into the pan. LMB on dry ground tips the finds out.
+  table and drops a find into the pan, which carries up to 20 finds while
+  you keep washing. LMB on dry ground or a shop counter tips them out, and
+  LMB on the truck bed tips them in as cargo. E on a loose find drops it into
+  your pan, even with the pan in the swap slot.
 - **Pick** breaks ground fast and drops a dirt clod.
 - **E** picks things up, **G** drops what you hold exactly at the ring under
   the crosshair (white means there's room, magenta means blocked), and **Q**
