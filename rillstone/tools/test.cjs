@@ -1118,9 +1118,9 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       const R = __rill, wait = (ms) => new Promise(r => setTimeout(r, ms)), until = async (f, n = 600) => { for (let i = 0; i < n && !f(); i++) await wait(50); return f(); };
       const pauseBtn = (label) => [...document.querySelectorAll('#scr-pause .menu-btn')].find(b => b.querySelector('b')?.textContent === label);
       R.state.mode = 'pause'; R.state.playing = true; R.menu.showPause(true);
-      pauseBtn('Co-op').click(); await until(() => R.panels.current === 'coop');
-      const r = document.querySelector('#scr-panel').getBoundingClientRect(), top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('.screen')?.id;
-      R.panels.close();
+      pauseBtn('Co-op').click(); await until(() => R.coopPage.open && document.querySelector('#scr-coop .coop-card'));
+      const r = document.querySelector('#scr-coop .coop-card').getBoundingClientRect(), top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('.screen')?.id;
+      [...document.querySelectorAll('#scr-coop .back')][0].click();
       const back = R.menu.pauseShown && R.state.mode === 'pause';
       pauseBtn('Saves').click();
       const page = await until(() => document.querySelectorAll('#scr-saves .slot').length === 6);
@@ -1137,7 +1137,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       R.menu.showPause(false); R.state.mode = 'play';
       return { top, back, page, free, saved, gone, escBack };
     });
-    check(flow.top === 'scr-panel' && flow.back && flow.page && flow.saved && flow.gone && flow.escBack, `menus: Co-op from pause sits on top and closes back to it; the Saves page saved into slot ${flow.free}, deleted it after a confirm, and Esc went back (${JSON.stringify(flow)})`);
+    check(flow.top === 'scr-coop' && flow.back && flow.page && flow.saved && flow.gone && flow.escBack, `menus: Co-op from pause sits on top and closes back to it; the Saves page saved into slot ${flow.free}, deleted it after a confirm, and Esc went back (${JSON.stringify(flow)})`);
     errs.push(...fresh.errs);
   }
   check(errs.length === 0, 'no console errors' + (errs.length ? ': ' + errs.slice(0, 5).join(' | ') : ''));

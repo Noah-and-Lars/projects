@@ -31,10 +31,11 @@ import { PUMP_STAGES } from './defs/progression.js';
 import { createProgress } from './game/progress.js';
 import { createWorkshop } from './game/workshop.js';
 import { createHeavy } from './game/heavy.js';
-import { createNet } from './net/net.js';
+import { createNet, cleanName } from './net/net.js';
 import { createCoop } from './net/coop.js';
 import { createCamp } from './game/camp.js';
 import { createSavesPage, ago, playTime } from './ui/saves.js';
+import { createCoopPage } from './ui/coop.js';
 import { createGuide } from './game/guide.js';
 import { createMap } from './game/map.js';
 import { h } from './ui/dom.js';
@@ -185,33 +186,31 @@ async function boot() {
   const coop = createCoop({ net, scene, camera, physics, items, hands, machines, vehicles, economy, town, workshop, heavy, claims, hud, audio, panels, bed, auto, player, state, input, saves, materials: view.materials,
     makeHands: (o) => createHands({ ...handsArgs, ...o }),
     snapshot: () => snapshot(), restore: (s) => restore(s), teleport: (x, y, z, yaw) => teleport(x, y, z, yaw),
-    onJoined: () => { panels.close(); play(); },
+    onJoined: () => { panels.close(); coopPage.hide(); play(); },
     onHostLeft: () => { const body = h('div', {}, h('p', {}, 'The host left, so this co-op session has ended. Their save holds the world.')); panels.show('hostleft', 'Host left', body, { closeLabel: 'Back to the title' }); const close = panels.close; panels.close = () => { panels.close = close; location.reload(); }; },
-    onMembers: () => { if (panels.current === 'coop') openCoop(); },
+    onMembers: () => { if (coopPage.open) coopPage.refresh(); },
   });
   const camp = createCamp({ scene, camera, items, hands, economy, town, hud, audio, state, view, ui, h });
   camp.coop = coop;
   const guide = createGuide({ hud, panels, economy, hands, items, machines, vehicles, audio });
   const map = createMap({ panels, economy, vehicles, player, coop });
+  // ---- Co-op page (ui/coop.js) ----
+  let coopFrom = 'title';
+  const coopPage = createCoopPage(ui, {
+    coop, net,
+    inGame: () => !!state.playing,
+    latestSave: () => saves.list().then(list => list.filter(m => !m.empty).sort((a, b) => b.savedAt - a.savedAt)[0] || null).catch(() => null),
+    // From the title: load that save, then open a room as soon as it's up.
+    hostSave: (slot) => { try { sessionStorage.setItem('rill-autohost', '1'); } catch (_) {} loadSlot(slot); },
+    getName: () => net.name(),
+    setName: (n) => { try { localStorage.setItem('rill-name', cleanName(n) || ''); } catch (_) {} },
+    onBack: () => { coopPage.hide(); if (coopFrom === 'title') menu.showTitle(true); else menu.showPause(true); },
+  });
   function openCoop() {
-    const members = net.members.map(m => h('div', { class: 'entry' }, h('b', {}, (m.n || 'Miner') + (m.id === net.id ? ' (you)' : '')), h('span', { class: 'pill' }, m.h ? 'Host' : 'Guest')));
-    let body;
-    if (coop.role === 'off') {
-      const inp = h('input', { type: 'text', maxlength: 5, placeholder: 'CODE', style: { width: '7em', textTransform: 'uppercase', fontSize: '18px', padding: '6px 10px' } });
-      const msg = h('p', { class: 'small' }, '');
-      body = h('div', {},
-        h('p', { class: 'small' }, 'Play this world with up to 3 friends. You host: your browser runs the world, and your save keeps it. Online play needs an Arcade account.'),
-        h('div', { class: 'entry' }, h('b', {}, 'Host a co-op game'), h('button', { class: 'btn primary', onclick: async () => { msg.textContent = 'Opening a room…'; try { const c = await coop.host(); if (typeof c === 'string' && c.length === 5) openCoop(); else msg.textContent = 'Could not open a room.'; } catch (e) { msg.textContent = 'Could not reach the realtime server (offline, or no Arcade account).'; } } }, 'Host'), h('span', { class: 'desc' }, 'Gives you a 5-letter room code to share.')),
-        h('div', { class: 'entry' }, h('b', {}, 'Join a friend'), h('span', {}, inp, ' ', h('button', { class: 'btn primary', onclick: async () => { msg.textContent = 'Joining…'; try { const r = await coop.join(inp.value); msg.textContent = r === 'ok' ? 'Loading the host\'s world…' : r === 'full' ? 'That room is full (4 players).' : r === 'nohost' ? 'No host in that room.' : 'Check the code: 5 letters.'; } catch (e) { msg.textContent = 'Could not reach the realtime server (offline, or no Arcade account).'; } } }, 'Join')), h('span', { class: 'desc' }, 'Your own world is set aside while you play in theirs.')),
-        msg);
-    } else {
-      body = h('div', {},
-        coop.role === 'host' ? h('div', { class: 'coop-code' }, h('span', {}, 'Room code'), h('b', {}, net.room)) : h('p', { class: 'small' }, `In ${net.host()?.n || 'the host'}'s world.`),
-        h('h3', {}, `Players (${net.members.length} / 4)`), ...members,
-        h('div', { class: 'entry' }, h('b', {}, coop.role === 'host' ? 'Stop hosting' : 'Leave'), h('button', { class: 'btn', onclick: () => { coop.leave(); location.reload(); } }, coop.role === 'host' ? 'Stop' : 'Leave'), h('span', { class: 'desc' }, coop.role === 'host' ? 'Guests are sent home. Save first!' : 'Back to your own world.')));
-    }
-    if (state.mode === 'title') menu.showTitle(false); // the panel sits where the title card was
-    panels.show('coop', 'Co-op', body, { badge: coop.role === 'off' ? 'offline' : coop.role });
+    if (panels.open) panels.close();
+    coopFrom = menu.titleShown || !state.playing ? 'title' : 'pause';
+    menu.showTitle(false); menu.showPause(false);
+    return coopPage.show();
   }
   const menu = createMenu(ui, {
     settings, input,
@@ -545,6 +544,9 @@ async function boot() {
     if (typeof want === 'number') want = { slot: want };
     const snap = want ? await saves.load(+want.slot, want.half) : null;
     if (snap) { await restore(snap); state.slot = +want.slot; state.saveName = snap.saveName; state.slotChosen = true; play(); hud.toast(`Loaded “${snap.saveName}”${want.half === 'backup' ? ' (backup)' : ''}`); }
+    // "Host" on the title's Co-op page: open the room now the world is loaded.
+    let autohost = null; try { autohost = sessionStorage.getItem('rill-autohost'); sessionStorage.removeItem('rill-autohost'); } catch (_) {}
+    if (snap && autohost) { state.mode = 'pause'; input.unlock(); openCoop(); coopPage.refresh(); coop.host().then(() => coopPage.refresh()).catch(() => coopPage.refresh()); }
   }
   requestAnimationFrame(frame);
 
@@ -552,7 +554,7 @@ async function boot() {
   // so ?test=1 lets tests drive the game directly.
   const api = { ready: true, physics, version: physics.version, seed: SEED };
   if (TEST) Object.assign(api, {
-    THREE, view, player, input, state, settings, hud, menu, savesPage, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, machines, auto, progress, workshop, heavy, adit, coop, net, guide, map, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
+    THREE, view, player, input, state, settings, hud, menu, savesPage, coopPage, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, machines, auto, progress, workshop, heavy, adit, coop, net, guide, map, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
     places: { TOWN, HAMLET, ADIT, CLAIMS, FALLS_Z, PUMPHOUSE, spawn: spawnPoint() },
     relicSpot, veins: VEINS, rollLoot, itemValue, pumpStages: PUMP_STAGES,
     height, riverX, waterY,

@@ -1082,3 +1082,19 @@ so far:
   - Save and quit to title;
   - Quit without saving, which needs a second click to confirm.
   - A line under "Paused" shows the save name, slot, day and play time.
+- **Co-op page (`ui/coop.js`):** the old Co-op panel is now a full page in
+  the same style as Saves.
+  - **Before a session:**
+    - a "Your name" field, saved as `rill-name`, which wins over the Arcade
+      account name;
+    - a Host card: "Host this world" in a game, or on the title "Host
+      <newest save>", which loads that save and opens a room as soon as it
+      is up;
+    - a Join card with a large code box.
+  - **In a session:**
+    - the room code, large, with Copy;
+    - a player list with each player's colour, Host/Guest, "you", and free
+      seats;
+    - Back to the game, and Stop hosting or Leave (click twice).
+  - Status and errors show inline. Without an Arcade login, the Arcade's
+    own sign-in prompt appears, as before.

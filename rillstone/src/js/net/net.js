@@ -17,6 +17,8 @@ export const CHUNK = 16000;
 export const cleanName = (n) => String(n || '').replace(/[^A-Za-z0-9_ .'-]/g, '').trim().slice(0, 16);
 function myName() {
   try {
+    // A name typed on the Co-op page wins; then the Arcade account's.
+    const own = cleanName(localStorage.getItem('rill-name')); if (own) return own;
     const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); if (a && a.name) return cleanName(a.name);
     const l = JSON.parse(localStorage.getItem('arcade-local') || 'null'); if (l && l.name) return cleanName(l.name);
   } catch (_) {}

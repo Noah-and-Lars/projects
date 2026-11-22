@@ -169,6 +169,11 @@ Millbrook sits across the bridge from the Gravel Bar.
     appears and can be loaded.
   - **Pause menu:** Resume, Save, Saves, Settings, Co-op, Return to claim
     post, Save and quit to title, and Quit without saving (click twice).
+  - **Co-op page:**
+    - set your name, host your world (from the title, host your newest
+      save) or join with a 5-letter code;
+    - in a session it shows the room code with Copy, the players and free
+      seats, and Stop hosting or Leave.
   - **Autosave:** the game autosaves every 3 minutes to the slot you're
     playing. If the newest copy in a slot won't load, the older one does.
 
