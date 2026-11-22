@@ -268,8 +268,8 @@ crates.
 | --- | --- | --- |
 | Trail Buggy | § 700 | Light, quick and bouncy. No bed |
 | Hauler Mk II | § 1,800 | Bigger bed (3,000 kg, 90 items) and better grip |
-| Survey Buggy | § 3,000 · ★ 6 | A scanner shows veins within 90 m and how deep they are |
-| Excavator | § 6,500 · ★ 10 | Tracks. LMB cuts the next 1 m cell (fixed to the world grid) into its 10-load hopper; RMB empties it into a sluice under the bucket, or onto the ground |
+| Survey Buggy | § 3,000 | A scanner shows veins within 90 m and how deep they are |
+| Excavator | § 6,500 | Tracks. LMB cuts the next 1 m cell (fixed to the world grid) into its 10-load hopper; RMB empties it into a sluice under the bucket, or onto the ground |
 | Ore Tram | § 400, rails § 300 for 10 | Click a start and an end to lay rails (4 m segments). Click a rail with the tram kit to set it on, drop up to 600 kg into its tub, and F sends it to the far end |
 
 **The Rillstone Pumphouse** stands ruined on the bank below Millbrook. It is restored in five stages, and each stage takes a large delivery at its counter:
