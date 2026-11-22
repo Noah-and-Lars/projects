@@ -25,7 +25,7 @@ import { MATERIALS } from '../defs/materials.js';
 const SNAP_HZ = 12, IN_HZ = 20, SCAN_HZ = 5, STATUS_HZ = 2;
 const COLORS = [0x2a8a86, 0xc8902c, 0xa84a3a, 0x6e56a8];
 const NEAR = 60; // moving bodies are sent within this range of a guest
-const SETTINGS = ['throttle', 'filter', 'value', 'period', 'delay', 'op'];
+const SETTINGS = ['throttle', 'filter', 'value', 'period', 'delay', 'op', 'pulseOnly', 'cutKg'];
 // Guest messages are untrusted: numbers must be finite, vectors the right
 // size, and machine settings in range, before the host acts on them.
 const num = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -38,6 +38,8 @@ function cleanSetting(k, v, materials) {
     case 'value': return num(v) ? clamp(v, -1e6, 1e6) : undefined;
     case 'period': case 'delay': return num(v) ? clamp(v, 0.1, 3600) : undefined;
     case 'op': return ['>', '<', '='].includes(v) ? v : undefined;
+    case 'pulseOnly': return typeof v === 'boolean' ? v : undefined;
+    case 'cutKg': return num(v) ? clamp(v, 0.05, 100) : undefined;
     case 'filter': return v && typeof v === 'object' && materials[v.material] && STAGES.includes(v.stage) ? { material: v.material, stage: v.stage } : undefined;
   }
 }
@@ -105,7 +107,7 @@ export function createCoop(ctx) {
     const gh = makeHands({ camera: cam, hud: guestHud(g), audio: { play: (cue) => toGuest(g, { snd: cue }) } });
     g.hands = gh; gh.hud = guestHud(g);
     // Hooks other modules attached to the host's hands, for this guest too.
-    for (const k of ['owns', 'vehicles', 'props', 'machines', 'auto', 'onDig', 'onWear', 'useHook', 'hintHook']) gh[k] = hands[k];
+    for (const k of ['owns', 'vehicles', 'props', 'machines', 'auto', 'onDig', 'onWear', 'useHook', 'hintHook', 'secHook']) gh[k] = hands[k];
     gh.onLift = (mm) => { const top = machines._int.toWorld(mm, [0, 4.15, 0]), bottom = machines._int.toWorld(mm, [0, 0.4, -1.2]); const up = g.pose.p[1] < mm.pos[1] + 2; const p = up ? top : bottom; toGuest(g, { tp: [p[0], p[1] + 1, p[2]] }); };
     gh.onVehicle = () => {};
     gh.remoteCraft = (held) => toGuest(g, { craft: held.id });
@@ -159,6 +161,7 @@ export function createCoop(ctx) {
       else if (a.k === 'pick') H.pickup();
       else if (a.k === 'drop') { if (a.ring) { if (vec(a.ring)) H.dropAt(a.ring, num(a.yaw) ? a.yaw : 0, a.rot); } else { if (a.reach) H.reach = Math.max(1.5, Math.min(6, +a.reach || 3.5)); H.drop(); } }
       else if (a.k === 'swap') H.swap();
+      else if (a.k === 'rmb') H.secHook?.(H.aimInfo(), H);
       else if (a.k === 'sec') { const c = H.hand ? items.get(H.hand) : null; if (c?.type === 'coil') machines.cancelRun(c); }
       else if (a.k === 'unlock') { const m = machines.get(a.id); if (m) { m.locked = false; g.hands.hud.toast(`${machines.name(m.def)} unlocked`); } }
       else if (a.k === 'place') {
@@ -193,6 +196,7 @@ export function createCoop(ctx) {
       case 'claim': { const r = economy.buyClaim(a.id); if (r === 'ok') hud.toast(`Claim bought: ${a.id}`, 'gold'); else H.hud.toast(r === 'poor' ? 'Not enough Scrip' : r === 'standing' ? 'Not enough Guild Standing' : 'Already owned', 'err'); break; }
       case 'bp': { const bp = BLUEPRINTS.find(b => b.id === a.id); if (bp) workshop.buyBlueprint(bp); break; }
       case 'build': { const bp = BLUEPRINTS.find(b => b.id === a.id); if (bp) workshop.build(bp); break; }
+      case 'scrap': workshop.scrap(); break;
       case 'vcall': town.callVehicle(a.id); break;
       case 'vsell': town.sellVehicle(a.id); break;
       case 'pour': machines.pour(a.id); break;
@@ -395,6 +399,7 @@ export function createCoop(ctx) {
     economy.buyClaim = (id) => { ui('claim', { id }); return 'sent'; };
     workshop.buyBlueprint = (bp) => { ui('bp', { id: bp.id }); return 'sent'; };
     workshop.build = (bp) => { ui('build', { id: bp.id }); return 'sent'; };
+    workshop.scrap = () => { ui('scrap', {}); return 'sent'; };
     town.sellVehicle = async (id) => { ui('vsell', { id }); return true; };
     machines.pour = (id) => ui('pour', { id });
     auto.interact = (m) => { ui('interact', { id: m.id }); return true; };

@@ -21,6 +21,9 @@ export const riverX = (z) => 34 * Math.sin(z / 95 + 0.4) + 14 * Math.sin(z / 41 
 export const RIVER_HALF_WIDTH = (z) => 6.5 + 2 * noise2(z / 60, 3.1, SEED) + (z < FALLS_Z ? -1.5 : 0);
 // Valley floor height along the river; the falls drop 16 m below Upper Falls.
 export const FALLS_Z = -138;
+// River silt (0-10) at a point along the river: clear water off the falls,
+// 6 by the Gravel Bar, muddier downstream of Millbrook.
+export const riverSilt = (z) => Math.max(0, Math.min(10, Math.round(2 + (z - FALLS_Z) * 4 / 220)));
 export const floorY = (z) => 6 - z * 0.022 + 16 * smooth(FALLS_Z + 8, FALLS_Z - 12, z);
 // The river surface sits a little below the floor; the bed is carved under it.
 export const waterY = (z) => floorY(z) - 0.7;

@@ -12,6 +12,7 @@ import { solveFlow, speedFrom, wearRate } from '../sim/flow.js';
 import { rollLoot } from '../sim/loot.js';
 import { MATERIALS, itemName } from '../defs/materials.js';
 import { bandAtDepth, BEDROCK } from '../world/claims.js';
+import { riverSilt } from '../world/valley.js';
 import { EXTRA_MESH, EXTRA_BOX, EXTRA_CARD, EXTRA_MASS } from './items.js';
 import * as M from '../defs/models.js';
 import { paint } from '../render/geom.js';
@@ -227,7 +228,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
       const def = MACHINES[m.def];
       const n = { id: m.id, kind: def.drive ? 'consumer' : ['none', 'belt', 'logic', 'container', 'shaftuser'].includes(def.role) ? 'other' : def.role === 'tank' ? 'tank' : def.role };
       if (def.drive) n.demand = def.demand, n.on = m.on;
-      if (def.role === 'source') { m.valid = !requirement(m.def, m.pos, m.rot); n.flow = m.on && m.valid ? def.flow * (m.state.throttle ?? 1) : 0; }
+      if (def.role === 'source') { m.valid = !requirement(m.def, m.pos, m.rot); n.flow = m.on && m.valid ? def.flow * (m.state.throttle ?? 1) : 0; n.silt = riverSilt(m.pos[2]); }
       if (def.role === 'consumer') { n.demand = def.demand; n.on = m.on && m.wear < 1 && m.status !== 'too hard' && m.status !== 'no claim' && m.status !== 'Ember Seam only'; }
       if (def.role === 'pipe') n.cap = m.closed ? 0 : def.cap;
       if (def.role === 'source' && m.closed) n.flow = 0;
@@ -353,6 +354,19 @@ export function createMachines({ scene, physics, materials, items, claims, water
       // A finished ingot the way out refuses (a full belt or bin) waits inside.
       s.reheat = s.reheat.filter(r => r.t < 20 || !output(m, { item: { ...r.item, hotUntil: items.clock + 90 } }));
     }
+    // Firewood chars into a sack of charcoal while the kiln burns.
+    if (s.wood > 0 && def.fuelPerSec && s.fuel > 0) {
+      if (!(s.ore > 0 || s.reheat.length)) s.fuel = Math.max(0, s.fuel - def.fuelPerSec * dt);
+      s.charT = (s.charT || 0) + dt;
+      if (s.charT >= 40) {
+        s.charT = 0; s.wood--;
+        const out = def.sockets?.find(k => k.kind === 'out'), p = toWorld(m, out ? out.p : [0, 1.2, 1.2]);
+        items.spawn('sack', [p[0], p[1] + 0.2, p[2]]);
+        hud.toast('The kiln turned out a sack of charcoal');
+      }
+    }
+    // The smelter pours by itself once full (unless set to pour on a pulse only).
+    if (def.pourOnPulse && s.ore <= 0 && s.molten >= def.capKg - 0.01 && !s.pulseOnly) api.pour(m.id);
     if (m._glow) m._glow.material.opacity = hot && (s.ore > 0 || s.molten > 0 || s.reheat.length) ? 0.55 + Math.sin(api.clock * 9) * 0.1 : 0;
   }
   // Pour the molten metal into an ingot (lever, panel, or a logic pulse in M5).
@@ -365,6 +379,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
     // Nothing is deleted: if the out port refuses the ingot, the metal stays molten.
     if (output(m, { item: it }) === false) { m.state.molten = kg; m.state.material = mat; hud.toast('The way out is blocked: clear the belt or bin first', 'err'); audio.play('error'); return null; }
     audio.play('pour'); hud.toast(`Poured a ${kg.toFixed(1)} kg ${MATERIALS[it.material].name.toLowerCase()} ingot`, 'gold');
+    for (const k of economy.smelted?.(it.material, kg) || []) { audio.play('contract'); hud.toast(`Contract done: ${k.text} · § ${k.reward} · ★ +${k.standing}`, 'gold'); }
     return it;
   };
 
@@ -399,6 +414,13 @@ export function createMachines({ scene, physics, materials, items, claims, water
       else hud.toast(`${def.name} is full`, 'err');
       return true;
     }
+    // Firewood into the kiln chars into charcoal (BUILD_BRIEF 3.7).
+    if (m.def === 'kiln' && held.type === 'firewood') {
+      if ((m.state.wood || 0) >= 4) { hud.toast('The kiln holds 4 bundles at a time', 'err'); return true; }
+      m.state.wood = (m.state.wood || 0) + 1; consume(held, H); audio.play('drop');
+      hud.toast(m.state.fuel > 0 ? `Charring ${m.state.wood} bundle${m.state.wood > 1 ? 's' : ''} of firewood (40 s each)` : 'Firewood in: it chars once the kiln has quartz to burn');
+      return true;
+    }
     // Ore into a furnace; quartz as fuel; cold ingots to reheat.
     if (def.meltRate && it) {
       if (it.material === 'quartz' && def.fuelPerSec) { m.state.fuel += it.kg * 60 / 60; consume(held, H); hud.toast(`${def.name} fuel: ${m.state.fuel.toFixed(1)} kg quartz`); return true; }
@@ -411,6 +433,20 @@ export function createMachines({ scene, physics, materials, items, claims, water
       return true;
     }
     if (def.role === 'booster' && it && it.material === 'quartz') { m.state.fuel += it.kg; consume(held, H); hud.toast(`Booster fuel: ${m.state.fuel.toFixed(1)} kg quartz`); return true; }
+    if (m.def === 'sawbench' && it) {
+      const k = MATERIALS[it.material].kind;
+      if (!(it.stage === 'ingot' || (k === 'gem' && (it.stage === 'uncut' || it.stage === 'cut')))) { hud.toast('The saw splits ingots and gems', 'err'); return true; }
+      const cut = m.state.cutKg || 1;
+      if (it.kg < cut + 0.05) { hud.toast(`Lighter than the ${cut} kg cut: set a smaller cut (RMB)`, 'err'); return true; }
+      // You keep the cut piece; the rest lands on the bench.
+      const rest = { ...it, kg: Math.round((it.kg - cut) * 1000) / 1000 };
+      it.kg = cut; items.refresh(held.id); H.refreshHeld?.();
+      const p = toWorld(m, [0.25, 0.95, 0.1]);
+      items.spawn('nugget', p, { item: rest });
+      audio.play('clink'); fx?.burst(toWorld(m, [0, 0.9, 0.15]), 0xffe0a0, 10, { speed: 2, size: 0.02, life: 0.3 });
+      hud.toast(`Cut off ${cut} kg · ${rest.kg.toFixed(2)} kg left on the bench`);
+      return true;
+    }
     if (m.def === 'grinder' && it) {
       if (MATERIALS[it.material].kind !== 'gem' || it.stage !== 'uncut') { hud.toast('The wheel cuts uncut gems', 'err'); return true; }
       it.grind = (it.grind || 0) + 1; audio.play('swish'); fx?.burst(toWorld(m, [0, 0.85, 0.3]), 0xfff4e0, 8, { speed: 1.5, size: 0.02, life: 0.3 });
@@ -478,6 +514,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
       if (def.role === 'source') { row('Status', m.valid ? `drawing ${(def.flow * m.state.throttle).toFixed(0)} L/s` : 'mouth not in the river'); }
       if (def.role === 'tank') row('Level', `${Math.round(m.state.level)} / ${def.tankCap} L`);
       if (def.role === 'booster') row('Fuel', `${m.state.fuel.toFixed(2)} kg quartz (1 kg a minute)`);
+      if (m.state.wood) row('Firewood', `${m.state.wood} bundle${m.state.wood > 1 ? 's' : ''} charring · ${Math.floor(40 - (m.state.charT || 0))} s to the next sack`);
       if (def.meltRate) { row('Contents', m.state.material ? `${MATERIALS[m.state.material].name} · ${m.state.ore.toFixed(1)} kg ore, ${m.state.molten.toFixed(1)} kg molten` : 'empty'); if (def.fuelPerSec) row('Fuel', `${m.state.fuel.toFixed(2)} kg quartz`); if (m.state.reheat.length) row('Reheating', `${m.state.reheat.length} ingot(s)`); }
       if (net.demand !== undefined && def.role !== 'none' && def.role !== 'logic' && def.role !== 'belt' || def.drive) row('Network', `${net.supply.toFixed(0)} L/s supply · ${net.demand.toFixed(0)} L/s demand`);
       const controls = h('div', { class: 'col' });
@@ -485,6 +522,8 @@ export function createMachines({ scene, physics, materials, items, claims, water
       if (!['none', 'pipe', 'logic', 'container'].includes(def.role) && !(def.role === 'belt' && !def.drive)) controls.append(h('button', { class: 'btn', onclick: () => { m.on = !m.on; render(); } }, m.on ? 'Switch off' : 'Switch on'));
       if (def.role === 'source') controls.append(h('div', { class: 'entry' }, h('b', {}, 'Intake valve'), h('span', {}, ...[0.25, 0.5, 0.75, 1].map(v => h('button', { class: 'btn' + (m.state.throttle === v ? ' primary' : ''), style: { marginLeft: '4px', padding: '6px 10px' }, onclick: () => { m.state.throttle = v; render(); } }, `${v * 100}%`)))));
       if (def.meltRate) controls.append(h('button', { class: 'btn primary', disabled: m.state.molten < 0.05, onclick: () => { api.pour(m.id); render(); } }, `Pour (${m.state.molten.toFixed(1)} kg)`));
+      if (m.def === 'sawbench') controls.append(h('div', { class: 'entry' }, h('b', {}, 'Cut'), h('span', {}, ...[0.25, 0.5, 1, 2, 5, 10].map(v => h('button', { class: 'btn' + ((m.state.cutKg || 1) === v ? ' primary' : ''), style: { marginLeft: '4px' }, onclick: () => { m.state.cutKg = v; render(); } }, `${v} kg`)))));
+      if (def.pourOnPulse) controls.append(h('div', { class: 'entry' }, h('b', {}, 'When full'), h('button', { class: 'btn', onclick: () => { m.state.pulseOnly = !m.state.pulseOnly; render(); } }, m.state.pulseOnly ? 'Waits for a pulse' : 'Pours by itself')));
       panels.show('machine:' + id, def.name, h('div', {}, h('p', { class: 'small' }, `${m.locked ? 'Locked with the mallet' : 'Unlocked: E picks it up, the mallet locks it'}`), ...rows, controls), { badge: def.family });
     };
     render();
@@ -603,7 +642,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
     if (def.role === 'container') lines.push(def.capKg ? `${m.state.contents.reduce((a, x) => a + x.kg, 0).toFixed(1)} / ${def.capKg} kg` : `${m.state.contents.length} / ${def.capItems} items`);
     if (def.role === 'logic') lines.push(`value ${fmtSig(m.sig || 0)}`);
     if (def.role === 'shaftuser') lines.push(m.status || 'idle');
-    return { name: def.name, badge: m.locked ? 'Locked' : null, lines };
+    return { name: def.name, badge: m.locked ? 'Locked' : null, rivet: !!m.locked, lines };
   };
   api.counts = () => { let mach = 0, runs = 0; for (const m of list.values()) m.run ? runs++ : mach++; return { mach, runs }; };
   void _q; void _e; void FAMILY;

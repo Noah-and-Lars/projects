@@ -137,6 +137,15 @@ Millbrook sits across the bridge from the Gravel Bar.
 - **The Old Hauler.** F gets in and out, WASD drives, Space brakes and H
   (hold) unflips. Drop items onto the bed with G to carry them to town; E takes
   them out again. It burns charcoal: LMB with a sack on the truck refuels it.
+- **Camp gear.** The General Store also sells:
+  - a **Bedroll**: RMB on it at night sleeps until 06:00; in co-op, everyone
+    has to be in a bed;
+  - a **Brass Lantern** that lights the ground round it after dusk;
+  - a **Hand Scale** that weighs a find, pile, bin or truck bed and tallies
+    its value;
+  - **Firewood**, which a lit kiln chars into a sack of charcoal.
+- **Scrapping.** Machine crates and tools left on the Machine Shop counter
+  can be scrapped for iron worth 30% of what they cost.
 - **Saving.** The pause menu has 3 save slots, plus export and import of
   `.rillsave` files. The game autosaves every 3 minutes to your current
   slot. A new game takes the first empty slot and never autosaves over

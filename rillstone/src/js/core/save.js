@@ -59,8 +59,8 @@ export function createSaves() {
       const cur = list.find(x => x.slot === slot);
       const ab = cur && !cur.empty && cur.ab === 'A' ? 'B' : 'A';
       const key = `${slot}:${ab}`;
-      const meta = { slot, ab, saveVersion: SAVE_VERSION, savedAt: Date.now(), playTime: snap.playTime || 0, day: snap.day, scrip: snap.economy?.scrip ?? 0, standing: snap.economy?.standing ?? 0 };
-      const { chunks = [], economy = {}, ...rest } = snap;
+      const meta = { slot, ab, saveVersion: SAVE_VERSION, savedAt: Date.now(), playTime: snap.playTime || 0, day: snap.day, scrip: snap.economy?.scrip ?? 0, standing: snap.economy?.standing ?? 0, thumb: typeof snap.thumb === 'string' && snap.thumb.length < 40000 ? snap.thumb : null };
+      const { chunks = [], economy = {}, thumb, ...rest } = snap; void thumb;
       await new Promise((res, rej) => {
         const tx = db.transaction(STORES, 'readwrite');
         tx.objectStore('entities').put(pack(rest), key);

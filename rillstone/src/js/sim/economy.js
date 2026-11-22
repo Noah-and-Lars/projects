@@ -31,9 +31,10 @@ function makeContract(rng, standing, id) {
   if (tier >= 2 && rng() < 0.45) {
     const u = rng();
     if (u < 0.5 || tier < 3) { const kg = Math.round((10 + rng() * 15) * tier * (metal === 'gold' ? 0.4 : metal === 'silver' ? 0.6 : 1)); c = { kind: 'kg', want: { stage: 'ingot', material: metal }, target: kg, text: `Deliver ${kg} kg of ${MATERIALS[metal].name.toLowerCase()} ingots` }; }
+    else if (u < 0.6) { const kg = Math.round((60 + rng() * 80) * tier * (metal === 'gold' ? 0.4 : metal === 'silver' ? 0.6 : 1) / 10) * 10; c = { kind: 'smelt', want: { material: metal }, target: kg, text: `Smelt ${kg} kg of ${metal} (pour it from a kiln or smelter)` }; }
     else if (u < 0.75) { const n = 2 + Math.floor(rng() * tier); c = { kind: 'count', want: { stage: 'cut', kind: 'gem' }, target: n, text: `Deliver ${n} cut gems` }; }
     else { const craft = ['ring', 'chain', 'chalice'][Math.floor(rng() * 3)]; c = { kind: 'count', want: { stage: 'crafted', material: metal, craft }, target: 1, text: `Deliver ${/^[aeiou]/i.test(metal) ? 'an' : 'a'} ${MATERIALS[metal].name.toLowerCase()} ${CRAFT_NAMES[craft]} (1 kg or more)` }; }
-    const reward = Math.round((c.kind === 'kg' ? c.target * MATERIALS[metal].refined * 0.7 : c.want.stage === 'cut' ? c.target * 45 : 150 * tier) / 5) * 5 + 20;
+    const reward = Math.round((c.kind === 'smelt' ? c.target * MATERIALS[metal].refined * 0.25 : c.kind === 'kg' ? c.target * MATERIALS[metal].refined * 0.7 : c.want.stage === 'cut' ? c.target * 45 : 150 * tier) / 5) * 5 + 20;
     return { id, ...c, progress: 0, reward, standing: tier, done: false };
   }
   if (t < 0.4) { const kg = Math.round((6 + rng() * 10) * tier * (metal === 'gold' ? 0.4 : metal === 'silver' ? 0.6 : 1)); c = { kind: 'kg', want: { stage: 'ore', material: metal }, target: kg, text: `Deliver ${kg} kg of ${MATERIALS[metal].name.toLowerCase()} ore` }; }
@@ -106,7 +107,7 @@ export function createEconomy(rng) {
   function progressContracts(it, value) {
     void value;
     for (const c of S.contracts) {
-      if (c.done || c.kind === 'day') continue;
+      if (c.done || c.kind === 'day' || c.kind === 'smelt') continue;
       if (!matches(c.want, it)) continue;
       if (c.kind === 'kg') c.progress += it.kg;
       // A crafted good must be a real piece of work (1 kg or more), not a
@@ -121,6 +122,12 @@ export function createEconomy(rng) {
     if (done.length) refillContracts();
     return done;
   }
+  // Production contracts: metal poured from a kiln or smelter (you keep the
+  // ingots, so these pay less than delivering them).
+  api.smelted = (material, kg) => {
+    for (const c of S.contracts) if (!c.done && c.kind === 'smelt' && c.want.material === material) c.progress += kg;
+    return checkContracts();
+  };
   api.spend = (amount) => { if (S.scrip < amount) return false; S.scrip -= amount; return true; };
   api.owns = (claimId) => S.owned.includes(claimId);
   api.buyClaim = (claimId) => {

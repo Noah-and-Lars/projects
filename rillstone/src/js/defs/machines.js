@@ -132,6 +132,15 @@ export const MACHINES = {
       bbox(0.2, 0.18, 0.12, 0.6, 1.06, 0.3, STEEL, 0.02, 6), rod([0.5, 1.12, 0.38], [0.7, 1.12, 0.38], 0.012, STEEL),
       box(0.3, 0.02, 0.2, 0.2, 0.98, -0.2, 0x5a4a3a, 0.05, 7),
     ]) },
+  // Saw Bench (BUILD_BRIEF 3.5): splits an ingot or gem by a set weight.
+  sawbench: { name: 'Saw Bench', family: 'heat', role: 'none', cell: [2, 2], accepts: 'ingot+gem',
+    boxes: [[0, 0.45, 0, 0.45, 0.45, 0.3]], sockets: [],
+    build: () => merge([
+      ...[[-0.38, -0.24], [0.38, -0.24], [-0.38, 0.24], [0.38, 0.24]].map(([x, z]) => box(0.06, 0.8, 0.06, x, 0.4, z, WOOD_D, 0.05, 4)),
+      box(0.9, 0.06, 0.6, 0, 0.83, 0, WOOD, 0.05, 5), box(0.5, 0.04, 0.04, 0, 0.88, 0.2, STEEL, 0.04, 6),
+      P(place(new THREE.CylinderGeometry(0.2, 0.2, 0.012, 24), 0, 0.88, -0.02, Math.PI / 2, 0, 0), STEEL, 0.05, 7),
+      box(0.12, 0.18, 0.2, 0, 0.72, -0.02, DARK, 0.05, 8), rod([0.3, 0.86, -0.25], [0.3, 1.1, -0.25], 0.015, BRASS),
+    ]), spin: { at: [0, 0.88, -0.02], axis: 'x', r: 0.2 } },
   grinder: { name: 'Grinding Wheel', family: 'heat', role: 'none', cell: [2, 2], accepts: 'gem',
     boxes: [[0, 0.5, 0, 0.35, 0.5, 0.35]], sockets: [],
     build: () => merge([

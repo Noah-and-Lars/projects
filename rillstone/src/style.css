@@ -103,3 +103,9 @@ canvas.map { width: min(560px, 80vw); height: auto; aspect-ratio: 1; border-radi
 
 /* Panels (shops, saves, co-op) sit above the title and pause cards. */
 #scr-panel { z-index: 5; }
+.shop .entry.has-thumb { grid-template-columns: auto 1fr auto; }
+.save-thumb { width: 96px; height: 54px; border-radius: 6px; object-fit: cover; grid-row: span 2; }
+.shop .entry.has-thumb .desc { grid-column: 2 / 4; }
+.rivet { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; background: radial-gradient(circle at 35% 35%, #f6dc9a, #b8862e 55%, #6e4c14); box-shadow: 0 0 0 1px rgba(60, 40, 10, 0.5); }
+#sleep-fade { position: fixed; inset: 0; background: #0b0f14; opacity: 0; pointer-events: none; transition: opacity 0.45s; z-index: 4; }
+#sleep-fade.on { opacity: 1; }

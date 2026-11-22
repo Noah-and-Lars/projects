@@ -900,3 +900,42 @@ A read-only review found ten issues, all now fixed:
 9. **Craft contracts.** A chalice made from a 0.05 kg scrap ingot paid a
    full contract. Crafted goods for contracts must now weigh 1 kg or more,
    and the contract text says so.
+
+### Brief gap pass (an audit of BUILD_BRIEF against the code)
+
+An audit listed requirements that were missing or only partly done. Closed
+so far:
+
+- **Smelter (§3.5):** it now pours by itself once full ("ingot when full or
+  on a pulse"). Its panel can switch it to wait for a pulse.
+- **River silt (§3.4):** silt is now 0–10 along the river: 2 off the falls,
+  6 by the Gravel Bar (so the tuned wear numbers hold there), and muddier
+  downstream of Millbrook. A network's silt is the flow-weighted mean of
+  its intakes.
+- **Debug overlay (§8):** it shows network kB/s next to msg/s.
+- **Save list (§9):** each slot shows a small JPEG thumbnail of the view at
+  save time.
+- **Locked machines (§6):** their hover card shows a brass rivet.
+- **Production contracts (§3.6):** from tier 2, "Smelt N kg of copper"
+  counts metal poured from a kiln or smelter. It pays less than delivery
+  contracts, because you keep the ingots.
+- **Beds (§4):**
+  - a Bedroll (§80) sleeps from 19:00 to 06:00;
+  - in co-op each player's "in bed" lasts 20 s, and the night is skipped
+    once everyone is in one.
+- **Scrapping (§3.3):** crates and tools on the Machine Shop counter come
+  back as scrap iron worth 30% of their price, or 30% of the ingots for
+  blueprint builds.
+- **Saw Bench (§3.5, §160):** splits an ingot or gem by a set weight (0.25
+  to 10 kg). You keep the cut piece and the rest lands on the bench.
+- **Shop items (§3.6):**
+  - a Hand Scale (§60) weighs and values a find, pile, bin or truck bed;
+  - a Brass Lantern (§30) is set down to light an area, and the nearest 4
+    lanterns get pooled point lights after dusk (§3.1);
+  - the worn lantern (L) stays free.
+- **Charcoal (§3.7):** Firewood (§6) put in a lit kiln chars into a sack
+  in 40 s.
+- **Assay Office and gems (§3.6):** the Assay Office still sends gems to
+  the Gem Buyer. That was the player's own request during development:
+  "make it so uncut gems has its own store and the other store takes
+  everything else".

@@ -303,3 +303,44 @@ export function prospectorLamp() {
   ];
   return merge(parts);
 }
+
+// ---- Camp gear (M8 brief gaps): bedroll, brass lantern, hand scale, firewood.
+// A rolled canvas bedroll with two leather straps.
+export function bedroll() {
+  const CANVAS = 0x6f7f5a, STRAP = 0x5a3a22;
+  const parts = [P(place(new THREE.CylinderGeometry(0.13, 0.13, 0.62, 14), 0, 0.13, 0, 0, 0, Math.PI / 2), CANVAS, 0.1, 5)];
+  for (const x of [-0.18, 0.18]) parts.push(P(place(new THREE.TorusGeometry(0.135, 0.012, 5, 16), x, 0.13, 0, 0, Math.PI / 2, 0), STRAP, 0.06, 6));
+  parts.push(P(place(new THREE.CircleGeometry(0.125, 14), 0.311, 0.13, 0, 0, Math.PI / 2, 0), 0x8a9a70, 0.12, 7));
+  parts.push(P(place(new THREE.CircleGeometry(0.125, 14), -0.311, 0.13, 0, 0, -Math.PI / 2, 0), 0x8a9a70, 0.12, 8));
+  return merge(parts);
+}
+// A brass storm lantern: base, glass chimney, cage wires, cap and bail.
+export function lantern() {
+  const parts = [
+    P(lathe([[0, 0], [0.07, 0], [0.075, 0.015], [0.06, 0.04], [0.045, 0.05], [0, 0.05]], 14), BRASS, 0.08, 11),
+    P(place(new THREE.CylinderGeometry(0.04, 0.045, 0.13, 12, 1, true), 0, 0.115, 0), 0xfff0c0, 0.04, 12),
+    ...[0, 1, 2, 3].map(i => rod([Math.cos(i * 1.57 + 0.78) * 0.05, 0.05, Math.sin(i * 1.57 + 0.78) * 0.05], [Math.cos(i * 1.57 + 0.78) * 0.05, 0.18, Math.sin(i * 1.57 + 0.78) * 0.05], 0.005, BRASS)),
+    P(lathe([[0, 0], [0.06, 0], [0.035, 0.035], [0.012, 0.05], [0, 0.05]], 12), BRASS, 0.08, 13).translate(0, 0.18, 0),
+    P(place(new THREE.TorusGeometry(0.055, 0.005, 5, 14, Math.PI), 0, 0.235, 0), IRON, 0.05, 14),
+  ];
+  return merge(parts);
+}
+// A hand scale: a brass pan hanging from a spring balance with a dial.
+export function handScale() {
+  const parts = [
+    P(lathe([[0, 0], [0.09, 0.0], [0.1, 0.02], [0.095, 0.025], [0, 0.012]], 16), BRASS, 0.08, 21),
+    ...[0, 1, 2].map(i => rod([Math.cos(i * 2.09) * 0.085, 0.02, Math.sin(i * 2.09) * 0.085], [0, 0.2, 0], 0.003, IRON)),
+    P(place(new THREE.CylinderGeometry(0.03, 0.03, 0.12, 10), 0, 0.26, 0), STEEL, 0.05, 22),
+    P(place(new THREE.CylinderGeometry(0.045, 0.045, 0.015, 16), 0, 0.27, 0.032, Math.PI / 2), 0xf2ead8, 0.03, 23),
+    P(place(new THREE.TorusGeometry(0.02, 0.005, 5, 12), 0, 0.345, 0), IRON, 0.05, 24),
+  ];
+  return merge(parts);
+}
+// A bundle of split firewood tied with twine.
+export function firewood() {
+  const parts = [];
+  const logs = [[-0.05, 0.05], [0.05, 0.05], [0, 0.13], [-0.1, 0.13], [0.1, 0.13], [0, 0.04]];
+  logs.slice(0, 5).forEach(([x, y], i) => parts.push(P(place(new THREE.CylinderGeometry(0.045, 0.05, 0.42, 6), x, y, 0, Math.PI / 2, 0, i * 0.4), i % 2 ? WOOD : WOOD_DARK, 0.12, 30 + i)));
+  for (const z of [-0.12, 0.12]) parts.push(P(place(new THREE.TorusGeometry(0.12, 0.006, 4, 14), 0, 0.1, z), 0xc8b88a, 0.05, 40));
+  return merge(parts);
+}

@@ -71,7 +71,10 @@ export function solveFlow(nodes, edges, dt = 0) {
       t.tank.level = Math.max(0, Math.min(t.tank.cap, t.tank.level + (surplus / tanks.length - share) * dt));
       result.set(t.id, { level: t.tank.level, giving: share });
     }
-    const silt = Math.max(0, (sources.length ? RIVER_SILT : 0) - 3 * settles);
+    // Silt: the flow-weighted mean of the intakes' water (cleaner upstream,
+    // muddier below the town), less 3 per settling tank.
+    let sw = 0, sf = 0; for (const s of sources) { const f = Math.max(0.001, s.flow || 0); sw += f; sf += f * (s.silt ?? RIVER_SILT); }
+    const silt = Math.max(0, (sources.length ? Math.round(sf / sw) : 0) - 3 * settles);
     const info = { supply, demand, satisfaction: sat, silt, intake, boost, tankOut, used };
     for (const x of comp) { const r = result.get(x.id) || {}; result.set(x.id, { ...r, net: info }); }
   }

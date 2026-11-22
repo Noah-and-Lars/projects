@@ -413,6 +413,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       if (input.pressed('secondary') && H.machines) {
         const held = heldEnt();
         if (held && held.type === 'coil' && H.machines.runStart(held)) { H.machines.cancelRun(held); say('Run cancelled'); }
+        else if (H.secHook?.(info, H)) { /* a bedroll: sleep */ }
         else if (info.kind === 'machine' && info.dist < REACH + 0.5 && !info.m.run) {
           if (held && held.type === 'mallet') { info.m.locked = false; audio.play('pickup'); say(`${H.machines.name(info.m.def)} unlocked`); }
           else H.machines.openPanel(info.id);
@@ -498,6 +499,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     }
     if (input.pressed('secondary') && H.machines) {
       if (e && e.type === 'coil' && H.machines.runStart(e)) H.remote({ k: 'sec' });
+      else if (info.kind === 'item' && info.ent?.type === 'bedroll' && info.dist < REACH) H.remote({ k: 'rmb' });
       else if (info.kind === 'machine' && info.dist < REACH + 0.5 && !info.m.run) {
         if (e && e.type === 'mallet') H.remote({ k: 'unlock', id: info.id });
         else H.machines.openPanel(info.id);

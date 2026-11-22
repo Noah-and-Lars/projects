@@ -753,6 +753,37 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     check(pr.guide.step >= 2 && pr.guide.paid >= 15, `the guide's first steps complete and pay (step ${pr.guide.step} of ${pr.guide.of}, § ${pr.guide.paid})`);
     check(pr.voices2 === 2 && pr.voicesMax === 8, `machine audio: 2 drills + a sluice play ${pr.voices2} voices; 12 drills are capped at ${pr.voicesMax}`);
     check(pr.rails === 'ok' && pr.railLen > 19 && pr.load === 'ok' && !pr.tram.moving && pr.tram.cargo === 1 && Math.abs((pr.tram?.x ?? 1e9) - pr.bx) < 1, `20 m of rails (${pr.rails}); the tram carried 1 nugget to the far end (x ${pr.tram?.x} vs ${pr.bx})`);
+    // Camp gear and the workshop extras (brief gap pass).
+    const camp = await p.evaluate(async () => {
+      const R = __rill, H = R.hands, I = R.items, g = R.places.CLAIMS[0], out = {}; R.noRender(true); R.fly(false);
+      const said = []; const t0 = R.hud.toast; R.hud.toast = (m, k) => { said.push(m); t0(m, k); };
+      const x = g.cx - 4, z = g.cz + 10; await R.teleport(x, R.height(x, z) + 1.2, z); await R.tick(20);
+      const bed = I.spawn('bedroll', [x - 1.5, R.height(x - 1.5, z) + 0.3, z]); await R.tick(30);
+      const info = { kind: 'item', ent: bed, dist: 1.5 };
+      R.state.time = 0.5; H.secHook(info, H); out.dayRefused = /only sleep at night/.test(said.at(-1));
+      R.state.time = 0.9; const d0 = R.state.day; H.secHook(info, H); out.slept = R.state.day - d0 === 1 && R.state.time === 0.25;
+      const n = I.spawn('nugget', [x - 1.5, R.height(x - 1.5, z + 1) + 0.3, z + 1], { item: { material: 'gold', kg: 0.5, stage: 'ore' } });
+      for (const id of [H.hand, H.slot]) if (id) I.place(id, [g.cx, R.height(g.cx, g.cz) + 1, g.cz]); H.hand = H.slot = null;
+      const sc = H.give('scale'); H.useHook(sc, { kind: 'item', ent: n, dist: 1 }, H); out.scale = said.at(-1);
+      const sb = R.machines.place('sawbench', [x + 2, R.height(x + 2, z), z], 0, { cutKg: 2 });
+      I.remove(H.hand); H.hand = null; const ing = H.give('nugget', {}); ing.item = { material: 'iron', stage: 'ingot', kg: 5 };
+      R.machines.useOn(sb.id, ing, H); out.saw = I.get(H.hand)?.item?.kg === 2 && [...I.ents.values()].some(e => e.item?.stage === 'ingot' && e.item.material === 'iron' && Math.abs(e.item.kg - 3) < 1e-6);
+      const kiln = R.machines.place('kiln', [x + 6, R.height(x + 6, z), z], 0, { fuel: 5 });
+      I.remove(H.hand); H.hand = null; const fw = H.give('firewood'); R.machines.useOn(kiln.id, fw, H);
+      const sacks0 = [...I.ents.values()].filter(e => e.type === 'sack').length;
+      for (let i = 0; i < 45 * 20; i++) R.machines.tick(0.05);
+      out.char = [...I.ents.values()].filter(e => e.type === 'sack').length - sacks0;
+      const sm = R.machines.place('smelter', [x + 10, R.height(x + 10, z), z], 0, { fuel: 5, material: 'copper', ore: 0, molten: 100 });
+      R.machines.tick(0.05); out.autopour = sm.state.molten === 0;
+      const WS = R.workshop.counters.workshop;
+      I.spawn('crate', [WS.x, WS.top + 0.4, WS.z], { data: { def: 'drill1', family: 'extraction' } });
+      await R.tick(40);
+      out.scrap = R.workshop.scrap(); out.scrapSaid = said.at(-1);
+      for (const m of [sb, kiln, sm]) R.machines.remove(m.id);
+      R.hud.toast = t0; R.state.time = 0.45;
+      return out;
+    });
+    check(camp.dayRefused && camp.slept && /0\.50 kg/.test(camp.scale) && camp.saw && camp.char === 1 && camp.autopour && camp.scrap === 'ok', `camp gear: bedroll sleeps only at night and skips to 06:00; scale (${camp.scale}); saw splits 5 kg into 2 + 3; firewood chars into ${camp.char} sack; the smelter pours when full; scrap (${camp.scrapSaid})`);
   }
 
 

@@ -8,6 +8,8 @@ import { PUMPHOUSE } from '../world/valley.js';
 import { pumphouseParts, pumpWheel, PUMP_DIMS, WHEEL } from '../render/pumphouse.js';
 import { counter, bell, textPlane } from '../render/buildings.js';
 import { h } from '../ui/dom.js';
+import { SHOPS } from '../defs/shops.js';
+import { TOOLS } from '../defs/items.js';
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV'];
 const fmt = (n) => Math.round(n).toLocaleString('en-GB');
@@ -72,6 +74,31 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
     hud.toast(`${bp.name} built · delivered to the pad`, 'gold');
     return 'ok';
   }
+  // ---- Scrapping (BUILD_BRIEF 3.3): crates and tools on the counter come
+  // back as scrap iron worth 30% of what they cost.
+  const SCRAP = 0.3;
+  function scrapValue(e) {
+    const same = (d) => (d?.tier ?? null) === (e.data?.tier ?? null) && (d?.cap ?? null) === (e.data?.cap ?? null);
+    for (const sh of Object.values(SHOPS)) for (const it of sh.items) {
+      if (e.type === 'crate' ? it.data?.def === e.data?.def : it.spawn === e.type && it.spawn !== 'vehicle' && same(it.data)) return it.price;
+    }
+    const bp = BLUEPRINTS.find(b => e.type === 'crate' ? b.data?.def === e.data?.def : b.spawn === e.type && same(b.data));
+    if (bp) return Object.entries(bp.ingots).reduce((a, [m, kg]) => a + kg * MATERIALS[m].refined, 0);
+    if (TOOLS[e.type]) return 10; // starter tools
+    return 0;
+  }
+  const scrapList = () => onCounter(WS, e => !e.item && e.type !== 'pile' && scrapValue(e) > 0);
+  function scrap() {
+    const list = scrapList();
+    if (!list.length) { hud.toast('Put crates or tools on the counter to scrap them', 'err'); return 'none'; }
+    const value = list.reduce((a, e) => a + scrapValue(e), 0), kg = Math.max(0.05, Math.round(value * SCRAP / MATERIALS.iron.refined * 100) / 100);
+    const pos = list[0].pos.slice();
+    for (const e of list) items.remove(e.id);
+    items.spawn('nugget', [pos[0], pos[1] + 0.15, pos[2]], { item: { material: 'iron', stage: 'ingot', kg } });
+    audio.play('drop'); town.workshop.clerk.busy = 1.2;
+    hud.toast(`Scrapped ${list.length} thing${list.length > 1 ? 's' : ''}: ${kg.toFixed(2)} kg of scrap iron`, 'gold');
+    return 'ok';
+  }
   function openWorkshop() {
     const render = () => {
       const st = ingotStock();
@@ -89,6 +116,10 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
           rows.push(h('div', { class: 'entry' }, h('b', {}, bp.name), btn, h("span", { class: "desc" }, `${bp.desc} Each build takes ingots: ${need}.`)));
         }
       }
+      const sl = scrapList(), sv = sl.reduce((a, e) => a + scrapValue(e), 0);
+      rows.push(h('h3', {}, 'Scrap'), h('div', { class: 'entry' }, h('b', {}, sl.length ? `${sl.length} on the counter` : 'Nothing to scrap'),
+        h('button', { class: 'btn', disabled: !sl.length, onclick: () => { WS_API.scrap(); setTimeout(render, 400); } }, sl.length ? `Scrap for ${(sv * SCRAP / MATERIALS.iron.refined).toFixed(1)} kg iron` : 'Scrap'),
+        h('span', { class: 'desc' }, 'Machine crates and tools left on the counter come back as scrap iron worth 30% of what they cost.')));
       const body = h('div', {}, h('p', { class: 'small' }, `Buy a blueprint once, then put ingots on the counter and build. Leftover metal comes back as a smaller ingot. On the counter: ${have}.`), ...rows);
       panels.show('shop:machineshop', 'Machine Shop', body, { badge: `§ ${fmt(E.scrip)} · ★ ${E.standing}` });
     };
@@ -208,7 +239,7 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
   physics.post({ op: 'batch', ops: town.statics.slice(s0) });
   let t = 0;
   const WS_API = {
-    blueprints: BLUEPRINTS, buyBlueprint, build, openWorkshop, ringCutter, ringPump, openBoard, finale, applyStage, ingotStock,
+    blueprints: BLUEPRINTS, buyBlueprint, build, scrap, scrapValue, openWorkshop, ringCutter, ringPump, openBoard, finale, applyStage, ingotStock,
     counters: { workshop: WS, cutter: CUT, pump: PC }, pumpBell,
     update(dt) {
       const s = pump().stage;

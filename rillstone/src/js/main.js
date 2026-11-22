@@ -33,6 +33,7 @@ import { createWorkshop } from './game/workshop.js';
 import { createHeavy } from './game/heavy.js';
 import { createNet } from './net/net.js';
 import { createCoop } from './net/coop.js';
+import { createCamp } from './game/camp.js';
 import { createGuide } from './game/guide.js';
 import { createMap } from './game/map.js';
 import { h } from './ui/dom.js';
@@ -187,6 +188,8 @@ async function boot() {
     onHostLeft: () => { const body = h('div', {}, h('p', {}, 'The host left, so this co-op session has ended. Their save holds the world.')); panels.show('hostleft', 'Host left', body, { closeLabel: 'Back to the title' }); const close = panels.close; panels.close = () => { panels.close = close; location.reload(); }; },
     onMembers: () => { if (panels.current === 'coop') openCoop(); },
   });
+  const camp = createCamp({ scene, camera, items, hands, economy, town, hud, audio, state, view, ui, h });
+  camp.coop = coop;
   const guide = createGuide({ hud, panels, economy, hands, items, machines, vehicles, audio });
   const map = createMap({ panels, economy, vehicles, player, coop });
   function openCoop() {
@@ -284,10 +287,21 @@ async function boot() {
     const p = snap.player?.pos; if (p) await teleport(p[0], p[1] + 0.05, p[2], snap.player.yaw);
     town.newDay();
   }
+  // A small JPEG of the view for the save list (rendered now, so the
+  // drawing buffer still holds the frame when it's read).
+  function thumbnail() {
+    try {
+      if (state.noRender) return null;
+      view.render();
+      const src = view.renderer.domElement, c = document.createElement('canvas'); c.width = 160; c.height = 90;
+      c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+      return c.toDataURL('image/jpeg', 0.6);
+    } catch (_) { return null; }
+  }
   async function saveTo(slot, quiet) {
     // In someone else's world the host's save keeps it; yours stays as it was.
     if (coop.isGuest()) { if (!quiet) hud.toast("You're in the host's world: their save keeps it", 'err'); return false; }
-    try { await saves.save(slot, snapshot()); state.slot = slot; if (!quiet) hud.toast(`Saved to slot ${slot}`); return true; }
+    try { await saves.save(slot, { ...snapshot(), thumb: thumbnail() }); state.slot = slot; if (!quiet) hud.toast(`Saved to slot ${slot}`); return true; }
     catch (e) { hud.toast('Save failed: ' + e.message, 'err'); return false; }
   }
   function loadSlot(slot) {
@@ -305,7 +319,7 @@ async function boot() {
     } });
     const body = h('div', {},
       h('p', { class: 'small' }, mode === 'save' ? 'Pick a slot. The game also autosaves to your current slot every 3 minutes.' : 'Load a saved game.'),
-      ...list.map(m => h('div', { class: 'entry' }, h('b', {}, `Slot ${m.slot}${m.slot === state.slot ? ' (current)' : ''}`),
+      ...list.map(m => h('div', { class: 'entry' + (m.thumb ? ' has-thumb' : '') }, m.thumb ? h('img', { src: m.thumb, alt: '', class: 'save-thumb' }) : null, h('b', {}, `Slot ${m.slot}${m.slot === state.slot ? ' (current)' : ''}`),
         mode === 'save' ? h('button', { class: 'btn primary', onclick: async () => { await saveTo(m.slot); openSaves('save'); } }, 'Save here')
           : h('button', { class: 'btn primary', disabled: !!m.empty, onclick: () => loadSlot(m.slot) }, 'Load'),
         h('span', { class: 'desc' }, fmt(m)))),
@@ -370,7 +384,7 @@ async function boot() {
     audio.update({ pos, fwd, up }, river, src);
   }
   const scanCanvas = h('canvas', { id: 'scanner', width: 220, height: 220 });
-  let last = performance.now(), acc = 0, simAcc = 0, fps = 0, fpsT = 0, frames = 0, netRate = 0, netLast = 0;
+  let last = performance.now(), acc = 0, simAcc = 0, fps = 0, fpsT = 0, frames = 0, netRate = 0, netLast = 0, netKB = 0, netBytesLast = 0;
   const timings = { physics: 0, sim: 0, render: 0 };
   const controls = () => state.mode === 'play' && (input.locked || TEST);
   function simTick() {
@@ -443,6 +457,7 @@ async function boot() {
     }
     if (!coop.isGuest()) heavy.update(dt);
     soundT -= dt; if (soundT <= 0) { soundT = 0.1; updateSound(dv); }
+    camp.update(dt);
     progress.update(dt, dv ? dv.group.position.toArray() : camera.position.toArray(), { scanner: !!dv?.def.scanner, guest: coop.isGuest() });
     workshop.update(dt);
     hud.hotbar([slotCard(items, hands.hand), slotCard(items, hands.slot)]);
@@ -464,10 +479,10 @@ async function boot() {
     const t2 = performance.now();
     if (!state.noRender && !document.hidden) view.render();
     timings.render = performance.now() - t2;
-    frames++; fpsT += dt; if (fpsT > 0.5) { fps = frames / fpsT; frames = 0; netRate = (net.stats.in + net.stats.out - netLast) / fpsT; netLast = net.stats.in + net.stats.out; fpsT = 0; }
+    frames++; fpsT += dt; if (fpsT > 0.5) { fps = frames / fpsT; frames = 0; netRate = (net.stats.in + net.stats.out - netLast) / fpsT; netLast = net.stats.in + net.stats.out; netKB = ((net.stats.bytes || 0) - netBytesLast) / 1024 / fpsT; netBytesLast = net.stats.bytes || 0; fpsT = 0; }
     if (hud.debugOn()) {
       const ri = view.renderer.info.render, st = physics.stats;
-      hud.debug.textContent = `${fps.toFixed(0)} fps\nphysics step ${(st.stepMs || 0).toFixed(2)} ms (rtt ${timings.physics.toFixed(1)})\nsim ${timings.sim.toFixed(2)} ms · render ${timings.render.toFixed(1)} ms\ndraw calls ${ri.calls} · tris ${(ri.triangles / 1000).toFixed(0)}k\nbodies awake ${st.awake ?? 0} / asleep ${st.asleep ?? 0} · items ${items.ents.size} · machines ${machines.counts().mach}\nremesh queue ${claims.busy} · mesh ${avg(claims.stats.meshMs).toFixed(1)} ms · collider ${avg(claims.stats.colliderMs).toFixed(1)} ms\npos ${player.cur.x.toFixed(1)} ${player.cur.y.toFixed(1)} ${player.cur.z.toFixed(1)}${net.on ? `\nnet ${coop.role} · ${net.members.length} players · ${netRate.toFixed(1)} msg/s` : ''}`;
+      hud.debug.textContent = `${fps.toFixed(0)} fps\nphysics step ${(st.stepMs || 0).toFixed(2)} ms (rtt ${timings.physics.toFixed(1)})\nsim ${timings.sim.toFixed(2)} ms · render ${timings.render.toFixed(1)} ms\ndraw calls ${ri.calls} · tris ${(ri.triangles / 1000).toFixed(0)}k\nbodies awake ${st.awake ?? 0} / asleep ${st.asleep ?? 0} · items ${items.ents.size} · machines ${machines.counts().mach}\nremesh queue ${claims.busy} · mesh ${avg(claims.stats.meshMs).toFixed(1)} ms · collider ${avg(claims.stats.colliderMs).toFixed(1)} ms\npos ${player.cur.x.toFixed(1)} ${player.cur.y.toFixed(1)} ${player.cur.z.toFixed(1)}${net.on ? `\nnet ${coop.role} · ${net.members.length} players · ${netRate.toFixed(1)} msg/s · ${netKB.toFixed(1)} kB/s` : ''}`;
     }
     input.endFrame();
   }

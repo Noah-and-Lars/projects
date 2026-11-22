@@ -39,7 +39,7 @@ export function createHUD(root) {
     tooltip(card) {
       if (!card) { tip.classList.add('hidden'); return; }
       tip.classList.remove('hidden');
-      const html = `<b>${card.name}</b>${card.badge ? `<span class="badge">${card.badge}</span>` : ''}` + (card.lines || []).map(l => `<div>${l}</div>`).join('');
+      const html = `<b>${card.name}</b>${card.badge ? `<span class="badge">${card.rivet ? '<i class="rivet"></i>' : ''}${card.badge}</span>` : ''}` + (card.lines || []).map(l => `<div>${l}</div>`).join('');
       if (tip.innerHTML !== html) tip.innerHTML = html;
     },
     // Two inventory slots: the hand and the quick-swap slot.

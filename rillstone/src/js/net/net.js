@@ -59,6 +59,7 @@ export function createNet() {
   api.send = (event, payload) => {
     if (!ch || ch.state !== 'joined') return false;
     const p = Object.assign({}, payload, { f: myId }); // the sender id can't be overridden
+    api.stats.bytes = (api.stats.bytes || 0) + JSON.stringify(p).length + event.length;
     try { const r = ch.send({ type: 'broadcast', event, payload: p }); if (r && r.catch) r.catch(() => {}); } catch (_) { return false; }
     api.stats.out++; return true;
   };
@@ -93,7 +94,7 @@ export function createNet() {
       });
       ch.on('broadcast', { event: '*' }, (m) => {
         if (c !== ch || !m || !m.payload) return;
-        api.stats.in++;
+        api.stats.in++; api.stats.bytes = (api.stats.bytes || 0) + JSON.stringify(m.payload).length + (m.event || '').length;
         const fn = handlers.get(m.event); if (fn) try { fn(m.payload); } catch (e) { console.error(e); }
       });
       ch.subscribe((st) => {
@@ -125,7 +126,6 @@ export function createNet() {
   api.sendBig = (event, to, str) => {
     const id = Math.random().toString(36).slice(2, 8), n = Math.max(1, Math.ceil(str.length / CHUNK));
     for (let i = 0; i < n; i++) api.send(event, { to, k: id, i, n, d: str.slice(i * CHUNK, (i + 1) * CHUNK) });
-    api.stats.outBytes += str.length;
     return n;
   };
   api.clearParts = () => parts.clear();
@@ -136,7 +136,7 @@ export function createNet() {
     if (e.got[p.i] == null) { e.got[p.i] = p.d; e.have++; }
     if (e.have < e.n) return null;
     parts.delete(p.k);
-    const s = e.got.join(''); api.stats.inBytes += s.length;
+    const s = e.got.join('');
     return s;
   };
   return api;
