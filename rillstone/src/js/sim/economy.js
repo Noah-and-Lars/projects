@@ -20,7 +20,7 @@ function makeContract(rng, standing, id) {
   let c;
   if (t < 0.4) { const kg = Math.round((6 + rng() * 10) * tier * (metal === 'gold' ? 0.4 : metal === 'silver' ? 0.6 : 1)); c = { kind: 'kg', want: { stage: 'ore', material: metal }, target: kg, text: `Deliver ${kg} kg of ${MATERIALS[metal].name.toLowerCase()} ore` }; }
   else if (t < 0.6) { const n = 2 + Math.floor(rng() * 2 * tier); c = { kind: 'count', want: { stage: 'uncut', kind: 'gem' }, target: n, text: `Deliver ${n} uncut gems` }; }
-  else if (t < 0.8) { const kg = Math.round((0.8 + rng() * 0.8) * tier * 10) / 10; c = { kind: 'big', want: { stage: 'ore', material: metal }, target: kg, text: `Deliver a ${MATERIALS[metal].name.toLowerCase()} nugget over ${kg} kg` }; }
+  else if (t < 0.8) { const kg = Math.round((0.8 + rng() * 0.8) * tier * 10) / 10; c = { kind: 'big', want: { stage: 'ore', material: metal }, target: kg, text: `Deliver ${/^[aeiou]/i.test(metal) ? 'an' : 'a'} ${MATERIALS[metal].name.toLowerCase()} nugget over ${kg} kg` }; }
   else { const s = Math.round((150 + rng() * 150) * tier / 10) * 10; c = { kind: 'day', target: s, text: `Sell § ${s} in one day` }; }
   const reward = Math.round((c.kind === 'day' ? c.target * 0.35 : c.kind === 'big' ? 60 * tier : c.kind === 'count' ? c.target * 25 : c.target * MATERIALS[c.want.material].ore * 0.6) / 5) * 5 + 20;
   return { id, ...c, progress: 0, reward, standing: tier, done: false };
