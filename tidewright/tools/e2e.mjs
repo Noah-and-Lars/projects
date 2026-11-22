@@ -66,6 +66,24 @@ try {
   await page.waitForTimeout(500);
   results.backToYard = await page.evaluate(() => window.__tw.mode);
 
+  // Boat: launch the Skiff, run it, then build a storm and check it stays afloat. Then night.
+  await page.evaluate(() => { const t = window.__tw; t.yard.setGrid(t.presets[1].build(), 'Skiff'); t.yard.test(); });
+  await page.waitForFunction(() => window.__tw.mode === 'drive', null, { timeout: 60000 });
+  await page.waitForTimeout(2000);
+  await page.keyboard.down('KeyW');
+  await page.waitForTimeout(5000);
+  await page.screenshot({ path: `${out}/7-boat.png` });
+  await page.evaluate(() => window.__tw.physics.send({ type: 'sea', level: 1 }));
+  await page.waitForTimeout(6000);
+  await page.screenshot({ path: `${out}/8-boat-storm.png` });
+  results.boat = await page.evaluate(() => ({ status: document.querySelector('.hud-status')?.textContent, speed: document.querySelector('.speed')?.textContent, sea: window.__tw.physics.sea.level }));
+  await page.keyboard.up('KeyW');
+  await page.evaluate(() => { window.__tw.world.timeOfDay = 22; window.__tw.world.cycle = false; window.__tw.physics.send({ type: 'sea', level: 0.3 }); });
+  await page.keyboard.press('KeyL');
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${out}/9-night.png` });
+  await page.keyboard.press('Escape');
+
   // Phone-sized touch layout.
   const phone = await browser.newPage({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
   phone.on('pageerror', (e) => errors.push('phone: ' + e));

@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { SimHost } from './sim-host';
 import { RapierBackend } from './rapier-backend';
 import { serialize } from '../sim-core/vehicle-format';
-import { runabout } from '../sim-core/presets';
+import { runabout, skiff } from '../sim-core/presets';
 import { NO_CONTROLS } from '../sim-core/vehicle-sim';
 import { heightAt } from '../sim-core/terrain';
 import { qrot } from '../sim-core/math';
@@ -49,5 +49,25 @@ describe('SimHost with Rapier', () => {
     for (let i = 0; i < 180; i++) host.tick();
     const s = host.snapshot()[0];
     expect(s.telem.grounded).toBe(4);
+  });
+
+  it('launches the skiff at sea, floats through a storm and motors away', async () => {
+    const host = new SimHost(new RapierBackend());
+    await host.init({ size: 1536, res: 129, seed: 7 });
+    const info = host.spawn(2, serialize(skiff(), 's'));
+    expect(info.inWater).toBe(true);
+    for (let i = 0; i < 240; i++) host.tick();
+    let s = host.snapshot()[0];
+    expect(s.telem.submerged).toBeGreaterThan(0.05);
+    expect(s.data[1]).toBeGreaterThan(-1.5);
+    const z0 = s.data[2];
+    host.setSea(1);
+    host.setControls(2, { ...NO_CONTROLS, throttle: 1 });
+    for (let i = 0; i < 900; i++) host.tick();
+    s = host.snapshot()[0];
+    expect(s.data[2]).toBeGreaterThan(z0 + 40); // launched facing the open sea (+Z)
+    const up = qrot([s.data[3], s.data[4], s.data[5], s.data[6]], [0, 1, 0]);
+    expect(up[1]).toBeGreaterThan(0.4);
+    expect(s.data[1]).toBeGreaterThan(-3);
   });
 });

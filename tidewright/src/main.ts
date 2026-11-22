@@ -10,6 +10,7 @@ import { DEFAULT_TERRAIN } from './sim-core/terrain';
 import { requestPersist } from './storage/db';
 import { toast } from './ui/dom';
 import type { VehicleFile } from './sim-core/vehicle-format';
+import { PRESETS } from './sim-core/presets';
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const overlay = document.getElementById('ui')!;
@@ -105,6 +106,6 @@ function frame(now: number) {
   requestPersist();
   requestAnimationFrame(frame);
   // Debug hooks for automated browser tests.
-  (window as unknown as Record<string, unknown>).__tw = { yard, get drive() { return drive; }, get mode() { return mode; }, governor, THREE,
+  (window as unknown as Record<string, unknown>).__tw = { yard, presets: PRESETS, get drive() { return drive; }, get mode() { return mode; }, get world() { return world; }, get physics() { return physics; }, governor, THREE,
     perf: () => { const a = [...frameCost].sort((x, y) => x - y); return { frames: a.length, medianMs: a[a.length >> 1], p95Ms: a[Math.floor(a.length * 0.95)], fps: governor.fps, drawCalls: renderer.info.render.calls, triangles: renderer.info.render.triangles }; } };
 })();

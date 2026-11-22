@@ -9,6 +9,22 @@ import { heightAt } from '../sim-core/terrain';
 import { DriveInput } from '../input/input';
 import { h, toast, isTouch } from '../ui/dom';
 import type { Telemetry } from '../sim-core/vehicle-sim';
+import { wavesFor } from '../sim-core/waves';
+import { CELL, partDef } from '../sim-core/parts';
+import { partCenter } from '../sim-core/grid';
+
+function haloTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d')!;
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,240,200,1)');
+  gr.addColorStop(0.25, 'rgba(255,214,120,0.55)');
+  gr.addColorStop(1, 'rgba(255,200,90,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
 
 const VID = 1;
 
@@ -31,6 +47,10 @@ export class DriveSession {
   private els: Record<string, HTMLElement> = {};
   private seatLocal = new THREE.Vector3();
   private firstFrame = true;
+  private seaKey = '';
+  private storm = false;
+  private halos: THREE.Sprite[] = [];
+  private headlight = new THREE.SpotLight('#fff1cf', 0, 60, 0.55, 0.5, 1.2);
   onExit: () => void = () => {};
 
   constructor(private world: World, private physics: PhysicsClient, file: VehicleFile, private canvas: HTMLCanvasElement, overlay: HTMLElement) {
@@ -39,7 +59,24 @@ export class DriveSession {
     this.world.scene.add(this.vm.group);
     const seat = [...grid.parts.values()].find((p) => p.type === 'helm');
     if (seat) this.seatLocal.set((seat.pos[0] + 1.5) * 0.25, (seat.pos[1] + 5.2) * 0.25, (seat.pos[2] + 1.6) * 0.25);
-    this.physics.onSpawned = (info) => { if (info.id === VID) this.info = info; };
+    // Lamp halos (additive sprites) and one real headlight for the player's vehicle.
+    const tex = haloTexture();
+    for (const p of grid.parts.values()) {
+      if (partDef(p.type).sim?.kind !== 'lamp') continue;
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+      const c = partCenter(p);
+      sp.position.set(c[0] * CELL, c[1] * CELL, c[2] * CELL - 0.05);
+      sp.visible = false;
+      this.vm.group.add(sp);
+      this.halos.push(sp);
+    }
+    if (this.halos.length) {
+      const avg = this.halos.reduce((a, h2) => a.add(h2.position), new THREE.Vector3()).multiplyScalar(1 / this.halos.length);
+      this.headlight.position.copy(avg);
+      this.headlight.target.position.copy(avg).add(new THREE.Vector3(0, -1.2, -12));
+      this.vm.group.add(this.headlight, this.headlight.target);
+    }
+    this.physics.onSpawned = (info) => { if (info.id === VID) { this.info = info; if (info.inWater) toast('Launched at the slipway'); } };
     const p = this.world.terrain.pad;
     this.physics.send({ type: 'spawn', id: VID, file, at: { x: p.x, z: p.z, yaw: 0 } });
     this.physics.send({ type: 'pause', paused: false });
@@ -110,8 +147,16 @@ export class DriveSession {
       const lamps = this.vm.group.getObjectByName('lamps') as THREE.Mesh | undefined;
       if (lamps) (lamps.material as THREE.MeshBasicMaterial).color.setScalar(this.telem.lights ? 1.6 : 0.55);
     }
+    // Keep the shader's waves identical to the worker's.
+    const sea = this.physics.sea;
+    const key = `${sea.level.toFixed(3)}/${sea.windDir.toFixed(3)}`;
+    if (key !== this.seaKey) { this.seaKey = key; this.world.setWaves(wavesFor(sea)); }
+    if (this.storm && this.time % 0.5 < dt) this.physics.send({ type: 'sea', level: Math.min(1, sea.level + 0.006) });
+    const lit = !!this.telem?.lights;
+    for (const h2 of this.halos) { h2.visible = lit; const s2 = 0.5 + this.world.night * 1.6; h2.scale.set(s2, s2, s2); }
+    this.headlight.intensity = lit ? 40 + this.world.night * 120 : 0;
     this.updateCamera(dt);
-    this.world.update(this.time, this.pos);
+    this.world.update(dt, this.physics.renderTime(), this.pos, this.camera.position);
     this.updateHud();
   }
 
@@ -172,7 +217,20 @@ export class DriveSession {
       h('button', { class: 'btn', onclick: () => this.input.pressTouch('camera') }, 'Camera'),
       h('button', { class: 'btn', onclick: () => this.input.pressTouch('lights') }, 'Lamps'),
       e.perf);
-    const root = h('div', { class: 'drive-ui' }, top, card, keys);
+    e.sea = h('span', { class: 'mono' }, '');
+    e.clock = h('span', { class: 'mono' }, '');
+    e.stormBtn = h('button', { class: 'btn sm', title: 'Let the sea build steadily toward a full storm', onclick: () => { this.storm = !this.storm; e.stormBtn.classList.toggle('primary', this.storm); toast(this.storm ? 'Storm building…' : 'Storm paused'); } }, 'Storm');
+    const weather = h('div', { class: 'weather sheet' },
+      h('div', { class: 'row' }, h('span', { class: 'label' }, 'Sea state'),
+        h('button', { class: 'btn sm', 'aria-label': 'Calmer sea', onclick: () => this.physics.send({ type: 'sea', level: this.physics.sea.level - 0.15 }) }, '−'),
+        e.sea,
+        h('button', { class: 'btn sm', 'aria-label': 'Rougher sea', onclick: () => this.physics.send({ type: 'sea', level: this.physics.sea.level + 0.15 }) }, '+'),
+        e.stormBtn),
+      h('div', { class: 'row' }, h('span', { class: 'label' }, 'Time'),
+        h('button', { class: 'btn sm', onclick: () => { this.world.timeOfDay = (this.world.timeOfDay + 3) % 24; } }, '+3 h'),
+        e.clock,
+        h('button', { class: 'btn sm', onclick: (ev: Event) => { this.world.cycle = !this.world.cycle; (ev.target as HTMLElement).textContent = this.world.cycle ? 'Pause' : 'Run'; } }, 'Pause')));
+    const root = h('div', { class: 'drive-ui' }, top, card, keys, weather);
     if (isTouch() || new URLSearchParams(location.search).has('touch')) { root.append(this.buildTouch()); root.classList.add('touch'); }
     return root;
   }
@@ -217,7 +275,14 @@ export class DriveSession {
     e.rpmFill.classList.toggle('over', t.rps > maxRps * 0.92);
     e.fuelFill.style.width = (t.fuelMax ? (t.fuel / t.fuelMax) * 100 : 0) + '%';
     e.battFill.style.width = t.battery * 100 + '%';
-    e.status.textContent = !t.running ? (t.fuel <= 0 ? 'OUT OF FUEL' : 'ENGINE OFF · press I') : t.grounded === 0 ? 'AIRBORNE' : '';
+    const afloat = t.submerged > 0.01;
+    e.status.textContent = !t.running ? (t.fuel <= 0 ? 'OUT OF FUEL' : 'ENGINE OFF · press I')
+      : t.flooded > 0.05 ? `SWAMPING ${(t.flooded * 100).toFixed(0)}%`
+      : afloat ? `AFLOAT · draft ${(t.submerged * 100).toFixed(0)}%` : this.info && !this.info.wheels.length ? 'AGROUND' : t.grounded === 0 ? 'AIRBORNE' : '';
+    const lvl = this.physics.sea.level;
+    e.sea.textContent = `${(lvl * 100).toFixed(0).padStart(3)}% ${lvl < 0.2 ? 'calm' : lvl < 0.45 ? 'choppy' : lvl < 0.75 ? 'rough' : 'storm'}`;
+    const hh = Math.floor(this.world.timeOfDay), mm = Math.floor((this.world.timeOfDay % 1) * 60);
+    e.clock.textContent = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
     e.perf.textContent = `${this.fps.toFixed(0)} fps · phys ${this.physics.stepMs.toFixed(2)} ms${this.physics.dilation < 0.99 ? ` · slow-mo ${(this.physics.dilation * 100).toFixed(0)}%` : ''}`;
   }
 }

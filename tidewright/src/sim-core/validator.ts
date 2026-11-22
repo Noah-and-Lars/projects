@@ -2,6 +2,7 @@
 import { VehicleGrid, partCells, cellKey } from './grid';
 import { partDef } from './parts';
 import { ROTATIONS, mulMV } from './rotations';
+import { assemble } from './assembly';
 
 export type Level = 'error' | 'warning' | 'info';
 export interface Issue { level: Level; code: string; message: string; parts: number[] }
@@ -54,7 +55,7 @@ export function validate(grid: VehicleGrid): Issue[] {
   if (!engines.length) issues.push({ level: 'warning', code: 'no-engine', message: 'No engine: the vehicle can only coast.', parts: [] });
   if (engines.length && !tanks.length) issues.push({ level: 'error', code: 'no-fuel', message: 'Engine has no Fuel tank to draw from.', parts: engines.map((p) => p.id) });
   if (engines.length && !cells.length) issues.push({ level: 'error', code: 'no-battery', message: 'Engine needs a Cell battery to start.', parts: engines.map((p) => p.id) });
-  if (!wheels.length) issues.push({ level: 'warning', code: 'no-wheels', message: 'No wheels yet.', parts: [] });
+  if (!wheels.length && !byKind('screw').length) issues.push({ level: 'warning', code: 'no-wheels', message: 'No wheels or screws yet.', parts: [] });
   else {
     const driven = wheels.filter((w) => w.props.driven !== false);
     if (engines.length && !driven.length) issues.push({ level: 'warning', code: 'no-driven', message: 'No wheel is set as driven.', parts: wheels.map((p) => p.id) });
@@ -64,6 +65,17 @@ export function validate(grid: VehicleGrid): Issue[] {
     const lowestWheel = Math.min(...wheels.map((w) => Math.min(...partCells(w).map((c) => c[1]))));
     const scrapers = [...grid.parts.values()].filter((p) => partDef(p.type).solid && Math.min(...partCells(p).map((c) => c[1])) < lowestWheel);
     if (scrapers.length) issues.push({ level: 'warning', code: 'low-body', message: 'Some blocks sit lower than the wheels and will drag on the ground.', parts: scrapers.map((p) => p.id) });
+  }
+  const screws = byKind('screw');
+  if (screws.length && !engines.length) issues.push({ level: 'error', code: 'screw-no-engine', message: 'Screws need an engine to turn them.', parts: screws.map((p) => p.id) });
+  if (screws.length || byKind('rudder').length || byKind('float').length) {
+    const m = assemble(grid);
+    if (m.hull.maxBuoyancy < m.mass * 9.81) {
+      const need = (m.mass * 9.81 - m.hull.maxBuoyancy) / (1025 * 9.81) * 1000;
+      issues.push({ level: 'error', code: 'sinks', message: `It will sink: needs about ${need.toFixed(0)} L more sealed or hull volume.`, parts: [] });
+    } else if (m.hull.maxBuoyancy < m.mass * 9.81 * 1.6) {
+      issues.push({ level: 'warning', code: 'low-freeboard', message: 'Floats, but with little reserve buoyancy. Rough seas may swamp it.', parts: [] });
+    }
   }
   if (!issues.some((i) => i.level !== 'info')) issues.push({ level: 'info', code: 'ok', message: 'Ready to test. Press Test or Enter.', parts: [] });
   return issues;

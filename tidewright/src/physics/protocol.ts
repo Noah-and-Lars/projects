@@ -10,7 +10,8 @@ export type ToWorker =
   | { type: 'controls'; id: number; controls: Controls }
   | { type: 'reset'; id: number }
   | { type: 'ignition'; id: number; on: boolean }
-  | { type: 'pause'; paused: boolean };
+  | { type: 'pause'; paused: boolean }
+  | { type: 'sea'; level: number; windDir?: number };
 
 export interface SpawnInfo {
   id: number;
@@ -18,6 +19,7 @@ export interface SpawnInfo {
   mass: number;
   com: [number, number, number];
   colliders: number;
+  inWater: boolean;
 }
 
 export interface VehicleSnap { id: number; data: Float32Array; telem: Telemetry }
@@ -25,7 +27,7 @@ export interface VehicleSnap { id: number; data: Float32Array; telem: Telemetry 
 export type FromWorker =
   | { type: 'ready'; backend: string }
   | { type: 'spawned'; info: SpawnInfo }
-  | { type: 'snap'; t: number; tick: number; stepMs: number; dilation: number; vehicles: VehicleSnap[] }
+  | { type: 'snap'; t: number; tick: number; stepMs: number; dilation: number; sea: { level: number; windDir: number }; vehicles: VehicleSnap[] }
   | { type: 'error'; message: string };
 
 /** Per-vehicle snapshot layout: pos(3) quat(4) then per wheel: compression, steer, spin. */

@@ -18,6 +18,7 @@ function handle(m: ToWorker) {
     case 'reset': host.reset(m.id); break;
     case 'ignition': host.ignition(m.id, m.on); break;
     case 'pause': paused = m.paused; last = performance.now(); acc = 0; break;
+    case 'sea': host.setSea(m.level, m.windDir); break;
   }
 }
 
@@ -53,5 +54,5 @@ function loop() {
   if (!steps) return;
   const stepMs = (performance.now() - t0) / steps;
   const vehicles = host.snapshot();
-  post({ type: 'snap', t: host.time, tick: host.tickCount, stepMs, dilation, vehicles }, vehicles.map((v) => v.data.buffer));
+  post({ type: 'snap', t: host.time, tick: host.tickCount, stepMs, dilation, sea: host.sea, vehicles }, vehicles.map((v) => v.data.buffer));
 }

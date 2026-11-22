@@ -12,6 +12,9 @@ export class PhysicsClient {
   private snapArrival = 0;
   private snapInterval = 1000 / 60;
   stepMs = 0;
+  simTime = 0;
+  prevSimTime = 0;
+  sea = { level: 0.15, windDir: 0.6 };
   dilation = 1;
   onSpawned: (info: SpawnInfo) => void = () => {};
   onError: (msg: string) => void = (m) => console.error(m);
@@ -30,6 +33,9 @@ export class PhysicsClient {
           this.snapArrival = now;
           this.stepMs = this.stepMs * 0.9 + m.stepMs * 0.1;
           this.dilation = m.dilation;
+          this.prevSimTime = this.simTime;
+          this.simTime = m.t;
+          this.sea = m.sea;
           for (const v of m.vehicles) {
             const c = this.curr.get(v.id);
             if (c) this.prev.set(v.id, c);
@@ -48,6 +54,9 @@ export class PhysicsClient {
     const a = (performance.now() - this.snapArrival) / Math.max(this.snapInterval, TICK * 1000 * 0.5);
     return Math.max(0, Math.min(1, a));
   }
+
+  /** Simulation time interpolated to match the rendered snapshot (for the wave shader). */
+  renderTime(): number { return this.prevSimTime + (this.simTime - this.prevSimTime) * this.alpha(); }
 
   get(id: number): InterpSnap | null {
     const curr = this.curr.get(id);

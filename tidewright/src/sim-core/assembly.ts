@@ -4,6 +4,7 @@ import { VehicleGrid, partCenter, partCells, cellKey } from './grid';
 import { CELL, partDef, type WheelSim, type EngineSim } from './parts';
 import { ROTATIONS, mulMV } from './rotations';
 import { greedyBoxes } from './greedy';
+import { analyseHull, type HullModel } from './hydro';
 
 export const FUEL_DENSITY = 0.74; // kg per litre
 export const GRAVITY = 9.81;
@@ -33,6 +34,9 @@ export interface EngineModel {
   count: number;
 }
 
+export interface ScrewModel { pos: Vec3; dir: Vec3; diameter: number; pitchSpeed: number }
+export interface RudderModel { pos: Vec3; normal: Vec3; up: Vec3; area: number }
+
 export interface VehicleModel {
   mass: number;
   com: Vec3;
@@ -52,6 +56,9 @@ export interface VehicleModel {
   bounds: { min: Vec3; max: Vec3 };
   wheelbase: number;
   track: number;
+  hull: HullModel;
+  screws: ScrewModel[];
+  rudders: RudderModel[];
 }
 
 const toM = (c: Vec3): Vec3 => [c[0] * CELL, c[1] * CELL, c[2] * CELL];
@@ -71,6 +78,8 @@ export function assemble(grid: VehicleGrid): VehicleModel {
   let hasGear = false, autoShift = true;
   let diff: VehicleModel['diff'] = 'locked';
   const rawWheels: { id: number; center: Vec3; sim: WheelSim; props: Record<string, unknown> }[] = [];
+  const screws: ScrewModel[] = [];
+  const rudders: RudderModel[] = [];
 
   for (const p of grid.parts.values()) {
     const def = partDef(p.type);
@@ -84,6 +93,8 @@ export function assemble(grid: VehicleGrid): VehicleModel {
     if (s?.kind === 'engine') engines.push(s);
     if (s?.kind === 'gear') { hasGear = true; if (p.props.mode === 'manual') autoShift = false; }
     if (s?.kind === 'diff') diff = (p.props.mode as VehicleModel['diff']) ?? 'open';
+    if (s?.kind === 'screw') screws.push({ pos: center, dir: mulMV(ROTATIONS[p.rot], [0, 0, -1]) as Vec3, diameter: s.diameter, pitchSpeed: s.pitchSpeed });
+    if (s?.kind === 'rudder') rudders.push({ pos: center, normal: mulMV(ROTATIONS[p.rot], [1, 0, 0]) as Vec3, up: mulMV(ROTATIONS[p.rot], [0, 1, 0]) as Vec3, area: s.area });
     if (s?.kind === 'wheel') {
       // Axle must lie along body X after rotation.
       const axle = mulMV(ROTATIONS[p.rot], [1, 0, 0]);
@@ -176,5 +187,6 @@ export function assemble(grid: VehicleGrid): VehicleModel {
   return {
     mass, com, inertia: I, boxes, wheels, engine, gears, reverse, autoShift, diff, fuel, battery, seat, lamps,
     cdA: 0.3 * Math.max(area, 0.5), bounds: { min: bmin, max: bmax }, wheelbase: Math.max(wheelbase, 0.5), track: Math.max(track, 0.5),
+    hull: analyseHull(grid), screws, rudders,
   };
 }

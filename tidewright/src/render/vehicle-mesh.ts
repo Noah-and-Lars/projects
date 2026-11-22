@@ -139,6 +139,28 @@ function buildShape(b: GeomBuilder, glass: GeomBuilder, lamp: GeomBuilder, p: Pa
       lamp.box([0.12, 0.12, 0], [0.88, 0.88, 0.2], glow);
       break;
     }
+    case 'float':
+      b.box([0.03, 0.03, 0.03], [0.97, 0.97, 0.97], col);
+      b.box([0, 0.4, 0], [1, 0.6, 1], new THREE.Color('#f4efe3'));
+      break;
+    case 'screw': {
+      // Hub along the thrust axis (Z) and three blades.
+      const cy = sy / 2, cx = sx / 2;
+      b.box([cx - 0.18, cy - 0.18, 0], [cx + 0.18, cy + 0.18, sz], METAL);
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2 + 0.3;
+        const ex = Math.cos(a) * (sx / 2 - 0.05), ey = Math.sin(a) * (sy / 2 - 0.05);
+        const px = -Math.sin(a) * 0.22, py = Math.cos(a) * 0.22;
+        const P0: V3 = [cx + px, cy + py, 0.35], P1: V3 = [cx - px, cy - py, 0.65];
+        const P2: V3 = [cx + ex - px, cy + ey - py, 0.65], P3: V3 = [cx + ex + px, cy + ey + py, 0.35];
+        b.quad(P0, P1, P2, P3, col); b.quad(P3, P2, P1, P0, col);
+      }
+      break;
+    }
+    case 'rudder':
+      b.box([0.38, 0, 0.1], [0.62, sy, sz - 0.1], col);
+      b.box([0.3, sy - 0.25, 0], [0.7, sy, 0.6], METAL);
+      break;
     default:
       b.box([0, 0, 0], [sx, sy, sz], col);
   }

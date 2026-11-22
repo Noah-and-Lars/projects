@@ -33,4 +33,29 @@ export function runabout(): VehicleGrid {
   return g;
 }
 
-export const PRESETS: { id: string; name: string; build: () => VehicleGrid }[] = [{ id: 'runabout', name: 'Runabout (starter buggy)', build: runabout }];
+/** "Skiff": an open-top work boat with a single screw and rudder. Symmetric about x = 0. */
+export function skiff(): VehicleGrid {
+  const g = new VehicleGrid();
+  box(g, 'plate', -4, 3, 2, 2, -10, 9, 12); // hull bottom
+  box(g, 'plate', -4, -4, 3, 5, -10, 9, 13); // sides
+  box(g, 'plate', 3, 3, 3, 5, -10, 9, 13);
+  box(g, 'plate', -3, 2, 3, 5, 9, 9, 13); // transom
+  box(g, 'plate', -3, 2, 3, 5, -10, -10, 13); // bow
+  for (let x = -3; x <= 2; x++) put(g, 'ramp', [x, 6, -10], 0); // bow cap
+  box(g, 'plate', -1, 0, 1, 1, -8, 9, 4); // keel
+  box(g, 'slab', -3, 2, 6, 6, -9, -7, 0); // fore deck
+  put(g, 'burner_s', [-1, 3, 5], 3);
+  put(g, 'tank_s', [1, 3, 6], 9);
+  put(g, 'cell_s', [-3, 3, 7], 10);
+  put(g, 'helm', [-3, 3, -2], 11);
+  put(g, 'screw_s', [-1, 0, 10], 4);
+  put(g, 'rudder', [-1, 0, 11], 6);
+  put(g, 'lamp', [-4, 6, -9], 8);
+  put(g, 'lamp', [3, 6, -9], 8);
+  return g;
+}
+
+export const PRESETS: { id: string; name: string; build: () => VehicleGrid }[] = [
+  { id: 'runabout', name: 'Runabout (starter buggy)', build: runabout },
+  { id: 'skiff', name: 'Skiff (starter boat)', build: skiff },
+];

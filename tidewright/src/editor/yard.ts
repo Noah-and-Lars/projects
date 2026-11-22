@@ -10,6 +10,8 @@ import { PALETTE, PALETTE_NAMES, DEFAULT_COLOR } from '../sim-core/palette';
 import { rotateAbout } from '../sim-core/rotations';
 import { validate, type Issue } from '../sim-core/validator';
 import { budget, PART_LIMIT, COST_LIMIT } from '../sim-core/budget';
+import { assemble } from '../sim-core/assembly';
+import { keyToCell } from '../sim-core/grid';
 import { serialize, deserialize, encodeFile, decodeFile, VehicleFileError, type VehicleFile } from '../sim-core/vehicle-format';
 import { buildVehicleMesh, buildPartGhost, type VehicleMesh } from '../render/vehicle-mesh';
 import { Lights } from '../render/world-view';
@@ -58,6 +60,8 @@ export class Yard {
   mirror = true;
   mirrorPlane = 0;
   showCom = true;
+  showHull = false;
+  private hullOverlay = new THREE.Group();
   selected: number | null = null;
   issues: Issue[] = [];
   root: HTMLElement;
@@ -112,7 +116,7 @@ export class Yard {
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.025, 6, 24), new THREE.MeshBasicMaterial({ color: '#1b2a4a', depthTest: false }));
     ring.renderOrder = 11;
     this.comMarker.add(ball, ring);
-    this.scene.add(this.comMarker, this.flash);
+    this.scene.add(this.comMarker, this.flash, this.hullOverlay);
 
     this.orbit = new OrbitCam(this.camera, canvas);
     this.orbit.onHover = (x, y) => this.updateHover(x, y);
@@ -377,11 +381,30 @@ export class Yard {
       const bud = budget(this.grid);
       this.comMarker.visible = this.showCom && this.grid.size > 0;
       this.comMarker.position.set(bud.com[0], bud.com[1], bud.com[2]);
+      this.rebuildHullOverlay();
       this.updateGhost();
     }
     this.comMarker.quaternion.copy(this.camera.quaternion);
     if (this.flash.children.length && performance.now() > this.flashUntil) this.flash.clear();
     else this.flash.visible = Math.floor(performance.now() / 180) % 2 === 0;
+  }
+
+  /** Leak finder: sealed air (cobalt) and open-top air (lagoon) inside the hull. */
+  private rebuildHullOverlay() {
+    this.hullOverlay.children.forEach((c) => { (c as THREE.InstancedMesh).geometry.dispose(); ((c as THREE.InstancedMesh).material as THREE.Material).dispose(); });
+    this.hullOverlay.clear();
+    if (!this.showHull || !this.grid.size) return;
+    const hull = assemble(this.grid).hull;
+    const geo = new THREE.BoxGeometry(CELL * 0.8, CELL * 0.8, CELL * 0.8);
+    const M = new THREE.Matrix4();
+    for (const [cells, color] of [[hull.sealedCells, '#2a5bd7'], [hull.openCells, '#2fa39b']] as const) {
+      if (!cells.length) continue;
+      const im = new THREE.InstancedMesh(geo.clone(), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.45, depthWrite: false }), cells.length);
+      cells.forEach((k, i) => { const c = keyToCell(k); im.setMatrixAt(i, M.makeTranslation((c[0] + 0.5) * CELL, (c[1] + 0.5) * CELL, (c[2] + 0.5) * CELL)); });
+      im.renderOrder = 5;
+      this.hullOverlay.add(im);
+    }
+    geo.dispose();
   }
 
   // ---------- DOM ----------
@@ -532,9 +555,18 @@ export class Yard {
       bar('Power', `${b.powerKw.toFixed(0)} kW`, b.kwPerTonne / 120, `${b.kwPerTonne.toFixed(0)} kW per tonne`),
       bar('Fuel', `${b.fuel.toFixed(0)} L`, b.fuel / 200, 'Fuel capacity'),
       bar('Top speed', `${(b.topSpeed * 3.6).toFixed(0)} km/h`, b.topSpeed / 60, 'Estimated flat-road top speed'),
+      this.floatMeter(),
       h('button', { class: 'meter com' + (this.showCom ? ' active' : ''), title: 'Toggle the centre-of-mass marker (G)', onclick: () => { this.showCom = !this.showCom; this.dirty = true; this.renderBudget(); } },
         h('span', { class: 'meter-label' }, 'CoM'), h('span', { class: 'meter-value mono' }, b.com.map((v) => v.toFixed(2)).join(' '))),
     );
+  }
+
+  private floatMeter() {
+    const m = assemble(this.grid);
+    const ratio = m.mass > 0 ? m.hull.maxBuoyancy / (m.mass * 9.81) : 0;
+    return h('button', { class: 'meter com' + (this.showHull ? ' active' : ''), title: 'Reserve buoyancy: how many times its own weight the hull can float. Click to show sealed (cobalt) and open-top (lagoon) hull air.', onclick: () => { this.showHull = !this.showHull; this.dirty = true; this.renderBudget(); } },
+      h('span', { class: 'meter-label' }, 'Float'), h('span', { class: 'meter-value mono' }, ratio ? `×${ratio.toFixed(1)}` : '—'),
+      h('span', { class: 'meter-bar' }, h('span', { class: 'meter-fill' + (ratio < 1 ? ' over' : ''), style: { width: Math.min(100, (ratio / 4) * 100) + '%' } })));
   }
 
   // ---------- storage ----------

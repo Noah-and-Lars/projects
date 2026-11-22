@@ -7,7 +7,7 @@ import { runabout } from '../sim-core/presets';
 import { NO_CONTROLS } from '../sim-core/vehicle-sim';
 import { DEFAULT_TERRAIN } from '../sim-core/terrain';
 
-it.skipIf(!process.env.BENCH)('20 raycast-wheel cars at 60 Hz', async () => {
+it.skipIf(!(globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.BENCH)('20 raycast-wheel cars at 60 Hz', async () => {
   const host = new SimHost(new RapierBackend());
   await host.init(DEFAULT_TERRAIN);
   const file = serialize(runabout(), 'bench');

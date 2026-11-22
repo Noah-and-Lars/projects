@@ -3,7 +3,11 @@
 import type { VehicleModel, WheelModel } from './assembly';
 import { GRAVITY } from './assembly';
 import { type Vec3, type Quat, qrot, cross, dot, clamp, add, scale, sub } from './math';
-import { engineTorque, autoClutch, autoShift } from './drivetrain';
+import { engineTorque, autoClutch, autoShift, engineCurve } from './drivetrain';
+import { waterHeight, waterVerticalVelocity, WATER_DENSITY, type Wave } from './waves';
+import { plateCoefficient, staticThrust } from './hydro';
+
+export interface WaterEnv { waves: Wave[]; t: number }
 import { longCurve, latCurve, suspensionForce } from './tyre';
 
 export interface BodyState { pos: Vec3; quat: Quat; linvel: Vec3; angvel: Vec3; com: Vec3 /* world */ }
@@ -36,6 +40,8 @@ export interface Telemetry {
   running: boolean;
   grounded: number; // wheels touching
   lights: boolean;
+  submerged: number; // 0..1 fraction of hull volume under water
+  flooded: number; // 0..1 fraction of open-top volume flooded
 }
 
 const TAU = Math.PI * 2;
@@ -56,6 +62,10 @@ export class VehicleSim {
   lights = false;
   private lastThrottle = 0;
   private impulses: Impulse[] = [];
+  flood: Float64Array;
+  private kq = 0; // prop load coefficient (N·m per (rad/s)^2)
+  private kt: number[] = []; // per-screw thrust coefficients
+  submerged = 0;
 
   constructor(public model: VehicleModel) {
     this.wheels = model.wheels.map(() => ({ compression: 0, prevCompression: 0, omega: 0, spin: 0, steerAngle: 0, contact: false, slip: 0 }));
@@ -63,6 +73,16 @@ export class VehicleSim {
     this.battery = model.battery > 0 ? 1 : 0;
     this.running = !!model.engine && this.fuel > 0 && this.battery > 0;
     if (model.engine) this.engineW = model.engine.idleRps * TAU;
+    this.flood = new Float64Array(model.hull.regions.length);
+    if (model.engine && model.screws.length) {
+      const wd = 0.9 * model.engine.maxRps * TAU;
+      const Td = engineCurve(model.engine, wd) * 0.85;
+      this.kq = Td / (wd * wd);
+      const P = Td * wd;
+      const areas = model.screws.map((sc) => sc.diameter * sc.diameter);
+      const tot = areas.reduce((a, b) => a + b, 0);
+      this.kt = model.screws.map((sc, i) => staticThrust((P * areas[i]) / tot, sc.diameter) / (wd * wd));
+    }
   }
 
   /** Wheel angle for Ackermann steering. Positive = toward +X (right). */
@@ -75,7 +95,7 @@ export class VehicleSim {
     return Math.sign(center) * a * w.steer;
   }
 
-  step(dt: number, body: BodyState, ctl: Controls, raycast: RaycastFn): Impulse[] {
+  step(dt: number, body: BodyState, ctl: Controls, raycast: RaycastFn, water?: WaterEnv): Impulse[] {
     const m = this.model;
     const imp = this.impulses;
     imp.length = 0;
@@ -166,8 +186,19 @@ export class VehicleSim {
       newOmega[i] = A[i];
     }
     let Tc = 0;
-    if (e && driven.length) {
+    // Propeller load (direct drive, reversed in R). In air the screws barely load the engine.
+    const gearSign = this.gear > 0 ? 1 : this.gear < 0 ? -1 : 0;
+    const screwSub = m.screws.map((sc) => (water ? this.depthFraction(body, sc.pos, water, 0.35) : 0));
+    const propLoadK = this.kq * (gearSign === 0 || this.shiftTimer > 0 ? 0.05 : 1) *
+      (m.screws.length ? screwSub.reduce((a, b) => a + 0.1 + 0.9 * b, 0) / m.screws.length : 0);
+    if (e && !driven.length) {
       const Te = engineTorque(e, this.engineW, throttle, this.running);
+      this.engineW = Math.max(0, (e.inertia * this.engineW / dt + Te) / (e.inertia / dt + propLoadK * Math.abs(this.engineW)));
+      if (!this.running && this.engineW < 1) this.engineW = 0;
+      this.clutch = gearSign ? 1 : 0;
+    }
+    if (e && driven.length) {
+      const Te = engineTorque(e, this.engineW, throttle, this.running) - propLoadK * this.engineW * Math.abs(this.engineW);
       let meanA = 0, meanB = 0;
       const locked = m.diff === 'locked';
       if (locked) {
@@ -245,6 +276,8 @@ export class VehicleSim {
       imp.push({ point: at, impulse: scale(Fv, dt) });
     }
 
+    if (water) this.hydro(dt, body, water, gearSign, screwSub, imp);
+
     // Aerodynamic drag at the centre of mass.
     const sp = Math.hypot(body.linvel[0], body.linvel[1], body.linvel[2]);
     if (sp > 0.1) imp.push({ point: body.com, impulse: scale(body.linvel, -0.5 * AIR * m.cdA * sp * dt) });
@@ -263,6 +296,96 @@ export class VehicleSim {
     return imp;
   }
 
+  /** 0..1 how far a body-local point is under the water surface (soft band of +-band metres). */
+  private depthFraction(body: BodyState, local: Vec3, water: WaterEnv, band: number): number {
+    const p = add(body.pos, qrot(body.quat, local));
+    const h = waterHeight(water.waves, p[0], p[2], water.t);
+    return clamp((h - p[1]) / (2 * band) + 0.5, 0, 1);
+  }
+
+  /** Buoyancy, flooding, hull drag, propeller thrust and rudder forces. */
+  private hydro(dt: number, body: BodyState, water: WaterEnv, gearSign: number, screwSub: number[], imp: Impulse[]) {
+    const m = this.model, hull = m.hull, q = body.quat;
+    if (!hull.points.length) { this.submerged = 0; return; }
+    const rho = WATER_DENSITY;
+    let totV = 0;
+    for (const pt of hull.points) totV += pt.vol;
+    const aRef = 2 * Math.cbrt(totV * totV);
+    const qi: [number, number, number, number] = [-q[0], -q[1], -q[2], q[3]];
+    let subV = 0;
+    // Flooding: open-top regions fill when their gunwale goes under, drain slowly otherwise.
+    for (let r = 0; r < hull.regions.length; r++) {
+      const reg = hull.regions[r];
+      const under = this.depthFraction(body, reg.rim, water, 0.08);
+      this.flood[r] = clamp(this.flood[r] + (under > 0.5 ? 0.35 * under : -0.03) * dt, 0, 1);
+    }
+    for (const pt of hull.points) {
+      const p = add(body.pos, qrot(q, pt.local));
+      const h = waterHeight(water.waves, p[0], p[2], water.t);
+      const s = clamp((h - (p[1] - pt.halfH)) / (2 * pt.halfH), 0, 1);
+      if (s <= 0) continue;
+      const dry = pt.region >= 0 ? 1 - this.flood[pt.region] : 1;
+      subV += pt.vol * s;
+      const buoy = rho * GRAVITY * pt.vol * s * dry;
+      // Water-relative velocity in the body frame.
+      const v = add(body.linvel, cross(body.angvel, sub(p, body.com)));
+      v[1] -= waterVerticalVelocity(water.waves, p[0], p[2], water.t) * 0.6;
+      const vb = qrot(qi, v);
+      const A = (pt.vol / totV) * aRef * s;
+      const Vs = pt.vol * s;
+      const fb: Vec3 = [
+        -0.5 * rho * A * 1.0 * Math.abs(vb[0]) * vb[0] - rho * Vs * 0.6 * vb[0],
+        -0.5 * rho * A * 1.2 * Math.abs(vb[1]) * vb[1] - rho * Vs * 1.6 * vb[1],
+        -0.5 * rho * A * 0.05 * Math.abs(vb[2]) * vb[2] - rho * Vs * 0.08 * vb[2],
+      ];
+      const F = add(qrot(q, fb), [0, buoy, 0]);
+      imp.push({ point: p, impulse: scale(F, dt) });
+    }
+    this.submerged = totV > 0 ? subV / totV : 0;
+
+    // Propellers: thrust ~ omega^2, fading toward the pitch speed.
+    const w = this.engineW;
+    let washT = 0;
+    m.screws.forEach((sc, i) => {
+      if (!gearSign || this.shiftTimer > 0 || screwSub[i] <= 0) return;
+      const p = add(body.pos, qrot(q, sc.pos));
+      const dir = qrot(q, sc.dir);
+      const v = add(body.linvel, cross(body.angvel, sub(p, body.com)));
+      const vAx = dot(v, dir) * gearSign;
+      const fade = clamp(1 - vAx / sc.pitchSpeed, 0, 1.3);
+      const T = this.kt[i] * w * w * screwSub[i] * fade * (gearSign > 0 ? 1 : 0.55);
+      washT += T;
+      imp.push({ point: p, impulse: scale(dir, T * gearSign * dt) });
+    });
+
+    // Rudders: flat-plate normal force from water flow (plus prop wash), deflected by the helm.
+    for (const rd of m.rudders) {
+      const sub2 = this.depthFraction(body, rd.pos, water, 0.3);
+      if (sub2 <= 0) continue;
+      const p = add(body.pos, qrot(q, rd.pos));
+      const delta = this.steerState * 0.9;
+      const ca = Math.cos(delta), sa = Math.sin(delta);
+      // Rotate the local normal about the rudder's up axis by delta (Rodrigues; up ⟂ normal).
+      const nl = rd.normal, ul = rd.up;
+      const ucn = cross(ul, nl);
+      const nLocal: Vec3 = [nl[0] * ca + ucn[0] * sa, nl[1] * ca + ucn[1] * sa, nl[2] * ca + ucn[2] * sa];
+      const n = qrot(q, nLocal);
+      let v = add(body.linvel, cross(body.angvel, sub(p, body.com)));
+      // Prop wash over the rudder lets it steer at low speed.
+      if (washT > 0 && m.screws.length) {
+        const sc = m.screws[0];
+        const wash = Math.sqrt(washT / (rho * Math.PI * (sc.diameter / 2) ** 2)) * gearSign;
+        v = add(v, scale(qrot(q, sc.dir), wash));
+      }
+      const sp = Math.hypot(v[0], v[1], v[2]);
+      if (sp < 0.05) continue;
+      const vn = dot(v, n);
+      const alpha = Math.asin(clamp(vn / sp, -1, 1));
+      const Fn = -0.5 * rho * rd.area * sp * sp * plateCoefficient(alpha) * sub2;
+      imp.push({ point: p, impulse: scale(n, Fn * dt) });
+    }
+  }
+
   /** Try to (re)start the engine. Needs fuel and battery charge. */
   ignition(on: boolean): boolean {
     if (!this.model.engine) return false;
@@ -277,6 +400,7 @@ export class VehicleSim {
       speed: dot(body.linvel, fwd), rps: this.engineW / TAU, gear: this.gear, throttle: this.lastThrottle, clutch: this.clutch,
       fuel: this.fuel, fuelMax: this.model.fuel, battery: this.battery, running: this.running,
       grounded: this.wheels.filter((w) => w.contact).length, lights: this.lights,
+      submerged: this.submerged, flooded: this.flood.length ? this.flood.reduce((a, b) => a + b, 0) / this.flood.length : 0,
     };
   }
 }

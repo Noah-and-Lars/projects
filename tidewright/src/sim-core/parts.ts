@@ -4,10 +4,10 @@ import { REFLECT, type Mat3i } from './rotations';
 
 export const CELL = 0.25; // metres per grid cell
 
-export type Category = 'structure' | 'control' | 'motion' | 'drive' | 'power' | 'light';
+export type Category = 'structure' | 'control' | 'motion' | 'drive' | 'power' | 'marine' | 'light';
 export type Shape =
   | 'cube' | 'slab' | 'ramp' | 'corner' | 'frame' | 'pane'
-  | 'wheel' | 'engine' | 'seat' | 'tank' | 'battery' | 'gear' | 'diff' | 'lamp';
+  | 'wheel' | 'engine' | 'seat' | 'tank' | 'battery' | 'gear' | 'diff' | 'lamp' | 'float' | 'screw' | 'rudder';
 
 export interface PropDef {
   key: string;
@@ -28,7 +28,9 @@ export interface SeatSim { kind: 'seat' }
 export interface GearSim { kind: 'gear' }
 export interface DiffSim { kind: 'diff' }
 export interface LampSim { kind: 'lamp' }
-export type PartSim = WheelSim | EngineSim | TankSim | BatterySim | SeatSim | GearSim | DiffSim | LampSim;
+export interface ScrewSim { kind: 'screw'; diameter: number; pitchSpeed: number }
+export interface RudderSim { kind: 'rudder'; area: number }
+export type PartSim = WheelSim | EngineSim | TankSim | BatterySim | SeatSim | GearSim | DiffSim | LampSim | ScrewSim | RudderSim;
 
 export interface PartDef {
   id: string;
@@ -39,6 +41,10 @@ export interface PartDef {
   mass: number; // kg (dry)
   cost: number; // credits
   solid: boolean; // contributes a collision box
+  /** Fraction of the part's cell volume that displaces water (0..1). */
+  displace: number;
+  /** Water and air pass through (lattice, open parts). */
+  porous?: boolean;
   /** Local reflection that maps the part's shape onto itself (used by mirror tool). */
   symmetry: Mat3i;
   desc: string;
@@ -59,7 +65,7 @@ const wheelProps = (susp: boolean): PropDef[] => [
     : []),
 ];
 
-function wheel(id: string, name: string, d: number, w: number, susp: boolean, mass: number, cost: number): PartDef {
+function wheel(id: string, name: string, d: number, w: number, susp: boolean, mass: number, cost: number): RawPart {
   const r = (d * CELL) / 2;
   return {
     id, name, category: 'motion', shape: 'wheel', size: [w, d, d], mass, cost, solid: false, symmetry: SYM_X,
@@ -71,7 +77,7 @@ function wheel(id: string, name: string, d: number, w: number, susp: boolean, ma
   };
 }
 
-function engine(id: string, name: string, size: [number, number, number], mass: number, cost: number, torque: number, maxRps: number): PartDef {
+function engine(id: string, name: string, size: [number, number, number], mass: number, cost: number, torque: number, maxRps: number): RawPart {
   return {
     id, name, category: 'drive', shape: 'engine', size, mass, cost, solid: true, symmetry: SYM_X,
     desc: `Combustion engine. ${torque} N·m peak, ${maxRps} rev/s red line. Burns fuel in proportion to its speed.`,
@@ -79,7 +85,8 @@ function engine(id: string, name: string, size: [number, number, number], mass: 
   };
 }
 
-export const PARTS: PartDef[] = [
+type RawPart = Omit<PartDef, 'displace'> & { displace?: number };
+const RAW: RawPart[] = [
   // Structure
   { id: 'plate', name: 'Plate', category: 'structure', shape: 'cube', size: [1, 1, 1], mass: 3, cost: 4, solid: true, symmetry: SYM_X, desc: 'A full 0.25 m structural block.' },
   { id: 'slab', name: 'Slab', category: 'structure', shape: 'slab', size: [1, 1, 1], mass: 1.6, cost: 3, solid: true, symmetry: SYM_X, desc: 'A half-height block. Good for floors and trims.' },
@@ -121,9 +128,33 @@ export const PARTS: PartDef[] = [
   { id: 'tank_l', name: 'Fuel tank L', category: 'power', shape: 'tank', size: [4, 4, 4], mass: 28, cost: 320, solid: true, symmetry: SYM_X, desc: 'Holds 110 L of fuel.', sim: { kind: 'tank', litres: 110 } },
   { id: 'cell_s', name: 'Cell battery S', category: 'power', shape: 'battery', size: [1, 1, 1], mass: 8, cost: 90, solid: true, symmetry: SYM_X, desc: 'Starts engines and runs lamps. Recharged by running engines.', sim: { kind: 'battery', capacity: 1 } },
   { id: 'cell_m', name: 'Cell battery M', category: 'power', shape: 'battery', size: [2, 1, 2], mass: 24, cost: 220, solid: true, symmetry: SYM_X, desc: 'A larger battery bank.', sim: { kind: 'battery', capacity: 4 } },
+  // Marine
+  { id: 'float', name: 'Float block', category: 'marine', shape: 'float', size: [1, 1, 1], mass: 0.6, cost: 8, solid: true, symmetry: SYM_X, desc: 'Closed-cell foam block. Very light; adds buoyancy anywhere.' },
+  {
+    id: 'screw_s', name: 'Screw S', category: 'marine', shape: 'screw', size: [2, 2, 1], mass: 9, cost: 140, solid: false, symmetry: SYM_X,
+    desc: 'Small propeller, 0.5 m. Pushes toward the bow (−Z) when submerged. Driven by the engines.', sim: { kind: 'screw', diameter: 0.5, pitchSpeed: 17 },
+  },
+  {
+    id: 'screw_m', name: 'Screw M', category: 'marine', shape: 'screw', size: [3, 3, 1], mass: 20, cost: 320, solid: false, symmetry: SYM_X,
+    desc: 'Medium propeller, 0.75 m. More grip on the water, lower top speed.', sim: { kind: 'screw', diameter: 0.75, pitchSpeed: 15 },
+  },
+  {
+    id: 'rudder', name: 'Rudder', category: 'marine', shape: 'rudder', size: [1, 3, 2], mass: 6, cost: 90, solid: false, symmetry: SYM_X,
+    desc: 'Steers in water. Follows the helm steering. Place it behind a screw at the stern.', sim: { kind: 'rudder', area: 0.375 },
+  },
   // Light
   { id: 'lamp', name: 'Lamp', category: 'light', shape: 'lamp', size: [1, 1, 1], mass: 1, cost: 25, solid: true, symmetry: SYM_X, desc: 'A glowing lamp block. Turn on with L while driving.', sim: { kind: 'lamp' } },
 ];
+
+const DISPLACE: Partial<Record<Shape, number>> = {
+  cube: 1, slab: 0.5, ramp: 0.5, corner: 0.17, frame: 0.1, pane: 1, wheel: 0.6, engine: 0.6, seat: 0.3, tank: 0.9,
+  battery: 0.5, gear: 0.5, diff: 0.5, lamp: 0.5, float: 1, screw: 0.05, rudder: 0.1,
+};
+export const PARTS: PartDef[] = RAW.map((p) => ({
+  ...p,
+  displace: p.displace ?? DISPLACE[p.shape] ?? 0.5,
+  porous: p.porous ?? (p.shape === 'frame' || p.shape === 'screw' || p.shape === 'rudder'),
+}));
 
 export const PART_BY_ID: ReadonlyMap<string, PartDef> = new Map(PARTS.map((p) => [p.id, p]));
 
@@ -139,6 +170,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   motion: 'Motion',
   drive: 'Drive',
   power: 'Power & fuel',
+  marine: 'Marine',
   light: 'Light',
 };
 
