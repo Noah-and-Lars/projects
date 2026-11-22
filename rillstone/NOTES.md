@@ -720,3 +720,34 @@ Measured in headless Chromium with software GL (SwiftShader), at medium graphics
     a truck bed as cargo.
 - **Guide.** Its payouts no longer count as "Scrip earned". Before, the
   "sell" step completed itself as soon as an earlier step paid out.
+
+### Controls review (brief §5)
+
+- **Gaps closed:** a review of §5 found five missing controls:
+  - Ctrl reversing rotation;
+  - scroll wheel for placement distance;
+  - hold-G precision placement;
+  - B as a look-up for the hovered item;
+  - the gamepad's hold and D-pad mappings.
+- **G:** now drops on release. While it's held, R/T/Y turn the item in 45°
+  steps on each axis and the wheel sets the ring's reach (1.5–6 m, default
+  3.5). Guests send the turn with the drop and the host applies it.
+- **Gamepad:**
+  - tap X to pick up, hold it to drop;
+  - tap Y to swap tools, hold it to enter or leave a vehicle;
+  - tap Start for the map, hold it to pause (350 ms threshold);
+  - the D-pad rotates (down and left reverse), and the bumpers set reach.
+- **B:** the look-up uses the shop catalogue's description of the hovered
+  item or machine, plus a note on what to do with the metal or gem.
+- **Saves:** they are now version 2. Version 1 saves migrate on load and on
+  import: rails, vehicle hoppers and trams, and economy flags get their
+  defaults.
+- **Ctrl:** it is no longer a second crouch key. Chrome closes the tab on
+  Ctrl+W even during Pointer Lock, so crouch-walking with Ctrl could lose
+  the game. Ctrl now only reverses rotation; crouch is C.
+- **Co-op rejoin:** a guest who leaves and rejoins under the same name gets
+  back the pan and shovel they dropped, if those are still lying loose. They
+  used to get a new pair every time.
+- **Guest rail hint:** guests track the first click of a rail line
+  themselves, so the hint reads "lay rails to here" after the first click.
+  The host still keeps the real start point.

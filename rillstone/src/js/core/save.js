@@ -4,10 +4,14 @@
 // and the other half of the pair is always a complete older save.
 import { deflateSync, inflateSync, strToU8, strFromU8 } from 'fflate';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 const DB = 'rillstone', STORES = ['meta', 'entities', 'chunks', 'economy'];
 // One migration per version bump: MIGRATIONS[n] turns a version-n save into n+1.
-const MIGRATIONS = {};
+const MIGRATIONS = {
+  // 1 -> 2 (M6/M7): rails, economy flags (blueprints, Pumphouse, guide, lamp)
+  // and vehicle hoppers/trams arrived; older saves get empty ones.
+  1: (s) => ({ ...s, saveVersion: 2, rails: s.rails || { lines: [], nextLine: 1 }, economy: { ...(s.economy || {}), flags: s.economy?.flags || {} }, vehicles: (s.vehicles || []).map(v => ({ hopper: [], tram: null, ...v })) }),
+};
 
 function openDB() {
   return new Promise((res, rej) => {

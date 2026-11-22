@@ -482,7 +482,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
       if (ghost) scene.remove(ghost);
       ghost = new THREE.Mesh(MACHINES[defId].build({}), ghostMats.ok); ghost.renderOrder = 5; scene.add(ghost); ghostDef = defId;
     }
-    if (input && (input.pressed('rotX') || input.pressed('rotY') || input.pressed('rotZ'))) placeRot.r = (placeRot.r + (input.held('crouch') ? 3 : 1)) % 4;
+    if (input && (input.pressed('rotX') || input.pressed('rotY') || input.pressed('rotZ'))) placeRot.r = (placeRot.r + (input.reverse ? 3 : 1)) % 4;
     if (!aim) { ghost.visible = false; return null; }
     ghost.visible = true;
     let pos = [Math.round(aim.p[0] / GRID) * GRID, aim.p[1], Math.round(aim.p[2] / GRID) * GRID];

@@ -187,8 +187,8 @@ export function createHeavy({ scene, physics, items, vehicles, claims, economy, 
     }
     return false;
   };
-  hands.hintHook = (e, info) => {
-    if (e.type === 'railkit') return hands.railStart ? `{LMB} lay rails to here (${e.data.n} segments left)` : `{LMB} start rails here`;
+  hands.hintHook = (e, info, H = hands) => {
+    if (e.type === 'railkit') return H.railStart ? `{LMB} lay rails to here (${e.data.n} segments left)` : `{LMB} start rails here`;
     if (e.type === 'tramkit') return '{LMB} set the tram on a rail';
     return '';
   };

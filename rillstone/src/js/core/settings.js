@@ -2,7 +2,7 @@
 const KEY = 'rill-settings';
 export const DEFAULT_BINDS = {
   forward: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
-  jump: ['Space'], sprint: ['ShiftLeft', 'ShiftRight'], crouch: ['KeyC', 'ControlLeft'],
+  jump: ['Space'], sprint: ['ShiftLeft', 'ShiftRight'], crouch: ['KeyC'],
   pickup: ['KeyE'], drop: ['KeyG'], use: ['Mouse0'], secondary: ['Mouse2'],
   rotX: ['KeyR'], rotY: ['KeyT'], rotZ: ['KeyY'], swap: ['KeyQ'], vehicle: ['KeyF'], unflip: ['KeyH'],
   guide: ['KeyB'], map: ['KeyM'], lantern: ['KeyL'], debug: ['F3'],

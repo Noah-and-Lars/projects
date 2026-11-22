@@ -50,27 +50,35 @@ in `tools/package.json`, or if the file grows past 8 MB.
 Click the game to capture the mouse (Pointer Lock). Every key can be rebound
 in Settings → Keys; bindings and settings are saved in `localStorage`.
 
+Holding G is precision placement: R/T/Y turn the held item 45° per press
+(Ctrl turns it back), the scroll wheel sets how far away the drop ring can
+go, and letting go of G drops it there. B over an item, machine or prop opens
+its look-up entry: what it is, what it's worth and what it's for. With
+nothing under the crosshair, B opens the full guide.
+
 | Action | Keyboard / mouse | Gamepad |
 | --- | --- | --- |
 | Move / look | WASD / mouse | left stick / right stick |
 | Sprint / crouch / jump | Shift / C / Space | L3 / B / A |
 | Pick up | E | X |
-| Drop / place held item | G | |
-| Use held tool | LMB | RT |
-| Secondary | RMB | LT |
+| Drop / place held item (on release) | G | X (hold) |
+| Use held tool / confirm placement | LMB | RT |
+| Secondary (unlock, machine panel) | RMB | LT |
+| Rotate placement or held item (Ctrl reverses) | R / T / Y | D-pad |
+| Drop reach (1.5–6 m) | scroll wheel | bumpers |
 | Quick-swap tool | Q | Y |
-| Enter / exit vehicle | F | |
+| Enter / exit vehicle | F | Y (hold) |
 | Unflip vehicle (hold) | H | |
-| Rotate placement | R / T / Y | |
-| Guide / map | B / M | |
+| Look-up guide for the hovered item | B | Select |
+| Map | M | Start |
 | Lantern | L | |
 | Debug overlay | F3 | |
-| Menu | Esc | Start |
+| Menu | Esc | Start (hold) |
 
 Movement is 4.2 m/s walking, 6.8 m/s sprinting (Shift, or a toggle in
 Settings), 2.0 m/s crouched, with a 1.1 m jump under 22 m/s² gravity. The
 character steps up 0.35 m and climbs slopes up to 50°. There's no fall damage;
-"Return to claim post" in the pause menu gets you unstuck.
+"Return to claim post" in the pause menu frees you if you get stuck.
 
 ## First hour
 

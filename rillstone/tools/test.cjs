@@ -202,6 +202,27 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     });
     await p.waitForTimeout(900);
     await p.screenshot({ timeout: 180000, path: `${out}/m2-dropring.png` });
+    // Hold G: R turns the item 45° a press; releasing G drops it.
+    const ctl = await p.evaluate(async () => {
+      const R = __rill, H = R.hands, I = R.input; R.noRender(true); await R.refreshAim();
+      const id = H.hand, step = async (a, v) => { I.simulate(a, v); await R.frames(2); };
+      const c = R.view.camera.position;
+      for (const [dx, dz] of [[1.4, -1.2], [-1.4, -1.6], [0, -2.2], [1.8, 0.4], [-1.8, 0.6]]) {
+        R.aimAt(c.x + dx, R.height(c.x + dx, c.z + dz), c.z + dz); await R.refreshAim(); await R.frames(4);
+        if (H.ringPos && H.ringOk) break;
+      }
+      await step('drop', true); const held = H.hand === id;
+      await step('rotY', true); await step('rotY', false); await step('rotY', true); await step('rotY', false);
+      const rot = H.dropRot.join(','), ring = [!!H.ringPos, H.ringOk, H.precise, R.items.get(id)?.type]; await step('drop', false);
+      const e = R.items.get(id), loc = e.loc; H.dropRot = [0, 0, 0];
+      // B over the dropped nugget opens its look-up entry.
+      R.aimAt(e.pos[0], e.pos[1], e.pos[2]); await R.refreshAim(); await R.frames(3);
+      await step('guide', true); await step('guide', false);
+      const panel = R.panels.current; R.panels.close();
+      H.pickup(); R.noRender(false);
+      return { held, rot, loc, panel, back: H.hand === id, ring };
+    });
+    check(ctl.held && ctl.rot === '0,2,0' && ctl.loc === 'loose' && ctl.panel === 'lookup' && ctl.back, `hold G + R/T/Y turns the drop (${ctl.rot}), release drops it; B opens the hovered item's look-up entry (${ctl.panel})`);
     // Panning: pan with two loads, aimed at the river.
     await p.evaluate(async () => {
       const R = __rill, H = R.hands, g = R.places.CLAIMS[0]; R.noRender(true);

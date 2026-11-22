@@ -33,7 +33,7 @@ const b64 = {
 
 export function createCoop(ctx) {
   const { net, scene, camera, physics, items, hands, makeHands, machines, vehicles, economy, town, workshop, heavy, claims, hud, audio, panels, bed, auto, player, state, snapshot, restore, saves, teleport, materials } = ctx;
-  const C = { role: 'off', guests: new Map(), avatars: new Map(), acting: null, seq: 0, loading: false, stats: { snaps: 0, bytesOut: 0, pkgBytes: 0, pkgChunks: 0, pkgMs: 0 } };
+  const C = { role: 'off', guests: new Map(), left: new Map(), avatars: new Map(), acting: null, seq: 0, loading: false, stats: { snaps: 0, bytesOut: 0, pkgBytes: 0, pkgChunks: 0, pkgMs: 0 } };
   const ops = [];
   const push = (op) => { if (C.role === 'host') ops.push(op); };
 
@@ -92,8 +92,13 @@ export function createCoop(ctx) {
     gh.onLift = (mm) => { const top = machines._int.toWorld(mm, [0, 4.15, 0]), bottom = machines._int.toWorld(mm, [0, 0.4, -1.2]); const up = g.pose.p[1] < mm.pos[1] + 2; const p = up ? top : bottom; toGuest(g, { tp: [p[0], p[1] + 1, p[2]] }); };
     gh.onVehicle = () => {};
     gh.remoteCraft = (held) => toGuest(g, { craft: held.id });
-    // Starting gear: a pan and a shovel of their own.
-    gh.give('pan'); gh.give('shovel');
+    // Starting gear: a pan and a shovel of their own. A guest who left and
+    // rejoins under the same name gets back what they dropped, if it's
+    // still lying loose, instead of a new set each time.
+    const left = C.left.get(m.n); C.left.delete(m.n);
+    let back = 0;
+    if (left) for (const k of ['hand', 'slot']) { const e = left[k] != null ? items.get(left[k]) : null; if (e && e.loc === 'loose') { items.take(e.id, 'held'); gh[k] = e.id; back++; } }
+    if (!back) { gh.give('pan'); gh.give('shovel'); }
     C.guests.set(m.id, g);
     return g;
   }
@@ -101,6 +106,7 @@ export function createCoop(ctx) {
     const g = C.guests.get(id); if (!g) return;
     // Whatever they held lands where they stood.
     for (const k of ['hand', 'slot']) { const e = g.hands[k] ? items.get(g.hands[k]) : null; if (e) items.place(e.id, [g.pose.p[0], g.pose.p[1] + 0.2, g.pose.p[2]]); }
+    C.left.set(g.name, { hand: g.hands.hand, slot: g.hands.slot });
     if (g.drv != null) vehicles.remoteDrivers.delete(g.drv);
     dropAvatar(id); C.guests.delete(id);
     hud.toast(`${g.name} left`);
@@ -125,7 +131,7 @@ export function createCoop(ctx) {
       const H = g.hands;
       if (a.k === 'use') H.use();
       else if (a.k === 'pick') H.pickup();
-      else if (a.k === 'drop') { if (a.ring) H.dropAt(a.ring, a.yaw || 0); else H.drop(); }
+      else if (a.k === 'drop') { if (a.ring) H.dropAt(a.ring, +a.yaw || 0, a.rot); else H.drop(); }
       else if (a.k === 'swap') H.swap();
       else if (a.k === 'sec') { const c = H.hand ? items.get(H.hand) : null; if (c?.type === 'coil') machines.cancelRun(c); }
       else if (a.k === 'unlock') { const m = machines.get(a.id); if (m) { m.locked = false; g.hands.hud.toast(`${machines.name(m.def)} unlocked`); } }

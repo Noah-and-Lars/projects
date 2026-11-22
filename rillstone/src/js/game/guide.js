@@ -4,6 +4,8 @@
 // and short reference notes. Progress lives in economy.state.flags.guide.
 import { h } from '../ui/dom.js';
 import { MACHINES } from '../defs/machines.js';
+import { SHOPS } from '../defs/shops.js';
+import { MATERIALS } from '../defs/materials.js';
 
 export function createGuide({ hud, panels, economy, hands, items, machines, vehicles, audio }) {
   const E = economy.state;
@@ -44,6 +46,31 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
         g.step++; E.scrip += s.pay;
         audio.play('contract'); hud.toast(`Guide: ${s.title} · § ${s.pay}`, 'gold');
       }
+    },
+    // B over a hovered thing: its card plus what it's for (shop blurbs,
+    // material notes). Returns false when there's nothing to look up.
+    lookup(card, ref) {
+      if (!card || !ref) return false;
+      const desc = [];
+      const shopEntry = (pred) => { for (const s of Object.values(SHOPS)) for (const it of s.items) if (pred(it)) return { it, shop: s.name }; return null; };
+      let hit = null;
+      if (ref.def) hit = shopEntry(it => it.data?.def === ref.def);
+      else if (ref.type) hit = shopEntry(it => it.spawn === ref.type && !it.data?.tier && !it.data?.cap) || shopEntry(it => it.spawn === ref.type);
+      if (hit) desc.push(hit.it.desc, `Sold at the ${hit.shop}.`);
+      const m = ref.material && MATERIALS[ref.material];
+      if (m) {
+        if (m.kind === 'gem') desc.push(ref.stage === 'uncut' ? 'Uncut gems sell at the Gem Buyer, or cut them on a grinding wheel (or at the Upper Falls cutter) to roughly double their price.' : 'Cut gems sell at the Gem Buyer, or set one in a ring or chalice at a workbench.');
+        else if (m.kind === 'fuel') desc.push('Quartz is fuel: kilns, smelters and booster pumps burn it.');
+        else if (ref.stage === 'ore') desc.push('Sell it at the Assay Office, or melt 10 kg of one metal in a crucible or kiln into an ingot worth more.');
+        else desc.push('Refined metal sells for more at the Assay Office. A hot ingot can be worked at a workbench.');
+      }
+      if (ref.type === 'clod' || ref.type === 'pile') desc.push('Loose things on the ground can be tidied up from the menu: Settings → Clear loose clods and piles.');
+      const body = h('div', {},
+        ...(card.lines || []).filter(Boolean).map(l => h('p', { class: 'small' }, l)),
+        ...desc.filter(Boolean).map(d => h('p', {}, d)),
+        h('button', { class: 'btn', onclick: () => api.open() }, 'Open the full guide'));
+      panels.show('lookup', card.name, body, card.badge ? { badge: card.badge } : {});
+      return true;
     },
     auth: true, // co-op guests show the host's progress instead of checking
     open() {

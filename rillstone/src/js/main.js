@@ -348,8 +348,9 @@ async function boot() {
     if (input.pressed('debug')) hud.toggleDebug();
     if (input.pressed('lantern')) lanternManual = !(lanternManual ?? lantern.intensity > 0);
     if (controls() && input.pressed('vehicle')) toggleVehicle();
-    if (controls() && input.pressed('guide')) guide.open();
+    if (controls() && input.pressed('guide') && !(hands.hover && !vehicles.driving && guide.lookup(hands.hover.card, hands.hover.ref))) guide.open();
     if (controls() && input.pressed('map')) map.open();
+    if (input.pressed('pause') && state.mode === 'play' && !panels.open) { state.mode = 'pause'; menu.showPause(true); input.unlock(); }
 
     // Physics: steps owed at 60 Hz, one message in flight at a time.
     acc += dt;

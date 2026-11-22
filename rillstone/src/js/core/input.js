@@ -7,7 +7,7 @@ export function createInput(canvas, settings) {
   let mdx = 0, mdy = 0, wheel = 0;
   let locked = false;
   let captureCb = null;         // rebinding: next input goes here
-  const pad = { lx: 0, ly: 0, rx: 0, ry: 0, buttons: [], prev: [] };
+  const pad = { lx: 0, ly: 0, rx: 0, ry: 0, buttons: [], prev: [], since: [], holding: [] };
 
   const actionsFor = (code) => { const out = []; for (const a in settings.binds) if (settings.binds[a].includes(code)) out.push(a); return out; };
   function press(code) {
@@ -58,18 +58,44 @@ export function createInput(canvas, settings) {
     get capturing() { return !!captureCb; },
     // Test hook: simulate an action press.
     simulate(action, held = true) { const c = settings.binds[action][0]; held ? press(c) : release(c); },
-    endFrame() { pressed.clear(); released.clear(); },
+    // Rotation direction: Ctrl (or a reverse D-pad press) turns the other way.
+    get reverse() { return down.has('ControlLeft') || down.has('ControlRight') || padReverse; },
+    endFrame() { pressed.clear(); released.clear(); padReverse = false; },
     poll() { // gamepad, once per frame
       const gp = navigator.getGamepads ? [...navigator.getGamepads()].find(g => g && g.connected) : null;
       if (!gp) return;
       const dz = (v) => Math.abs(v) < 0.12 ? 0 : v;
       pad.lx = dz(gp.axes[0] || 0); pad.ly = dz(gp.axes[1] || 0); pad.rx = dz(gp.axes[2] || 0); pad.ry = dz(gp.axes[3] || 0);
       pad.prev = pad.buttons; pad.buttons = gp.buttons.map(b => b.pressed || b.value > 0.5);
+      const now = performance.now();
       for (const [a, i] of Object.entries(PAD)) if (pad.buttons[i] && !pad.prev[i]) pressed.add(a); else if (!pad.buttons[i] && pad.prev[i]) released.add(a);
+      // Tap/hold buttons: X picks up / drops, Y swaps / enters a vehicle,
+      // Start opens the map / pauses (BUILD_BRIEF section 5).
+      for (const [i, tap, hold] of TAP_HOLD) {
+        if (pad.buttons[i] && !pad.prev[i]) pad.since[i] = now;
+        if (pad.buttons[i] && pad.since[i] != null && now - pad.since[i] > HOLD_MS) { pressed.add(hold); pad.since[i] = null; pad.holding[i] = true; }
+        if (!pad.buttons[i] && pad.prev[i]) {
+          if (pad.since[i] != null) { pressed.add(tap); released.add(tap); }
+          else if (pad.holding[i]) released.add(hold);
+          pad.since[i] = null; pad.holding[i] = false;
+        }
+      }
+      // D-pad rotates (down/left reverse); bumpers set placement distance.
+      for (const [i, a, rev] of DPAD) if (pad.buttons[i] && !pad.prev[i]) { pressed.add(a); if (rev) padReverse = true; }
+      if (pad.buttons[4] && !pad.prev[4]) wheel -= 1;
+      if (pad.buttons[5] && !pad.prev[5]) wheel += 1;
     },
   };
   // Standard gamepad mapping (BUILD_BRIEF section 5).
-  const PAD = { jump: 0, crouch: 1, pickup: 2, swap: 3, secondary: 6, use: 7, sprint: 10, guide: 8, map: 9 };
-  function padHeld(a) { const i = PAD[a]; return i !== undefined && !!pad.buttons[i]; }
+  const PAD = { jump: 0, crouch: 1, secondary: 6, use: 7, sprint: 10, guide: 8 };
+  const TAP_HOLD = [[2, 'pickup', 'drop'], [3, 'swap', 'vehicle'], [9, 'map', 'pause']];
+  const DPAD = [[12, 'rotX', false], [13, 'rotX', true], [15, 'rotY', false], [14, 'rotY', true]];
+  const HOLD_MS = 350;
+  let padReverse = false;
+  function padHeld(a) {
+    const i = PAD[a]; if (i !== undefined) return !!pad.buttons[i];
+    for (const [j, , hold] of TAP_HOLD) if (hold === a) return !!pad.holding[j];
+    return false;
+  }
   return api;
 }
