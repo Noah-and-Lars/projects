@@ -58,6 +58,7 @@ function mesh({ dens, band, S, lim, origin, top }) {
     let r = pair[0][0] + (pair[1][0] - pair[0][0]) * t, g = pair[0][1] + (pair[1][1] - pair[0][1]) * t, bl = pair[0][2] + (pair[1][2] - pair[0][2]) * t;
     if (b === 5 && ((Math.floor(px * 2) + Math.floor(pz * 2) + Math.floor(py * 2)) & 1)) { r *= 0.8; g *= 0.8; bl *= 0.8; } // bedrock pattern
     if (b === 3 && Math.sin(px * 12.9898 + py * 78.233 + pz * 37.719) > 0.93) { r = g = bl = 0.85; } // quartz flecks
+    if (b === 4 && Math.sin(px * 17.13 + py * 41.7 + pz * 29.3) > 0.9) { r = 0.95; g = 0.42; bl = 0.16; } // warm glints in the basalt
     if (depth < 0.3 && occ < 0.6) { r = GRASS[0]; g = GRASS[1]; bl = GRASS[2]; } // untouched grassy top
     const aoF = depth < 0.3 ? Math.max(0.82, ao) : ao; // keep grass rims from going murky
     vid[at(x, y, z)] = pos.length / 3;

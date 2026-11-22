@@ -135,6 +135,7 @@ export function createScene(canvas, settings) {
   const env = { sunDir: new THREE.Vector3(), sunColor: new THREE.Color(), horizon: new THREE.Color(), sunIntensity: 1, elevation: 1, night: 0, waterLight: 1 };
   const tmpC = new THREE.Color(), tmpV = new THREE.Vector3();
   let cave = 0;
+  const caveSky = new THREE.Color(0x8a7a64), caveGround = new THREE.Color(0x5a4a38);
   function setTime(dayFrac, caveFactor = 0) {
     cave = caveFactor;
     const ang = (dayFrac - 0.25) * Math.PI * 2;
@@ -170,6 +171,9 @@ export function createScene(canvas, settings) {
     plainSun.color.copy(lc); plainSun.intensity = li;
     plainSun.position.copy(camera.position).addScaledVector(lightFrom, 100); plainSun.target.position.copy(camera.position);
     hemi.intensity *= 1 - cave * 0.25;
+    // Underground the sky's blue gives way to a warm rock bounce, so dark
+    // tunnels read as rock rather than a blue void.
+    if (cave > 0) { hemi.color.lerp(caveSky, cave * 0.85); hemi.groundColor.lerp(caveGround, cave * 0.85); }
     env.waterLight = 0.35 + 0.65 * Math.min(1, Math.max(0, (e + 0.1) / 0.35));
   }
 

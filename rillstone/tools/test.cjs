@@ -867,6 +867,18 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return { took: true };
     }, carry.ing);
     await H.pg.waitForTimeout(1500);
+    // The guest places a machine from a crate the host put in their hands.
+    const gidP = await G.pg.evaluate(() => __rill.net.id);
+    await H.pg.evaluate((id) => { const R = __rill, g = R.coop.guests.get(id); const c = R.items.spawn('crate', [0, 50, 0], { loc: 'held', data: { def: 'junction', family: 'water' } }); if (g.hands.hand) { g.hands.slot = g.hands.hand; } g.hands.hand = c.id; }, gidP);
+    await G.pg.waitForTimeout(1200);
+    const placed = await G.pg.evaluate(async (g) => {
+      const R = __rill, e = R.items.get(R.hands.hand); if (!e || e.type !== 'crate') return { err: 'no crate on the guest', hand: e?.type };
+      const pos = [g.x0 - 8, R.height(g.x0 - 8, g.z0 + 2), g.z0 + 2];
+      R.hands.remote({ k: 'place', def: 'junction', pos, rot: 0, ent: e.id });
+      for (let i = 0; i < 20 && ![...R.machines.list.values()].some(m => m.def === 'junction'); i++) await new Promise(r => setTimeout(r, 150));
+      return { guest: [...R.machines.list.values()].filter(m => m.def === 'junction').length };
+    }, g0);
+    const hostJ = await H.pg.evaluate(() => [...__rill.machines.list.values()].filter(m => m.def === 'junction').length);
     // A shop purchase from the guest's own panel goes through the host.
     await G.pg.evaluate(() => __rill.town.buy('store', 'bucket'));
     await H.pg.waitForTimeout(1500);
@@ -902,6 +914,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     check(carry.inBed && hv.cargo.includes(carry.ing) && gv.cargo.includes(carry.ing), 'the guest carried an ingot to the truck bed; both see it there');
     check(Math.hypot(hv.p[0] - gv.p[0], hv.p[1] - gv.p[1], hv.p[2] - gv.p[2]) < 0.1, `the host drove the truck; positions agree within ${Math.hypot(hv.p[0] - gv.p[0], hv.p[1] - gv.p[1], hv.p[2] - gv.p[2]).toFixed(3)} m`);
     check(he.scrip === ge.scrip && he.earned > 0, `the guest sold the ingot and bought a bucket: Scrip § ${he.scrip} on both`);
+    check(placed.guest === 1 && hostJ === 1, `the guest placed a machine from a crate; host and guest both have it (${JSON.stringify(placed)}, host ${hostJ})`);
     check(bought === 1, 'the bucket the guest bought appears on the store pad for the guest');
     check(missing === 0 && worst < 0.1 && n > 300, `${n} loose things within 55 m of the guest agree within ${worst.toFixed(3)} m (${missing} missing)`);
     check(avatars === 1, 'the guest sees the host\'s avatar');
