@@ -228,7 +228,7 @@ async function boot() {
     },
     onSettingsChanged: () => { view.applySettings(); audio.apply(); },
     // Settings: clear loose dirt clods and nugget piles (BUILD_BRIEF 9).
-    onCleanup: () => { if (coop.isGuest()) return 0; let n = 0; for (const e of [...items.ents.values()]) if ((e.type === 'clod' || e.type === 'pile') && e.loc === 'loose') { items.remove(e.id); n++; } return n; },
+    onCleanup: () => { if (coop.isGuest()) return 0; let n = 0; for (const e of [...items.ents.values()]) if ((e.type === 'clod' || e.type === 'pile' || e.type === 'dirtpile') && e.loc === 'loose') { items.remove(e.id); n++; } return n; },
     items: [
       { label: 'Save game', onclick: () => openSaves('save') },
       { label: 'Load game', onclick: () => openSaves('load') },

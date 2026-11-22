@@ -161,7 +161,7 @@ export function createCoop(ctx) {
       else if (a.k === 'pick') H.pickup();
       else if (a.k === 'drop') { if (a.ring) { if (vec(a.ring)) H.dropAt(a.ring, num(a.yaw) ? a.yaw : 0, a.rot); } else { if (a.reach) H.reach = Math.max(1.5, Math.min(6, +a.reach || 3.5)); H.drop(); } }
       else if (a.k === 'swap') H.swap();
-      else if (a.k === 'rmb') H.secHook?.(H.aimInfo(), H);
+      else if (a.k === 'rmb') { const i = H.aimInfo(); H.secHook?.(i, H) || H.shovelRmb?.(i); }
       else if (a.k === 'sec') { const c = H.hand ? items.get(H.hand) : null; if (c?.type === 'coil') machines.cancelRun(c); }
       else if (a.k === 'unlock') { const m = machines.get(a.id); if (m) { m.locked = false; g.hands.hud.toast(`${machines.name(m.def)} unlocked`); } }
       else if (a.k === 'place') {

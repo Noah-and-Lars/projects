@@ -256,15 +256,20 @@ export function coil(hex) {
 // Ingot casts differ by metal so they read without colour (M8 accessibility):
 // 'trap' the classic trapezoid, 'bar' a plain block, 'round' a rounded loaf,
 // 'hex' a hexagonal bar.
+const mergeG = (a, b) => { const A = a.index ? a.toNonIndexed() : a, B = b.index ? b.toNonIndexed() : b, pos = new Float32Array(A.attributes.position.count * 3 + B.attributes.position.count * 3); pos.set(A.attributes.position.array); pos.set(B.attributes.position.array, A.attributes.position.count * 3); const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); return g; };
 export function ingot(form = 'trap') {
   let g;
   if (form === 'bar') g = new THREE.BoxGeometry(1.15, 0.3, 0.55);
   else if (form === 'round') g = new THREE.CylinderGeometry(0.3, 0.3, 1.1, 8, 1).rotateZ(Math.PI / 2).scale(1, 0.62, 1);
   else if (form === 'hex') g = new THREE.CylinderGeometry(0.3, 0.3, 1.1, 6, 1).rotateZ(Math.PI / 2).scale(1, 0.75, 1);
+  // Glimmerite: a long triangular prism; emberite: a stepped double block.
+  else if (form === 'tri') g = new THREE.CylinderGeometry(0.36, 0.36, 1.1, 3, 1).rotateZ(Math.PI / 2).rotateX(Math.PI / 6).scale(1, 0.7, 1);
+  else if (form === 'step') g = mergeG(new THREE.BoxGeometry(1.15, 0.2, 0.6), new THREE.BoxGeometry(0.8, 0.16, 0.42).translate(0, 0.18, 0));
   else g = new THREE.CylinderGeometry(0.42, 0.55, 0.3, 4, 1).rotateY(Math.PI / 4).scale(1.2, 1, 0.6);
   g.computeVertexNormals();
-  const c = new Float32Array(g.toNonIndexed().attributes.position.count * 3).fill(1);
-  const ng = g.toNonIndexed(); ng.setAttribute('color', new THREE.BufferAttribute(c, 3)); return ng;
+  const ng = g.index ? g.toNonIndexed() : g;
+  const c = new Float32Array(ng.attributes.position.count * 3).fill(1);
+  ng.setAttribute('color', new THREE.BufferAttribute(c, 3)); return ng;
 }
 // Crafted goods (unit size).
 export function crafted(kind) {
@@ -343,4 +348,34 @@ export function firewood() {
   logs.slice(0, 5).forEach(([x, y], i) => parts.push(P(place(new THREE.CylinderGeometry(0.045, 0.05, 0.42, 6), x, y, 0, Math.PI / 2, 0, i * 0.4), i % 2 ? WOOD : WOOD_DARK, 0.12, 30 + i)));
   for (const z of [-0.12, 0.12]) parts.push(P(place(new THREE.TorusGeometry(0.12, 0.006, 4, 14), 0, 0.1, z), 0xc8b88a, 0.05, 40));
   return merge(parts);
+}
+
+// ---- Gems by shape (colour-blind safe, BUILD_BRIEF M8): each gem has its
+// own rough habit and its own cut, so they read without colour.
+// Rough: garnet a rounded dodecahedron, peridot a stubby squat prism,
+// aquamarine one long hexagonal column, starstone a spiky star cluster.
+export function gemRough(form, seed = 5) {
+  const rock = P(new THREE.DodecahedronGeometry(0.22, 0).scale(1, 0.5, 1).translate(0, -0.32, 0), 0x9a948a, 0.2, 9);
+  if (form === 'dodeca') return merge([P(new THREE.DodecahedronGeometry(0.3, 0).translate(0, -0.02, 0), 0xffffff, 0.1, seed), rock]);
+  if (form === 'column') return merge([P(lathe([[0, 0], [0.13, 0.02], [0.13, 0.62], [0, 0.78]], 6), 0xffffff, 0.08, seed).translate(0, -0.34, 0).rotateZ(0.25), rock]);
+  if (form === 'squat') {
+    const parts = [];
+    for (const [x, z, h] of [[0, 0, 0.32], [0.14, 0.06, 0.24], [-0.12, 0.1, 0.22]]) parts.push(P(new THREE.BoxGeometry(0.17, h, 0.17).translate(x, -0.3 + h / 2 + 0.05, z).rotateY(x * 3), 0xffffff, 0.1, seed));
+    return merge([...parts, rock]);
+  }
+  if (form === 'star') {
+    const parts = [];
+    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; parts.push(P(new THREE.ConeGeometry(0.07, 0.42, 4).translate(0, 0.21, 0).rotateZ(Math.PI / 2 - 0.3).rotateY(a).translate(0, -0.08, 0), 0xffffff, 0.08, seed + i)); }
+    parts.push(P(new THREE.IcosahedronGeometry(0.14, 0).translate(0, -0.08, 0), 0xffffff, 0.08, seed));
+    return merge([...parts, rock]);
+  }
+  return crystals(seed, 3);
+}
+// Cuts: garnet a round brilliant, peridot a rectangular step cut,
+// aquamarine a long oval, starstone a six-pointed star cut.
+export function gemCut(form) {
+  if (form === 'step') { const g = new THREE.CylinderGeometry(0.36, 0.5, 0.26, 4, 1).rotateY(Math.PI / 4).scale(1.25, 1, 0.8); const p = new THREE.CylinderGeometry(0.5, 0.06, 0.32, 4, 1).rotateY(Math.PI / 4).scale(1.25, 1, 0.8).translate(0, -0.29, 0); return merge([P(g, 0xffffff, 0.04), P(p, 0xffffff, 0.04, 2)]); }
+  if (form === 'oval') return P(lathe([[0, -0.4], [0.42, -0.02], [0.42, 0.05], [0.28, 0.18], [0, 0.18]], 10).scale(1.45, 1, 0.8), 0xffffff, 0.04);
+  if (form === 'star') { const s = new THREE.Shape(); for (let i = 0; i < 12; i++) { const r = i % 2 ? 0.24 : 0.5, a = i * Math.PI / 6; s[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r); } const g = new THREE.ExtrudeGeometry(s, { depth: 0.2, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.05, bevelSegments: 1 }); g.rotateX(-Math.PI / 2); return P(g, 0xffffff, 0.04); }
+  return cutGem();
 }

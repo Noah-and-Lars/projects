@@ -119,6 +119,12 @@ Deeper loads give heavier finds. Tools clink, throw sparks and tell you the
 tier you need when a band is too hard. More than 60 resting finds of one kind
 merge into a pile so the physics stays cheap.
 
+- **Fill and level.** On your own claim, RMB with a loaded shovel packs the
+  load back into the ground; RMB with an empty shovel levels the ground to
+  where you aim.
+- **Dirt piles.** A dozen dumped clods resting together merge into a dirt
+  pile. E takes a clod; a shovel, bucket or pan scoops a load from it.
+
 ## Town and money
 
 Millbrook sits across the bridge from the Gravel Bar.

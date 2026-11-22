@@ -37,15 +37,18 @@ export function nuggetSize(kg, material, stage) {
 export const FORMS = {
   copper: { nugget: 'lump', ingot: 'round', glyph: '●' }, iron: { nugget: 'block', ingot: 'bar', glyph: '■' },
   silver: { nugget: 'flake', ingot: 'hex', glyph: '⬢' }, gold: { nugget: 'pebble', ingot: 'trap', glyph: '▲' },
-  glimmerite: { nugget: 'crystal', ingot: 'hex', glyph: '✦' }, emberite: { nugget: 'shard', ingot: 'bar', glyph: '✸' },
-  quartz: { glyph: '◇' }, garnet: { glyph: '◆' }, peridot: { glyph: '◆' }, aquamarine: { glyph: '◆' }, starstone: { glyph: '★' },
+  glimmerite: { nugget: 'crystal', ingot: 'tri', glyph: '✦' }, emberite: { nugget: 'shard', ingot: 'step', glyph: '✸' },
+  // Gems: a rough habit and a cut each, plus a glyph, so none relies on colour.
+  quartz: { glyph: '◇' }, garnet: { rough: 'dodeca', cut: 'brilliant', glyph: '⬟' }, peridot: { rough: 'squat', cut: 'step', glyph: '▰' },
+  aquamarine: { rough: 'column', cut: 'oval', glyph: '⬭' }, starstone: { rough: 'star', cut: 'star', glyph: '★' },
 };
 export function nuggetGeometry(kind, seed = 3, shape = '', material = '') {
   const F = FORMS[material] || {};
-  if (shape === 'cut') return M.cutGem();
+  if (shape === 'cut') return F.cut ? M.gemCut(F.cut) : M.cutGem();
   if (shape === 'ingot' || shape === 'hot') return M.ingot(F.ingot);
   if (F.nugget === 'crystal') { const g = M.crystals(seed, 4); g.scale(0.85, 0.85, 0.85); return g; }
   if (kind === 'metal') return M.nugget(seed, F.nugget);
+  if (kind === 'gem' && F.rough) { const g = M.gemRough(F.rough, seed); g.scale(0.9, 0.9, 0.9); return g; }
   if (kind === 'gem' || kind === 'fuel') { const g = M.crystals(seed, kind === 'gem' ? 3 : 5); g.scale(0.9, 0.9, 0.9); return g; }
   return M.nugget(seed);
 }

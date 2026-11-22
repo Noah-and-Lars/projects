@@ -124,12 +124,13 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       }
       await R.tick(120);
       const nug = [...R.items.ents.values()].filter(e => e.type === 'nugget' && e.loc === 'loose').length;
-      const clods = [...R.items.ents.values()].filter(e => e.type === 'clod').length;
+      // Dumped loads: loose clods, or merged into dirt piles.
+      const clods = [...R.items.ents.values()].reduce((a, e) => a + (e.type === 'clod' ? 1 : e.type === 'dirtpile' ? e.data.loads.length : 0), 0);
       R.noRender(false);
       return { holes, washed, finds, nug, clods, pan: pan.data, log: R._panLog || '' };
     });
     check(r.holes >= 50, `dug ${r.holes} holes with the shovel`);
-    check(r.clods >= 50, `${r.clods} dirt clods dumped as props`);
+    check(r.clods >= 50, `${r.clods} dumped loads as clods or dirt piles`);
     if (r.log) console.log('     pan log: ' + r.log);
     check(r.washed === 20, `panned ${r.washed} loads in the river (finds: ${[...new Set(r.finds)].join(', ')})`);
     check(r.nug >= 20, `${r.nug} finds lying loose on the bank`);
@@ -146,6 +147,31 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return { made, before, after: R.items.counts(), awake: R.physics.stats.awake, stepMs: R.physics.stats.stepMs };
     });
     check(pile.after.piles >= 1, `80 resting copper nuggets merged into ${pile.after.piles} pile(s) (${pile.before.total} -> ${pile.after.total} entities)`);
+    // Terrain: a loaded shovel's RMB fills, an empty one levels; a dozen
+    // resting clods merge into a dirt pile you can scoop from.
+    const terr = await p.evaluate(async () => {
+      const R = __rill, H = R.hands, I = R.items, g = R.places.CLAIMS[0], vol = R.claims.volumes.get('gravel'); R.noRender(true);
+      const sx = g.x0 + 3, sz = g.z1 - 3, top = g.top;
+      const solid = () => { let n = 0; for (let i = 0; i < vol.dens.length; i++) if (vol.dens[i] > 0) n++; return n; };
+      for (const id of [H.hand, H.slot]) if (id) I.place(id, [g.cx, R.height(g.cx, g.cz) + 1, g.cz]); H.hand = H.slot = null;
+      const sh = H.give('shovel'); sh.data.loads.push({ band: 1, depth: 1 });
+      const s0 = solid();
+      H.shovelRmb({ kind: 'claim', vol, dist: 1.5, p: [sx, top, sz], n: [0, 1, 0] });
+      const s1 = solid();
+      H.shovelRmb({ kind: 'claim', vol, dist: 1.5, p: [sx, top - 0.1, sz], n: [0, 1, 0] });
+      const s2 = solid();
+      await R.claims.settle();
+      // Clods into a dirt pile.
+      const px = g.x0 - 6, pz = g.cz;
+      for (let i = 0; i < 14; i++) I.spawn('clod', [px + (i % 4) * 0.25, R.height(px, pz) + 0.3 + Math.floor(i / 4) * 0.3, pz + (i % 3) * 0.2], { data: { band: 1, depth: 1, loads: [{ band: 1, depth: 1 }] } });
+      for (let i = 0; i < 240; i++) await R.tick(1);
+      for (let k = 0; k < 4; k++) { await R.frames(2); I.mergePiles(); }
+      const pile = [...I.ents.values()].find(e => e.type === 'dirtpile');
+      const n0 = pile?.data.loads.length || 0;
+      if (pile) { const l = I.takeLoad(pile.id); if (l) sh.data.loads.push(l); }
+      return { filled: s1 - s0, levelled: s2 - s1, pile: n0, scooped: pile ? n0 - (I.get(pile.id)?.data.loads.length ?? 0) : 0 };
+    });
+    check(terr.filled > 0 && terr.levelled < 0 && terr.pile >= 12 && terr.scooped === 1, `RMB fill adds ground (+${terr.filled} voxels), RMB level cuts the mound (${terr.levelled}); 14 clods merged into a ${terr.pile}-load dirt pile, one load scooped back`);
     // Benchmark 1: continuous digging in Willow Bend (deeper claim).
     const bench = await p.evaluate(async () => {
       const R = __rill, w = R.places.CLAIMS[1], H = R.hands; R.noRender(true);

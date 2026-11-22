@@ -9,13 +9,15 @@
 // one InstancedMesh per material.
 import * as THREE from 'three';
 import { MATERIALS, itemValue, itemName } from '../defs/materials.js';
-import { TOOLS, toolDef, TOOL_BOX, nuggetSize, nuggetGeometry, nuggetMaterial, toolGeometry, clodGeometry, FORMS } from '../defs/items.js';
+import { TOOLS, toolDef, TOOL_BOX, nuggetSize, nuggetGeometry, nuggetMaterial, toolGeometry, clodGeometry, FORMS, BAND_DIRT } from '../defs/items.js';
+import { paint } from '../render/geom.js';
 
 // Other modules register meshes and colliders for their entity types
 // (sacks, machine crates...).
 export const EXTRA_MESH = {}, EXTRA_BOX = {}, EXTRA_CARD = {}, EXTRA_MASS = {};
 const CAP = 2048;           // instances per material
 const PILE_MIN = 60;        // items of one material/stage resting within 1 m merge
+const DIRT_PILE_MIN = 12;   // resting dirt clods within 1.2 m merge into a dirt pile
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _v = new THREE.Vector3(), _s = new THREE.Vector3();
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 
@@ -61,11 +63,13 @@ export function createItems({ scene, physics, materials }) {
     if (e.type === 'clod') return { type: 'box', hx: 0.18, hy: 0.12, hz: 0.18 };
     if (EXTRA_BOX[e.type]) { const b = EXTRA_BOX[e.type](e); return { type: 'box', hx: b[0], hy: b[1], hz: b[2] }; }
     if (e.type === 'pile') { const r = pileRadius(e); return { type: 'box', hx: r * 0.8, hy: r * 0.35, hz: r * 0.8 }; }
+    if (e.type === 'dirtpile') { const r = dirtRadius(e); return { type: 'box', hx: r * 0.75, hy: r * 0.3, hz: r * 0.75 }; }
     const b = TOOL_BOX[e.type] || [0.15, 0.15, 0.15];
     return { type: 'box', hx: b[0], hy: b[1], hz: b[2] };
   }
   // Game clock in seconds (for hot ingots); advanced by the sim tick.
   const pileRadius = (e) => 0.35 + Math.cbrt(e.data.kgs.length) * 0.09;
+  const dirtRadius = (e) => 0.4 + Math.cbrt(e.data.loads.length) * 0.13;
   function massOf(e) { if (e.item) return Math.max(0.2, e.item.kg); if (TOOLS[e.type]) return TOOLS[e.type].kg; if (EXTRA_MASS[e.type]) return EXTRA_MASS[e.type](e); return 3; }
 
   function makeMesh(e) {
@@ -78,6 +82,13 @@ export function createItems({ scene, physics, materials }) {
       geo = new THREE.ConeGeometry(r, r * 0.75, 9, 2).toNonIndexed();
       geo.translate(0, r * 0.2, 0);
       mat = instFor(e.data.material + ':' + (e.data.stage === 'ingot' ? 'ingot' : e.data.stage === 'cut' ? 'cut' : '')).mesh.material;
+    } else if (e.type === 'dirtpile') {
+      // A low mound, coloured by its most common band.
+      const r = dirtRadius(e), counts = {};
+      for (const l of e.data.loads) counts[l.band] = (counts[l.band] || 0) + 1;
+      const band = +Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 1;
+      geo = paint(new THREE.ConeGeometry(r, r * 0.6, 11, 2).toNonIndexed(), BAND_DIRT[band] || BAND_DIRT[1], 0.12, e.id % 97);
+      geo.translate(0, r * 0.12, 0);
     } else geo = toolGeometry(e.type, e.data);
     const m = new THREE.Mesh(geo, mat);
     m.castShadow = m.receiveShadow = true;
@@ -103,6 +114,8 @@ const PLAIN_KEYS = new Set(['material', 'stage', 'kg', 'hotUntil']);
       meshes.set(e.id, m); group.add(m);
     }
   }
+  // A pile that grew or shrank: new mesh and collider.
+  function reshape(p) { unbody(p.id); hide(p); addBody(p); show(p); }
   function hide(e) {
     if (isInst(e) && e.slot !== undefined) {
       { const I = instFor(e.ikey || instKey(e)); I.mesh.setMatrixAt(e.slot, ZERO); I.free.push(e.slot); I.used[e.slot] = 0; I.dirty = true; e.slot = undefined; }
@@ -112,7 +125,7 @@ const PLAIN_KEYS = new Set(['material', 'stage', 'kg', 'hotUntil']);
   const unbody = (id) => { if (!api.remote) physics.removeBody(id); };
   function addBody(e, vel) {
     if (api.remote) return;
-    physics.addBody({ id: e.id, shape: shapeOf(e), pos: e.pos, quat: e.quat, vel, mass: massOf(e), kinematic: e.type === 'pile', friction: 0.8, angDamp: 0.6 });
+    physics.addBody({ id: e.id, shape: shapeOf(e), pos: e.pos, quat: e.quat, vel, mass: massOf(e), kinematic: e.type === 'pile' || e.type === 'dirtpile', friction: 0.8, angDamp: 0.6 });
   }
 
   const api = {
@@ -196,6 +209,7 @@ const PLAIN_KEYS = new Set(['material', 'stage', 'kg', 'hotUntil']);
         const kg = e.data.kgs.reduce((a, b) => a + b, 0), m = MATERIALS[e.data.material];
         return { name: `Pile of ${m.name.toLowerCase()} ${e.data.stage === 'ore' ? 'nuggets' : e.data.stage}`, lines: [`${e.data.kgs.length} pieces · ${kg.toFixed(1)} kg`, m.kind === 'fuel' ? 'Fuel' : `≈ § ${e.data.kgs.reduce((a, k) => a + itemValue({ material: e.data.material, stage: e.data.stage, kg: k }), 0).toFixed(0)}`, 'E takes one'] };
       }
+      if (e.type === 'dirtpile') return { name: 'Dirt pile', lines: [`${e.data.loads.length} gravel loads`, 'LMB with a shovel, bucket or pan scoops a load', 'E takes a clod'] };
       if (EXTRA_CARD[e.type]) return EXTRA_CARD[e.type](e);
       if (e.type === 'clod') return e.data.ore ? { name: 'Ore clod', lines: ['Hard rock from deep down', 'Crush it in a Stamp Mill for 3 loads'] } : { name: 'Dirt clod', lines: ['1 gravel load', 'Wash it in a pan or sluice'] };
       if (TOOLS[e.type]) { const t = toolDef(e), n = e.data.loads?.length || 0; return { name: t.name, badge: 'Tier ' + ['', 'I', 'II', 'III', 'IV'][t.tier], lines: [t.loads ? `${n}/${t.loads} loads` : 'Breaks ground fast', e.data.contents?.length ? `${e.data.contents.length} finds inside` : null].filter(Boolean) }; }
@@ -241,7 +255,43 @@ const PLAIN_KEYS = new Set(['material', 'stage', 'kg', 'hotUntil']);
         api.spawn('pile', [c[0], minY, c[2]], { data: { material, stage, kgs } });
         made++;
       }
+      // Resting dirt clods: into a dirt pile nearby, or a new one once a dozen
+      // gather (BUILD_BRIEF 4: a dumped load becomes a clod and merges into piles).
+      const clods = [];
+      for (const e of ents.values()) {
+        if (e.type !== 'clod' || e.loc !== 'loose' || e.data.ore) continue;
+        const pose = physics.poses.get(e.id); if (!pose || !pose.asleep) continue;
+        if (api.noMerge.some(f => f(e.pos))) continue;
+        clods.push(e);
+      }
+      if (clods.length) {
+        const piles = [...ents.values()].filter(e => e.type === 'dirtpile' && e.loc === 'loose');
+        const left = [];
+        for (const e of clods) {
+          const p = piles.find(q => q.data.loads.length < 200 && Math.hypot(q.pos[0] - e.pos[0], q.pos[2] - e.pos[2]) < dirtRadius(q) + 0.4 && Math.abs(q.pos[1] - e.pos[1]) < 1.2);
+          if (p) { p.data.loads.push(...(e.data.loads || [{ band: e.data.band, depth: e.data.depth }])); api.remove(e.id); reshape(p); made++; }
+          else left.push(e);
+        }
+        const done = new Set();
+        for (const e of left) {
+          if (done.has(e.id)) continue;
+          const group = left.filter(q => !done.has(q.id) && Math.hypot(q.pos[0] - e.pos[0], q.pos[2] - e.pos[2]) < 1.2 && Math.abs(q.pos[1] - e.pos[1]) < 1);
+          if (group.length < DIRT_PILE_MIN) continue;
+          const c = [0, Infinity, 0]; for (const q of group) { c[0] += q.pos[0] / group.length; c[2] += q.pos[2] / group.length; c[1] = Math.min(c[1], q.pos[1]); done.add(q.id); }
+          const loads = group.flatMap(q => q.data.loads || [{ band: q.data.band, depth: q.data.depth }]);
+          for (const q of group) api.remove(q.id);
+          api.spawn('dirtpile', [c[0], c[1] - 0.05, c[2]], { data: { loads } });
+          made++;
+        }
+      }
       return made;
+    },
+    // A load out of a dirt pile (scooped with a tool, or taken as a clod).
+    takeLoad(id) {
+      const p = ents.get(id); if (!p || p.type !== 'dirtpile' || !p.data.loads.length) return null;
+      const load = p.data.loads.pop();
+      if (!p.data.loads.length) api.remove(id); else reshape(p);
+      return load;
     },
     // Take one nugget out of a pile (the heaviest); the pile shrinks.
     takeFromPile(id) {

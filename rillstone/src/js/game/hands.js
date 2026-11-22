@@ -177,6 +177,27 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     H.onDig?.(info.vol, c, def.dig);
     return load;
   }
+  // RMB with a shovel on your own claim: a loaded shovel packs its load back
+  // into the ground (a fill brush); an empty one levels the ground to the
+  // height you aim at (a flatten brush). BUILD_BRIEF 4: dig, fill, flatten.
+  function shovelRmb(info) {
+    const e = heldEnt(); if (!e || e.type !== 'shovel' || info.kind !== 'claim' || !(info.dist < REACH)) return false;
+    if (H.owns && !H.owns(info.vol.id)) { say(`${info.vol.def.name} isn't yours`, 'err'); audio.play('error'); return true; }
+    const def = toolDef(e);
+    if (e.data.loads.length) {
+      const load = e.data.loads.pop(); items.refresh(e.id);
+      const n = info.n || [0, 1, 0], c = [info.p[0] + n[0] * def.dig * 0.4, info.p[1] + n[1] * def.dig * 0.4, info.p[2] + n[2] * def.dig * 0.4];
+      brush(info.vol, c, def.dig, 'fill', def.tier);
+      audio.play('pour'); H.play('dump'); fx.burst(info.p, BAND_DIRT[1], 8, { speed: 1, size: 0.05, life: 0.4, up: 0.6 });
+      void load;
+    } else {
+      const r = brush(info.vol, info.p, 0.9, 'flatten', def.tier);
+      if (r.blockedBand) say(`Too hard to level: ${BAND_NAMES[r.blockedBand]}`, 'err');
+      audio.play('dig', 1); H.play('dig'); fx.burst(info.p, BAND_DIRT[1], 6, { speed: 1.2, size: 0.05, life: 0.4 });
+    }
+    return true;
+  }
+  H.shovelRmb = shovelRmb;
   function addLoad(e, load) { e.data.loads.push(load); items.refresh(e.id); }
   function dumpClod(load, p, anim = true) { items.spawn('clod', [p[0], p[1] + 0.2, p[2]], { data: { band: load.band, depth: load.depth, loads: [load], ore: !!load.ore } }); audio.play('pour'); if (anim) H.play('dump'); fx.burst(p, BAND_DIRT[load.band], 8, { speed: 1, size: 0.05, life: 0.4, up: 0.6 }); }
   function containerCanTake(e) { return e && (e.type === 'pan' || e.type === 'bucket') && e.data.loads.length < toolDef(e).loads && !(e.type === 'pan' && e.data.contents.length >= PAN_FINDS); }
@@ -242,6 +263,14 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     }
     if (e.type === 'shovel' || e.type === 'bucket' || e.type === 'pan') {
       const loads = e.data.loads, cap = def.loads;
+      // Scoop a load back out of a dirt pile.
+      if (info.kind === 'item' && info.ent?.type === 'dirtpile' && near) {
+        if (loads.length >= cap || (e.type === 'pan' && e.data.contents.length >= PAN_FINDS)) { say(`${def.name} is full`); return; }
+        const l = items.takeLoad(info.ent.id); if (!l) return;
+        addLoad(e, l); audio.play('dig', l.band); H.play(e.type === 'shovel' ? 'dig' : 'scoop');
+        fx.burst(info.p, BAND_DIRT[l.band] || BAND_DIRT[1], 8, { speed: 1.4, size: 0.05, life: 0.4 });
+        return l;
+      }
       if (e.type === 'pan') {
         const finds = e.data.contents.length;
         if (info.kind === 'water' && near && loads.length) { if (finds >= PAN_FINDS) { say(`The pan holds ${PAN_FINDS} finds — tip them out first`, 'err'); return; } return wash(e); }
@@ -311,6 +340,11 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       } else { say('Hands full — G to drop, Q to swap'); audio.play('error'); return false; }
     }
     if (target.type === 'pile') { const n = items.takeFromPile(target.id); H.hand = n.id; audio.play('pickup'); H.play('equip'); return true; }
+    if (target.type === 'dirtpile') {
+      const l = items.takeLoad(target.id); if (!l) return false;
+      const c = items.spawn('clod', [0, 0, 0], { data: { band: l.band, depth: l.depth, loads: [l] }, loc: 'held' });
+      H.hand = c.id; audio.play('pickup'); H.play('equip'); return true;
+    }
     items.take(target.id, 'held');
     H.hand = target.id;
     audio.play('pickup'); H.play('equip');
@@ -360,9 +394,11 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
         else if (loads) parts.push('Dip the pan in the river');
         else if (finds) parts.push(`${finds} find${finds > 1 ? 's' : ''} in the pan · tip them out on dry ground or a counter`);
       } else if (def && def.loads) {
-        if (info.kind === 'claim' && near && e.data.loads.length < def.loads) parts.push(`${k('LMB')} dig`);
+        if (info.kind === 'item' && info.ent?.type === 'dirtpile' && near && e.data.loads.length < def.loads) parts.push(`${k('LMB')} scoop a load`);
+        else if (info.kind === 'claim' && near && e.data.loads.length < def.loads) parts.push(`${k('LMB')} dig`);
         else if (e.data.loads.length && info.kind === 'item' && containerCanTake(info.ent) && near) parts.push(`${k('LMB')} pour into ${TOOLS[info.ent.type].name.toLowerCase()}`);
         else if (e.data.loads.length && near) parts.push(`${k('LMB')} dump`);
+        if (e.type === 'shovel' && info.kind === 'claim' && near && (!H.owns || H.owns(info.vol.id))) parts.push(`${k('RMB')} ${e.data.loads.length ? 'fill' : 'level'}`);
       } else if (e.type === 'pick' && info.kind === 'claim' && near) parts.push(`${k('LMB')} break ground`);
       else if (e.type === 'clod' && info.kind === 'item' && containerCanTake(info.ent) && near) parts.push(`${k('LMB')} put in ${TOOLS[info.ent.type].name.toLowerCase()}`);
       if (H.precise && e.type !== 'crate') return `Release ${k('G')} to drop · ${k('R')}/${k('T')}/${k('Y')} turn (Ctrl reverses) · wheel: reach ${H.reach.toFixed(1)} m`;
@@ -414,6 +450,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
         const held = heldEnt();
         if (held && held.type === 'coil' && H.machines.runStart(held)) { H.machines.cancelRun(held); say('Run cancelled'); }
         else if (H.secHook?.(info, H)) { /* a bedroll: sleep */ }
+        else if (held && held.type === 'shovel' && info.kind === 'claim' && shovelRmb(info)) { /* fill or flatten */ }
         else if (info.kind === 'machine' && info.dist < REACH + 0.5 && !info.m.run) {
           if (held && held.type === 'mallet') { info.m.locked = false; audio.play('pickup'); say(`${H.machines.name(info.m.def)} unlocked`); }
           else H.machines.openPanel(info.id);
@@ -499,7 +536,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     }
     if (input.pressed('secondary') && H.machines) {
       if (e && e.type === 'coil' && H.machines.runStart(e)) H.remote({ k: 'sec' });
-      else if (info.kind === 'item' && info.ent?.type === 'bedroll' && info.dist < REACH) H.remote({ k: 'rmb' });
+      else if ((info.kind === 'item' && info.ent?.type === 'bedroll' && info.dist < REACH) || (e && e.type === 'shovel' && info.kind === 'claim' && info.dist < REACH)) { H.remote({ k: 'rmb' }); if (e?.type === 'shovel') H.play('dig'); }
       else if (info.kind === 'machine' && info.dist < REACH + 0.5 && !info.m.run) {
         if (e && e.type === 'mallet') H.remote({ k: 'unlock', id: info.id });
         else H.machines.openPanel(info.id);

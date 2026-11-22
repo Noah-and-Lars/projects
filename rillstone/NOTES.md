@@ -939,3 +939,26 @@ so far:
   the Gem Buyer. That was the player's own request during development:
   "make it so uncut gems has its own store and the other store takes
   everything else".
+- **Fill and level (§4: dig, fill, flatten):**
+  - RMB with a loaded shovel on your own claim packs the load back into the
+    ground (a fill brush);
+  - RMB with an empty shovel levels the ground to the height you aim at, in
+    a 0.9 m cylinder (a new `flatten` brush mode);
+  - filled ground is always loose dirt (band 1), so re-digging it can't
+    turn up slate loot;
+  - co-op replays both through the existing brush op.
+- **Dirt piles (§4):**
+  - a dozen resting dirt clods within 1.2 m merge into a dirt pile that
+    holds their loads, and more clods dropped beside a pile join it;
+  - E takes a clod back out, and LMB with a shovel, bucket or pan scoops a
+    load;
+  - ore clods stay single.
+  - (Replaces the old "Dirt clods don't merge yet".)
+- **Colour-blind-safe gems (§11 M8):** each gem now has its own rough shape,
+  cut and glyph:
+  - garnet: dodecahedron, round brilliant, ⬟;
+  - peridot: squat block prisms, rectangular step cut, ▰;
+  - aquamarine: one long hex column, long oval, ⬭;
+  - starstone: spiky star cluster, six-point star cut, ★.
+  - Glimmerite and emberite ingots no longer reuse silver's and iron's
+    shapes: glimmerite is a triangular prism, emberite a stepped block.
