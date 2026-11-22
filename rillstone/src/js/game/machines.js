@@ -159,7 +159,9 @@ export function createMachines({ scene, physics, materials, items, claims, water
       physics.post({ op: 'batch', ops: colliders(m, true) });
       for (const r of [...list.values()]) if (r.run && (r.a.m === id || r.b.m === id)) api.remove(r.id);
       // Anything riding a removed belt drops off.
-      for (const q of m.state?.lanes || []) for (const it of q) { const e = items.get(it.eid); if (e) { items.hideEnt(e); e.loc = 'held'; items.place(e.id, [e.pos[0], e.pos[1] + 0.1, e.pos[2]]); } }
+      for (const q of m.state?.lanes || []) for (const it of q) { const e = items.get(it.eid); if (e && e.loc === 'belt') { items.hideEnt(e); e.loc = 'held'; items.place(e.id, [e.pos[0], e.pos[1] + 0.1, e.pos[2]]); } }
+      // The lanes are empty now (a crate keeps this state for re-placing).
+      if (m.state?.lanes) m.state.lanes = m.state.lanes.map(() => []);
     }
     list.delete(id); dirty = true;
   };
@@ -256,18 +258,25 @@ export function createMachines({ scene, physics, materials, items, claims, water
     const silt = r.net?.silt ?? 0;
     if (sat > 0) m.wear = Math.min(1, m.wear + wearRate(silt) * dt * (m.speed > 0 ? 1 : 0));
     if (m.wear > 0.6 && Math.random() < dt * 0.6 && fx) fx.burst(toWorld(m, [0, 1.0, 0]), 0xffd27a, 6, { speed: 2, size: 0.025, life: 0.3 });
+    // A drill that can't dig at all says why (it's kept off the water network
+    // for that, so "no water" would flicker with it every other tick).
+    if (m.def.startsWith('drill')) { const why = drillBlock(m, def); if (why) { m.status = why; return; } }
     if (sat <= 0) { m.status = 'no water'; return; }
     if (m.def.startsWith('drill')) drillTick(m, def, dt);
     else if (def.hopper) sluiceTick(m, def, sat, dt);
   }
-  function drillTick(m, def, dt) {
+  // Why a drill can't dig here at all (null when it can); sets m.band/depth.
+  function drillBlock(m, def) {
     const vol = claims.volumeAt(m.pos[0], m.pos[2], m.pos[1]);
-    if (!vol || !economy.owns(vol.id)) { m.status = 'no claim'; return; }
-    if (def.emberOnly && vol.id !== 'ember') { m.status = 'Ember Seam only'; return; }
-    const tipY = m.pos[1] - def.tipDepth, depth = vol.depthAt(m.pos[0], tipY);
+    if (!vol || !economy.owns(vol.id)) return 'no claim';
+    if (def.emberOnly && vol.id !== 'ember') return 'Ember Seam only';
+    const depth = vol.depthAt(m.pos[0], m.pos[1] - def.tipDepth);
     const band = depth > vol.def.depth ? BEDROCK : bandAtDepth(Math.max(0, depth));
-    m.band = band; m.depth = depth;
-    if (band === BEDROCK || band > def.tier) { m.status = 'too hard'; return; }
+    m.band = band; m.depth = depth; m._vol = vol;
+    return band === BEDROCK || band > def.tier ? 'too hard' : null;
+  }
+  function drillTick(m, def, dt) {
+    const vol = m._vol, tipY = m.pos[1] - def.tipDepth, depth = m.depth, band = m.band;
     m.state.progress += dt * m.speed / def.period;
     m.status = 'running';
     if (m.state.progress >= 1) {
@@ -306,6 +315,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
     if (target) {
       if (what.load && MACHINES[target.def].hopper && !MACHINES[target.def].role.startsWith('belt')) {
         if (target.state.loads.length >= MACHINES[target.def].hopper) return false;
+        if (MACHINES[target.def].tier && what.load.band > MACHINES[target.def].tier) return false; // too hard for that sluice
         target.state.loads.push(what.load); return true;
       }
       if (api.accept) { const r = api.accept(target, what, link.s, m); if (r !== undefined) return r; }
@@ -340,8 +350,8 @@ export function createMachines({ scene, physics, materials, items, claims, water
       const melt = Math.min(s.ore, def.meltRate * dt * (def.role === 'consumer' ? (m.speed || 0.2) : 1));
       s.ore -= melt; s.molten += melt;
       for (const r of s.reheat) r.t += dt;
-      const done = s.reheat.filter(r => r.t >= 20); s.reheat = s.reheat.filter(r => r.t < 20);
-      for (const r of done) output(m, { item: { ...r.item, hotUntil: items.clock + 90 } });
+      // A finished ingot the way out refuses (a full belt or bin) waits inside.
+      s.reheat = s.reheat.filter(r => r.t < 20 || !output(m, { item: { ...r.item, hotUntil: items.clock + 90 } }));
     }
     if (m._glow) m._glow.material.opacity = hot && (s.ore > 0 || s.molten > 0 || s.reheat.length) ? 0.55 + Math.sin(api.clock * 9) * 0.1 : 0;
   }
@@ -350,8 +360,10 @@ export function createMachines({ scene, physics, materials, items, claims, water
     const m = list.get(id); if (!m || !m.state || m.state.molten < 0.05) return null;
     const kg = Math.round(m.state.molten * 1000) / 1000;
     const it = { material: m.state.material, stage: 'ingot', kg, hotUntil: items.clock + 90 };
+    const mat = m.state.material;
     m.state.molten = 0; if (m.state.ore <= 0) m.state.material = null;
-    output(m, { item: it });
+    // Nothing is deleted: if the out port refuses the ingot, the metal stays molten.
+    if (output(m, { item: it }) === false) { m.state.molten = kg; m.state.material = mat; hud.toast('The way out is blocked: clear the belt or bin first', 'err'); audio.play('error'); return null; }
     audio.play('pour'); hud.toast(`Poured a ${kg.toFixed(1)} kg ${MATERIALS[it.material].name.toLowerCase()} ingot`, 'gold');
     return it;
   };
@@ -430,7 +442,12 @@ export function createMachines({ scene, physics, materials, items, claims, water
   function openCraft(held, H) {
     // A co-op guest's workbench: the menu opens on their screen instead.
     if (H.remoteCraft) return H.remoteCraft(held);
-    api.openCraftMenu(held, H, (k) => { craft(held, H, k); panels.close(); });
+    api.openCraftMenu(held, H, (k) => {
+      // The menu can stay open a while: check the ingot is still in hand and hot.
+      if (H.hand !== held.id || !items.get(held.id)) { panels.close(); return; }
+      if (!(held.item.hotUntil > items.clock)) { hud.toast('It cooled while you chose — reheat it in a kiln', 'err'); panels.close(); return; }
+      craft(held, H, k); panels.close();
+    });
   }
   api.openCraftMenu = (held, H, onMake) => {
     const gem = H.slot ? items.get(H.slot) : null;
@@ -562,6 +579,9 @@ export function createMachines({ scene, physics, materials, items, claims, water
   // ---- Saves ----
   api.serialize = () => [...list.values()].map(m => m.run ? { id: m.id, run: true, tier: m.tier, a: m.a, b: m.b } : { id: m.id, def: m.def, pos: m.pos, rot: m.rot, locked: m.locked, wear: m.wear, on: m.on, state: m.state });
   api.restore = (arr) => {
+    // Old belts' riders belong to the world being replaced: the ids may
+    // now name the loaded world's items, so don't drop them.
+    for (const m of list.values()) if (m.state?.lanes) m.state.lanes = m.state.lanes.map(() => []);
     for (const id of [...list.keys()]) api.remove(id);
     for (const d of arr || []) if (!d.run) api.place(d.def, d.pos, d.rot, d.state, { id: d.id, locked: d.locked, wear: d.wear, on: d.on });
     for (const d of arr || []) if (d.run) api.layRun(d.tier, d.a, d.b, { id: d.id });

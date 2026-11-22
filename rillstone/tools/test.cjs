@@ -442,6 +442,17 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     // Pipes and machines survive a save round-trip.
     const saved = await p.evaluate(() => { const R = __rill; const s = R.snapshot(); return { n: s.machines.length, runs: s.machines.filter(m => m.run).length }; });
     check(saved.n >= 7 && saved.runs === 3, `snapshot keeps ${saved.n} machines and ${saved.runs} pipe runs`);
+    // Picking up a belt drops its riders and leaves no lane entries behind
+    // (they used to come back, tied to the items, when it was re-placed).
+    const belt = await p.evaluate(async () => {
+      const R = __rill, Mc = R.machines, g = R.places.CLAIMS[0];
+      const b = Mc.place('belt', [g.x1 - 4, g.top, g.z1 - 3], 0, {});
+      const n = R.items.spawn('nugget', [g.x1 - 4, g.top + 0.4, g.z1 - 3], { item: { material: 'iron', kg: 0.4, stage: 'ore' }, loc: 'held' });
+      n.loc = 'belt'; b.state.lanes[0].push({ eid: n.id, s: 0.5 });
+      const keep = b.state; Mc.remove(b.id);
+      return { loc: R.items.get(n.id).loc, left: keep.lanes.reduce((a, q) => a + q.length, 0) };
+    });
+    check(belt.loc === 'loose' && belt.left === 0, `a removed belt drops its riders (${belt.loc}) and keeps no lane entries (${belt.left})`);
   }
 
   if (all || flags.has('--belts')) {

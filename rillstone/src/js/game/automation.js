@@ -205,7 +205,9 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
   // ---- Shaft power: wheels and turbines drive shaft machines nearby ----
   function shaftTick() {
     const providers = [...list.values()].filter(m => !m.run && D[m.def].shaft);
-    const users = [...list.values()].filter(m => !m.run && D[m.def].role === 'shaftuser' && m.on);
+    const all = [...list.values()].filter(m => !m.run && D[m.def].role === 'shaftuser');
+    for (const u of all) if (!u.on) { u.speed = 0; u.status = 'off'; u._provider = null; }
+    const users = all.filter(m => m.on);
     for (const p of providers) { const def = D[p.def]; p.shaftUnits = def.role === 'source' ? (machines.requirement(p.def, p.pos, p.rot) ? 0 : def.shaft) : def.shaft * (I.flowOf(p.id)?.satisfaction || 0); p._users = []; }
     for (const u of users) {
       let best = null, bd = SHAFT_RANGE;

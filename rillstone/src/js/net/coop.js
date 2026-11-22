@@ -76,6 +76,7 @@ export function createCoop(ctx) {
     }
   }
 
+  const takeSig = (it) => `${it.material}|${it.stage}|${it.kg}|${it.craft || ''}`;
   // ------------------------------------------------------------------- host
   function guestHud(g) {
     return { toast: (text, kind) => toGuest(g, { toast: [text, kind || ''] }), tooltip() {}, hint() {}, caption() {} };
@@ -131,7 +132,7 @@ export function createCoop(ctx) {
       const H = g.hands;
       if (a.k === 'use') H.use();
       else if (a.k === 'pick') H.pickup();
-      else if (a.k === 'drop') { if (a.ring) H.dropAt(a.ring, +a.yaw || 0, a.rot); else H.drop(); }
+      else if (a.k === 'drop') { if (a.ring) H.dropAt(a.ring, +a.yaw || 0, a.rot); else { if (a.reach) H.reach = Math.max(1.5, Math.min(6, +a.reach || 3.5)); H.drop(); } }
       else if (a.k === 'swap') H.swap();
       else if (a.k === 'sec') { const c = H.hand ? items.get(H.hand) : null; if (c?.type === 'coil') machines.cancelRun(c); }
       else if (a.k === 'unlock') { const m = machines.get(a.id); if (m) { m.locked = false; g.hands.hud.toast(`${machines.name(m.def)} unlocked`); } }
@@ -169,7 +170,12 @@ export function createCoop(ctx) {
       case 'vsell': town.sellVehicle(a.id); break;
       case 'pour': machines.pour(a.id); break;
       case 'interact': { const m = machines.get(a.id); if (m) auto.interact(m); break; }
-      case 'take': { const m = machines.get(a.id); if (m) auto.takeFrom(m, a.i, H); break; }
+      case 'take': {
+        // The guest saw item i; if the bin shifted since (an ejector), take the one that matches.
+        const m = machines.get(a.id), c = m?.state?.contents; if (!c) break;
+        const i = a.sig == null || (c[a.i] && takeSig(c[a.i]) === a.sig) ? a.i : c.findIndex(it => takeSig(it) === a.sig);
+        if (i >= 0) auto.takeFrom(m, i, H); break;
+      }
       case 'craft': { const held = H.hand ? items.get(H.hand) : null; if (held?.item?.stage === 'ingot' && held.item.hotUntil > items.clock && ['toolhead', 'ring', 'chain', 'chalice'].includes(a.kind)) machines.craft(held, H, a.kind); break; }
       case 'mset': { const m = machines.get(a.id); if (!m) break; if (typeof a.on === 'boolean') m.on = a.on; for (const k of SETTINGS) if (a.set && k in a.set) m.state[k] = a.set[k]; break; }
       case 'bedTake': bed.take(a.vid, a.ent, H); break;
@@ -364,7 +370,7 @@ export function createCoop(ctx) {
     town.sellVehicle = async (id) => { ui('vsell', { id }); return true; };
     machines.pour = (id) => ui('pour', { id });
     auto.interact = (m) => { ui('interact', { id: m.id }); return true; };
-    auto.takeFrom = (m, i) => ui('take', { id: m.id, i });
+    auto.takeFrom = (m, i) => ui('take', { id: m.id, i, sig: m.state.contents?.[i] ? takeSig(m.state.contents[i]) : null });
     bed.remote = (a) => ui(a.op, a);
     // Machine panel settings: after a click or change in an open machine
     // panel, send its settings on.

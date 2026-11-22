@@ -788,3 +788,38 @@ A read-only review found ten issues, all now fixed:
 - **HUD:** toasts used to draw behind the guide card, which sits in the
   same top-left corner. The card and the toasts now share one column, with
   toasts underneath.
+
+### Third review pass (machines, belts, hands, vehicles, input)
+
+1. **Picking up a belt.** It dropped its riders but kept their lane
+   entries, and the crate shared that state by reference. Re-placing the
+   belt pulled those items back onto it from wherever they were, a hand, a
+   pan or a truck bed included. Lanes are now emptied on removal, and the
+   crate keeps its own copy of the state. A co-op join also clears old
+   lanes before removing the guest's belts, because their item ids may now
+   name the host's items.
+2. **Blocked pours.** A pour or reheat whose out port refused the ingot (a
+   full belt or bin) deleted it. A refused pour now stays molten, and a
+   refused reheat waits inside.
+3. **Drill flicker.** A drill on rock too hard to dig switched between "too
+   hard" and "no water" every tick, so it took water and wore on alternate
+   ticks. Its blocking status now holds.
+4. **Shaft machines.** A stamp mill, trommel or lift that was switched off
+   kept working. It now stops.
+5. **Machine clock.** It is now saved. Button holds, delays and sirens keep
+   their times on it, and those broke after a load.
+6. **Drill to sluice.** A drill linked straight into a sluice's hopper now
+   respects the sluice's band limit.
+7. **Unplugged gamepad.** It no longer leaves its last stick and button
+   input held down.
+8. **Truck bed reach.** The hint, the drop ring and loading a bed now use
+   the same reach. Guests send their reach with the drop.
+9. **Precision drop.**
+   - R/T/Y and the wheel act only while G is held.
+   - The turn resets after each drop and never applies to crates.
+   - Opening a panel or losing pointer lock ends precision mode.
+10. **Small fixes.**
+    - The craft menu checks again that the ingot is still in hand and hot.
+    - "Take one" from a bin in co-op takes the item the guest saw, even if
+      the bin shifted.
+    - The tram's hover card no longer says "Fuel NaN%".

@@ -62,8 +62,9 @@ export function createInput(canvas, settings) {
     get reverse() { return down.has('ControlLeft') || down.has('ControlRight') || padReverse; },
     endFrame() { pressed.clear(); released.clear(); padReverse = false; },
     poll() { // gamepad, once per frame
-      const gp = navigator.getGamepads ? [...navigator.getGamepads()].find(g => g && g.connected) : null;
-      if (!gp) return;
+      let gp = navigator.getGamepads ? [...navigator.getGamepads()].find(g => g && g.connected) : null;
+      // Unplugged (or a flat battery): let go of everything it was holding.
+      if (!gp) { if (!pad.buttons.some(Boolean) && !pad.lx && !pad.ly && !pad.rx && !pad.ry) return; gp = { axes: [], buttons: pad.buttons.map(() => ({ pressed: false, value: 0 })) }; }
       const dz = (v) => Math.abs(v) < 0.12 ? 0 : v;
       pad.lx = dz(gp.axes[0] || 0); pad.ly = dz(gp.axes[1] || 0); pad.rx = dz(gp.axes[2] || 0); pad.ry = dz(gp.axes[3] || 0);
       pad.prev = pad.buttons; pad.buttons = gp.buttons.map(b => b.pressed || b.value > 0.5);

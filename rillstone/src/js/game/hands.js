@@ -291,7 +291,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       if (m.locked) { say('Locked — unlock it with the mallet (RMB)', 'err'); audio.play('error'); return false; }
       if (H.hand) { const cur = heldEnt(); if (TOOLS[cur.type] && !H.slot) { H.slot = H.hand; H.hand = null; } else { say('Hands full — G to drop, Q to swap'); return false; } }
       const c = items.spawn('crate', [0, 0, 0], { data: { def: m.def, family: H.machines.family(m.def), state: m.state, wear: m.wear }, loc: 'held' });
-      H.machines.remove(m.id); H.hand = c.id; audio.play('pickup'); H.play('equip');
+      H.machines.remove(m.id); c.data.state = structuredClone(c.data.state); H.hand = c.id; audio.play('pickup'); H.play('equip');
       return true;
     }
     // E on the truck opens its bed inventory.
@@ -327,7 +327,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
   function drop() {
     const e = heldEnt(); if (!e) return false;
     const info = aimInfo();
-    if (info.kind === 'vehicle' && info.dist < REACH) {
+    if (info.kind === 'vehicle' && info.dist < bedReach()) {
       const r = H.vehicles.addCargo(info.id, e, info.p);
       if (r === 'ok') { H.hand = null; audio.play('drop'); H.play('place'); return true; }
       say(r === 'full' ? 'The bed is full (60 items)' : r === 'heavy' ? 'Too heavy for the bed (2,000 kg)' : 'Aim at the truck bed', 'err'); return false;
@@ -336,10 +336,13 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (!H.ringOk) { say('No room there', 'err'); audio.play('error'); return false; }
     const hh = items.halfHeight(e);
     const yaw = Math.atan2(-camDir().x, -camDir().z);
-    items.place(e.id, [H.ringPos[0], H.ringPos[1] + hh + (H.dropRot.some(Boolean) ? items.shapeOf(e).hx : 0) + 0.02, H.ringPos[2]], dropQuat(yaw));
+    const rot = e.type === 'crate' ? [0, 0, 0] : H.dropRot;
+    items.place(e.id, [H.ringPos[0], H.ringPos[1] + hh + (rot.some(Boolean) ? items.shapeOf(e).hx : 0) + 0.02, H.ringPos[2]], dropQuat(yaw, rot));
     H.hand = null; audio.play('drop'); H.play('equip');
     return true;
   }
+  // The drop ring, the hint and loading a bed all use the same reach.
+  const bedReach = () => Math.max(REACH, H.reach);
   function swap() { const a = H.hand; H.hand = H.slot; H.slot = a; audio.play('pickup'); H.play('equip'); }
 
   function hint(info) {
@@ -379,7 +382,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (info.kind === 'prop' && info.dist < REACH + 0.5) { const t = H.props.hint(info.id); if (t) parts.unshift(`${k('E')} ${t}`); }
     if (info.kind === 'vehicle' && info.dist < 4) {
       if (e && e.type === 'sack') parts.unshift(`${k('LMB')} refuel`);
-      else if (e && info.bed) parts.unshift(`${k('G')} load into bed`);
+      else if (e && info.bed && info.dist < bedReach()) parts.unshift(`${k('G')} load into bed`);
       const vd = H.vehicles.list.get(info.id)?.def;
       if (vd?.bed) parts.push(`${k('E')} ${vd.kinematic ? 'tub' : 'bed'}`);
       parts.push(`${k('F')} ${vd?.kinematic ? 'send / stop' : 'drive'}`);
@@ -399,6 +402,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     });
     const info = aimInfo();
     H.cooldown -= dt;
+    if (!enabled) H.precise = false; // a panel or lost pointer lock ends precision placement
     if (enabled && H.remote) remoteControls(input, info);
     else if (enabled) {
       if (input.pressed('use') || (input.held('use') && H.cooldown <= -0.15)) {
@@ -450,7 +454,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (!card && info.kind === 'vehicle' && info.dist < 5) {
       const c = H.vehicles.cargoNear(info.id, info.p, 0.6);
       if (c) card = items.card(c.id);
-      else { const v = H.vehicles.list.get(info.id); card = { name: v.def.name, lines: [`Fuel ${Math.round(v.fuel / v.def.fuelMax * 100)}%`, `Bed: ${v.cargo.length} items · ${H.vehicles.cargoKg(info.id).toFixed(0)} kg`] }; }
+      else { const v = H.vehicles.list.get(info.id); card = { name: v.def.name, lines: [v.def.fuelMax ? `Fuel ${Math.round(v.fuel / v.def.fuelMax * 100)}%` : 'Rides the rails', `Bed: ${v.cargo.length} items · ${H.vehicles.cargoKg(info.id).toFixed(0)} kg`] }; }
     }
     hud.tooltip(card);
     H.hover = card ? { card, ref } : null;
@@ -499,8 +503,9 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
         else H.machines.openPanel(info.id);
       }
     }
-    if (e) dropControls(input, () => {
-      if (info.kind === 'vehicle' && info.dist < REACH) H.remote({ k: 'drop' });
+    if (!e) H.precise = false;
+    else dropControls(input, () => {
+      if (info.kind === 'vehicle' && info.dist < bedReach()) H.remote({ k: 'drop', reach: H.reach });
       else if (!H.ringPos) say('Aim at the ground to drop');
       else if (!H.ringOk) { say('No room there', 'err'); audio.play('error'); }
       else { const d = camDir(); H.remote({ k: 'drop', ring: H.ringPos, yaw: Math.atan2(-d.x, -d.z), rot: H.dropRot.slice() }); H.play('equip'); }
@@ -514,19 +519,19 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (input.pressed('drop') && e) H.precise = true;
     if (!e) H.precise = false;
     const w = input.wheel();
-    if (w && e && e.type !== 'crate') { H.reach = Math.max(1.5, Math.min(6, H.reach - w * 0.5)); say(`Reach ${H.reach.toFixed(1)} m`); }
-    if (e && e.type !== 'crate' && e.type !== 'coil' && (input.pressed('rotX') || input.pressed('rotY') || input.pressed('rotZ'))) {
+    if (w && e && H.precise && e.type !== 'crate') { H.reach = Math.max(1.5, Math.min(6, H.reach - w * 0.5)); say(`Reach ${H.reach.toFixed(1)} m`); }
+    if (e && H.precise && e.type !== 'crate' && e.type !== 'coil' && (input.pressed('rotX') || input.pressed('rotY') || input.pressed('rotZ'))) {
       const ax = input.pressed('rotX') ? 0 : input.pressed('rotY') ? 1 : 2;
       H.dropRot[ax] = (H.dropRot[ax] + (input.reverse ? 7 : 1)) % 8;
       say(`Turned ${['pitch', 'yaw', 'roll'][ax]} to ${H.dropRot[ax] * 45}°`);
     }
-    if (input.released('drop') && H.precise) { H.precise = false; if (e) doDrop(); }
+    if (input.released('drop') && H.precise) { H.precise = false; if (e) doDrop(); H.dropRot = [0, 0, 0]; }
   }
   // Host side: run a guest's drop at the ring they saw.
   H.dropAt = (ring, yaw, rot) => {
     const e = heldEnt(); if (!e) return false;
     const hh = items.halfHeight(e);
-    const r = Array.isArray(rot) && rot.length === 3 ? rot.map(v => (v | 0) % 8) : [0, 0, 0];
+    const r = e.type !== 'crate' && Array.isArray(rot) && rot.length === 3 ? rot.map(v => (v | 0) % 8) : [0, 0, 0];
     items.place(e.id, [ring[0], ring[1] + hh + (r.some(Boolean) ? items.shapeOf(e).hx : 0) + 0.02, ring[2]], dropQuat(yaw, r));
     H.hand = null; audio.play('drop');
     return true;

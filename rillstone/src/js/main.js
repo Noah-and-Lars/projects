@@ -227,7 +227,7 @@ async function boot() {
       saveVersion: SAVE_VERSION, seed: SEED, time: state.time, day: state.day, playTime: state.playTime,
       player: { pos: player.cur.toArray(), yaw: player.yaw, pitch: player.pitch }, hands: { hand: hands.hand, slot: hands.slot },
       items: items.serialize(), vehicles: vehicles.serialize(), economy: economy.serialize(), chunks,
-      machines: machines.serialize(), clock: items.clock, rails: heavy.serialize(),
+      machines: machines.serialize(), clock: items.clock, machineClock: machines.clock, rails: heavy.serialize(),
     };
   }
   async function restore(snap) {
@@ -235,6 +235,8 @@ async function boot() {
     await claims.settle();
     items.restore(snap.items || []);
     items.clock = snap.clock || 0;
+    // Logic gates keep times on the machine clock (button holds, delays, sirens).
+    machines.clock = snap.machineClock ?? snap.clock ?? 0;
     machines.restore(snap.machines || []);
     hands.hand = snap.hands?.hand ?? null; hands.slot = snap.hands?.slot ?? null;
     // A save made while hosting holds what guests were carrying as 'held'
