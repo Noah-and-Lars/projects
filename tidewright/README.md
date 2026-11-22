@@ -29,6 +29,12 @@ The build is a plain static site: `index.html`, one JS bundle, a CSS file, and a
 | Edit | R / T / Y rotate (Shift reverses) · Ctrl+Z / Ctrl+Y undo/redo · Ctrl+S save · F frame · G centre of mass · Enter test | | |
 | **Drive** | W/S throttle and brake (hold S at a stop to reverse) · A/D steer · Space handbrake · Q/E shift (manual gear stack) · R reset · C camera · L lamps · I ignition · Esc back to Yard | RT/LT · left stick · A handbrake · LB/RB shift · Y camera · X reset | steering pad, GAS / BRAKE / HAND pedals |
 
+## Boats and weather
+
+Build a hull from Plates, add a Burner engine, a Fuel tank, a Cell battery, a Helm seat, a **Screw** at the stern below the waterline, and a **Rudder** behind it. You can also open the starter **Skiff** from Fleet or New. The Yard's **Float** meter shows the reserve buoyancy; click it to see sealed air (cobalt) and open-top air (lagoon) inside the hull. Vehicles with screws launch at the nearest open water off the Yard pad.
+
+While driving, the top-left sheet sets the **sea state** (− / + or **Storm**, which builds the sea steadily) and the **time of day** (+3 h, pause). The ocean shader and the buoyancy use the same Gerstner wave function, so the waves you see are the waves the hull feels. An open boat swamps if its gunwale goes under.
+
 ## Code map
 
 ```
@@ -44,10 +50,12 @@ src/
     validator.ts      errors/warnings with the offending part ids ("Show" in the Yard)
     budget.ts         budget bar numbers
     terrain.ts        deterministic island heightmap (shared by worker and renderer)
-    tyre.ts, drivetrain.ts, vehicle-sim.ts   raycast wheels, engine/clutch/gears/diff
+    tyre.ts, drivetrain.ts, vehicle-sim.ts   raycast wheels, engine/clutch/gears/diff, buoyancy, screws, rudders
+    waves.ts          Gerstner ocean shared by CPU and shader
+    hydro.ts          hull analysis (sealed/open air), buoyancy points, thrust and plate maths
     presets.ts        starter vehicles
   physics/      PhysicsBackend interface, Rapier backend, SimHost, worker, main-thread client
-  render/       toon materials, vehicle mesher (greedy faces + voxel AO + outlines), terrain, sea, sky, scenery
+  render/       toon materials, vehicle mesher (greedy faces + voxel AO + outlines), terrain, Gerstner ocean, sky, scenery
   editor/       Yard editor, orbit camera, voxel picking
   game/         island world + test-drive session (camera, HUD, touch controls)
   input/        keyboard + gamepad + touch -> Controls
