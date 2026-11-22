@@ -1111,20 +1111,33 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     await p.screenshot({ path: `${out}/settings-keys.png` });
     await p.click('text=Reset to defaults', { timeout: 120000 });
     await p.evaluate(() => { __rill.menu.closeSettings(); __rill.menu.showPause(false); });
-    // Menu flows: a panel opened from the pause menu sits on top of it, and
-    // closing it brings the pause menu back (it used to leave no way out).
+    // Menu flows. A panel opened from the pause menu (Co-op) sits on top and
+    // closing it brings the pause menu back. The Saves page: save into a free
+    // slot, rename it, delete it (two clicks), and Esc returns to the pause menu.
     const flow = await p.evaluate(async () => {
-      const R = __rill, wait = (ms) => new Promise(r => setTimeout(r, ms));
-      R.state.mode = 'pause'; R.menu.showPause(true);
-      [...document.querySelectorAll('#scr-pause button')].find(b => b.textContent === 'Save game').click();
-      for (let i = 0; i < 100 && R.panels.current !== 'saves'; i++) await wait(50);
+      const R = __rill, wait = (ms) => new Promise(r => setTimeout(r, ms)), until = async (f, n = 600) => { for (let i = 0; i < n && !f(); i++) await wait(50); return f(); };
+      const pauseBtn = (label) => [...document.querySelectorAll('#scr-pause .menu-btn')].find(b => b.querySelector('b')?.textContent === label);
+      R.state.mode = 'pause'; R.state.playing = true; R.menu.showPause(true);
+      pauseBtn('Co-op').click(); await until(() => R.panels.current === 'coop');
       const r = document.querySelector('#scr-panel').getBoundingClientRect(), top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('.screen')?.id;
       R.panels.close();
       const back = R.menu.pauseShown && R.state.mode === 'pause';
+      pauseBtn('Saves').click();
+      const page = await until(() => document.querySelectorAll('#scr-saves .slot').length === 6);
+      const card = (n) => document.querySelector(`#scr-saves .slot:nth-child(${n})`);
+      const free = [...document.querySelectorAll('#scr-saves .slot')].findIndex(c => c.classList.contains('is-empty')) + 1;
+      [...card(free).querySelectorAll('button')].find(b => b.textContent.includes('Save here')).click();
+      const saved = await until(() => card(free) && !card(free).classList.contains('is-empty'));
+      await R.saves.rename(free, 'Test Claim'); await R.savesPage?.refresh?.();
+      card(free).querySelector('.icon-btn.danger').click(); await until(() => card(free).querySelector('.confirm'));
+      card(free).querySelector('.confirm .btn.danger').click();
+      const gone = await until(() => card(free) && card(free).classList.contains('is-empty'));
+      document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', bubbles: true })); window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
+      const escBack = await until(() => R.menu.pauseShown, 40);
       R.menu.showPause(false); R.state.mode = 'play';
-      return { top, back };
+      return { top, back, page, free, saved, gone, escBack };
     });
-    check(flow.top === 'scr-panel' && flow.back, `Save game from the pause menu sits on top (${flow.top}) and closing it returns to the pause menu`);
+    check(flow.top === 'scr-panel' && flow.back && flow.page && flow.saved && flow.gone && flow.escBack, `menus: Co-op from pause sits on top and closes back to it; the Saves page saved into slot ${flow.free}, deleted it after a confirm, and Esc went back (${JSON.stringify(flow)})`);
     errs.push(...fresh.errs);
   }
   check(errs.length === 0, 'no console errors' + (errs.length ? ': ' + errs.slice(0, 5).join(' | ') : ''));

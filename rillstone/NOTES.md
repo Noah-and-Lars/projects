@@ -1036,3 +1036,49 @@ so far:
      barrow.
    - Network byte counts, which cost one JSON pass per message, are
      collected only while the F3 overlay is open.
+
+### Menus and the Saves page
+
+- **The request:** the player asked for a whole menu UI with its own saves
+  page, built on how Hydroneer's menus work.
+- **Research:** official menu documentation is scarce. Community posts
+  and patch notes describe the shape:
+  - "Continue" leads to a list of save slots;
+  - there is a "Show backups" option;
+  - saves have names and the last slot is remembered;
+  - the Escape menu has save and "skip save and return to menu".
+- **What we copied:** only that structure. The visual design is Rillstone's
+  own cream, teal and ochre style. §1 forbids Hydroneer's look, and we
+  don't recreate another game's art or layout.
+- **Title:** a sidebar over the live valley. Continue loads the newest
+  save and shows its name, day and age. The other items are New game,
+  Saves, Co-op and Settings. The plain items show at once; Continue
+  appears when IndexedDB answers, which took seconds in headless test
+  browsers.
+- **New game page:** a name, and a slot picker that pre-selects the first
+  free slot and warns before replacing a used one. Starting saves straight
+  away, which claims the slot and takes the first picture.
+- **Saves page (`ui/saves.js`):**
+  - one card per slot: a picture (320×180 JPEG, with the held tool hidden
+    for it), name, day, Scrip, Standing, claims, play time, "saved N min
+    ago" and the date;
+  - card buttons: Load (Reload for the slot you're playing), Save here,
+    Rename (inline), Export, Import into this slot, and Delete with an
+    inline confirm;
+  - "Show backups" lists each slot's older A/B half with Load backup;
+  - Esc goes back to where you came from.
+- **Slots (§9 said 3):** there are now 6, at the player's request for a
+  full saves page. Each is still an A/B pair.
+- **Save module:**
+  - `list()` returns each slot's backup;
+  - `load(slot, 'backup')` loads it;
+  - new `remove(slot)` and `rename(slot, name)`;
+  - the save name lives in the meta;
+  - saves run one at a time, so two close together can't pick the same
+    half. Before, that race could lose the backup.
+- **Pause menu:**
+  - Resume, Save (to the current slot; with no slot it opens the Saves
+    page), Saves, Settings, Co-op, Return to claim post;
+  - Save and quit to title;
+  - Quit without saving, which needs a second click to confirm.
+  - A line under "Paused" shows the save name, slot, day and play time.

@@ -6,6 +6,8 @@ import { deflateSync, inflateSync, strToU8, strFromU8 } from 'fflate';
 
 export const SAVE_VERSION = 2;
 const DB = 'rillstone', STORES = ['meta', 'entities', 'chunks', 'economy'];
+// Save slots on the Saves page (each an A/B pair: the older half is the backup).
+export const SLOTS = [1, 2, 3, 4, 5, 6];
 // One migration per version bump: MIGRATIONS[n] turns a version-n save into n+1.
 const MIGRATIONS = {
   // 1 -> 2 (M6/M7): rails, economy flags (blueprints, Pumphouse, guide, lamp)
@@ -38,29 +40,54 @@ export function createSaves() {
   try { navigator.storage?.persist?.(); } catch (_) {}
   const get = (tx, store, key) => new Promise((res, rej) => { const r = tx.objectStore(store).get(key); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
 
+  let queue = Promise.resolve();
   const api = {
     get available() { return !!db; },
     ready,
-    // List the newest complete save in each slot.
+    // Each slot's newest complete save, plus the older half as its backup.
     async list() {
       await ready; if (!db) return [];
       const tx = db.transaction('meta', 'readonly'), out = [];
-      for (const slot of [1, 2, 3]) {
+      for (const slot of SLOTS) {
         const metas = (await Promise.all(['A', 'B'].map(ab => get(tx, 'meta', `${slot}:${ab}`)))).filter(Boolean);
         metas.sort((a, b) => b.savedAt - a.savedAt);
-        out.push(metas[0] ? { slot, ...metas[0] } : { slot, empty: true });
+        out.push(metas[0] ? { slot, ...metas[0], backup: metas[1] || null } : { slot, empty: true });
       }
       return out;
     },
-    // Write a snapshot (plain object) to a slot's older A/B half.
-    async save(slot, snap) {
+    // Delete a slot (both halves, every store).
+    async remove(slot) {
+      await ready; if (!db) return false;
+      await new Promise((res, rej) => {
+        const tx = db.transaction(STORES, 'readwrite');
+        for (const st of STORES) for (const ab of ['A', 'B']) tx.objectStore(st).delete(`${slot}:${ab}`);
+        tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error);
+      });
+      return true;
+    },
+    // Rename a slot's save (both halves keep the name).
+    async rename(slot, name) {
+      await ready; if (!db) return false;
+      const clean = String(name || '').trim().slice(0, 40) || `Claim ${slot}`;
+      await new Promise((res, rej) => {
+        const tx = db.transaction('meta', 'readwrite'), st = tx.objectStore('meta');
+        for (const ab of ['A', 'B']) { const r = st.get(`${slot}:${ab}`); r.onsuccess = () => { if (r.result) st.put({ ...r.result, name: clean }, `${slot}:${ab}`); }; }
+        tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error);
+      });
+      return clean;
+    },
+    // Write a snapshot (plain object) to a slot's older A/B half. Saves run
+    // one at a time, so two close together can't both pick the same half.
+    save(slot, snap) { const run = queue.then(() => api._save(slot, snap)); queue = run.catch(() => {}); return run; },
+    async _save(slot, snap) {
       await ready; if (!db) throw new Error('Saving is not available in this browser');
       const list = await api.list();
       const cur = list.find(x => x.slot === slot);
       const ab = cur && !cur.empty && cur.ab === 'A' ? 'B' : 'A';
       const key = `${slot}:${ab}`;
-      const meta = { slot, ab, saveVersion: SAVE_VERSION, savedAt: Date.now(), playTime: snap.playTime || 0, day: snap.day, scrip: snap.economy?.scrip ?? 0, standing: snap.economy?.standing ?? 0, thumb: typeof snap.thumb === 'string' && snap.thumb.length < 40000 ? snap.thumb : null };
-      const { chunks = [], economy = {}, thumb, ...rest } = snap; void thumb;
+      const name = String(snap.saveName || cur?.name || `Claim ${slot}`).trim().slice(0, 40);
+      const meta = { slot, ab, name, claims: snap.economy?.owned?.length ?? 0, saveVersion: SAVE_VERSION, savedAt: Date.now(), playTime: snap.playTime || 0, day: snap.day, scrip: snap.economy?.scrip ?? 0, standing: snap.economy?.standing ?? 0, thumb: typeof snap.thumb === 'string' && snap.thumb.length < 120000 ? snap.thumb : null };
+      const { chunks = [], economy = {}, thumb, saveName, ...rest } = snap; void thumb; void saveName;
       await new Promise((res, rej) => {
         const tx = db.transaction(STORES, 'readwrite');
         tx.objectStore('entities').put(pack(rest), key);
@@ -73,10 +100,13 @@ export function createSaves() {
     },
     // Newest half first; if it won't read (a damaged write, a bad
     // migration), fall back to the older complete half of the pair.
-    async load(slot) {
+    // half: 'backup' loads the older half on purpose (the Saves page's
+    // "Show backups").
+    async load(slot, half) {
       await ready; if (!db) return null;
       const mtx = db.transaction('meta', 'readonly');
-      const metas = (await Promise.all(['A', 'B'].map(ab => get(mtx, 'meta', `${slot}:${ab}`)))).filter(Boolean).sort((a, b) => b.savedAt - a.savedAt);
+      let metas = (await Promise.all(['A', 'B'].map(ab => get(mtx, 'meta', `${slot}:${ab}`)))).filter(Boolean).sort((a, b) => b.savedAt - a.savedAt);
+      if (half === 'backup') metas = metas.slice(1);
       if (!metas.length) return null;
       let err = null;
       for (const m of metas) {
@@ -84,7 +114,7 @@ export function createSaves() {
           const key = `${slot}:${m.ab}`, tx = db.transaction(STORES, 'readonly');
           const [ent, ch, eco] = await Promise.all([get(tx, 'entities', key), get(tx, 'chunks', key), get(tx, 'economy', key)]);
           const snap = { ...unpack(ent), economy: unpack(eco), chunks: (ch || []).map(c => ({ claim: c.claim, key: c.key, dens: new Int8Array(inflateSync(c.dens).buffer), band: inflateSync(c.band) })) };
-          return migrate(snap);
+          return { ...migrate(snap), saveName: m.name || `Claim ${slot}` };
         } catch (e) { err = e; console.warn(`Save ${slot}:${m.ab} would not load, trying the older half`, e); }
       }
       throw err;

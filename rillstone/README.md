@@ -155,11 +155,22 @@ Millbrook sits across the bridge from the Gravel Bar.
   - **Firewood**, which a lit kiln chars into a sack of charcoal.
 - **Scrapping.** Machine crates and tools left on the Machine Shop counter
   can be scrapped for iron worth 30% of what they cost.
-- **Saving.** The pause menu has 3 save slots, plus export and import of
-  `.rillsave` files. The game autosaves every 3 minutes to your current
-  slot. A new game takes the first empty slot and never autosaves over
-  another game; with all three full, autosave waits until you pick one.
-  If the newest copy in a slot won't load, the older copy loads instead.
+- **Menus and saving.**
+  - **Title screen:** a menu over the live valley, with Continue (your
+    newest save, with its name, day and age), New game, Saves, Co-op and
+    Settings.
+  - **New game:** name the claim and pick one of 6 slots. A used slot says
+    what it would replace.
+  - **Saves page:** a card per slot, showing a picture, the name, day,
+    Scrip, Standing, claims, play time and when it was saved. Each card has
+    Load, Save here, Rename, Export (to a `.rillsave` file), Import and
+    Delete (which asks first).
+  - **Backups:** with "Show backups" ticked, each slot's save-before-last
+    appears and can be loaded.
+  - **Pause menu:** Resume, Save, Saves, Settings, Co-op, Return to claim
+    post, Save and quit to title, and Quit without saving (click twice).
+  - **Autosave:** the game autosaves every 3 minutes to the slot you're
+    playing. If the newest copy in a slot won't load, the older one does.
 
 ## Machines and water
 

@@ -34,6 +34,7 @@ import { createHeavy } from './game/heavy.js';
 import { createNet } from './net/net.js';
 import { createCoop } from './net/coop.js';
 import { createCamp } from './game/camp.js';
+import { createSavesPage, ago, playTime } from './ui/saves.js';
 import { createGuide } from './game/guide.js';
 import { createMap } from './game/map.js';
 import { h } from './ui/dom.js';
@@ -214,27 +215,33 @@ async function boot() {
   }
   const menu = createMenu(ui, {
     settings, input,
-    // New game: autosave into the first empty slot, never over another game.
-    // With all three full, autosave waits until the player picks a slot.
+    // Resume (pause) and the plain start used by tests. A new game from the
+    // title goes through the New game page (a name and a slot).
     onPlay: () => {
       play();
       if (!state.slotChosen) {
         state.slotChosen = true;
         saves.list().catch(() => []).then((list) => {
           const free = list.find(m => m.empty); state.slot = free ? free.slot : (list.length ? null : 1);
-          if (!state.slot) hud.toast('All three save slots are in use: Save game (Esc) to pick one. Autosave is off until then.');
+          if (!state.slot) hud.toast('Every save slot is in use: pick one on the Saves page (Esc). Autosave is off until then.');
         });
       }
     },
     onSettingsChanged: () => { view.applySettings(); audio.apply(); },
     // Settings: clear loose dirt clods and nugget piles (BUILD_BRIEF 9).
     onCleanup: () => { if (coop.isGuest()) return 0; let n = 0; for (const e of [...items.ents.values()]) if ((e.type === 'clod' || e.type === 'pile' || e.type === 'dirtpile') && e.loc === 'loose') { items.remove(e.id); n++; } return n; },
+    // Pause menu (BUILD_BRIEF 6; laid out after the usual sandbox flow: save,
+    // the saves page, settings, then the ways out).
     items: [
-      { label: 'Save game', onclick: () => openSaves('save') },
-      { label: 'Load game', onclick: () => openSaves('load') },
+      { label: 'Save', onclick: () => quickSave() },
+      { label: 'Saves', onclick: () => openSavesPage() },
+      { label: 'Settings', onclick: () => menu.openSettings() },
       { label: 'Co-op', onclick: () => openCoop() },
       { label: 'Return to claim post', onclick: () => { if (vehicles.driving) exitVehicle(); const s = spawnPoint(); teleport(s.x, height(s.x, s.z) + 1, s.z, s.yaw); play(); } },
+      { label: 'Save and quit to title', secondary: true, onclick: async () => { if (!coop.isGuest() && state.slot) await saveTo(state.slot, true); location.reload(); } },
+      { label: 'Quit without saving', secondary: true, danger: true, confirm: 'Click again to quit without saving', onclick: () => location.reload() },
     ],
+    pauseInfo: () => [state.saveName || 'Unsaved claim', state.slot ? `slot ${state.slot}` : 'no slot', `day ${state.day}`, `played ${playTime(state.playTime)}`].join(' · '),
   });
   menuRef = menu;
   function play() {
@@ -292,8 +299,8 @@ async function boot() {
   function thumbnail() {
     try {
       if (state.noRender) return null;
-      view.render();
-      const src = view.renderer.domElement, c = document.createElement('canvas'); c.width = 160; c.height = 90;
+      hands.setVisible(false); view.render(); hands.setVisible(true); // the view, without the tool in your hand
+      const src = view.renderer.domElement, c = document.createElement('canvas'); c.width = 320; c.height = 180;
       c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
       return c.toDataURL('image/jpeg', 0.6);
     } catch (_) { return null; }
@@ -301,43 +308,74 @@ async function boot() {
   async function saveTo(slot, quiet) {
     // In someone else's world the host's save keeps it; yours stays as it was.
     if (coop.isGuest()) { if (!quiet) hud.toast("You're in the host's world: their save keeps it", 'err'); return false; }
-    try { await saves.save(slot, { ...snapshot(), thumb: thumbnail() }); state.slot = slot; if (!quiet) hud.toast(`Saved to slot ${slot}`); return true; }
+    try { await saves.save(slot, { ...snapshot(), thumb: thumbnail(), saveName: state.saveName || undefined }); state.slot = slot; if (!quiet) hud.toast(`Saved to slot ${slot}`); return true; }
     catch (e) { hud.toast('Save failed: ' + e.message, 'err'); return false; }
   }
-  function loadSlot(slot) {
+  function loadSlot(slot, half) {
     // Loading rebuilds the world from scratch: reload, then restore at boot.
-    try { sessionStorage.setItem('rill-load', String(slot)); } catch (_) {}
+    try { sessionStorage.setItem('rill-load', JSON.stringify({ slot, half: half || null })); } catch (_) {}
     location.reload();
   }
   function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
-  async function openSaves(mode) {
-    const list = await saves.list();
-    const fmt = (m) => m.empty ? 'Empty' : `Day ${m.day} · § ${m.scrip.toLocaleString('en-GB')} · ${new Date(m.savedAt).toLocaleString()}`;
-    const fileIn = h('input', { type: 'file', accept: '.rillsave', style: { display: 'none' }, onchange: async (e) => {
-      const f = e.target.files[0]; if (!f) return;
-      try { const snap = await saves.importFile(f); state.slot ||= 1; await saves.save(state.slot, snap); hud.toast(`Imported into slot ${state.slot}`); loadSlot(state.slot); } catch (err) { hud.toast('Import failed: ' + err.message, 'err'); }
-    } });
-    const body = h('div', {},
-      h('p', { class: 'small' }, mode === 'save' ? 'Pick a slot. The game also autosaves to your current slot every 3 minutes.' : 'Load a saved game.'),
-      ...list.map(m => h('div', { class: 'entry' + (m.thumb ? ' has-thumb' : '') }, m.thumb ? h('img', { src: m.thumb, alt: '', class: 'save-thumb' }) : null, h('b', {}, `Slot ${m.slot}${m.slot === state.slot ? ' (current)' : ''}`),
-        mode === 'save' ? h('button', { class: 'btn primary', onclick: async () => { await saveTo(m.slot); openSaves('save'); } }, 'Save here')
-          : h('button', { class: 'btn primary', disabled: !!m.empty, onclick: () => loadSlot(m.slot) }, 'Load'),
-        h('span', { class: 'desc' }, fmt(m)))),
-      h('h3', {}, 'Backup'),
-      h('div', { class: 'entry' }, h('b', {}, 'Export this game'), h('button', { class: 'btn', onclick: () => download(saves.exportBlob(snapshot()), `rillstone-day${state.day}.rillsave`) }, 'Export'), h('span', { class: 'desc' }, 'Download a .rillsave file (browsers can clear site data).')),
-      h('div', { class: 'entry' }, h('b', {}, 'Import a .rillsave'), h('button', { class: 'btn', onclick: () => fileIn.click() }, 'Import'), h('span', { class: 'desc' }, `Replaces slot ${state.slot}.`)), fileIn);
-    menu.showPause(false);
-    panels.show('saves', mode === 'save' ? 'Save game' : 'Load game', body);
-  }
-  // Title: continue the newest save.
-  saves.list().then((list) => {
-    const latest = list.filter(m => !m.empty).sort((a, b) => b.savedAt - a.savedAt)[0];
-    const items2 = [];
-    if (latest) items2.push({ label: `Continue (slot ${latest.slot}, day ${latest.day})`, onclick: () => loadSlot(latest.slot) });
-    if (list.some(m => !m.empty)) items2.push({ label: 'Load game', onclick: () => openSaves('load') });
-    items2.push({ label: 'Co-op', secondary: true, onclick: () => openCoop() });
-    menu.setTitleItems(items2);
+  // ---- Saves page and New game page (ui/saves.js) ----
+  let savesFrom = 'title';
+  const savesPage = createSavesPage(ui, {
+    saves,
+    inGame: () => !!state.playing,
+    canSave: () => !!state.playing && !coop.isGuest(),
+    current: () => state.slot,
+    onLoad: (slot, half) => loadSlot(slot, half),
+    onSave: async (slot) => { await saveTo(slot); refreshTitle(); },
+    onNewHere: (slot) => savesPage.show('new', slot),
+    onNew: async (slot, name) => {
+      state.slot = slot; state.saveName = name; state.slotChosen = true;
+      savesPage.hide(); play();
+      await saveTo(slot, true); // claim the slot now (and a first picture)
+      hud.toast(`${name}: saved to slot ${slot}. It autosaves every 3 minutes.`);
+    },
+    onExport: async (slot) => {
+      const snap = await saves.load(slot); if (!snap) return;
+      download(saves.exportBlob(snap), `${(snap.saveName || 'rillstone').replace(/[^\w-]+/g, '-').toLowerCase()}-day${snap.day || 1}.rillsave`);
+    },
+    onImport: async (slot, file) => {
+      try { const snap = await saves.importFile(file); await saves.save(slot, { ...snap, saveName: snap.saveName || 'Imported claim' }); hud.toast(`Imported into slot ${slot}`); refreshTitle(); }
+      catch (err) { hud.toast('Import failed: ' + err.message, 'err'); }
+    },
+    onDeleted: (slot) => { if (state.slot === slot && state.playing) { state.slot = null; hud.toast('That was the slot you are playing: autosave is off until you save to a slot', 'err'); } refreshTitle(); },
+    onRenamed: (slot, name) => { if (state.slot === slot) state.saveName = name; refreshTitle(); },
+    onBack: () => { savesPage.hide(); if (savesFrom === 'title') menu.showTitle(true); else menu.showPause(true); },
   });
+  function openSavesPage(mode = 'saves') {
+    savesFrom = menu.titleShown || !state.playing ? 'title' : 'pause';
+    menu.showTitle(false); menu.showPause(false);
+    return savesPage.show(mode);
+  }
+  async function quickSave() {
+    if (coop.isGuest()) { hud.toast("You're in the host's world: their save keeps it", 'err'); return; }
+    if (!state.slot) { openSavesPage(); return; }
+    if (await saveTo(state.slot, true)) { hud.toast(`Saved “${state.saveName || `Claim ${state.slot}`}” to slot ${state.slot}`); menu.showPause(true); }
+  }
+  // Title menu: Continue (the newest save), New game, Saves, Co-op, Settings.
+  function refreshTitle() {
+    // The plain menu at once; Continue and the slot count once the saves are read.
+    menu.setTitleItems([
+      { label: 'New game', primary: true, onclick: () => openSavesPage('new') },
+      { label: 'Saves', onclick: () => openSavesPage() },
+      { label: 'Co-op', sub: 'Host or join a friend', onclick: () => openCoop() },
+      { label: 'Settings', onclick: () => menu.openSettings() },
+    ]);
+    return saves.list().then((list) => {
+      const latest = list.filter(m => !m.empty).sort((a, b) => b.savedAt - a.savedAt)[0];
+      const items2 = [];
+      if (latest) items2.push({ label: 'Continue', sub: `${latest.name || `Claim ${latest.slot}`} · day ${latest.day} · ${ago(latest.savedAt)}`, primary: true, onclick: () => loadSlot(latest.slot) });
+      items2.push({ label: 'New game', primary: !latest, onclick: () => openSavesPage('new') });
+      items2.push({ label: 'Saves', sub: `${list.filter(m => !m.empty).length} of ${list.length} slots used`, onclick: () => openSavesPage() });
+      items2.push({ label: 'Co-op', sub: 'Host or join a friend', onclick: () => openCoop() });
+      items2.push({ label: 'Settings', onclick: () => menu.openSettings() });
+      menu.setTitleItems(items2);
+    });
+  }
+  refreshTitle();
 
   // ---- Vehicles: get in and out ----
   async function exitVehicle() {
@@ -502,14 +540,19 @@ async function boot() {
   }
   let pending = null;
   try { pending = sessionStorage.getItem('rill-load'); sessionStorage.removeItem('rill-load'); } catch (_) {}
-  if (pending) { const snap = await saves.load(+pending); if (snap) { await restore(snap); state.slot = +pending; state.slotChosen = true; play(); hud.toast(`Loaded slot ${pending}`); } }
+  if (pending) {
+    let want = null; try { want = JSON.parse(pending); } catch (_) {}
+    if (typeof want === 'number') want = { slot: want };
+    const snap = want ? await saves.load(+want.slot, want.half) : null;
+    if (snap) { await restore(snap); state.slot = +want.slot; state.saveName = snap.saveName; state.slotChosen = true; play(); hud.toast(`Loaded “${snap.saveName}”${want.half === 'backup' ? ' (backup)' : ''}`); }
+  }
   requestAnimationFrame(frame);
 
   // Test hook (BUILD_BRIEF section 12). Pointer Lock doesn't work headless,
   // so ?test=1 lets tests drive the game directly.
   const api = { ready: true, physics, version: physics.version, seed: SEED };
   if (TEST) Object.assign(api, {
-    THREE, view, player, input, state, settings, hud, menu, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, machines, auto, progress, workshop, heavy, adit, coop, net, guide, map, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
+    THREE, view, player, input, state, settings, hud, menu, savesPage, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, machines, auto, progress, workshop, heavy, adit, coop, net, guide, map, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
     places: { TOWN, HAMLET, ADIT, CLAIMS, FALLS_Z, PUMPHOUSE, spawn: spawnPoint() },
     relicSpot, veins: VEINS, rollLoot, itemValue, pumpStages: PUMP_STAGES,
     height, riverX, waterY,

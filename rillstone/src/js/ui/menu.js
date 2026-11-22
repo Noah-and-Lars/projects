@@ -1,25 +1,32 @@
-// Title screen, pause menu and the settings panel (FOV, sensitivity,
-// rebinding, graphics, volume buses).
+// Title screen (a sidebar menu over the live valley), pause menu and the
+// settings page (FOV, sensitivity, rebinding, graphics, volume buses). The
+// Saves and New game pages live in saves.js.
 import { h, $ } from './dom.js';
 import { ACTION_LABELS, DEFAULT_BINDS, keyLabel, saveSettings } from '../core/settings.js';
 
-export function createMenu(root, { settings, input, onPlay, onSettingsChanged, onCleanup, items = [], titleItems = [] }) {
-  const title = h('section', { id: 'scr-title', class: 'screen interactive' },
-    h('div', { class: 'panel title' },
-      h('h1', { class: 'logo' }, 'Rillstone'),
-      h('p', { class: 'sub' }, 'Dig, wash and automate a highland claim'),
-      h('div', { class: 'col' },
-        h('div', { class: 'col', id: 'title-extra', style: { marginTop: 0 } }),
-        h('button', { class: 'btn primary', id: 'btn-play', onclick: () => onPlay() }, 'New game'),
-        h('button', { class: 'btn', onclick: () => openSettings() }, 'Settings')),
-      h('p', { class: 'small' }, 'Click to look around · WASD to move · Esc for the menu')));
+export function createMenu(root, { settings, input, onPlay, onSettingsChanged, onCleanup, items = [], titleItems = [], pauseInfo }) {
+  // Title: a sidebar over the live valley, menu items set by main.js.
+  const title = h('section', { id: 'scr-title', class: 'screen title-screen interactive' },
+    h('div', { class: 'title-side' },
+      h('div', { class: 'brand' }, h('h1', { class: 'logo' }, 'Rillstone'), h('p', { class: 'sub' }, 'Dig, wash and automate a highland claim')),
+      h('nav', { class: 'menu-list', id: 'title-menu' },
+        h('button', { class: 'menu-btn primary', id: 'btn-play', onclick: () => onPlay() }, h('b', {}, 'New game'))),
+      h('p', { class: 'small title-foot' }, 'Click to look around · WASD to move · Esc for the menu')));
+  // Pause: a card with where you are, then the menu.
+  const pauseInfoEl = h('p', { class: 'small pause-info' });
   const pause = h('section', { id: 'scr-pause', class: 'screen interactive hidden' },
-    h('div', { class: 'panel' },
-      h('h2', {}, 'Paused'),
-      h('div', { class: 'col', id: 'pause-items' },
-        h('button', { class: 'btn primary', onclick: () => onPlay() }, 'Resume'),
-        ...items.map(it => h('button', { class: 'btn', onclick: it.onclick }, it.label)),
-        h('button', { class: 'btn', onclick: () => openSettings() }, 'Settings'))));
+    h('div', { class: 'panel pause-card' },
+      h('div', { class: 'pause-head' }, h('h2', {}, 'Paused'), pauseInfoEl),
+      h('nav', { class: 'menu-list', id: 'pause-items' },
+        h('button', { class: 'menu-btn primary', onclick: () => onPlay() }, h('b', {}, 'Resume')),
+        ...items.map(menuButton))));
+  function menuButton(it) {
+    const b = h('button', { class: 'menu-btn' + (it.primary ? ' primary' : '') + (it.danger ? ' danger' : '') + (it.secondary ? ' quiet' : ''), onclick: (e) => {
+      if (it.confirm && !b.classList.contains('arm')) { b.classList.add('arm'); b.querySelector('b').textContent = it.confirm; setTimeout(() => { b.classList.remove('arm'); b.querySelector('b').textContent = it.label; }, 3500); return; }
+      it.onclick(e);
+    } }, h('b', {}, it.label), it.sub ? h('span', {}, it.sub) : null);
+    return b;
+  }
   const settingsEl = h('section', { id: 'scr-settings', class: 'screen interactive hidden' });
   root.append(title, pause, settingsEl);
 
@@ -58,13 +65,13 @@ export function createMenu(root, { settings, input, onPlay, onSettingsChanged, o
   function closeSettings() { settingsEl.classList.add('hidden'); (back || pause).classList.remove('hidden'); back = null; }
   // Leaving the menus for play: hide settings without showing what was behind them.
   function hideSettings() { settingsEl.classList.add('hidden'); back = null; }
-  const extra = title.querySelector('#title-extra');
-  function setTitleItems(list) { extra.replaceChildren(...list.map(it => h('button', { class: it.secondary ? 'btn' : 'btn primary', onclick: it.onclick }, it.label))); title.querySelector('#btn-play').className = list.some(it => !it.secondary) ? 'btn' : 'btn primary'; }
+  const titleMenu = title.querySelector('#title-menu');
+  function setTitleItems(list) { if (list.length) titleMenu.replaceChildren(...list.map(menuButton)); }
   setTitleItems(titleItems);
   return {
     setTitleItems,
     showTitle(v) { title.classList.toggle('hidden', !v); },
-    showPause(v) { pause.classList.toggle('hidden', !v); if (v) settingsEl.classList.add('hidden'); },
+    showPause(v) { pause.classList.toggle('hidden', !v); if (v) { settingsEl.classList.add('hidden'); pauseInfoEl.textContent = pauseInfo?.() || ''; } },
     get open() { return [title, pause, settingsEl].some(e => !e.classList.contains('hidden')); },
     openSettings, closeSettings, hideSettings,
     get titleShown() { return !title.classList.contains('hidden'); },
