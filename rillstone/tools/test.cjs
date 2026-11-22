@@ -108,8 +108,11 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
         const x = g.x0 + 3 + c * 1.8, z = g.z1 - 1.4;
         await R.teleport(x + 0.9, g.top + 1.2, z - 1.8); await R.tick(2);
         await act(x, g.top - 0.05, z); await act(x + 0.6, g.top - 0.05, z);
+        if (pan.data.loads.length < 2) R._panLog = (R._panLog || '') + `c${c}:scoop${pan.data.loads.length} `;
         await R.teleport(standX, R.height(standX, zr) + 1.2, zr); await R.tick(10);
-        for (let k = 0; k < 2; k++) { const it = await act(rx - 6, R.waterY(zr) - 0.2, zr); if (it && it.material) { washed++; finds.push(it.material); } }
+        // The player can slide a little on the bank between clicks: retry a
+        // missed wash (aim lands on the bank) up to twice per load.
+        for (let k = 0; k < 6 && pan.data.loads.length; k++) { const it = await act(rx - 6, R.waterY(zr) - 0.2, zr); if (it && it.material) { washed++; finds.push(it.material); } else R._panLog = (R._panLog || '') + `c${c}:washmiss `; }
         await R.teleport(standX - 2.5, R.height(standX - 2.5, zr) + 1.2, zr); await R.tick(4);
         await act(standX - 4.2, R.height(standX - 4.2, zr + 1.2), zr + 1.2); // tip out on dry ground
       }
@@ -117,10 +120,11 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       const nug = [...R.items.ents.values()].filter(e => e.type === 'nugget' && e.loc === 'loose').length;
       const clods = [...R.items.ents.values()].filter(e => e.type === 'clod').length;
       R.noRender(false);
-      return { holes, washed, finds, nug, clods, pan: pan.data };
+      return { holes, washed, finds, nug, clods, pan: pan.data, log: R._panLog || '' };
     });
     check(r.holes >= 50, `dug ${r.holes} holes with the shovel`);
     check(r.clods >= 50, `${r.clods} dirt clods dumped as props`);
+    if (r.log) console.log('     pan log: ' + r.log);
     check(r.washed === 20, `panned ${r.washed} loads in the river (finds: ${[...new Set(r.finds)].join(', ')})`);
     check(r.nug >= 20, `${r.nug} finds lying loose on the bank`);
     // Pile merging: 80 copper nuggets dropped in one spot become one Pile.
@@ -602,8 +606,9 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       const cc = W.counters.cutter;
       I.spawn('nugget', [cc.x, cc.top + 0.15, cc.z], { item: { material: 'garnet', stage: 'uncut', kg: 1.2 } });
       await R.physics.step(30); I.update();
+      const preCut = new Set(I.ents.keys());
       const s0 = E.scrip; W.ringCutter(); await R.physics.step(10); I.update();
-      out.cut = [...I.ents.values()].filter(e => e.item?.material === 'garnet' && e.item.stage === 'cut').length;
+      out.cut = [...I.ents.entries()].filter(([id, e]) => !preCut.has(id) && e.item?.material === 'garnet' && e.item.stage === 'cut').length;
       out.cutFee = s0 - E.scrip;
       // Pumphouse: deliver each stage (the relic goes in stage 2).
       const pc = W.counters.pump, relic = [...I.ents.values()].find(e => e.type === 'relic');
@@ -650,6 +655,14 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       for (let i = 0; i < 400; i++) R.heavy.update(0.05);
       out.tram = { s: +tram.tram.s.toFixed(1), moving: tram.tram.moving, x: +tram.group.position.x.toFixed(1), cargo: tram.cargo.length };
       out.bx = +b[0].toFixed(1);
+      // Audio: two drills 2 m apart share one voice; at most 8 voices play.
+      R.audio.unlock();
+      const L = { pos: [0, 0, 0], fwd: [0, 0, -1], up: [0, 1, 0] };
+      R.audio.update(L, 5, [{ type: 'drill', pos: [3, 0, 0], level: 1 }, { type: 'drill', pos: [5, 0, 0], level: 1 }, { type: 'sluice', pos: [0, 0, 4], level: 1 }]);
+      out.voices2 = R.audio.voices;
+      R.audio.update(L, 5, Array.from({ length: 12 }, (_, i) => ({ type: 'drill', pos: [i * 8, 0, 0], level: 1 })));
+      out.voicesMax = R.audio.voices;
+      R.audio.update(L, 5, []);
       R.noRender(false);
       return out;
     });
@@ -664,7 +677,165 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     check(pr.cut === 1 && pr.cutFee > 0, `Upper Falls gem cutter cut the garnet for § ${pr.cutFee}`);
     check(pr.pump === '1,2,3,4,5' && pr.finale && pr.goldwheel, `Pumphouse stages ${pr.pump}, end screen shown, gold-plated wheel delivered`);
     check(pr.hopper === 3 && pr.dumped === 3 && pr.cells.split(' ').every(c => c.split(',').every(v => Math.abs(v % 1) === 0.5)), `excavator dug 3 loads from world-grid cell ${pr.cells.split(' ')[0]} into its hopper and dumped them`);
+    check(pr.voices2 === 2 && pr.voicesMax === 8, `machine audio: 2 drills + a sluice play ${pr.voices2} voices; 12 drills are capped at ${pr.voicesMax}`);
     check(pr.rails === 'ok' && pr.railLen > 19 && pr.load === 'ok' && !pr.tram.moving && pr.tram.cargo === 1 && Math.abs((pr.tram?.x ?? 1e9) - pr.bx) < 1, `20 m of rails (${pr.rails}); the tram carried 1 nugget to the far end (x ${pr.tram?.x} vs ${pr.bx})`);
+  }
+
+
+  if (all || flags.has('--pacing')) {
+    // M6 pacing (BUILD_BRIEF 3.6): fast-forward a drill + sluice of every tier
+    // in its own claim and band with the real machine code, value the finds at
+    // the Assay Office, and model hand washing with the same loot code.
+    const pace = await p.evaluate(async () => {
+      const R = __rill, Mc = R.machines, I = R.items, E = R.economy.state, C = (id) => R.places.CLAIMS.find(c => c.id === id);
+      R.noRender(true);
+      E.owned = ['gravel', 'willow', 'oldcut', 'slate', 'glimmer', 'ember'];
+      const val = (it) => (it.material === 'quartz' ? 0 : R.itemValue(it));
+      const tiers = [
+        { t: 1, drill: 'drill1', sluice: 'sluice1', at: () => { const c = C('gravel'); return [c.cx, c.top, c.cz]; } },
+        { t: 2, drill: 'drill2', sluice: 'sluice2', at: () => { const c = C('willow'); return [c.cx, c.top, c.cz]; } },
+        { t: 3, drill: 'drill3', sluice: 'sluice3', at: () => { const c = C('slate'); return [c.x1 - 7, c.top - 10, c.cz]; } },
+        { t: 4, drill: 'drill4', sluice: 'sluice4', at: () => { const c = C('ember'); return [c.x0 + 30, c.floor, c.cz]; } },
+      ];
+      const out = [];
+      for (const T of tiers) {
+        const S = T.at();
+        const sl = Mc.place(T.sluice, S, 0, {}, { locked: true });
+        const dr = Mc.place(T.drill, [S[0] - 0.95, S[1], S[2] - 1.2], 0, {}, { locked: true });
+        const t1 = Mc.place('headtank', [S[0] - 4, S[1], S[2] - 1.2], 0, { level: 2000 }, { locked: true });
+        const t2 = Mc.place('headtank', [S[0] + 3, S[1], S[2] - 1], 0, { level: 2000 }, { locked: true });
+        Mc.layRun('glimmer', { m: t1.id, s: 0 }, { m: dr.id, s: 0 });
+        Mc.layRun('glimmer', { m: t2.id, s: 0 }, { m: sl.id, s: 0 });
+        const seen = new Set(I.ents.keys());
+        const SECS = 120;
+        for (let k = 0; k < SECS * 20; k++) { t1.state.level = t2.state.level = 2000; Mc.tick(0.05); if (k % 40 === 0) R.items.clock += 0; }
+        let v = 0, n = 0;
+        for (const [id, e] of I.ents) if (!seen.has(id) && e.item) { v += val(e.item); n++; }
+        for (const k of sl.state.outq || []) v += val(k);
+        // Rare finds make a 2-minute sample noisy, so price the measured wash
+        // rate by the expected value of a load at the drill's band and depth
+        // (20,000 rolls), plus the bonus-roll chance.
+        let ev = 0; for (let i = 0; i < 20000; i++) ev += val(R.rollLoot(R.lootRng, { band: dr.band, depth: dr.depth }));
+        ev /= 20000;
+        const sat = dr.flow?.satisfaction ?? 0, perMin = (sl.washed || 0) / (SECS / 60) * ev * (1 + 0.1 * sat);
+        out.push({ tier: T.t, band: dr.band, depth: +dr.depth.toFixed(1), status: dr.status + '/' + sl.status, washed: sl.washed || 0, finds: n, sampled: +(v / (SECS / 60)).toFixed(0), perLoad: +ev.toFixed(1), perMin: +perMin.toFixed(0), sat: +sat.toFixed(2) });
+        for (const m of [sl, dr, t1, t2]) Mc.remove(m.id);
+        for (const [id] of [...I.ents]) if (!seen.has(id)) I.remove(id);
+      }
+      // Hand washing, modelled: pan 2 loads at a time from a pit by the river.
+      // Scoop 2 x 0.4 s, walk 10 m to the water and back at 4.2 m/s, dip, wash
+      // 2 x 0.6 s, tip out 0.5 s; pick up each find (0.8 s); every 5 minutes a
+      // 90 s round trip to sell. The pit deepens 0.017 m per load (3 x 3 m).
+      // Measured over the first 20 minutes, the span the brief describes.
+      // Expected value of a panned load at each depth (4,000 rolls per 0.25 m).
+      const rng = R.lootRng, evCache = new Map(), findP = 0.94;
+      const evAt = (d) => { const k = Math.round(d * 4); if (!evCache.has(k)) { let v = 0; for (let i = 0; i < 4000; i++) v += val(R.rollLoot(rng, { band: 1, depth: k / 4, pan: true })); evCache.set(k, v / 4000); } return evCache.get(k); };
+      let tSec = 0, earned = 0, depth = 0.3, loads = 0, firstK = null;
+      while (tSec * 1.3 < 20 * 60) {
+        tSec += 0.8 + 2 * 10 / 4.2 + 0.3 + 1.2 + 0.5;
+        for (let i = 0; i < 2; i++) { earned += evAt(depth); tSec += 0.8 * findP; loads++; depth = Math.min(5.5, depth + 0.017); }
+        if (firstK == null && earned >= 1000) firstK = tSec;
+      }
+      tSec *= 1 + 90 / 300;
+      R.noRender(false);
+      return { tiers: out, hand: { perMin: +(earned / (tSec / 60)).toFixed(1), loadsPerMin: +(loads / (tSec / 60)).toFixed(1), firstKMin: +((firstK * 1.3) / 60).toFixed(1) } };
+    });
+    console.log('     pacing: ' + JSON.stringify(pace));
+    const [t1, t2, t3, t4] = pace.tiers;
+    check(pace.tiers.every((t, i) => t.band === i + 1 && t.washed > 20), `every tier runs in its band: ${pace.tiers.map(t => `Mk ${t.tier} band ${t.band} (${t.washed} washed)`).join(', ')}`);
+    check(pace.hand.perMin >= 42 && pace.hand.perMin <= 78, `hand washing earns § ${pace.hand.perMin}/min (target 40–80, midpoint 60 ±30%); the first § 1,000 takes ${pace.hand.firstKMin} min (target 15–20)`);
+    check(t1.perMin >= 105 && t1.perMin <= 195, `one Mk I drill + sluice earns § ${t1.perMin}/min (target 120–180, midpoint 150 ±30%)`);
+    check(t2.perMin > t1.perMin && t3.perMin > t2.perMin && t4.perMin > t3.perMin, `each tier earns more: Mk II § ${t2.perMin}/min, Mk III § ${t3.perMin}/min, Mk IV § ${t4.perMin}/min`);
+    const base = 20 * t1.perMin + 10 * t2.perMin;
+    check(base / pace.hand.perMin >= 70 && base / pace.hand.perMin <= 130, `a late base of 20 Mk I + 10 Mk II drills earns § ${(base * 60).toLocaleString('en-GB')}/h, ${(base / pace.hand.perMin).toFixed(0)}× hand washing (target: two orders of magnitude, 100× ±30%)`);
+  }
+
+
+  if (all || flags.has('--coop')) {
+    // M7: two browser contexts over a local relay that speaks the arcade
+    // realtime protocol (tools/relay.mjs). Both dig in the same claim, the
+    // guest carries an ingot to the truck, the host drives it, the guest sells
+    // at the Assay Office, and the two worlds must agree.
+    const { startRelay } = await import('./relay.mjs');
+    const relay = startRelay(8790);
+    const init = () => { localStorage.setItem('arcade-acct', JSON.stringify({ name: 'Tester' + Math.floor(Math.random() * 90 + 10), token: 'test' })); window.ARCADE_RT_URL = 'ws://localhost:8790/ws'; window.RILL_RT_LIB = 'http://localhost:8765/tools/fixtures/rt.js'; };
+    const openCtx = async () => { const c = await b.newContext({ viewport: { width: 960, height: 540 } }); await c.addInitScript(init); const pg = await c.newPage(); const e2 = []; pg.on('pageerror', e => e2.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error' && !/GL Driver|GPU stall/.test(m.text())) e2.push(m.text()); }); await pg.goto(URL); await pg.waitForFunction(() => window.__rill && window.__rill.ready, null, { timeout: 120000 }); await pg.evaluate(() => { __rill.play(); __rill.noRender(true); }); return { c, pg, e2 }; };
+    if (!all) {} // the main page stays open; the co-op pages are separate contexts
+    const H = await openCtx(), G = await openCtx();
+    const code = await H.pg.evaluate(() => __rill.coop.host());
+    const t0 = Date.now();
+    const jr = await G.pg.evaluate((c) => __rill.coop.join(c), code);
+    await G.pg.waitForFunction(() => __rill.coop.ready, null, { timeout: 60000 });
+    const joinMs = Date.now() - t0;
+    const pk = await H.pg.evaluate(() => __rill.coop.stats);
+    // Both dig in the Gravel Bar.
+    const g0 = await H.pg.evaluate(() => { const c = __rill.places.CLAIMS[0]; return { x0: c.x0, z0: c.z0, cx: c.cx, cz: c.cz, top: c.top }; });
+    await H.pg.evaluate(async (g) => { const R = __rill; await R.teleport(g.cx - 3, g.top + 1.2, g.cz); await R.tick(5); if (R.items.get(R.hands.hand)?.type !== 'shovel') R.hands.swap(); for (let i = 0; i < 4; i++) { R.aimAt(g.cx - 1 + i * 0.7, g.top - 0.05, g.cz); await R.refreshAim(); R.hands.cooldown = 0; R.hands.use(); const e = R.items.get(R.hands.hand); if (e.data.loads?.length) { R.aimAt(g.cx - 4, g.top, g.cz + 2); await R.refreshAim(); R.hands.use(); } } }, g0);
+    await G.pg.evaluate(async (g) => { const R = __rill; await R.teleport(g.cx + 3, g.top + 1.2, g.cz + 2); await R.tick(5); for (let k = 0; k < 6 && R.items.get(R.hands.hand)?.type !== 'shovel'; k++) { R.hands.remote({ k: 'swap' }); await new Promise(r => setTimeout(r, 300)); } for (let i = 0; i < 4; i++) { R.aimAt(g.cx + 1 + i * 0.7, g.top - 0.05, g.cz + 2); R.hands.remote({ k: 'use' }); await new Promise(r => setTimeout(r, 250)); R.aimAt(g.cx + 4, g.top, g.cz + 4); R.hands.remote({ k: 'use' }); await new Promise(r => setTimeout(r, 250)); } }, g0);
+    await H.pg.waitForTimeout(2500);
+    const hashOf = () => { const v = __rill.claims.volumes.get('gravel'); let h = 0; for (let i = 0; i < v.dens.length; i++) h = (h * 31 + v.dens[i]) | 0; return { h, seq: v.editSeq }; };
+    const hh = await H.pg.evaluate(hashOf), gh = await G.pg.evaluate(hashOf);
+    // The guest carries an iron ingot to the truck and drops it in the bed.
+    const truck = await H.pg.evaluate(() => { const v = [...__rill.vehicles.list.values()][0]; return { id: v.id, p: v.group.position.toArray() }; });
+    await H.pg.evaluate((t) => { __rill.items.spawn('nugget', [t.p[0] + 3, __rill.height(t.p[0] + 3, t.p[2] + 3) + 0.4, t.p[2] + 3], { item: { material: 'iron', stage: 'ingot', kg: 5 } }); }, truck);
+    await G.pg.waitForTimeout(1500);
+    const carry = await G.pg.evaluate(async (t) => {
+      const R = __rill, I = R.items;
+      const ing = [...I.ents.values()].find(e => e.item?.material === 'iron' && e.item.stage === 'ingot');
+      if (!ing) return { err: 'no ingot on the guest' };
+      // Free the hand (tools go to the swap slot), walk over and pick it up.
+      await R.teleport(ing.pos[0] - 1.5, ing.pos[1] + 1.2, ing.pos[2]); await R.tick(10);
+      R.aimAt(...ing.pos); await R.refreshAim(); R.hands.remote({ k: 'pick' });
+      for (let i = 0; i < 20 && R.hands.hand !== ing.id; i++) await new Promise(r => setTimeout(r, 150));
+      if (R.hands.hand !== ing.id) return { err: 'pick up failed', hand: R.hands.hand };
+      // Walk to the truck's side and drop it onto the bed.
+      const v = R.vehicles.list.get(t.id), bed = new R.THREE.Vector3(0, v.def.bed.y, -1).applyMatrix4(v.group.matrixWorld);
+      await R.teleport(bed.x + 2.2, bed.y + 0.6, bed.z); await R.tick(10);
+      R.aimAt(bed.x, bed.y, bed.z); await R.refreshAim(); R.hands.remote({ k: 'drop' });
+      for (let i = 0; i < 20 && !v.cargo.includes(ing.id); i++) await new Promise(r => setTimeout(r, 150));
+      return { ing: ing.id, inBed: v.cargo.includes(ing.id) };
+    }, truck);
+    // The host drives the truck about 25 m.
+    await H.pg.evaluate(async () => { const R = __rill; const v = [...R.vehicles.list.values()][0]; const p = v.group.position; await R.teleport(p.x - 2, p.y + 1, p.z); R.vehicles.enter(v.id); R.input.simulate('forward', true); for (let i = 0; i < 150; i++) { await R.tick(1); R.vehicles.update(1 / 60, R.input, true); R.input.endFrame(); } R.input.simulate('forward', false); for (let i = 0; i < 240; i++) { await R.tick(1); R.vehicles.update(1 / 60, R.input, true); } await R.exitVehicle(); for (let i = 0; i < 60; i++) await R.tick(1); });
+    await H.pg.waitForTimeout(1500);
+    const vpose = () => { const v = [...__rill.vehicles.list.values()][0]; const st = __rill.physics.vehicles.get(v.id); return { p: (st?.p || v.group.position.toArray()), cargo: v.cargo.slice() }; };
+    const hv = await H.pg.evaluate(vpose), gv = await G.pg.evaluate(vpose);
+    // The guest takes the ingot out of the bed and sells it at the Assay Office.
+    const sell = await G.pg.evaluate(async (ing) => {
+      const R = __rill, v = [...R.vehicles.list.values()][0];
+      R.bed.remote({ op: 'bedTake', vid: v.id, ent: ing });
+      for (let i = 0; i < 20 && R.hands.hand !== ing; i++) await new Promise(r => setTimeout(r, 150));
+      const c = R.town.counters.find(k => k.venue === 'assay');
+      await R.teleport(c.x + Math.sin(c.yaw) * 1.6, c.top + 1.0, c.z + Math.cos(c.yaw) * 1.6); await R.tick(10);
+      R.aimAt(c.x, c.top + 0.05, c.z); await R.refreshAim();
+      // Drop at the counter (aim at it so the ring lands on top).
+      R.hands.remote({ k: 'drop', ring: [c.x, c.top + 0.02, c.z], yaw: 0 });
+      await new Promise(r => setTimeout(r, 1200));
+      const bellId = c.bell, bp = R.town.props.get(bellId).pos;
+      R.aimAt(...bp); await R.refreshAim(); R.hands.remote({ k: 'pick' });
+      await new Promise(r => setTimeout(r, 1500));
+      return { took: true };
+    }, carry.ing);
+    await H.pg.waitForTimeout(1500);
+    const econ = () => ({ scrip: __rill.economy.state.scrip, earned: __rill.economy.state.totalEarned });
+    const he = await H.pg.evaluate(econ), ge = await G.pg.evaluate(econ);
+    // Loose things agree to within 0.1 m.
+    const poses = () => { const o = {}; for (const e of __rill.items.ents.values()) if (e.loc === 'loose') o[e.id] = e.pos; return o; };
+    const hp = await H.pg.evaluate(poses), gp = await G.pg.evaluate(poses);
+    let worst = 0, missing = 0, n = 0;
+    for (const id in hp) { if (!gp[id]) { missing++; continue; } n++; worst = Math.max(worst, Math.hypot(hp[id][0] - gp[id][0], hp[id][1] - gp[id][1], hp[id][2] - gp[id][2])); }
+    const avatars = await G.pg.evaluate(() => __rill.coop.avatars.size);
+    const rs = { ...relay.stats };
+    console.log('     coop: ' + JSON.stringify({ code, jr, joinMs, pk, dig: [hh, gh], carry, hv, gv, sell, he, ge, worst: +worst.toFixed(4), missing, n, avatars, relay: rs }));
+    check(typeof code === 'string' && code.length === 5 && jr === 'ok', `hosted room ${code}; the guest joined in ${(joinMs / 1000).toFixed(1)} s with a ${(pk.pkgBytes / 1024).toFixed(0)} KB world package in ${pk.pkgChunks} chunks`);
+    check(hh.h === gh.h && hh.seq > 0, `both dug in the Gravel Bar and the claim voxels match (hash ${hh.h})`);
+    check(carry.inBed && hv.cargo.includes(carry.ing) && gv.cargo.includes(carry.ing), 'the guest carried an ingot to the truck bed; both see it there');
+    check(Math.hypot(hv.p[0] - gv.p[0], hv.p[1] - gv.p[1], hv.p[2] - gv.p[2]) < 0.1, `the host drove the truck; positions agree within ${Math.hypot(hv.p[0] - gv.p[0], hv.p[1] - gv.p[1], hv.p[2] - gv.p[2]).toFixed(3)} m`);
+    check(he.scrip === ge.scrip && he.earned > 0, `the guest sold the ingot: Scrip § ${he.scrip} on both`);
+    check(missing === 0 && worst < 0.1, `${n} loose things agree within ${worst.toFixed(3)} m (${missing} missing)`);
+    check(avatars === 1, 'the guest sees the host\'s avatar');
+    check(H.e2.length === 0 && G.e2.length === 0, 'no console errors in either context' + (H.e2.length + G.e2.length ? ': ' + [...H.e2, ...G.e2].slice(0, 4).join(' | ') : ''));
+    await H.c.close(); await G.c.close(); await relay.close();
   }
 
   if (all || flags.has('--shots')) {
@@ -692,6 +863,36 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       }, 'data:image/png;base64,' + require('fs').readFileSync(`${out}/${n}.png`).toString('base64'));
       check(lum > 30, `${n} mean brightness ${lum.toFixed(0)}/255 stays above the minimum ambient`);
     }
+    // M6: claims, Upper Falls, the Pumphouse, vehicles, the scanner, panels.
+    const look = (x, y, z, ax, ay, az) => ({ x, y, z, yaw: Math.atan2(-(ax - x), -(az - z)), pitch: Math.atan2(ay - y, Math.hypot(ax - x, az - z)) });
+    const Q = await p.evaluate(() => { const C = {}; for (const c of __rill.places.CLAIMS) C[c.id] = c; return { C, H: __rill.places.HAMLET, P: __rill.places.PUMPHOUSE }; });
+    const oc = Q.C.oldcut, sl = Q.C.slate, em = Q.C.ember, H6 = Q.H, PH = Q.P;
+    await shot(p, 'm6-oldcut', { ...look(oc.x0 - 14, oc.top + 16, oc.z0 - 8, oc.cx - 4, oc.top - 3, oc.cz + 2), t: 0.42 });
+    await shot(p, 'm6-slate', { ...look(sl.x1 + 18, sl.top + 4, sl.z0 - 14, sl.cx, sl.top - 8, sl.cz), t: 0.45 });
+    await shot(p, 'm6-upper-falls', { ...look(H6.x + 30, H6.y + 16, H6.z + 34, H6.x, H6.y + 1, H6.z), t: 0.55 });
+    await shot(p, 'm6-pumphouse-ruin', { ...look(PH.x + 17, PH.y + 5, PH.z + 14, PH.x, PH.y + 1.5, PH.z), t: 0.55 });
+    await p.evaluate(async () => {
+      const R = __rill; R.economy.state.owned.push('ember'); R.economy.state.flags.pump = { stage: 5, got: {} }; R.workshop.applyStage();
+      const T = R.places.TOWN, Hh = R.height;
+      const s = { buggy: [T.x - 31, T.z + 40], survey: [T.x - 25, T.z + 40], hauler2: [T.x - 18, T.z + 40], excavator: [T.x - 10, T.z + 40] };
+      for (const [t, [x, z]] of Object.entries(s)) await R.vehicles.spawn(t, [x, Hh(x, z) + 1.2, z], 0.5);
+      for (let i = 0; i < 60; i++) await R.tick(1);
+    });
+    await shot(p, 'm6-pumphouse-restored', { ...look(PH.x + 16, PH.y + 4, PH.z - 15, PH.x - 2, PH.y + 3, PH.z), t: 0.3 });
+    await shot(p, 'm6-pumphouse-wheel', { ...look(PH.x - 14, PH.y + 3, PH.z - 12, PH.x - 4, PH.y + 3, PH.z), t: 0.45 });
+    await shot(p, 'm6-vehicles', { ...look(T.x - 24, T.y + 3.5, T.z + 51, T.x - 19, T.y + 0.5, T.z + 40), t: 0.5 });
+    await shot(p, 'm6-ember-door', { x: A.x + 30, y: A.y + 1.6, z: A.z, yaw: -Math.PI / 2, pitch: -0.05, t: 0.5 });
+    await shot(p, 'm6-ember-seam', { x: em.x0 + 2, y: em.floor + 1.6, z: em.cz, yaw: -Math.PI / 2, pitch: -0.1, t: 0.5 });
+    // Driving the Survey Buggy shows the vein scanner.
+    await p.evaluate(async () => { const R = __rill; R.fly(false); const v = [...R.vehicles.list.values()].find(k => k.type === 'survey'); const g = R.places.CLAIMS.find(c => c.id === 'willow'); await R.vehicles.teleport(v.id, [g.x0 - 6, R.height(g.x0 - 6, g.cz) + 1.2, g.cz], Math.PI / 2); for (let i = 0; i < 30; i++) await R.tick(1); const pp = v.group.position; await R.teleport(pp.x, pp.y + 1.5, pp.z); R.vehicles.enter(v.id); for (let i = 0; i < 30; i++) await R.tick(1); });
+    await p.waitForTimeout(800); await p.screenshot({ path: `${out}/m6-survey-scanner.png` });
+    await p.evaluate(async () => { await __rill.exitVehicle(); });
+    // The Machine Shop panel and the end screen.
+    await p.evaluate(() => { const R = __rill; R.economy.state.standing = 14; R.economy.state.scrip = 25000; R.workshop.openWorkshop(); });
+    await p.waitForTimeout(300); await p.screenshot({ path: `${out}/m6-machine-shop.png` });
+    await p.evaluate(() => { __rill.panels.close(); __rill.workshop.finale(true); });
+    await p.waitForTimeout(300); await p.screenshot({ path: `${out}/m6-end-screen.png` });
+    await p.evaluate(() => __rill.panels.close());
     // Settings panel.
     await p.evaluate(() => { __rill.menu.showPause(true); __rill.menu.openSettings(); });
     await p.waitForTimeout(200);

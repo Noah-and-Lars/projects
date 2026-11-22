@@ -316,7 +316,8 @@ across freshly dug ground without jitter or launching.
   - **Water parts:** Header Tank, Settling Tank, Booster Pump and Pipe
     Junction.
   - **Drill Mk I:** band 1, one load every 5 s at full speed. Its tip sits
-    2.6 m down, and the depth there decides band and weight.
+    3.6 m down (2.6 m until the M6 pacing pass), and the depth there decides
+    band and weight.
   - **Sluice Mk I:** a 10-load hopper, one roll every 4 s, with a bonus roll
     chance of 10% × satisfaction.
   - **Kiln:** 10 kg per 8 s, burns quartz at 1 kg a minute, holds 50 kg of
@@ -425,3 +426,110 @@ The line, all automatic for 15 simulated minutes:
 - A water wheel drives the stamp mill: 1 ore clod → 3 loads.
 - The gem cutter hook cut 4/4 garnets, and the splitter sent 2 straight and
   2 right.
+
+## M6: progression and world
+
+- **Claims.** All six claims are voxel volumes (0.5 m voxels, 32³ chunks).
+  Boot meshes about 66 chunks, most of them solid or empty, which adds well
+  under a second.
+  - **Hand-shaped plots.** These are carved deterministically at creation,
+    so they aren't saved:
+    - Old Cut is an oval pit 5 m deep, dug in two steps.
+    - Slate Shelf steps down 5 m at a time toward the valley. Its lowest
+      terrace is open at the +x end, and the hillside outside follows it
+      down.
+    - Glimmer Hollow is a 3 m bowl.
+  - **Ember Seam.** It's a tunnel claim: solid rock from 3 m under the adit
+    floor to 9 m above it, with a bedrock skin top and bottom. Its depth for
+    band and weight is horizontal, `14 + 14 × (x − x0) / 42` m. It starts in
+    slate (band 3) behind the door, reaches basalt (band 4) about 24 m in,
+    and ends in a bedrock wall.
+  - **The adit door.** It's a box collider that is removed while you own the
+    deed.
+- **Veins.**
+  - **Shape and placement.** One sphere per claim, radius 3–6 m. Positions
+    come from a fixed seed (`rillstone-veins`), so saves stay consistent.
+  - **Materials** follow each claim's character and price: Gravel Bar
+    silver, Willow Bend and Old Cut gold, Slate Shelf and Glimmer Hollow
+    glimmerite (Glimmer Hollow's is fixed about 11 m down), and Ember Seam
+    emberite. Glimmerite veins are kept below 6 m, because band 1 never
+    drops it from machines.
+  - **Rolls.** A dug load remembers the vein it came from, and a third of
+    its rolls give the vein's material. Measured: 36.8% glimmerite against
+    35% expected.
+- **The relic.** It's buried 0.6 m under the Old Cut pit floor. Digging
+  within about 1 m of it turns up the brass governor, which Pumphouse stage 2
+  needs. It can't be sold.
+- **Drill tips** were retuned for pacing:
+  - Mk I is now 3.6 m (was 2.6). On the surface that's band 1 at about
+    10 § a load, which gives the target 120–180 §/min with a sluice.
+  - Mk II is 6.5 m, so it reaches the gravel bed from the surface.
+  - Mk III is 9 m: stand it in a pit or on Slate Shelf's low terrace for
+    slate.
+  - Mk IV works only in the Ember Seam.
+- **Blueprint ingots are scaled to a fifth of the brief's numbers.**
+  - **Example:** the brief's 600 kg iron + 80 kg glimmerite for a Mk II
+    sluice is 120 + 15 kg here.
+  - **Why:** at the brief's numbers, the first Mk II needed about 1,500
+    band-2 loads washed by hand just for the glimmerite, before any Mk II
+    machine could exist.
+  - **Standing gates:** Mk II ★ 4, Mk III ★ 12, Mk IV ★ 24.
+  - **How fast standing comes:** contracts give their tier in standing, and
+    the tier rises every 4 standing. So ★ 24 is about 11 contracts in.
+- **Sluice Mk IV** isn't in the brief's table. Mk III washes band ≤ 3 and the
+  Mk IV drill makes band-4 loads, so without it basalt could only be panned.
+- **Market and contracts.**
+  - **Upper Falls stall:** the fourth stall always wants something refined
+    (ingots, cut gems or crafted goods).
+  - **Millbrook stalls:** they add ingot wants from ★ 4.
+  - **Contracts:** from tier 2 they ask for ingots, cut gems and named
+    crafts.
+- **Vehicles.**
+  - **Trail Buggy and Survey Buggy:** 650–720 kg on soft springs.
+  - **Excavator:** six hidden wheels under track skirts. It skid-steers by
+    driving the yaw rate toward the input, and its engine is spread over all
+    wheels.
+  - **Ore Tram:** a kinematic "vehicle" with a static box collider (so aim,
+    the bed panel and cargo work unchanged). It moves along its rail
+    polyline at 4 m/s by script, and the collider comes off while it moves.
+  - **Rails** sample the claim surface or the terrain every 2 m, and refuse
+    grades over 1 in 4.
+- **Excavator cuts** are axis-aligned 1 × 0.85 × 1 m boxes on the world's
+  1 m grid (a new box brush), aimed 4.4 m ahead of the chassis. Each cut is
+  one load, and the bucket digs up to slate.
+- **Audio.**
+  - **Machine loops:** small synth chains (noise bands plus an oscillator,
+    with an LFO for rhythm) feed PannerNodes.
+  - **Grouping:** same-type machines within 6 m share one voice, and the
+    8 nearest clusters play. Worn machines add a grinding rasp.
+  - **Ambience:** the river is a band-passed noise bed that fades with
+    distance to the water, plus wind.
+  - **New cues:** machine start-up, low-fuel sputter and contract complete.
+
+### Pacing (`node tools/test.cjs <dir> --pacing`)
+
+A drill and sluice of each tier run for 2 simulated minutes in their own claim and band, with the real machine code. The measured wash rate is priced at the expected Assay Office value of a load at the drill's band and depth (20,000 rolls), plus the bonus-roll chance. Rare finds make a 2-minute sample too noisy to compare tiers directly.
+
+| | Measured | Target (BUILD_BRIEF 3.6) |
+| --- | --- | --- |
+| Hand washing, first 20 min (model below) | § 70.7/min; first § 1,000 at 15.9 min | 40–80 §/min; 15–20 min to the first machines |
+| One Mk I drill + sluice (Gravel Bar, band 1, § 10.1 a load) | § 127/min | 120–180 §/min |
+| One Mk II line (Willow Bend, band 2, § 24.8 a load) | § 396/min | — |
+| One Mk III line (Slate Shelf low terrace, band 3, § 74.8 a load) | § 1,355/min | — |
+| One Mk IV line (Ember Seam, band 4, § 156 a load) | § 3,343/min | — |
+| Late base: 20 Mk I + 10 Mk II drills | § 390,000/h = 92× hand washing | "two orders of magnitude" |
+
+- **Hand-washing model.** It uses the real loot code with the game's
+  timings:
+  - **Values:** each load is priced at its expected value at the pit's
+    current depth.
+  - **Per cycle:** scoop 2 loads (0.4 s each), walk 10 m each way at
+    4.2 m/s, dip, wash twice (0.6 s each), tip out (0.5 s), and pick up each
+    find (0.8 s).
+  - **Overhead:** a 90 s selling trip every 5 minutes.
+  - **Depth:** the pit deepens 0.017 m per load.
+- **The brief's late-game numbers disagree.** "Tens of thousands per hour
+  from 20–40 drills" contradicts its own Mk I target: one Mk I line at
+  120–180 §/min is already 7–11k/h, so 20 of them make 150k–200k/h. The
+  check therefore uses "two orders of magnitude over hand labour" (100×
+  ±30%), which the same paragraph also states.

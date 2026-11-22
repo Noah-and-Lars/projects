@@ -209,7 +209,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
   function use() {
     const e = heldEnt(); const info = aimInfo();
     if (!e) return;
-    if (H.useHook?.(e, info)) return true;
+    if (H.useHook?.(e, info, H)) return true;
     const def = toolDef(e);
     const near = info.dist !== undefined && info.dist < REACH;
     // Placing a machine from its crate.
@@ -352,8 +352,9 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (info.kind === 'vehicle' && info.dist < 4) {
       if (e && e.type === 'sack') parts.unshift(`${k('LMB')} refuel`);
       else if (e && info.bed) parts.unshift(`${k('G')} load into bed`);
-      parts.push(`${k('E')} bed`);
-      parts.push(`${k('F')} drive`);
+      const vd = H.vehicles.list.get(info.id)?.def;
+      if (vd?.bed) parts.push(`${k('E')} ${vd.kinematic ? 'tub' : 'bed'}`);
+      parts.push(`${k('F')} ${vd?.kinematic ? 'send / stop' : 'drive'}`);
     }
     if (H.slot || (e && TOOLS[e.type])) parts.push(`${k('Q')} swap`);
     return parts.join(' · ');
@@ -365,7 +366,8 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (!H.manualAim) physics.query({ type: 'ray', o: [o.x, o.y, o.z], d: [d.x, d.y, d.z], max: 8 }).then((r) => { if (!H.manualAim) H.aim = r; });
     const info = aimInfo();
     H.cooldown -= dt;
-    if (enabled) {
+    if (enabled && H.remote) remoteControls(input, info);
+    else if (enabled) {
       if (input.pressed('use') || (input.held('use') && H.cooldown <= -0.15)) {
         const e = heldEnt();
         if (e && H.cooldown <= 0) { H.cooldown = toolDef(e)?.cooldown || 0.3; use(); }
@@ -429,6 +431,54 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     holder.position.set(0.34 + pose[0] + bx, -0.32 + pose[1] + by, -0.62 + pose[2]);
     holder.rotation.set(pose[3], pose[4] + bx * 0.6, pose[5]);
   };
+  // ---- Co-op guest: actions go to the host, which runs the real thing ----
+  // Panels (shops, the guild board, machine panels, the truck bed) open here;
+  // what they change is sent on as UI actions.
+  const LOCAL_PROPS = new Set(['shop', 'guild', 'pumpboard', 'chalk']);
+  function remoteControls(input, info) {
+    const e = heldEnt();
+    if (input.pressed('use') || (input.held('use') && H.cooldown <= -0.15)) {
+      if (e && H.cooldown <= 0) {
+        H.cooldown = toolDef(e)?.cooldown || 0.3;
+        if (e.type === 'crate' && H.machines) {
+          const g = H.ghostState;
+          if (!g) {} else if (g.why) { say(g.why, 'err'); audio.play('error'); }
+          else if (!H.ghostFree) { say('Something is in the way', 'err'); audio.play('error'); }
+          else { H.remote({ k: 'place', def: e.data.def, pos: g.pos, rot: g.rot, ent: e.id }); H.play('place'); }
+        } else { H.remote({ k: 'use' }); H.play(e.type === 'shovel' ? 'dig' : e.type === 'pick' ? 'swing' : 'grab'); }
+      }
+    }
+    if (input.pressed('pickup')) {
+      const near = info.dist !== undefined && info.dist < REACH + 0.5;
+      if (info.kind === 'prop' && near && LOCAL_PROPS.has(H.props.kindOf?.(info.id))) H.props.interact(info.id);
+      else if (info.kind === 'vehicle' && info.dist < REACH + 0.8) H.onVehicle?.(info.id);
+      else H.remote({ k: 'pick' });
+    }
+    if (input.pressed('secondary') && H.machines) {
+      if (e && e.type === 'coil' && H.machines.runStart()) H.remote({ k: 'sec' });
+      else if (info.kind === 'machine' && info.dist < REACH + 0.5 && !info.m.run) {
+        if (e && e.type === 'mallet') H.remote({ k: 'unlock', id: info.id });
+        else H.machines.openPanel(info.id);
+      }
+    }
+    if (input.pressed('drop') && e) {
+      if (info.kind === 'vehicle' && info.dist < REACH) H.remote({ k: 'drop' });
+      else if (!H.ringPos) say('Aim at the ground to drop');
+      else if (!H.ringOk) { say('No room there', 'err'); audio.play('error'); }
+      else { const d = camDir(); H.remote({ k: 'drop', ring: H.ringPos, yaw: Math.atan2(-d.x, -d.z) }); H.play('equip'); }
+    }
+    if (input.pressed('swap')) H.remote({ k: 'swap' });
+  }
+  // Host side: run a guest's drop at the ring they saw.
+  H.dropAt = (ring, yaw) => {
+    const e = heldEnt(); if (!e) return false;
+    const hh = items.halfHeight(e);
+    items.place(e.id, [ring[0], ring[1] + hh + 0.02, ring[2]], [0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)]);
+    H.hand = null; audio.play('drop');
+    return true;
+  };
+  H.camDir = camDir;
+
   H.give = (type, data = {}) => {
     const base = TOOLS[type] ? { loads: [], contents: [], ...data } : data;
     const ent = items.spawn(type, [0, 0, 0], { data: base, loc: 'held' });

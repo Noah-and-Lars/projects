@@ -7,7 +7,9 @@ built with [Three.js](https://threejs.org/) for rendering and
 [Rapier](https://rapier.rs/) for physics, running in a Web Worker.
 
 Work in progress: see `BUILD_BRIEF.md` for the plan and `NOTES.md` for
-measurements and decisions so far.
+measurements and decisions so far. Milestones M0–M6 are done: digging,
+washing, the town, water machines, belts and logic, all six claims,
+Mk II–IV machines, vehicles and the Pumphouse end goal.
 
 ## Play
 
@@ -109,7 +111,8 @@ Millbrook sits across the bridge from the Gravel Bar.
   Shed** sells charcoal and can call your truck to its yard. Purchases
   appear on the delivery pad by each shop.
 - **Guild board.** It has three contracts, which pay Scrip and Guild
-  Standing, and claim deeds. Willow Bend costs § 900.
+  Standing, and claim deeds (see Claims below). From ★ 4, contracts also ask
+  for ingots, cut gems and crafted goods.
 - **The Old Hauler.** F gets in and out, WASD drives, Space brakes and H
   (hold) unflips. Drop items onto the bed with G to carry them to town; E takes
   them out again. It burns charcoal: LMB with a sack on the truck refuels it.
@@ -168,6 +171,53 @@ crates.
     ejector, display.
   - **Range:** sensors and outputs act on the nearest machine within 2.6 m.
 
+## Claims, progression and the Pumphouse
+
+**Claims.** Six claims, each its own voxel volume. Deeds are on the Guild board; most also need Guild Standing (★).
+
+| Claim | Deed | Character |
+| --- | --- | --- |
+| Gravel Bar | yours | 6 m deep starter by the river |
+| Willow Bend | § 900 | 22 m deep, good river access |
+| Old Cut | § 1,500 · ★ 2 | A half-dug pit. Dig its floor to find the relic the old diggers left |
+| Slate Shelf | § 6,000 · ★ 6 | Three terraces stepping down to the hillside: lifts and belts country |
+| Glimmer Hollow | § 8,500 · ★ 10 | A sure Glimmerite vein about 11 m down |
+| Ember Seam | § 12,000 · ★ 16 | Behind the door at the end of the adit; it gets deeper the further in you dig, down to basalt (band 4) |
+
+**Veins.** Every claim has one hidden ore vein. A third of the loads washed from inside it give its metal. The **Prospector's Lamp** (General Store, § 400) is worn: E on it, and a meter by your Scrip glows violet and ticks faster as you near a vein. The **Survey Buggy** shows veins on a scanner while you drive.
+
+**Machine Shop** (Millbrook, by the Wagon Shed). Buy a blueprint once, then put ingots on its counter and build. Leftover metal comes back as a smaller ingot; machines arrive as crates on its pad.
+
+| Tier | Needs | Machines and tools |
+| --- | --- | --- |
+| Mk II | ★ 4 | Drill (tip 6.5 m: the gravel bed from the surface), Sluice (3 s), River Intake (90 L/s); Steel Pick (★ 2) |
+| Mk III | ★ 12 | Drill (tip 9 m), Sluice (2 s), River Intake (160 L/s); Glimmer Pick and Glimmer Pipe (★ 8) |
+| Mk IV | ★ 24 | Drill (Ember Seam only), Sluice for basalt; Ember Shovel and Pick (★ 20) |
+
+**Upper Falls.** Take the switchback road up the falls step, on the west bank. The **Gem Cutter** cuts any uncut gems on its counter for 12% of their cut value (ring the bell), and the fourth market stall always wants something refined.
+
+**Vehicles** (Wagon Shed). The Wagon Shed also lists your vehicles, so you can call one to the yard or sell it back for half.
+
+| Vehicle | Price | What it does |
+| --- | --- | --- |
+| Trail Buggy | § 700 | Light, quick and bouncy. No bed |
+| Hauler Mk II | § 1,800 | Bigger bed (3,000 kg, 90 items) and better grip |
+| Survey Buggy | § 3,000 · ★ 6 | A scanner shows veins within 90 m and how deep they are |
+| Excavator | § 6,500 · ★ 10 | Tracks. LMB cuts the next 1 m cell (fixed to the world grid) into its 10-load hopper; RMB empties it into a sluice under the bucket, or onto the ground |
+| Ore Tram | § 400, rails § 300 for 10 | Click a start and an end to lay rails (4 m segments). Click a rail with the tram kit to set it on, drop up to 600 kg into its tub, and F sends it to the far end |
+
+**The Rillstone Pumphouse** stands ruined on the bank below Millbrook. It is restored in five stages, and each stage takes a large delivery at its counter:
+
+1. Iron and copper ingots.
+2. The Old Cut relic and silver ingots.
+3. Gold ingots and cut gems.
+4. Glimmerite ingots.
+5. Emberite ingots and three chalices.
+
+Each stage pays Scrip and Standing, and the building comes back piece by piece. The fifth stage shows the end screen and puts a gold-plated water wheel on the Millwright's pad.
+
+**Sound.** Machines play spatial loops by type. Machines of one type within 6 m share a voice, at most 8 play at once, and worn ones grind. The river sounds louder as you near it, and the engine follows your speed. Captions can show every cue.
+
 ## The valley
 
 Rillstone Vale is about 600 × 600 m, shaped by `src/js/world/valley.js`.
@@ -179,7 +229,7 @@ Rillstone Vale is about 600 × 600 m, shaped by `src/js/world/valley.js`.
 - **Places.** Millbrook sits flat on the east bank of a bend, and Upper Falls
   sits on a shelf above the falls. Claim plots are flattened into the terrain.
 - **The old adit.** A timbered tunnel cut into the terrace cliff east of
-  town. It will lead to the Ember Seam claim later.
+  town. The door at its far end opens onto the Ember Seam for the deed holder.
 
 A day lasts 24 real minutes. The sky, fog, sun colour and hemisphere light
 follow the sun's height. At night the sun becomes a cool moonlight from the
@@ -212,7 +262,11 @@ underground, and L toggles it.
 | `js/sim/economy.js` | Ledger, market buyers with saturation, contracts, claim deeds |
 | `js/game/town.js`, `js/render/buildings.js` | Millbrook: buildings, counters, bells, clerks, stalls, guild board, delivery pads, bridge |
 | `js/defs/shops.js` | Shop catalogues |
-| `js/game/vehicles.js`, `js/defs/vehicles.js` | The Old Hauler: model, wheels, driving input, chase camera, fuel, unflip, cargo |
+| `js/game/vehicles.js`, `js/defs/vehicles.js` | Vehicles (hauler, buggies, Excavator, tram): models, wheels, driving input, chase camera, fuel, unflip, cargo |
+| `js/game/progress.js` | The Old Cut relic, the Ember Seam door, the Prospector's Lamp and vein meter |
+| `js/game/workshop.js`, `js/defs/progression.js`, `js/render/pumphouse.js` | Machine Shop blueprints and builds, the Upper Falls gem cutter, the Pumphouse stages and end screen |
+| `js/defs/machines3.js` | Mk II–IV machines and the gold-plated wheel |
+| `js/game/heavy.js` | Excavator arm and hopper, Survey Buggy scanner, rails and the Ore Tram |
 | `js/core/save.js` | IndexedDB save slots with A/B halves, migrations, `.rillsave` export/import |
 | `js/ui/panels.js` | Shop, contracts and save panels |
 | `js/sim/flow.js` | Water flow budget: networks, sources, boosters, tanks, widest-path pipe limits, silt |
@@ -260,6 +314,13 @@ outside request to prove the file is self-contained. Add `--src` to test
 - runs a fully automatic dig → wash → sort → smelt → bin line for 15
   simulated minutes, gated by sensors and a pour trigger; checks logic truth
   tables, jams and shaft power (`--belts`);
+- checks M6: all six claims, the relic, the Ember Seam door, the lamp and
+  veins, a Machine Shop build with leftovers, the gem cutter, all five
+  Pumphouse stages and the end screen, the Excavator's grid cuts, rails and
+  a tram run, and the machine-sound voice limit (`--progress`);
+- fast-forwards a drill and sluice of every tier in its own claim and band,
+  and checks the pacing targets: hand washing, one Mk I line, and a late
+  base (`--pacing`);
 - runs digging benchmark 1 and screenshots the depth bands, the drop ring,
   a tooltip and panning;
 - fails on any console error.

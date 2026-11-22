@@ -161,6 +161,9 @@ function markDirty(vol, x0, y0, z0, x1, y1, z1) {
       for (let i = c(x0 - 2, vol.cx); i <= c(x1 + 2, vol.cx); i++) { vol.dirty.add(`${i},${j},${k}`); vol.modified.add(`${i},${j},${k}`); }
 }
 
+// Co-op (M7): the host logs every edit so guests can replay it exactly.
+export const editLog = { fn: null };
+
 // Spherical brush. mode 'dig' removes, 'fill' adds. maxBand: the hardest
 // band the tool can cut. Returns { removed (m^3), blockedBand, bands: {band: m^3} }.
 export function brush(vol, centre, radius, mode = 'dig', maxBand = 1) {
@@ -195,7 +198,7 @@ export function brush(vol, centre, radius, mode = 'dig', maxBand = 1) {
       if (vol.band[i] === 0) vol.band[i] = 1;
     }
   }
-  if (touched) { markDirty(vol, x0, y0, z0, x1, y1, z1); vol.editSeq++; }
+  if (touched) { markDirty(vol, x0, y0, z0, x1, y1, z1); vol.editSeq++; editLog.fn?.(['s', vol.id, centre, radius, mode, maxBand]); }
   return { removed, blockedBand, bands };
 }
 
@@ -221,7 +224,7 @@ export function boxBrush(vol, min, max, maxBand = 1) {
     const fOld = Math.min(1, Math.max(0, old / 128 + 0.5)), fNew = Math.min(1, Math.max(0, target / 128 + 0.5)), dv = (fOld - fNew) * cell;
     removed += dv; bands[bd] = (bands[bd] || 0) + dv; touched = true;
   }
-  if (touched) { markDirty(vol, x0, y0, z0, x1, y1, z1); vol.editSeq++; }
+  if (touched) { markDirty(vol, x0, y0, z0, x1, y1, z1); vol.editSeq++; editLog.fn?.(['b', vol.id, min, max, maxBand]); }
   return { removed, blockedBand, bands };
 }
 // Height of the solid surface in a column (world y), or null.

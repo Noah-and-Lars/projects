@@ -402,21 +402,31 @@ export function createMachines({ scene, physics, materials, items, claims, water
   };
   function consume(held, H) { items.remove(held.id); if (H.hand === held.id) H.hand = null; }
   // Workbench: hot ingot (+ a cut gem in the swap slot) -> crafted goods.
+  // Make a crafted good from the held hot ingot (+ the cut gem in the swap slot).
+  function craft(held, H, k) {
+    const gem = H.slot ? items.get(H.slot) : null, gemOk = gem && gem.item && gem.item.stage === 'cut', it = held.item;
+    const out = { material: it.material, stage: 'crafted', craft: k, kg: it.kg };
+    if (gemOk && (k === 'ring' || k === 'chalice')) { out.gem = { ...gem.item }; items.remove(gem.id); H.slot = null; }
+    items.remove(held.id); H.hand = null;
+    const e = items.spawn('crafted', [0, 0, 0], { item: out, loc: 'held' }); H.hand = e.id;
+    audio.play('rare'); hud.toast(`Made a ${itemName(out).toLowerCase()}`, 'gold');
+    return e;
+  }
+  api.craft = craft;
   function openCraft(held, H) {
+    // A co-op guest's workbench: the menu opens on their screen instead.
+    if (H.remoteCraft) return H.remoteCraft(held);
+    api.openCraftMenu(held, H, (k) => { craft(held, H, k); panels.close(); });
+  }
+  api.openCraftMenu = (held, H, onMake) => {
     const gem = H.slot ? items.get(H.slot) : null;
     const gemOk = gem && gem.item && gem.item.stage === 'cut';
     const it = held.item;
     const opts = [['toolhead', 'Tool head', '×1.1'], ['ring', 'Ring', '×1.15'], ['chain', 'Chain', '×1.2'], ['chalice', 'Chalice', '×1.3']];
     const body = h('div', {}, h('p', { class: 'small' }, `${itemName(it)} · ${it.kg.toFixed(2)} kg. ${gemOk ? `Rings and chalices get the ${itemName(gem.item).toLowerCase()} from your swap slot set in.` : 'Hold a cut gem in your swap slot to set it into a ring or chalice.'}`),
-      ...opts.map(([k, name, mult]) => h('div', { class: 'entry' }, h('b', {}, name), h('button', { class: 'btn primary', onclick: () => {
-        const out = { material: it.material, stage: 'crafted', craft: k, kg: it.kg };
-        if (gemOk && (k === 'ring' || k === 'chalice')) { out.gem = { ...gem.item }; items.remove(gem.id); H.slot = null; }
-        items.remove(held.id); H.hand = null;
-        const e = items.spawn('crafted', [0, 0, 0], { item: out, loc: 'held' }); H.hand = e.id;
-        audio.play('rare'); hud.toast(`Made a ${itemName(out).toLowerCase()}`, 'gold'); panels.close();
-      } }, 'Make'), h('span', { class: 'desc' }, `Value ${mult}${k === 'ring' || k === 'chalice' ? ' · can hold a gem' : ''}`))));
+      ...opts.map(([k, name, mult]) => h('div', { class: 'entry' }, h('b', {}, name), h('button', { class: 'btn primary', onclick: () => onMake(k) }, 'Make'), h('span', { class: 'desc' }, `Value ${mult}${k === 'ring' || k === 'chalice' ? ' · can hold a gem' : ''}`))));
     panels.show('craft', 'Workbench', body);
-  }
+  };
 
   // ---- Machine panel (RMB) ----
   api.openPanel = (id) => {

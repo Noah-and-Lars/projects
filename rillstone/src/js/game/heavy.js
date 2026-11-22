@@ -159,12 +159,12 @@ export function createHeavy({ scene, physics, items, vehicles, claims, economy, 
     return 'ok';
   };
   let railStart = null;
-  hands.useHook = (e, info) => {
+  hands.useHook = (e, info, H = hands) => {
     if (e.type === 'railkit') {
       if (!info.p || info.dist > 8) { hud.toast('Aim at the ground'); return true; }
       if (!railStart) { const sn = nearestEnd(info.p); railStart = sn ? sn.L.pts[sn.end].slice() : info.p.slice(); audio.play('pickup'); hud.toast(sn ? 'Extending the line: click where it should run to' : 'Rails start here: click where they should run to'); return true; }
       const r = api.layRails(e, railStart, info.p); railStart = null;
-      if (r === 'ok') { audio.play('drop'); hands.play?.('place'); if (e.data.n <= 0) { items.remove(e.id); hands.hand = null; } else items.refresh(e.id); }
+      if (r === 'ok') { audio.play('drop'); H.play?.('place'); if (e.data.n <= 0) { items.remove(e.id); H.hand = null; } else items.refresh(e.id); }
       else { audio.play('error'); hud.toast(r === 'steep' ? 'Too steep for rails (over 1 in 4)' : 'Too short: lay at least 2 m', 'err'); }
       return true;
     }
@@ -172,7 +172,7 @@ export function createHeavy({ scene, physics, items, vehicles, claims, economy, 
       const hit = info.p && nearestOnLine(info.p, 2.5);
       if (!hit) { hud.toast('Click a rail line to set the tram on it', 'err'); audio.play('error'); return true; }
       const pa = pointAt(hit.L, hit.s);
-      items.remove(e.id); hands.hand = null;
+      items.remove(e.id); H.hand = null;
       vehicles.spawn('tram', [pa.p[0], pa.p[1] + 0.1, pa.p[2]], Math.atan2(pa.d[0], pa.d[2]), { tram: { line: hit.L.id, s: hit.s, dir: 1, moving: false } }).then(v => seat(v));
       audio.play('drop'); hud.toast('Tram on the rails · F sends it to the far end');
       return true;

@@ -26,6 +26,7 @@ import { createPanels } from './ui/panels.js';
 import { createSaves, SAVE_VERSION } from './core/save.js';
 import { readChunk, writeChunk, relicSpot, VEINS } from './world/claims.js';
 import { rollLoot } from './sim/loot.js';
+import { itemValue } from './defs/materials.js';
 import { PUMP_STAGES } from './defs/progression.js';
 import { createProgress } from './game/progress.js';
 import { createWorkshop } from './game/workshop.js';
@@ -36,7 +37,7 @@ import { createMachines } from './game/machines.js';
 import { createAutomation } from './game/automation.js';
 import { createHUD } from './ui/hud.js';
 import { createMenu } from './ui/menu.js';
-import { HALF, spawnPoint, height, ADIT, TOWN, HAMLET, CLAIMS, riverX, waterY, FALLS_Z } from './world/valley.js';
+import { HALF, spawnPoint, height, ADIT, TOWN, HAMLET, CLAIMS, PUMPHOUSE, riverX, waterY, FALLS_Z, RIVER_HALF_WIDTH } from './world/valley.js';
 
 const TEST = new URLSearchParams(location.search).has('test');
 const SEED = urlSeed();
@@ -103,15 +104,15 @@ async function boot() {
   machines.panelRows = auto.panelRows;
   hands.auto = auto;
   // Take one thing out of a bin or crate into your hands (or drop it if they're full).
-  auto.takeFrom = (m, i) => {
+  auto.takeFrom = (m, i, H = hands) => {
     const it = m.state.contents.splice(i, 1)[0]; if (!it) return;
     const e = items.spawn(it.stage === 'crafted' ? 'crafted' : 'nugget', [0, 0, 0], { item: it, loc: 'held' });
-    if (!hands.hand) hands.hand = e.id; else { e.loc = 'held'; const p = machines._int.toWorld(m, [0, 1.3, 0.8]); items.place(e.id, p); }
+    if (!H.hand) H.hand = e.id; else { e.loc = 'held'; const p = machines._int.toWorld(m, [0, 1.3, 0.8]); items.place(e.id, p); }
     audio.play('pickup');
   };
   // Riding a lift: up to the top deck, or back down.
   hands.onLift = async (m) => { const top = machines._int.toWorld(m, [0, 4.15, 0]), bottom = machines._int.toWorld(m, [0, 0.4, -1.2]); const up = player.cur.y < m.pos[1] + 2; const p = up ? top : bottom; await teleport(p[0], p[1] + 1, p[2]); audio.play('pickup'); };
-  hands.onVehicle = (id) => bed.open(id);
+  hands.onVehicle = (id) => { const v = vehicles.list.get(id); if (v?.def.bed) bed.open(id); else hud.toast(`${v?.def.name}: no cargo bed · F to drive`); };
 
   // Player.
   const player = createPlayer(settings);
@@ -248,6 +249,26 @@ async function boot() {
   // Frame loop.
   let caveF = 0;
   const driveEl = h('div', { id: 'drive', class: 'hidden' }); hud.el.append(driveEl);
+  // Spatial sound: machine loops by type, the river, the engine you drive.
+  let soundT = 0, startupT = 0;
+  const SOUND_TYPE = (d) => d.startsWith('drill') ? 'drill' : d.startsWith('sluice') ? 'sluice' : d === 'stampmill' ? 'stamp' : d === 'belt_drive' ? 'belt' : (d === 'waterwheel' || d === 'goldwheel' || d === 'turbine') ? 'wheel' : (d === 'kiln' || d === 'smelter' || d === 'crucible') ? 'heat' : (d === 'booster' || d === 'trommel' || d === 'lift' || d.startsWith('intake')) ? 'pump' : null;
+  function updateSound(dv) {
+    const cam = camera, pos = cam.position.toArray();
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion).toArray(), up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion).toArray();
+    const src = [];
+    startupT -= 0.1;
+    for (const m of machines.list.values()) {
+      if (m.run) continue;
+      const type = SOUND_TYPE(m.def); if (!type) continue;
+      const on = type === 'heat' ? m.status === 'melting' : type === 'wheel' ? m.on !== false : m.status === 'running';
+      if (on && m._wasOn === false && startupT <= 0 && Math.hypot(m.pos[0] - pos[0], m.pos[2] - pos[2]) < 25) { audio.play('startup'); startupT = 1; }
+      m._wasOn = on;
+      if (on) src.push({ type, pos: [m.pos[0], m.pos[1] + 1, m.pos[2]], level: type === 'pump' ? 0.5 : 1, wear: m.wear || 0, rate: m.speed || 1 });
+    }
+    if (dv && dv.state) src.push({ type: 'engine', pos: dv.group.position.toArray(), level: 0.7, rate: Math.min(1.6, 0.4 + Math.abs(dv.state.speed) / (dv.def.topSpeed || 15)) });
+    const river = Math.max(0, Math.abs(pos[0] - riverX(pos[2])) - RIVER_HALF_WIDTH(pos[2]));
+    audio.update({ pos, fwd, up }, river, src);
+  }
   const scanCanvas = h('canvas', { id: 'scanner', width: 220, height: 220 });
   let last = performance.now(), acc = 0, simAcc = 0, fps = 0, fpsT = 0, frames = 0;
   const timings = { physics: 0, sim: 0, render: 0 };
@@ -317,6 +338,7 @@ async function boot() {
       if (dv.def.hopper && input.pressed('secondary')) heavy.dump(dv);
     }
     heavy.update(dt);
+    soundT -= dt; if (soundT <= 0) { soundT = 0.1; updateSound(dv); }
     progress.update(dt, dv ? dv.group.position.toArray() : camera.position.toArray(), { scanner: !!dv?.def.scanner });
     workshop.update(dt);
     hud.hotbar([slotCard(items, hands.hand), slotCard(items, hands.slot)]);
@@ -352,8 +374,8 @@ async function boot() {
   const api = { ready: true, physics, version: physics.version, seed: SEED };
   if (TEST) Object.assign(api, {
     THREE, view, player, input, state, settings, hud, menu, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, machines, auto, progress, workshop, heavy, adit, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
-    places: { TOWN, HAMLET, ADIT, CLAIMS, FALLS_Z, spawn: spawnPoint() },
-    relicSpot, veins: VEINS, rollLoot, pumpStages: PUMP_STAGES,
+    places: { TOWN, HAMLET, ADIT, CLAIMS, FALLS_Z, PUMPHOUSE, spawn: spawnPoint() },
+    relicSpot, veins: VEINS, rollLoot, itemValue, pumpStages: PUMP_STAGES,
     height, riverX, waterY,
     play,
     teleport: (x, y, z, yaw, pitch) => { if (pitch !== undefined) player.pitch = pitch; return teleport(x, y ?? height(x, z) + 1, z, yaw); },

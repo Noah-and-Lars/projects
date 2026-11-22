@@ -22,12 +22,21 @@ export function slotCard(items, id) {
 }
 
 export function createBed({ panels, items, vehicles, hands, hud, audio }) {
-  function freeHand() {
-    if (!hands.hand) return true;
-    const cur = items.get(hands.hand);
-    if (TOOLS[cur.type] && !hands.slot) { hands.slot = hands.hand; hands.hand = null; return true; }
+  function freeHand(H = hands) {
+    if (!H.hand) return true;
+    const cur = items.get(H.hand);
+    if (TOOLS[cur.type] && !H.slot) { H.slot = H.hand; H.hand = null; return true; }
     return false;
   }
+  // Take one thing out of the bed into a hand (H: whose hands; co-op guests have their own).
+  function take(vid, id, H = hands) {
+    const e = items.get(id), v = vehicles.list.get(vid); if (!e || !v || !v.cargo.includes(id)) return false;
+    if (!freeHand(H)) { hud.toast('Hands full — put something down first', 'err'); return false; }
+    vehicles.removeCargo(vid, e.id); e.loc = 'held'; e.container = null; H.hand = e.id; audio.play('pickup'); H.play?.('equip');
+    return true;
+  }
+  // Co-op guests: what the panel's buttons do goes to the host (api.remote).
+  const later = (render) => setTimeout(render, 350);
   function open(vid) {
     const v = vehicles.list.get(vid); if (!v) return;
     const render = () => {
@@ -36,8 +45,8 @@ export function createBed({ panels, items, vehicles, hands, hud, audio }) {
         const c = items.card(e.id), val = e.item ? itemValue(e.item) : 0;
         return h('div', { class: 'entry' }, h('b', {}, h('span', { class: 'sw', style: { background: swatch(e) } }), ' ', c.name),
           h('button', { class: 'btn primary', onclick: () => {
-            if (!freeHand()) { hud.toast('Hands full — put something down first', 'err'); return; }
-            vehicles.removeCargo(vid, e.id); e.loc = 'held'; e.container = null; hands.hand = e.id; audio.play('pickup'); hands.play?.('equip'); render();
+            if (api.remote) { api.remote({ op: 'bedTake', vid, ent: e.id }); later(render); return; }
+            if (take(vid, e.id)) render();
           } }, 'Take'),
           h('span', { class: 'desc' }, (c.lines || []).join(' · ') + (val ? '' : '')));
       });
@@ -45,22 +54,22 @@ export function createBed({ panels, items, vehicles, hands, hud, audio }) {
       const body = h('div', {},
         h('p', { class: 'small' }, `${v.cargo.length} / ${v.def.cargoItems} items · ${kg.toFixed(0)} / ${v.def.cargoKg} kg`),
         held ? h('div', { class: 'entry' }, h('b', {}, h('span', { class: 'sw', style: { background: swatch(held) } }), ' ', items.card(held.id)?.name || held.type),
-          h('button', { class: 'btn primary', onclick: () => { const r = putIn(vid, held); if (r === 'ok') render(); } }, 'Put in bed'), h('span', { class: 'desc' }, 'In your hand')) : null,
+          h('button', { class: 'btn primary', onclick: () => { if (api.remote) { api.remote({ op: 'bedPut', vid }); later(render); return; } const r = putIn(vid, held); if (r === 'ok') render(); } }, 'Put in bed'), h('span', { class: 'desc' }, 'In your hand')) : null,
         rows.length ? h('h3', {}, 'In the bed') : h('p', { class: 'small' }, 'The bed is empty. Drop things onto it with G, or put what you hold in from here.'),
         ...rows,
-        rows.length ? h('div', { class: 'entry' }, h('b', {}, 'Unload everything'), h('button', { class: 'btn', onclick: () => { unloadAll(vid); render(); } }, 'Unload'), h('span', { class: 'desc' }, 'Sets it all down behind the tailgate.')) : null);
+        rows.length ? h('div', { class: 'entry' }, h('b', {}, 'Unload everything'), h('button', { class: 'btn', onclick: () => { if (api.remote) { api.remote({ op: 'bedUnload', vid }); later(render); return; } unloadAll(vid); render(); } }, 'Unload'), h('span', { class: 'desc' }, 'Sets it all down behind the tailgate.')) : null);
       panels.show('bed:' + vid, `${v.def.name} · bed`, body, { badge: `${v.cargo.length} items` });
     };
     render();
   }
   // Put an item into the next free spot on the bed floor.
-  function putIn(vid, e) {
+  function putIn(vid, e, H = hands) {
     const v = vehicles.list.get(vid), b = v.def.bed;
     const n = v.cargo.length, cols = 4;
     const lx = -b.x + 0.2 + (n % cols) * ((2 * b.x - 0.4) / (cols - 1)), lz = b.z1 - 0.25 - Math.floor(n / cols) % 6 * 0.38;
     const wp = new THREE.Vector3(lx, b.y, lz).applyMatrix4(v.group.matrixWorld).toArray();
     const r = vehicles.addCargo(vid, e, wp);
-    if (r === 'ok') { if (hands.hand === e.id) hands.hand = null; audio.play('drop'); }
+    if (r === 'ok') { if (H.hand === e.id) H.hand = null; audio.play('drop'); }
     else hud.toast(r === 'full' ? 'The bed is full' : r === 'heavy' ? 'Too heavy for the bed' : 'No room there', 'err');
     return r;
   }
@@ -76,5 +85,6 @@ export function createBed({ panels, items, vehicles, hands, hud, audio }) {
     audio.play('pour');
     hud.toast(`Unloaded ${ids.length} item${ids.length === 1 ? '' : 's'} behind the truck`);
   }
-  return { open, putIn, unloadAll };
+  const api = { open, putIn, unloadAll, take, remote: null };
+  return api;
 }

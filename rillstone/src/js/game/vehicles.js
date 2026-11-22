@@ -16,7 +16,7 @@ const _v = new THREE.Vector3(), _q = new THREE.Quaternion(), _m = new THREE.Matr
 export function createVehicles({ scene, physics, items, materials, hud, audio }) {
   const list = new Map();
   let nextId = 900;
-  const api = { list, driving: null, camYaw: 0, camPitch: -0.25 };
+  const api = { list, driving: null, camYaw: 0, camPitch: -0.25, remote: false, remoteDrivers: new Map() };
 
   api.spawn = async (type, pos, yaw = 0, state = {}) => {
     const def = VEHICLES[type], id = state.id || nextId++;
@@ -24,7 +24,8 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
     const quat = state.quat || [0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)];
     // Trams ride rails on a script: a static box (owned by the tram) lets
     // the aim ray find them; game/tram.js moves them.
-    if (def.kinematic) physics.post({ op: 'setStaticBox', key: 'veh' + id, hx: def.hx, hy: def.hy, hz: def.hz, pos: [pos[0], pos[1] + def.bodyY, pos[2]], quat, owner: id, group: 'machine' });
+    if (api.remote) {} // co-op guest: a puppet moved by the host's snapshots
+    else if (def.kinematic) physics.post({ op: 'setStaticBox', key: 'veh' + id, hx: def.hx, hy: def.hy, hz: def.hz, pos: [pos[0], pos[1] + def.bodyY, pos[2]], quat, owner: id, group: 'machine' });
     else await physics.call({ op: 'createVehicle', id, pos, quat, def });
     const group = new THREE.Group();
     const body = new THREE.Mesh(vehicleBody(def.model), materials.vcolor); body.castShadow = body.receiveShadow = true; group.add(body);
@@ -99,6 +100,14 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
     syncMass(v);
   };
   api.cargoKg = (id) => cargoKg(list.get(id));
+  // Co-op guests: rebuild the drawn cargo from the host's list.
+  api.syncCargo = (id, ids) => {
+    const v = list.get(id); if (!v) return;
+    if (v.cargo.join(',') === ids.join(',')) return;
+    for (const m of v.cargoGroup.children.slice()) { v.cargoGroup.remove(m); m.geometry.dispose(); }
+    v.cargo = [];
+    for (const c of ids) { const e = items.get(c); if (e && e.data.local) { attachCargoMesh(v, e); v.cargo.push(c); } }
+  };
 
   api.refuel = (id) => {
     const v = list.get(id); if (!v || !v.def.fuelMax) return false;
@@ -109,7 +118,7 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
   api.unflip = (id) => physics.call({ op: 'unflip', id });
   api.teleport = (id, pos, yaw) => physics.call({ op: 'teleportVehicle', id, pos, quat: [0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)] });
 
-  api.enter = (id) => { const v = list.get(id); if (!v) return false; if (v.def.kinematic) { api.onTram?.(v); return false; } api.driving = id; api.camYaw = 0; audio.play('pickup'); return true; };
+  api.enter = (id) => { const v = list.get(id); if (!v) return false; if (v.def.kinematic) { api.onTram?.(v); return false; } if (api.remoteDrivers.has(id)) { hud.toast('Someone else is driving that'); return false; } api.driving = id; api.camYaw = 0; audio.play('pickup'); return true; };
   // Where to put the player when they get out: beside the driver's door.
   api.exitPoint = () => {
     const v = list.get(api.driving); if (!v) return null;
@@ -131,10 +140,17 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
         if (fuel && Math.abs(throttle) > 0.05) v.fuel = Math.max(0, v.fuel - dt * Math.abs(throttle));
         physics.post({ op: 'vehicleInput', id: v.id, input: { throttle, steer, brake: brake ? 1 : 0, driver: true, fuel } });
         if (!fuel && Math.abs(throttle) > 0.05 && (v.sputter -= dt) < 0) { v.sputter = 2.5; hud.toast('Out of fuel — buy charcoal at the Wagon Shed', 'err'); audio.play('error'); }
-        else if (fuel && v.fuel < v.def.fuelMax * 0.15 && (v.sputter -= dt) < 0) { v.sputter = 20; hud.toast('Fuel low', 'err'); }
+        else if (fuel && v.fuel < v.def.fuelMax * 0.15 && (v.sputter -= dt) < 0) { v.sputter = 20; hud.toast('Fuel low', 'err'); audio.play('sputter'); }
         // Unflip: hold H for 1 s.
         if (enabled && input.held('unflip')) { v.flipHold += dt; if (v.flipHold > 1) { v.flipHold = -10; api.unflip(v.id); hud.toast('Back on its wheels'); } } else v.flipHold = 0;
-      } else if (v.wasDriven) physics.post({ op: 'vehicleInput', id: v.id, input: { throttle: 0, steer: 0, brake: 0, driver: false } });
+      } else if (api.remoteDrivers.has(v.id)) {
+        // A co-op guest drives this one: their inputs arrive with their intents.
+        const inp = api.remoteDrivers.get(v.id).input || { throttle: 0, steer: 0, brake: 0 };
+        const fuel = v.fuel > 0;
+        if (fuel && Math.abs(inp.throttle) > 0.05) v.fuel = Math.max(0, v.fuel - dt * Math.abs(inp.throttle));
+        physics.post({ op: 'vehicleInput', id: v.id, input: { throttle: +inp.throttle || 0, steer: +inp.steer || 0, brake: inp.brake ? 1 : 0, driver: true, fuel } });
+        v.remoteDriven = true;
+      } else if (v.wasDriven || v.remoteDriven) { physics.post({ op: 'vehicleInput', id: v.id, input: { throttle: 0, steer: 0, brake: 0, driver: false } }); v.remoteDriven = false; }
       v.wasDriven = driver;
       if (v.dish) v.dish.rotation.y += dt * 2.2;
       if (v.arm) api.animateArm?.(v, dt);
@@ -192,7 +208,8 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
   // Remove a vehicle (selling it back, or a load).
   api.remove = async (id) => {
     const v = list.get(id); if (!v) return;
-    if (v.def.kinematic) physics.post({ op: 'setStaticBox', key: 'veh' + id, remove: true });
+    if (api.remote) {}
+    else if (v.def.kinematic) physics.post({ op: 'setStaticBox', key: 'veh' + id, remove: true });
     else await physics.call({ op: 'removeVehicle', id });
     scene.remove(v.group); list.delete(id);
   };

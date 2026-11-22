@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { BLUEPRINTS, PUMP_STAGES, needKey, needLabel, needMatches } from '../defs/progression.js';
 import { MATERIALS, itemValue, itemName } from '../defs/materials.js';
 import { PUMPHOUSE } from '../world/valley.js';
-import { pumphouseParts, pumpWheel, PUMP_DIMS } from '../render/pumphouse.js';
+import { pumphouseParts, pumpWheel, PUMP_DIMS, WHEEL } from '../render/pumphouse.js';
 import { counter, bell, textPlane } from '../render/buildings.js';
 import { h } from '../ui/dom.js';
 
@@ -79,10 +79,10 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
           const own = owned().includes(bp.id);
           const need = Object.entries(bp.ingots).map(([m, kg]) => `${kg} kg ${MATERIALS[m].name.toLowerCase()}`).join(' + ');
           const ok = Object.entries(bp.ingots).every(([m, kg]) => (st[m] || 0) + 1e-6 >= kg);
-          const btn = own ? h('button', { class: 'btn primary', disabled: !ok, onclick: () => { build(bp); render(); } }, 'Build')
+          const btn = own ? h('button', { class: 'btn primary', disabled: !ok, onclick: () => { WS_API.build(bp); setTimeout(render, 400); } }, 'Build')
             : E.standing < bp.standing ? h('span', { class: 'pill' }, `Needs ★ ${bp.standing}`)
-              : h('button', { class: 'btn', disabled: E.scrip < bp.bp, onclick: () => { buyBlueprint(bp); render(); } }, `Blueprint § ${fmt(bp.bp)}`);
-          rows.push(h('div', { class: 'entry' }, h('b', {}, bp.name), btn, h('span', { class: 'desc' }, `${bp.desc} Each build: ${need} of ingots.`)));
+              : h('button', { class: 'btn', disabled: E.scrip < bp.bp, onclick: () => { WS_API.buyBlueprint(bp); setTimeout(render, 400); } }, `Blueprint § ${fmt(bp.bp)}`);
+          rows.push(h('div', { class: 'entry' }, h('b', {}, bp.name), btn, h("span", { class: "desc" }, `${bp.desc} Each build takes ingots: ${need}.`)));
         }
       }
       const body = h('div', {}, h('p', { class: 'small' }, `Buy a blueprint once, then put ingots on the counter and build. Leftover metal comes back as a smaller ingot. On the counter: ${have}.`), ...rows);
@@ -119,7 +119,7 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
   const ph = new THREE.Group(); ph.position.set(P.x, P.y, P.z); scene.add(ph);
   const parts = pumphouseParts(), meshes = {};
   for (const [k, g] of Object.entries(parts)) { const m = new THREE.Mesh(g, materials.vcolor); m.castShadow = m.receiveShadow = true; ph.add(m); meshes[k] = m; }
-  const wheel = new THREE.Mesh(pumpWheel(), materials.vcolor); wheel.position.set(-W / 2 - 1.2, 3.2, 0); wheel.castShadow = true; ph.add(wheel);
+  const wheel = new THREE.Mesh(pumpWheel(), materials.vcolor); wheel.position.set(WHEEL.x, WHEEL.y, 0); wheel.castShadow = true; ph.add(wheel);
   const glow = new THREE.PointLight(0xff6a2a, 0, 14, 2); glow.position.set(W / 2 - 1.4, H + 4.6, D / 2 - 1.6); ph.add(glow);
   // Delivery counter and bell on the town side, with the project board.
   const cx = P.x + W / 2 + 3.2, cz = P.z, cyaw = Math.PI / 2;
@@ -195,13 +195,14 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
 
   physics.post({ op: 'batch', ops: town.statics.slice(s0) });
   let t = 0;
-  return {
+  const WS_API = {
     blueprints: BLUEPRINTS, buyBlueprint, build, openWorkshop, ringCutter, ringPump, openBoard, finale, applyStage, ingotStock,
     counters: { workshop: WS, cutter: CUT, pump: PC }, pumpBell,
     update(dt) {
       const s = pump().stage;
-      if (s >= 3) wheel.rotation.z += dt * 0.9;
+      if (s >= 3) wheel.rotation.x -= dt * 0.9;
       t += dt; glow.intensity = s >= 5 ? 6 + Math.sin(t * 7) * 1.2 + Math.sin(t * 13) * 0.6 : 0;
     },
   };
+  return WS_API;
 }

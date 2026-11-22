@@ -91,7 +91,10 @@ export function createItems({ scene, physics, materials }) {
       if (e.slot !== undefined) { const I = instFor(e.ikey || keyOf(e.item)); I.mesh.setMatrixAt(e.slot, ZERO); I.free.push(e.slot); I.dirty = true; e.slot = undefined; }
     } else { const m = meshes.get(e.id); if (m) { group.remove(m); m.geometry.dispose(); meshes.delete(e.id); } }
   }
+  // Co-op guests (api.remote) keep no bodies: the host's snapshots place things.
+  const unbody = (id) => { if (!api.remote) physics.removeBody(id); };
   function addBody(e, vel) {
+    if (api.remote) return;
     physics.addBody({ id: e.id, shape: shapeOf(e), pos: e.pos, quat: e.quat, vel, mass: massOf(e), kinematic: e.type === 'pile', friction: 0.8, angDamp: 0.6 });
   }
 
@@ -109,14 +112,14 @@ export function createItems({ scene, physics, materials }) {
     },
     remove(id) {
       const e = ents.get(id); if (!e) return;
-      if (e.loc === 'loose') { physics.removeBody(id); hide(e); }
+      if (e.loc === 'loose') { unbody(id); hide(e); }
       else if (e.loc === 'belt') hide(e);
       ents.delete(id);
     },
     // Take an entity out of the world (into a hand or a container).
     take(id, loc = 'held', container = null) {
       const e = ents.get(id); if (!e) return null;
-      if (e.loc === 'loose') { physics.removeBody(id); hide(e); }
+      if (e.loc === 'loose') { unbody(id); hide(e); }
       e.loc = loc; e.container = container;
       return e;
     },
@@ -150,7 +153,7 @@ export function createItems({ scene, physics, materials }) {
     // Sync drawn transforms with the physics worker's latest poses.
     update() {
       for (const e of ents.values()) {
-        if (e.loc !== 'loose') continue;
+        if (e.loc !== 'loose' || api.remote) continue;
         const pose = physics.poses.get(e.id);
         if (!pose || (pose.asleep && e._synced)) continue;
         e.pos[0] = pose.p[0]; e.pos[1] = pose.p[1]; e.pos[2] = pose.p[2];
@@ -221,7 +224,7 @@ export function createItems({ scene, physics, materials }) {
       const kg = p.data.kgs.pop();
       const n = api.spawn('nugget', p.pos, { item: { material: p.data.material, stage: p.data.stage, kg }, loc: 'held' });
       if (p.data.kgs.length === 0) api.remove(id);
-      else { physics.removeBody(id); hide(p); addBody(p); show(p); }
+      else { unbody(id); hide(p); addBody(p); show(p); }
       return n;
     },
     counts() { let loose = 0, piles = 0; for (const e of ents.values()) { if (e.loc === 'loose') loose++; if (e.type === 'pile') piles++; } return { total: ents.size, loose, piles }; },
@@ -234,6 +237,27 @@ export function createItems({ scene, physics, materials }) {
         if (e.loc === 'loose') { addBody(e); show(e); e._synced = false; }
       }
     },
+    // ---- Co-op (M7) ----
+    // Apply a pose from the host (guests).
+    setPose(id, p, q) {
+      const e = ents.get(id); if (!e) return;
+      e.pos[0] = p[0]; e.pos[1] = p[1]; e.pos[2] = p[2]; if (q) { e.quat[0] = q[0]; e.quat[1] = q[1]; e.quat[2] = q[2]; e.quat[3] = q[3]; }
+      if (e.loc === 'loose' || e.loc === 'belt') api.showAt(e);
+    },
+    // Create or update an entity from the host's data (guests).
+    upsert(d) {
+      let e = ents.get(d.id);
+      const wasShown = e && (e.loc === 'loose' || e.loc === 'belt');
+      if (e && wasShown) hide(e);
+      if (!e) { e = { id: d.id }; ents.set(d.id, e); nextId = Math.max(nextId, d.id + 1); }
+      Object.assign(e, { type: d.type, pos: d.pos.slice(), quat: d.quat.slice(), loc: d.loc, container: d.container ?? null, item: d.item, data: d.data });
+      e.slot = undefined; e.ikey = undefined;
+      if (e.loc === 'loose' || e.loc === 'belt') show(e);
+      return e;
+    },
+    // A cheap signature of what an entity is and where it lives (not its pose).
+    sig(e) { return `${e.type}|${e.loc}|${e.container ?? ''}|${e.item ? JSON.stringify(e.item) : ''}|${e.data && Object.keys(e.data).length ? JSON.stringify(e.data) : ''}`; },
+    wire(e) { return { id: e.id, type: e.type, pos: e.pos.map(v => Math.round(v * 1000) / 1000), quat: e.quat.map(v => Math.round(v * 10000) / 10000), loc: e.loc, container: e.container ?? null, item: e.item, data: e.data }; },
     // Plain-data snapshot for saves (M3) and network (M7).
     serialize() { return [...ents.values()].map(e => ({ id: e.id, type: e.type, pos: e.pos, quat: e.quat, loc: e.loc, container: e.container ?? null, item: e.item, data: e.data })); },
   };

@@ -177,7 +177,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     c.clerk.busy = 1.2;
     if (r.total > 0) { audio.play('coins'); hud.toast(`${p.name}: ${r.sold.length} item${r.sold.length > 1 ? 's' : ''} weighed and stamped · § ${r.total.toLocaleString('en-GB')}`, 'gold'); }
     if (r.refused.length) hud.toast(`${r.refused.length} left on the counter · ${r.refused[0].why}`, 'err');
-    for (const k of r.completed) { audio.play('rare'); hud.toast(`Contract done: ${k.text} · § ${k.reward} · ★ +${k.standing}`, 'gold'); }
+    for (const k of r.completed) { audio.play('contract'); hud.toast(`Contract done: ${k.text} · § ${k.reward} · ★ +${k.standing}`, 'gold'); }
     if (c.venue !== 'assay') redrawBoards();
     return r;
   }
@@ -209,15 +209,17 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     const S = SHOPS[shopId];
     const render = () => {
       const body = h('div', {}, h('p', { class: 'small' }, S.blurb + ' · deliveries go to the pad beside the counter'),
-        ...S.items.map(it => h('div', { class: 'entry' }, h('b', {}, it.name), it.standing && economy.state.standing < it.standing ? h('span', { class: 'pill' }, `Needs ★ ${it.standing}`) : h('button', { class: 'btn primary', disabled: economy.state.scrip < it.price, onclick: () => { buy(shopId, it.id); render(); } }, `§ ${it.price.toLocaleString('en-GB')}`), h('span', { class: 'desc' }, it.desc))),
-        S.callVehicle ? h('div', { class: 'entry' }, h('b', {}, 'Call my hauler'), h('button', { class: 'btn', onclick: () => { callVehicle(); panels.close(); } }, 'Call'), h('span', { class: 'desc' }, 'Brings your truck to the yard outside.')) : null);
+        ...S.items.map(it => h('div', { class: 'entry' }, h('b', {}, it.name), it.standing && economy.state.standing < it.standing ? h('span', { class: 'pill' }, `Needs ★ ${it.standing}`) : h('button', { class: 'btn primary', disabled: economy.state.scrip < it.price, onclick: () => { api.buy(shopId, it.id); render(); } }, `§ ${it.price.toLocaleString('en-GB')}`), h('span', { class: 'desc' }, it.desc))),
+        ...(S.callVehicle ? [h('h3', {}, 'Your vehicles'), ...[...vehicles.list.values()].filter(v => !v.def.kinematic).map(v => h('div', { class: 'entry' }, h('b', {}, v.def.name),
+          h('span', { class: 'row' }, h('button', { class: 'btn', onclick: () => { api.callVehicle(v.id); panels.close(); } }, 'Call'), ' ', h('button', { class: 'btn', onclick: async () => { if (v.cargo.length) { audio.play('error'); hud.toast('Empty its bed first', 'err'); return; } if (vehicles.driving === v.id) return; const back = Math.round((v.def.price || 0) * 0.5); await vehicles.remove(v.id); economy.state.scrip += back; audio.play('coins'); hud.toast(`Sold the ${v.def.name} back for § ${back}`, 'gold'); render(); } }, `Sell § ${Math.round((v.def.price || 0) * 0.5)}`)),
+          h('span', { class: 'desc' }, `Fuel ${v.def.fuelMax ? Math.round(v.fuel / v.def.fuelMax * 100) + '%' : '—'}${v.cargo.length ? ` · ${v.cargo.length} in the bed` : ''} · Call brings it to the yard.`)))] : []));
       panels.show('shop:' + shopId, S.name, body, { badge: `§ ${economy.state.scrip.toLocaleString('en-GB')}` });
     };
     render();
   }
-  function callVehicle() {
-    const v = [...vehicles.list.values()][0]; if (!v) return;
-    const y = pads.yard; vehicles.teleport(v.id, [y[0], y[1], y[2]], y[3]); hud.toast('Your hauler is waiting in the yard');
+  function callVehicle(id) {
+    const v = id != null ? vehicles.list.get(id) : [...vehicles.list.values()].find(k => !k.def.kinematic); if (!v) return;
+    const y = pads.yard; vehicles.teleport(v.id, [y[0], y[1], y[2]], y[3]); hud.toast(`Your ${v.def.name} is waiting in the yard`);
   }
   function openGuild() {
     const E = economy.state;
@@ -238,6 +240,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     group, props, counters, pads, statics, custom: {}, customProp: {}, customHint: {}, customCard: {},
     async build() { await physics.call({ op: 'batch', ops: statics }); redrawBoards(); },
     has: (id) => props.has(id),
+    kindOf: (id) => props.get(id)?.kind,
     interact(id) {
       const p = props.get(id); if (!p) return;
       if (p.kind === 'bell') return ringBell(id);

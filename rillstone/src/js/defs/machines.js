@@ -71,7 +71,7 @@ export const MACHINES = {
       pipeRun(0, -0.9, 0, 0.9, 0.08, COPPER), flange(0, PIPE_Y, -0.87, 'z'), flange(0, PIPE_Y, 0.87, 'z'), ...dial(0.3, 0.75, 0.41),
     ]), spin: { at: [0.42, 0.55, 0], axis: 'x', r: 0.28 } },
   // ---- Extraction and washing ----
-  drill1: { name: 'Drill Mk I', family: 'extraction', role: 'consumer', demand: 20, tier: 1, period: 5, cell: [2, 2], needsClaim: true, tipDepth: 2.6,
+  drill1: { name: 'Drill Mk I', family: 'extraction', role: 'consumer', demand: 20, tier: 1, period: 5, cell: [2, 2], needsClaim: true, tipDepth: 3.6,
     boxes: [[0, 1.1, 0, 0.45, 1.1, 0.45]], sockets: [{ kind: 'water', p: [-0.9, PIPE_Y, 0], d: [-1, 0, 0] }, { kind: 'out', p: [0.95, 0.75, 0], d: [1, 0, 0] }],
     build: () => merge([
       ...[[-0.42, -0.42], [0.42, -0.42], [-0.42, 0.42], [0.42, 0.42]].map(([x, z]) => rod([x, 0, z], [x * 0.35, 2.1, z * 0.35], 0.035, DARK)),

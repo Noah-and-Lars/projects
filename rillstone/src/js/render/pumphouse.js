@@ -65,9 +65,14 @@ export function pumphouseParts() {
   for (const s of [-1, 1]) roof.push(P(place(new THREE.SphereGeometry(0.12, 8, 6), s * 0.32, H + 2.75, 0), BRASS, 0.08), rod([0, H + 3.0, 0], [s * 0.32, H + 2.75, 0], 0.015, BRASS));
   parts.roof = merge(roof);
   // Stage 3: the great wheel's frame (the wheel itself spins, see wheel()).
+  // The axle runs out from the wall (along x) over the bank to an outer post.
+  const WX = WHEEL.x, WY = WHEEL.y;
   parts.frame = merge([
-    rod([-W / 2 - 0.2, 3.2, -1.1], [-W / 2 - 2.2, 3.2, -1.1], 0.09, WOOD_D), rod([-W / 2 - 0.2, 3.2, 1.1], [-W / 2 - 2.2, 3.2, 1.1], 0.09, WOOD_D),
-    P(place(new THREE.CylinderGeometry(0.2, 0.2, 0.25, 12), -W / 2 - 1.2, 3.2, -1.1, Math.PI / 2), GOLD, 0.05), P(place(new THREE.CylinderGeometry(0.2, 0.2, 0.25, 12), -W / 2 - 1.2, 3.2, 1.1, Math.PI / 2), GOLD, 0.05),
+    rod([-W / 2, WY, 0], [WX - 1.3, WY, 0], 0.11, IRON),
+    B(0.4, WY + 3.2, 0.4, WX - 1.3, (WY - 3.2) / 2, 0, STONE_D, 0.08, 9),
+    B(0.4, WY + 3.2, 0.4, -W / 2 - 0.4, (WY - 3.2) / 2, 0, STONE_D, 0.08, 10),
+    P(place(new THREE.CylinderGeometry(0.22, 0.22, 0.3, 12), WX - 1.3, WY, 0, 0, 0, Math.PI / 2), GOLD, 0.05),
+    P(place(new THREE.CylinderGeometry(0.22, 0.22, 0.3, 12), -W / 2 - 0.4, WY, 0, 0, 0, Math.PI / 2), GOLD, 0.05),
   ]);
   // Stage 4: glimmer-lined pump barrels and pipes along the town-side wall.
   parts.lining = merge([
@@ -86,12 +91,14 @@ export function pumphouseParts() {
   ]);
   return parts;
 }
-// The great wheel: spins once stage 3 is done.
+// The great wheel: spins once stage 3 is done. Its rim turns in the y-z
+// plane (with the current); it hangs over the bank so it dips into the river.
+export const WHEEL = { x: -W / 2 - 4.5, y: 0.4, r: 2.3 };
 export function pumpWheel() {
-  const r = 2.1, parts = [];
+  const r = WHEEL.r, parts = [];
   for (const z of [-0.8, 0.8]) parts.push(P(new THREE.TorusGeometry(r, 0.08, 6, 24).translate(0, 0, z), WOOD_D, 0.08));
   for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8; parts.push(P(place(new THREE.BoxGeometry(0.05, 0.45, 1.7), Math.cos(a) * r, Math.sin(a) * r, 0, 0, 0, a), WOOD, 0.1, i)); if (i % 2 === 0) for (const z of [-0.8, 0.8]) parts.push(rod([0, 0, z], [Math.cos(a) * r, Math.sin(a) * r, z], 0.04, WOOD_D)); }
   parts.push(P(new THREE.CylinderGeometry(0.14, 0.14, 2.4, 10).rotateX(Math.PI / 2), IRON, 0.05));
-  return merge(parts);
+  const g = merge(parts); g.rotateY(Math.PI / 2); return g;
 }
 export const PUMP_DIMS = { W, D, H };
