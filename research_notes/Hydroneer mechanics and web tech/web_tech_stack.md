@@ -2,6 +2,15 @@
 
 Method note: versions and publish dates were pulled live from the npm registry (registry.npmjs.org) on 2026-11-22. Bundle sizes were measured by downloading the published files from jsDelivr and compressing with `gzip -9`. Cloudflare serves Brotli, which is typically a bit smaller. GitHub API access was not available in this session, so GitHub release pages were not read directly. Items marked "[background, unverified]" come from prior knowledge and were not confirmed by a source in this session. The report writer should treat them as plausible but uncited.
 
+Following the user's later instruction, a second pass cross-checked key claims across independent source types:
+- official docs: threejs.org, rapier.rs, Jolt docs, MDN, Cloudflare
+- changelogs and package registries: Rapier CHANGELOG, npm
+- forum threads: three.js Discourse, Babylon forum, Godot forum
+- benchmark posts: godot.rapier.rs
+- developer devlogs and postmortems: web.dev Slow Roads case study, Kev Zettler, voxel.js, Dodgem.io, 0fps
+
+Where only one source exists for a claim, it is marked "(single source)".
+
 ## Rendering: Three.js (WebGL vs WebGPU), Babylon.js, PlayCanvas, and WebGPU support in 2026
 
 ### Takeaway
@@ -35,6 +44,9 @@ All three engines are actively maintained, with releases in the last 4 weeks. Fo
 
 **WebGPU browser support**
 - Chrome/Edge desktop have supported WebGPU since 113. Chrome on Android has supported it since 121, on Android 12+ devices with Qualcomm or ARM GPUs. Firefox has it on Windows since 141 and on macOS ARM64 since 145. **Firefox Android is not supported.** Safari 26 ships it on macOS, iOS, iPadOS and visionOS. — [web.dev: WebGPU is now supported in major browsers (Nov 2025)](https://web.dev/blog/webgpu-supported-major-browsers); [TechSpot](https://www.techspot.com/news/110456--now-brings-desktop-quality-graphics-all-major.html)
+- Cross-check from caniuse: desktop Safari 26.x is listed as **partial**, because WebGPU is only enabled by default on macOS 26 Tahoe or later. Chrome and Edge 144+ are marked supported. — [caniuse.com/webgpu](https://caniuse.com/webgpu)
+- A third-party analysis citing caniuse as of 2026-08-24 puts **full support at 83.99% of global page views, with another 2.95% partial**. It also says caniuse's Firefox note is stale because Firefox 147 (2026-01-13) removed a macOS restriction. That claim is unverified (single secondary source). — [enterno.io WebGPU adoption 2026](https://enterno.io/en/s/research-webgpu-adoption-browsers-2026)
+- three.js has official WebGPU-only lighting addons: `TiledLighting` / `TiledLightsNode` (defaults of 1024 max lights and 32 px tiles, set via `renderer.lighting`), `ClusteredLighting` / `ClusteredLightsNode` (Forward+ clustered, which also culls by depth), `CSMShadowNode` (cascaded shadows for DirectionalLight) and `TileShadowNode`. — [threejs.org TiledLighting](https://threejs.org/docs/pages/TiledLighting.html); [TiledLightsNode](https://threejs.org/docs/pages/TiledLightsNode.html); [ClusteredLighting](https://threejs.org/docs/pages/ClusteredLighting.html); [CSMShadowNode](https://threejs.org/docs/pages/CSMShadowNode.html); [TileShadowNode](https://threejs.org/docs/pages/TileShadowNode.html)
 
 ### Inferences
 - For a Hydroneer-like game, which is low-poly, stylized and has many small objects, the renderer matters less than physics and terrain throughput. Three.js gives the smallest core (about 195–230 KB gz) and the most control over custom voxel meshes, instancing and worker pipelines.
@@ -77,6 +89,39 @@ The two serious choices are **Rapier (JS 0.21.0, Sep 2026)** and **Jolt (`jolt-p
 - Jolt memory management: `new Jolt.X` objects must be freed with `Jolt.destroy()`. RefTarget objects (shapes, constraints) start at refcount 0 and use `AddRef`/`Release`. Bodies are freed with `BodyInterface.DestroyBody`. Build options include `DOUBLE_PRECISION`, `ENABLE_SIMD` (on by default in multithread builds) and `CROSS_PLATFORM_DETERMINISTIC`. Reference-counted types include `VehicleCollisionTester`, `VehicleControllerSettings`, `WheelSettings` and `CharacterBase`. — [JoltPhysics.js README](https://github.com/jrouwe/JoltPhysics.js)
 - An official three.js addon `RapierPhysics` exists. — [threejs.org docs: RapierPhysics](https://threejs.org/docs/pages/RapierPhysics.html)
 - A pmndrs `react-three-jolt` wrapper exists. — [pmndrs/react-three-jolt](https://www.Github.com/pmndrs/react-three-jolt)
+- The three.js manual's physics page lists both Rapier and a JoltPhysics wrapper as options. — [threejs.org manual: physics](https://threejs.org/manual/en/physics)
+
+**Character and vehicle controllers (cross-checked: official docs + changelog + community demos)**
+- **Rapier character controller** (rapier.rs JS guide, documented for 0.21):
+  - Created with `world.createCharacterController(offset)`. One instance can drive several characters.
+  - `computeColliderMovement(collider, desiredTranslation)` followed by `computedMovement()` gives the corrected motion.
+  - `setMaxSlopeClimbAngle` and `setMinSlopeSlideAngle` set slope limits. `enableAutostep(maxHeight, minWidth, includeDynamicBodies)` steps over obstacles. `enableSnapToGround(distance)` keeps the character on the ground.
+  - `setApplyImpulsesToDynamicBodies(true)` lets the player shove ore chunks and carts. `computedCollision(i)` lists the hits.
+  - Gravity must be added manually.
+  - — [rapier.rs: character controller](https://rapier.rs/docs/user_guides/javascript/character_controller); the 2026 snap-to-ground fix is cross-checked in the [Rapier CHANGELOG v0.35.0](https://github.com/dimforge/rapier/blob/master/CHANGELOG.md)
+- **Rapier vehicle controller:** `world.createVehicleController(chassis)` returns a `DynamicRayCastVehicleController`, **ported from Bullet's `btRaycastVehicle`**, which uses ray-casts for the wheels. — [rapier.rs character/vehicle guide](https://rapier.rs/docs/user_guides/javascript/character_controller); [API: DynamicRayCastVehicleController](https://rapier.rs/javascript3d/classes/DynamicRayCastVehicleController.html); [type defs on jsDelivr](https://cdn.jsdelivr.net/npm/@dimforge/rapier3d@0.19.3/control/ray_cast_vehicle_controller.d.ts)
+  - The website documentation for it was historically thin; a GitHub issue asks to "Document vehicle controller". — [dimforge/rapier.rs issue #90](https://github-redirect.dependabot.com/dimforge/rapier.rs/issues/90)
+  - Community browser demos exist: an A-Frame + Rapier vehicle demo, and a three.js forum author building a Rapier vehicle controller who says "issues remain". — [aframe-rapier vehicle demo](https://elettrotecnica.github.io/aframe-rapier-physics/examples/vehicle.html); [three.js forum: Character Controller thread](https://discourse.threejs.org/t/character-controller/89137?page=2)
+  - Rust reference setup with suspension stiffness, damping and wheel anchors: [vehicle_controller3.rs](https://git.nea.moe/github/rapier.git/tree/examples3d/vehicle_controller3.rs?h=v0.22.0)
+- **Jolt characters:**
+  - `Character` is a rigid body constrained to stay upright. It is cheap and suits AI.
+  - `CharacterVirtual` is query-based and not in the world. It offers wall sliding, stair stepping, slope handling and moving-platform support, and interacts with rigid bodies via impulses.
+  - — [Jolt Physics docs](https://jrouwe.github.io/JoltPhysics/)
+- **Jolt vehicles:** `VehicleConstraint` "adds virtual wheels or tracks to a body". Vehicles are composed of a `VehicleController`, a `WheelSettings` subclass and a `VehicleCollisionTester` that handles wheel-ground collision. — [Jolt Physics docs](https://jrouwe.github.io/JoltPhysics/); the class names are cross-checked against the [JoltPhysics.js README](https://github.com/jrouwe/JoltPhysics.js) reference-counted class list.
+
+**Other Jolt facts (official docs)**
+- Islands sleep when at rest and are woken by contact or explicitly over a region.
+- `LinearCast` motion quality provides CCD via a shape-cast with "time stealing". Long, thin, fast-spinning objects can still tunnel.
+- `HeightFieldShape` bodies must be static. `MeshShape` is mainly for static geometry; dynamic meshes are "expensive" and objects can get stuck inside them.
+- `MutableCompoundShape` can be edited at runtime.
+- **Cross-platform determinism costs about 8% speed** and is verified across compilers including emscripten. Broadphase-query order and callbacks remain nondeterministic.
+- Double precision is about 5–10% slower.
+- — [Jolt Physics docs](https://jrouwe.github.io/JoltPhysics/)
+- Cross-check on determinism: PlayCanvas likewise says the **prebuilt JoltPhysics.js packages are not built with `CROSS_PLATFORM_DETERMINISTIC`**. — [PlayCanvas](https://developer.playcanvas.com/user-manual/physics/ammo-alternatives/)
+
+**Community performance data points (anecdotal)**
+- In a three.js forum report, a stack of 300 cubes in Jolt "dips down to ~50fps then back up to 60 pretty quickly once it settles". — [three.js forum: Which physics engine is preferred?](https://discourse.threejs.org/t/which-physics-engine-is-prefered-in-this-case/73956?page=2)
+- The native Godot v0.35 comparison has Rapier fastest on the pyramid and mixed-shape-pile scenes. Jolt won "smash" slightly and failed to finish the joint grid. — [godot.rapier.rs v0.35 blog](https://godot.rapier.rs/blog/v0-35-0). A separate Godot forum thread is consistent with this. — [Godot forum comparison](https://forum.godotengine.org/t/physics-engine-comparison-rapier-vs-godot-vs-box2d-3d-vs-jolt/142786). Caveat: godot.rapier.rs is Rapier's own site, so it is not independent.
 
 **Multithreading and SharedArrayBuffer**
 - SharedArrayBuffer, which Jolt's multithread build and any shared-memory worker design need, requires cross-origin isolation: `Cross-Origin-Opener-Policy: same-origin` plus `Cross-Origin-Embedder-Policy: require-corp`. `credentialless` is a softer COEP. — [MDN COEP](https://developer.mozilla.org/docs/Web/HTTP/Reference/Headers/Cross-Origin-Embedder-Policy); [web.dev COOP/COEP](https://web.dev/articles/coop-coep)
