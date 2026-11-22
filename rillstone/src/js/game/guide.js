@@ -69,7 +69,7 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
       else if (ref.type === 'shovel') desc.push('Your starter shovel: 1 load of topsoil or clay. Better shovels are at the General Store.');
       const m = ref.material && MATERIALS[ref.material];
       if (m) {
-        if (m.kind === 'gem') desc.push(ref.stage === 'uncut' ? 'Uncut gems sell at the Gem Buyer, or cut them on a grinding wheel (or at the Upper Falls cutter) to roughly double their price.' : 'Cut gems sell at the Gem Buyer, or set one in a ring or chalice at a workbench.');
+        if (m.kind === 'gem') desc.push(ref.stage === 'uncut' ? 'Sell gems at the Assay Office, or cut them first on a grinding wheel (or at the Upper Falls cutter) to roughly double their price.' : 'Cut gems sell at the Assay Office, or set one in a ring or chalice at a workbench.');
         else if (m.kind === 'fuel') desc.push('Quartz is fuel: kilns, smelters and booster pumps burn it.');
         else if (ref.stage === 'ore') desc.push('Sell it at the Assay Office, or melt 10 kg of one metal in a crucible or kiln into an ingot worth more.');
         else desc.push('Refined metal sells for more at the Assay Office. A hot ingot can be worked at a workbench.');
@@ -92,7 +92,7 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
         ...[
           ['Depth bands', 'Topsoil and clay (0–6 m) dig with any tool; the gravel bed (6–14 m) needs steel, slate (14–22 m) glimmer, basalt (Ember Seam) ember. Deeper finds weigh more.'],
           ['Water', `Intakes give flow (Mk I ${MACHINES.intake1.flow} L/s); each pipe carries its tier's limit. Machines slow down, but never stop, when the flow can't keep up. Settling tanks take silt out, which saves wear.`],
-          ['Selling', 'The Assay Office takes everything but gems at base price. The Gem Buyer takes uncut gems. Market stalls pay more for their want of the day, less as you sell.'],
+          ['Selling', 'The Assay Office buys everything at base price: ore, ingots, gems and crafted goods. Market stalls pay more for their want of the day, less as you sell.'],
           ['Claims and standing', 'Guild contracts raise your Standing, which unlocks claim deeds and Machine Shop blueprints.'],
           ['The Pumphouse', 'The old pumphouse below Millbrook can be restored in five stages: that is the big goal.'],
         ].map(([k, v]) => h('div', { class: 'entry' }, h('b', {}, k), h('span', { class: 'desc' }, v))),

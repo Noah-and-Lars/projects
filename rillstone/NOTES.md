@@ -1141,3 +1141,24 @@ so far:
 - **Test:** `--move` checks the wading slowdown for walking and sprinting,
   and that the truck crawls through deep water at under half its land
   distance.
+
+### No Standing gates on machines and items; one store buys everything
+
+- **The request:** the player asked for machinery and items to need no
+  level, and for everything to sell at one store.
+- **No Standing gates:**
+  - the Survey Buggy and Excavator have no Standing requirement, only
+    their price;
+  - every Machine Shop blueprint can be bought at any Standing, though a
+    build still needs its ingots.
+  - Claim deeds still need Standing, since they are land, not machinery or
+    items. Guild contracts still award Standing.
+- **One store:**
+  - the Assay Office buys everything at base price: ore, ingots, gems
+    (uncut and cut) and crafted goods;
+  - the Gem Buyer still takes gems, and the market stalls still pay a bonus
+    for their want of the day, but neither is needed.
+  - This reverses the earlier split, where gems went only to the Gem Buyer.
+- **Test:** `--town` checks the Assay Office's quotes for gems and crafts,
+  and that a Standing-0 player can buy the Drill Mk IV blueprint and the
+  Excavator.

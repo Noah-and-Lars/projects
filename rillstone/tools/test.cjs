@@ -441,6 +441,18 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return { loc: R.items.get(n.id)?.loc, refund: v ? R.vehicles.refund(v) : null, free: v?.free };
     });
     check(orphan.loc === 'loose' && orphan.refund === 0, `a guest's held item comes back loose after a host save (${orphan.loc}); the starter hauler sells for § ${orphan.refund}`);
+    // One store buys everything; no Standing needed for machines or items.
+    const open = await p.evaluate(async () => {
+      const R = __rill, E = R.economy;
+      const gem = E.quote({ material: 'garnet', stage: 'uncut', kg: 0.3 }, 'assay'), cut = E.quote({ material: 'peridot', stage: 'cut', kg: 0.3 }, 'assay');
+      const ring = E.quote({ material: 'silver', stage: 'crafted', craft: 'ring', kg: 2 }, 'assay');
+      const s0 = E.state.standing, sc0 = E.state.scrip; E.state.standing = 0; E.state.scrip = 1e6;
+      const bp = R.workshop.blueprints.find(b => b.id === 'drill4'), got = R.workshop.buyBlueprint(bp);
+      const exc = R.town.buy('wagons', 'excavator');
+      E.state.standing = s0; E.state.scrip = sc0;
+      return { gem, cut, ring, bp: got, owns: E.state.flags.blueprints?.includes?.('drill4') ?? null, exc };
+    });
+    check(open.gem > 0 && open.cut > 0 && open.ring > 0 && open.exc !== false && open.bp !== 'standing', `the Assay Office buys gems (§ ${open.gem?.toFixed(0)} uncut, § ${open.cut?.toFixed(0)} cut) and crafts (§ ${open.ring?.toFixed(0)}); at ★ 0 the Drill Mk IV blueprint (${open.bp}) and the Excavator (${open.exc}) can be bought`);
   }
 
   if (all || flags.has('--machines')) {

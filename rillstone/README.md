@@ -136,8 +136,9 @@ merge into a pile so the physics stays cheap.
 
 Millbrook sits across the bridge from the Gravel Bar.
 
-- **Selling.** Put finds on the **Assay Office** counter and ring the bell
-  (E). The clerk weighs them and the ledger pays base price in Scrip (§).
+- **Selling.** Put anything on the **Assay Office** counter and ring the
+  bell (E): ore, ingots, gems (cut or uncut) and crafted goods. The clerk
+  weighs them and the ledger pays base price in Scrip (§).
 - **Market stalls.** The three stalls each want one thing a day, shown on
   their chalkboards. They pay up to 130% of base, falling as you sell to them.
 - **Shops.** The **General Store** sells tools and shovel upgrades, the
@@ -251,13 +252,13 @@ crates.
 
 **Veins.** Every claim has one hidden ore vein. A third of the loads washed from inside it give its metal. The **Prospector's Lamp** (General Store, § 400) is worn: E on it, and a meter by your Scrip glows violet and ticks faster as you near a vein. The **Survey Buggy** shows veins on a scanner while you drive.
 
-**Machine Shop** (Millbrook, by the Wagon Shed). Buy a blueprint once, then put ingots on its counter and build. Leftover metal comes back as a smaller ingot; machines arrive as crates on its pad.
+**Machine Shop** (Millbrook, by the Wagon Shed). Buy a blueprint once, then put ingots on its counter and build. Leftover metal comes back as a smaller ingot; machines arrive as crates on its pad. Every blueprint can be bought at any Guild Standing: you only need the Scrip, then the ingots.
 
-| Tier | Needs | Machines and tools |
-| --- | --- | --- |
-| Mk II | ★ 4 | Drill (tip 6.5 m: the gravel bed from the surface), Sluice (3 s), River Intake (90 L/s); Steel Pick (★ 2) |
-| Mk III | ★ 12 | Drill (tip 9 m), Sluice (2 s), River Intake (160 L/s); Glimmer Pick and Glimmer Pipe (★ 8) |
-| Mk IV | ★ 24 | Drill (Ember Seam only), Sluice for basalt; Ember Shovel and Pick (★ 20) |
+| Tier | Machines and tools |
+| --- | --- |
+| Mk II | Drill (tip 6.5 m: the gravel bed from the surface), Sluice (3 s), River Intake (90 L/s), Steel Pick |
+| Mk III | Drill (tip 9 m), Sluice (2 s), River Intake (160 L/s), Glimmer Pick, Glimmer Pipe |
+| Mk IV | Drill (Ember Seam only), Sluice for basalt, Ember Shovel, Ember Pick |
 
 **Upper Falls.** Take the switchback road up the falls step, on the west bank. The **Gem Cutter** cuts any uncut gems on its counter for 12% of their cut value (ring the bell), and the fourth market stall always wants something refined.
 

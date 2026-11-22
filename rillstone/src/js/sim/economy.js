@@ -70,19 +70,19 @@ export function createEconomy(rng) {
   // A market stall pays 105-130% of base, falling 1.5% per § 100 sold there
   // today, never below base.
   api.stallMult = (i) => { const m = S.market[i]; return m ? Math.max(1, m.mult * (1 - 0.015 * (m.sold / 100))) : 1; };
-  // Who buys what: the Gem Buyer takes uncut gems, the Assay Office
-  // everything else, and the stalls their want of the day.
+  // Who buys what: the Assay Office buys everything (ore, ingots, gems cut or
+  // uncut, crafted goods) at base price. The Gem Buyer also takes gems, and
+  // the market stalls pay a bonus for their want of the day.
   const isGem = (it) => MATERIALS[it.material]?.kind === 'gem';
   api.refuseReason = (it, venue) => {
     if (MATERIALS[it.material]?.kind === 'fuel') return 'Quartz is fuel, not for sale';
-    if (venue === 'assay' && isGem(it)) return 'Gems go to the Gem Buyer';
     if (venue === 'gems' && !isGem(it)) return 'The Gem Buyer only takes gems';
     if (typeof venue === 'number' && api.quote(it, venue) == null) return 'Not what this stall wants today';
     return null;
   };
   api.quote = (it, venue) => {
     const base = itemValue(it);
-    if (venue === 'assay') return isGem(it) ? null : base;
+    if (venue === 'assay') return base;
     if (venue === 'gems') return isGem(it) ? base : null;
     const m = S.market[venue]; if (!m || !matches(m.want, it)) return null;
     return base * api.stallMult(venue);
