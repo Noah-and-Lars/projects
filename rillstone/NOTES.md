@@ -1002,3 +1002,8 @@ so far:
   - **Pacing test (§11 M6):** it fast-forwards each tier's machines rather
     than playing contracts, Standing and blueprints in order. The
     progression gates are covered by the `--progress` checks instead.
+- **Draw calls with bloom:** about 14 more per frame, for the bloom
+  mip-chain and output passes. The main pass is now 74–134 draw calls
+  (spawn, town, busy base), and 351–410 with the shadow cascades. The
+  renderer's counters now add up the whole frame: before, the composer's
+  last pass reset them to 1. The sim tick for 100 machines stays at 0.09 ms.

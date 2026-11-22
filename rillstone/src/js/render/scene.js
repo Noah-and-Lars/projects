@@ -218,6 +218,9 @@ export function createScene(canvas, settings) {
     render() {
       sky.position.copy(camera.position);
       if (csm) csm.update();
+      // Count the whole frame (scene, shadow cascades and bloom passes), not
+      // just the last pass the composer drew.
+      renderer.info.autoReset = false; renderer.info.reset();
       if (composer) composer.render(); else renderer.render(scene, camera);
     },
   };
