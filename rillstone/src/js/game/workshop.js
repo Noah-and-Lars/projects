@@ -9,7 +9,6 @@ import { pumphouseParts, pumpWheel, PUMP_DIMS, WHEEL } from '../render/pumphouse
 import { counter, bell, textPlane } from '../render/buildings.js';
 import { h } from '../ui/dom.js';
 import { SHOPS } from '../defs/shops.js';
-import { TOOLS } from '../defs/items.js';
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV'];
 const fmt = (n) => Math.round(n).toLocaleString('en-GB');
@@ -77,20 +76,23 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
   // ---- Scrapping (BUILD_BRIEF 3.3): crates and tools on the counter come
   // back as scrap iron worth 30% of what they cost.
   const SCRAP = 0.3;
+  // Anything still holding something (a full bin's crate, a pan of finds)
+  // isn't scrapped: what's inside would be lost.
+  const holdsThings = (e) => !!(e.data?.contents?.length || e.data?.loads?.length || e.data?.state?.contents?.length || e.data?.state?.molten > 0 || e.data?.state?.ore > 0 || e.data?.state?.loads?.length);
   function scrapValue(e) {
+    if (e.data?.starter) return 0; // the free starter tools
     const same = (d) => (d?.tier ?? null) === (e.data?.tier ?? null) && (d?.cap ?? null) === (e.data?.cap ?? null);
     for (const sh of Object.values(SHOPS)) for (const it of sh.items) {
       if (e.type === 'crate' ? it.data?.def === e.data?.def : it.spawn === e.type && it.spawn !== 'vehicle' && same(it.data)) return it.price;
     }
     const bp = BLUEPRINTS.find(b => e.type === 'crate' ? b.data?.def === e.data?.def : b.spawn === e.type && same(b.data));
     if (bp) return Object.entries(bp.ingots).reduce((a, [m, kg]) => a + kg * MATERIALS[m].refined, 0);
-    if (TOOLS[e.type]) return 10; // starter tools
     return 0;
   }
-  const scrapList = () => onCounter(WS, e => !e.item && e.type !== 'pile' && scrapValue(e) > 0);
+  const scrapList = () => onCounter(WS, e => !e.item && e.type !== 'pile' && !holdsThings(e) && scrapValue(e) > 0);
   function scrap() {
     const list = scrapList();
-    if (!list.length) { hud.toast('Put crates or tools on the counter to scrap them', 'err'); return 'none'; }
+    if (!list.length) { hud.toast(onCounter(WS, e => !e.item && holdsThings(e)).length ? 'Empty it first: scrapping would lose what is inside' : 'Put crates or tools on the counter to scrap them', 'err'); return 'none'; }
     const value = list.reduce((a, e) => a + scrapValue(e), 0), kg = Math.max(0.05, Math.round(value * SCRAP / MATERIALS.iron.refined * 100) / 100);
     const pos = list[0].pos.slice();
     for (const e of list) items.remove(e.id);

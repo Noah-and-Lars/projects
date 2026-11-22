@@ -2,7 +2,7 @@
 // night, brass lanterns that light the ground they stand on, a hand scale,
 // and firewood the kiln turns into charcoal (see machines.js).
 //
-// Sleeping: RMB on a bedroll after 19:00 (or before 05:15). In single player
+// Sleeping: RMB on a bedroll after 19:00 (or before 05:00). In single player
 // it skips to 06:00; in co-op it waits until every player is in a bed (each
 // "in bed" lasts 20 s), then skips for everyone.
 import * as THREE from 'three';
@@ -27,7 +27,7 @@ EXTRA_BOX.firewood = () => [0.15, 0.1, 0.21];
 EXTRA_MASS.firewood = () => 6;
 EXTRA_CARD.firewood = () => ({ name: 'Firewood', lines: ['Put it in a lit kiln:', 'it chars into a sack of charcoal'] });
 
-export const SLEEP_FROM = 0.8, SLEEP_UNTIL = 0.22, WAKE_AT = 0.25;
+export const SLEEP_FROM = 19 / 24, SLEEP_UNTIL = 5 / 24, WAKE_AT = 6 / 24;
 const LIGHTS = 4; // pooled point lights for placed lanterns
 
 export function createCamp({ scene, camera, items, hands, economy, town, hud, audio, state, view, ui, h }) {

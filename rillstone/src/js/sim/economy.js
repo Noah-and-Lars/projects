@@ -112,7 +112,7 @@ export function createEconomy(rng) {
       if (c.kind === 'kg') c.progress += it.kg;
       // A crafted good must be a real piece of work (1 kg or more), not a
       // chalice made from a 0.05 kg scrap ingot.
-      else if (c.kind === 'count' && !(c.want.stage === 'crafted' && it.kg < CRAFT_MIN_KG)) c.progress += 1;
+      else if (c.kind === 'count' && !(c.want.stage === 'crafted' && it.kg < CRAFT_MIN_KG) && !it.sawn) c.progress += 1;
       else if (c.kind === 'big' && it.kg >= c.target) c.progress = c.target;
     }
   }

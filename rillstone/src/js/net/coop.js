@@ -39,7 +39,7 @@ function cleanSetting(k, v, materials) {
     case 'period': case 'delay': return num(v) ? clamp(v, 0.1, 3600) : undefined;
     case 'op': return ['>', '<', '='].includes(v) ? v : undefined;
     case 'pulseOnly': return typeof v === 'boolean' ? v : undefined;
-    case 'cutKg': return num(v) ? clamp(v, 0.05, 100) : undefined;
+    case 'cutKg': return num(v) ? clamp(v, 0.25, 10) : undefined;
     case 'filter': return v && typeof v === 'object' && materials[v.material] && STAGES.includes(v.stage) ? { material: v.material, stage: v.stage } : undefined;
   }
 }
@@ -117,7 +117,7 @@ export function createCoop(ctx) {
     const left = C.left.get(m.n); C.left.delete(m.n);
     let back = 0;
     if (left) for (const k of ['hand', 'slot']) { const e = left[k] != null ? items.get(left[k]) : null; if (e && e.loc === 'loose') { items.take(e.id, 'held'); gh[k] = e.id; back++; } }
-    if (!back) { gh.give('pan'); gh.give('shovel'); }
+    if (!back) { gh.give('pan', { starter: true }); gh.give('shovel', { starter: true }); }
     C.guests.set(m.id, g);
     return g;
   }

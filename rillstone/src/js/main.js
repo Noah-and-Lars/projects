@@ -161,7 +161,7 @@ async function boot() {
   player.yaw = sp.yaw;
   // Starting gear (BUILD_BRIEF 3.6): shovel in hand, pan in the swap slot, a
   // bucket by the claim post. The lantern is worn.
-  hands.give('pan'); hands.give('shovel');
+  hands.give('pan', { starter: true }); hands.give('shovel', { starter: true });
   {
     const g = claimDefs()[0], bx = g.x0 - 1.6, bz = g.cz + 3.2;
     items.spawn('bucket', [bx, height(bx, bz) + 0.4, bz], { data: { loads: [], contents: [] } });
@@ -481,6 +481,7 @@ async function boot() {
     if (!state.noRender && !document.hidden) view.render();
     timings.render = performance.now() - t2;
     frames++; fpsT += dt; if (fpsT > 0.5) { fps = frames / fpsT; frames = 0; netRate = (net.stats.in + net.stats.out - netLast) / fpsT; netLast = net.stats.in + net.stats.out; netKB = ((net.stats.bytes || 0) - netBytesLast) / 1024 / fpsT; netBytesLast = net.stats.bytes || 0; fpsT = 0; }
+    net.countBytes = hud.debugOn(); // byte counts cost a JSON pass per message: only for the F3 overlay
     if (hud.debugOn()) {
       const ri = view.renderer.info.render, st = physics.stats;
       hud.debug.textContent = `${fps.toFixed(0)} fps\nphysics step ${(st.stepMs || 0).toFixed(2)} ms (rtt ${timings.physics.toFixed(1)})\nsim ${timings.sim.toFixed(2)} ms · render ${timings.render.toFixed(1)} ms\ndraw calls ${ri.calls} · tris ${(ri.triangles / 1000).toFixed(0)}k\nbodies awake ${st.awake ?? 0} / asleep ${st.asleep ?? 0} · items ${items.ents.size} · machines ${machines.counts().mach}\nremesh queue ${claims.busy} · mesh ${avg(claims.stats.meshMs).toFixed(1)} ms · collider ${avg(claims.stats.colliderMs).toFixed(1)} ms\npos ${player.cur.x.toFixed(1)} ${player.cur.y.toFixed(1)} ${player.cur.z.toFixed(1)}${net.on ? `\nnet ${coop.role} · ${net.members.length} players · ${netRate.toFixed(1)} msg/s · ${netKB.toFixed(1)} kB/s` : ''}`;

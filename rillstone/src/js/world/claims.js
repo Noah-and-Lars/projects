@@ -164,8 +164,8 @@ function markDirty(vol, x0, y0, z0, x1, y1, z1) {
 // Co-op (M7): the host logs every edit so guests can replay it exactly.
 export const editLog = { fn: null };
 
-// Spherical brush. mode 'dig' removes, 'fill' adds, 'flatten' levels to the
-// centre's height. maxBand: the hardest
+// Spherical brush. mode 'dig' removes, 'fill' adds, 'flatten' cuts down to
+// the centre's height. maxBand: the hardest
 // band the tool can cut. Returns { removed (m^3), blockedBand, bands: {band: m^3} }.
 export function brush(vol, centre, radius, mode = 'dig', maxBand = 1) {
   const [vx, vy, vz] = vol.toVoxel(centre[0], centre[1], centre[2]);
@@ -182,15 +182,17 @@ export function brush(vol, centre, radius, mode = 'dig', maxBand = 1) {
     const i = vol.idx(x, y, z);
     const old = vol.dens[i];
     if (mode === 'flatten') {
-      // Level the ground to the centre's height inside a short cylinder:
-      // cut what stands above that plane, pack loose dirt into what's below.
+      // Level the ground to the centre's height inside a short cylinder by
+      // cutting away what stands above that plane.
       if (Math.hypot(x - vx, z - vz) > r || Math.abs(y - vy) > r) continue;
       const want = Math.max(-127, Math.min(127, Math.round((vy - y) * 64)));
       if (old > want) {
         const b = vol.band[i];
         if (b === BEDROCK || b > maxBand) { if (old > 0) blockedBand = Math.max(blockedBand, b); continue; }
         vol.dens[i] = want; touched = true;
-      } else if (old < want) { if (old <= 0) vol.band[i] = 1; vol.dens[i] = want; touched = true; }
+      }
+      // (Levelling only cuts: raising ground for free would make dirt, and
+      // deep finds, out of nothing.)
       continue;
     }
     const target = Math.max(-127, Math.min(127, Math.round((d - r) * 64)));
@@ -213,7 +215,7 @@ export function brush(vol, centre, radius, mode = 'dig', maxBand = 1) {
     }
   }
   if (touched) { markDirty(vol, x0, y0, z0, x1, y1, z1); vol.editSeq++; editLog.fn?.(['s', vol.id, centre, radius, mode, maxBand]); }
-  return { removed, blockedBand, bands };
+  return { removed, blockedBand, bands, touched };
 }
 
 // Axis-aligned box brush (the Excavator): cuts cells fixed to the world

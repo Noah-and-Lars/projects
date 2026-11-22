@@ -174,23 +174,28 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     fx.burst(info.p, BAND_DIRT[mainBand], 10, { speed: 1.6, size: 0.06, life: 0.5 });
     H.digs = (H.digs || 0) + 1;
     const load = { band: mainBand, depth: Math.max(0, info.vol.depthAt(c[0], c[1])), claim: info.vol.id };
-    const vein = info.vol.veinAt(c[0], c[1], c[2]); if (vein) load.vein = vein;
+    // Near-surface topsoil (where fill can go) carries no vein.
+    const vein = mainBand === 1 && load.depth <= FILL_DEPTH ? null : info.vol.veinAt(c[0], c[1], c[2]); if (vein) load.vein = vein;
     H.onDig?.(info.vol, c, def.dig);
     return load;
   }
   // RMB with a shovel on your own claim: a loaded shovel packs its load back
-  // into the ground (a fill brush); an empty one levels the ground to the
-  // height you aim at (a flatten brush). BUILD_BRIEF 4: dig, fill, flatten.
+  // into the ground near the surface (a fill brush); an empty one cuts bumps
+  // down to the height you aim at (a flatten brush). BUILD_BRIEF 4.
+  const FILL_DEPTH = 1.5;
   function shovelRmb(info) {
     const e = heldEnt(); if (!e || e.type !== 'shovel' || info.kind !== 'claim' || !(info.dist < REACH)) return false;
     if (H.owns && !H.owns(info.vol.id)) { say(`${info.vol.def.name} isn't yours`, 'err'); audio.play('error'); return true; }
     const def = toolDef(e);
     if (e.data.loads.length) {
-      const load = e.data.loads.pop(); items.refresh(e.id);
       const n = info.n || [0, 1, 0], c = [info.p[0] + n[0] * def.dig * 0.4, info.p[1] + n[1] * def.dig * 0.4, info.p[2] + n[2] * def.dig * 0.4];
-      brush(info.vol, c, def.dig, 'fill', def.tier);
+      // Fill patches ruts and holes near the surface only: refilling a deep
+      // pit with surface dirt and digging it again would turn up deep finds.
+      if (info.vol.depthAt(c[0], c[1]) > FILL_DEPTH) { say(`Fill only packs dirt into the top ${FILL_DEPTH} m`, 'err'); return true; }
+      const r = brush(info.vol, c, def.dig, 'fill', def.tier);
+      if (!r.touched) { say('Nothing to fill there'); return true; } // the load stays on the shovel
+      e.data.loads.pop(); items.refresh(e.id);
       audio.play('pour'); H.play('dump'); fx.burst(info.p, BAND_DIRT[1], 8, { speed: 1, size: 0.05, life: 0.4, up: 0.6 });
-      void load;
     } else {
       const r = brush(info.vol, info.p, 0.9, 'flatten', def.tier);
       if (r.blockedBand) say(`Too hard to level: ${BAND_NAMES[r.blockedBand]}`, 'err');
@@ -412,7 +417,8 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
         if (n && near && info.kind === 'item' && containerCanTake(info.ent)) parts.push(`${k('LMB')} pour into ${TOOLS[info.ent.type].name.toLowerCase()}`);
         else if (n && near) parts.push(`${k('LMB')} dump a load (${n}/${def.loads})`);
         else if (f && near) parts.push(`${k('LMB')} tip out ${f} find${f > 1 ? 's' : ''}`);
-        else parts.push(`Empty barrow: shovel loads in, or E finds into it`);
+        else if (!n && !f) parts.push('Empty barrow: shovel loads in, or E finds into it');
+        else parts.push(n ? `${n}/${def.loads} loads` : `${f} find${f > 1 ? 's' : ''}`);
       } else if (def && def.loads) {
         if (info.kind === 'item' && info.ent?.type === 'dirtpile' && near && e.data.loads.length < def.loads) parts.push(`${k('LMB')} scoop a load`);
         else if (info.kind === 'claim' && near && e.data.loads.length < def.loads) parts.push(`${k('LMB')} dig`);

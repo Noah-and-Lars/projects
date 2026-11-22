@@ -1007,3 +1007,32 @@ so far:
   (spawn, town, busy base), and 351–410 with the shadow cascades. The
   renderer's counters now add up the whole frame: before, the composer's
   last pass reset them to 1. The sim tick for 100 machines stays at 0.09 ms.
+
+### Review of the brief-gap code
+
+1. **Fill and level loot exploit.** Levelling raised free band-1 dirt, and
+   filling traded a surface load for one dug from a deep pit. Re-digging
+   either gave deep-weight finds, or vein finds, forever.
+   - Levelling now only cuts.
+   - Fill works only in the top 1.5 m.
+   - Near-surface topsoil yields no vein finds.
+   - A fill that changes nothing keeps its load.
+2. **Scrapping containers.** Scrapping a crate or tool that held something
+   (a full bin, a pan of finds) lost the contents. Such things are now
+   refused with "Empty it first". The free starter pan and shovel scrap for
+   nothing, which stops a co-op rejoin from farming scrap iron.
+3. **Smelter auto-pour.** Intake refuses ore that would overflow, so the
+   smelter stalled just short of exactly full. It now pours once there's no
+   room for another 3 kg. A blocked pour waits 5 s quietly.
+4. **Saw Bench and gem contracts.** Sawn gems are marked and don't count
+   towards "deliver N gems" contracts, the offcut no longer copies grinding
+   progress, and guests can't set cuts under 0.25 kg.
+5. **Bloom leak.** Every settings-slider move rebuilt the bloom composer and
+   leaked its targets. It now rebuilds only when the graphics preset
+   changes, and disposes the old passes.
+6. **Small fixes.**
+   - Bedroll times now match the text (19:00 to 05:00, wake at 06:00).
+   - The barrow hint no longer says "Empty" when you aim away from a full
+     barrow.
+   - Network byte counts, which cost one JSON pass per message, are
+     collected only while the F3 overlay is open.

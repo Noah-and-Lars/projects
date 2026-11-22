@@ -185,15 +185,19 @@ export function createScene(canvas, settings) {
   // only what is brighter than white glows (molten metal, hot ingots, gems,
   // glimmerite). Off on Low graphics. The composer renders to a 4x MSAA
   // half-float target so edges stay as smooth as the plain renderer's.
-  let composer = null;
+  let composer = null, bloomPass = null, bloomFor = null;
   function setupBloom() {
-    if (composer) { composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); composer = null; }
+    // Settings sliders call applySettings on every move: rebuild only when
+    // the graphics preset changed, and free the old passes' GPU targets.
+    if (bloomFor === settings.graphics) return;
+    bloomFor = settings.graphics;
+    if (composer) { bloomPass?.dispose(); composer.dispose(); composer = null; bloomPass = null; }
     if (settings.graphics === 'low') return;
     const pr = renderer.getPixelRatio(), w = Math.floor(innerWidth * pr), h = Math.floor(innerHeight * pr);
     const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: 4 });
     composer = new EffectComposer(renderer, rt);
     composer.addPass(new RenderPass(scene, camera));
-    composer.addPass(new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), 0.55, 0.35, 1.05));
+    composer.addPass(bloomPass = new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), 0.55, 0.35, 1.05));
     composer.addPass(new OutputPass());
   }
   function resize() {

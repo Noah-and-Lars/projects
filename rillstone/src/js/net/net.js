@@ -59,7 +59,7 @@ export function createNet() {
   api.send = (event, payload) => {
     if (!ch || ch.state !== 'joined') return false;
     const p = Object.assign({}, payload, { f: myId }); // the sender id can't be overridden
-    api.stats.bytes = (api.stats.bytes || 0) + JSON.stringify(p).length + event.length;
+    if (api.countBytes) api.stats.bytes = (api.stats.bytes || 0) + JSON.stringify(p).length + event.length;
     try { const r = ch.send({ type: 'broadcast', event, payload: p }); if (r && r.catch) r.catch(() => {}); } catch (_) { return false; }
     api.stats.out++; return true;
   };
@@ -94,7 +94,7 @@ export function createNet() {
       });
       ch.on('broadcast', { event: '*' }, (m) => {
         if (c !== ch || !m || !m.payload) return;
-        api.stats.in++; api.stats.bytes = (api.stats.bytes || 0) + JSON.stringify(m.payload).length + (m.event || '').length;
+        api.stats.in++; if (api.countBytes) api.stats.bytes = (api.stats.bytes || 0) + JSON.stringify(m.payload).length + (m.event || '').length;
         const fn = handlers.get(m.event); if (fn) try { fn(m.payload); } catch (e) { console.error(e); }
       });
       ch.subscribe((st) => {

@@ -373,18 +373,22 @@ export function createMachines({ scene, physics, materials, items, claims, water
       }
     }
     // The smelter pours by itself once full (unless set to pour on a pulse only).
-    if (def.pourOnPulse && s.ore <= 0 && s.molten >= def.capKg - 0.01 && !s.pulseOnly) api.pour(m.id);
+    // "Full" means no room for another typical piece (3 kg), since intake
+    // refuses anything that would overflow. A blocked pour waits 5 s.
+    if (def.pourOnPulse && s.ore <= 0 && s.molten >= def.capKg - 3 && !s.pulseOnly) {
+      if ((m._pourWait = (m._pourWait || 0) - dt) <= 0 && !api.pour(m.id, true)) m._pourWait = 5;
+    }
     if (m._glow) m._glow.material.opacity = hot && (s.ore > 0 || s.molten > 0 || s.reheat.length) ? 0.55 + Math.sin(api.clock * 9) * 0.1 : 0;
   }
   // Pour the molten metal into an ingot (lever, panel, or a logic pulse in M5).
-  api.pour = (id) => {
+  api.pour = (id, quiet) => {
     const m = list.get(id); if (!m || !m.state || m.state.molten < 0.05) return null;
     const kg = Math.round(m.state.molten * 1000) / 1000;
     const it = { material: m.state.material, stage: 'ingot', kg, hotUntil: items.clock + 90 };
     const mat = m.state.material;
     m.state.molten = 0; if (m.state.ore <= 0) m.state.material = null;
     // Nothing is deleted: if the out port refuses the ingot, the metal stays molten.
-    if (output(m, { item: it }) === false) { m.state.molten = kg; m.state.material = mat; hud.toast('The way out is blocked: clear the belt or bin first', 'err'); audio.play('error'); return null; }
+    if (output(m, { item: it }) === false) { m.state.molten = kg; m.state.material = mat; if (!quiet) { hud.toast('The way out is blocked: clear the belt or bin first', 'err'); audio.play('error'); } return null; }
     audio.play('pour'); hud.toast(`Poured a ${kg.toFixed(1)} kg ${MATERIALS[it.material].name.toLowerCase()} ingot`, 'gold');
     for (const k of economy.smelted?.(it.material, kg) || []) { audio.play('contract'); hud.toast(`Contract done: ${k.text} · § ${k.reward} · ★ +${k.standing}`, 'gold'); }
     return it;
@@ -446,7 +450,10 @@ export function createMachines({ scene, physics, materials, items, claims, water
       const cut = m.state.cutKg || 1;
       if (it.kg < cut + 0.05) { hud.toast(`Lighter than the ${cut} kg cut: set a smaller cut (RMB)`, 'err'); return true; }
       // You keep the cut piece; the rest lands on the bench.
-      const rest = { ...it, kg: Math.round((it.kg - cut) * 1000) / 1000 };
+      const rest = { ...it, kg: Math.round((it.kg - cut) * 1000) / 1000 }; delete rest.grind;
+      // Sawn gems don't count towards "deliver N gems" contracts (no farming
+      // one stone into many).
+      if (k === 'gem') { rest.sawn = true; it.sawn = true; }
       it.kg = cut; items.refresh(held.id); H.refreshHeld?.();
       const p = toWorld(m, [0.25, 0.95, 0.1]);
       items.spawn('nugget', p, { item: rest });
