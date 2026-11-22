@@ -75,12 +75,14 @@ async function boot() {
   const claims = await createClaims(scene, view.materials, physics);
   await claims.settle();
   // Claim posts at each diggable plot.
+  // (Ember Seam's post stands inside the adit, by its door.) E on a post
+  // calls your vehicle to it (BUILD_BRIEF 3.7); see the town props below.
+  const postAt = (c) => (c.tunnel ? { x: c.x0 - 4, z: c.cz + 1.6, y: c.floor } : { x: c.x0 - 1.2, z: c.cz + 2, y: height(c.x0 - 1.2, c.cz + 2) });
   for (const c of claimDefs()) {
     const post = new THREE.Mesh(claimPostGeometry(c.name), view.materials.vcolor);
-    const px = c.x0 - 1.2, pz = c.cz + 2;
-    post.position.set(px, height(px, pz) - 0.05, pz); post.rotation.y = -Math.PI / 2; post.castShadow = true;
+    const P = postAt(c);
+    post.position.set(P.x, P.y - 0.05, P.z); post.rotation.y = -Math.PI / 2; post.castShadow = true;
     scene.add(post);
-    physics.post({ op: 'setStaticBox', key: 'post-' + c.id, hx: 0.1, hy: 0.8, hz: 0.1, pos: [px, height(px, pz) + 0.75, pz] });
   }
   const fx = createFX(scene);
   const audio = createAudio(settings, (t) => hud.caption(t));
@@ -94,12 +96,26 @@ async function boot() {
   hands.owns = (id) => economy.owns(id);
   const panels = createPanels(ui, {
     onOpen: () => { if (state.mode === 'play') state.mode = 'panel'; input.unlock(); },
-    onClose: () => { if (state.mode === 'panel') { state.mode = 'play'; if (!TEST) input.lock(); } },
+    onClose: () => { if (state.mode === 'panel') { state.mode = 'play'; if (!TEST) input.lock(); } else if (state.mode === 'title') menu.showTitle(true); },
   });
   const vehicles = createVehicles({ scene, physics, items, materials: view.materials, hud, audio });
   hands.vehicles = vehicles;
   const town = createTown({ scene, physics, materials: view.materials, items, vehicles, economy, hud, audio, panels });
   await town.build();
+  {
+    const s0 = town.statics.length;
+    for (const c of claimDefs()) { const P = postAt(c); town.prop('post', { name: `${c.name} post`, claim: c.id, at: P }, P.x, P.y + 0.75, P.z, 0.12, 0.8, 0.12); }
+    physics.post({ op: 'batch', ops: town.statics.slice(s0) });
+    town.customProp.post = (p) => {
+      const v = [...vehicles.list.values()].find(k => !k.def.kinematic && vehicles.driving !== k.id && !vehicles.remoteDrivers.has(k.id));
+      if (!v) { hud.toast('No free vehicle to call', 'err'); return; }
+      const x = p.at.x - 3.5, z = p.at.z + 1, c = CLAIMS.find(k => k.id === p.claim);
+      vehicles.teleport(v.id, [x, (c.tunnel ? c.floor : height(x, z)) + 1.4, z], 0);
+      hud.toast(`Your ${v.def.name} is waiting by the ${c.name} post`);
+    };
+    town.customHint.post = () => 'call your vehicle here';
+    town.customCard.post = (p) => ({ name: p.name, lines: ['E calls your vehicle here'] });
+  }
   hands.props = town;
   const saves = createSaves();
   const bed = createBed({ panels, items, vehicles, hands, hud, audio });
@@ -174,6 +190,7 @@ async function boot() {
         h('h3', {}, `Players (${net.members.length} / 4)`), ...members,
         h('div', { class: 'entry' }, h('b', {}, coop.role === 'host' ? 'Stop hosting' : 'Leave'), h('button', { class: 'btn', onclick: () => { coop.leave(); location.reload(); } }, coop.role === 'host' ? 'Stop' : 'Leave'), h('span', { class: 'desc' }, coop.role === 'host' ? 'Guests are sent home. Save first!' : 'Back to your own world.')));
     }
+    if (state.mode === 'title') menu.showTitle(false); // the panel sits where the title card was
     panels.show('coop', 'Co-op', body, { badge: coop.role === 'off' ? 'offline' : coop.role });
   }
   const menu = createMenu(ui, {
@@ -228,6 +245,8 @@ async function boot() {
     town.newDay();
   }
   async function saveTo(slot, quiet) {
+    // In someone else's world the host's save keeps it; yours stays as it was.
+    if (coop.isGuest()) { if (!quiet) hud.toast("You're in the host's world: their save keeps it", 'err'); return false; }
     try { await saves.save(slot, snapshot()); state.slot = slot; if (!quiet) hud.toast(`Saved to slot ${slot}`); return true; }
     catch (e) { hud.toast('Save failed: ' + e.message, 'err'); return false; }
   }
@@ -262,11 +281,13 @@ async function boot() {
     const items2 = [];
     if (latest) items2.push({ label: `Continue (slot ${latest.slot}, day ${latest.day})`, onclick: () => loadSlot(latest.slot) });
     if (list.some(m => !m.empty)) items2.push({ label: 'Load game', onclick: () => openSaves('load') });
+    items2.push({ label: 'Co-op', secondary: true, onclick: () => openCoop() });
     menu.setTitleItems(items2);
   });
 
   // ---- Vehicles: get in and out ----
   async function exitVehicle() {
+    if (coop.isGuest()) return coop.exitVehicle();
     const p = vehicles.exit();
     if (p) await teleport(p[0], Math.max(p[1], height(p[0], p[2]) + 1.0), p[2]);
   }
@@ -376,8 +397,8 @@ async function boot() {
     machines.update(dt);
     const dv = vehicles.driving ? vehicles.list.get(vehicles.driving) : null;
     if (dv && controls()) {
-      if (dv.def.hopper && input.pressed('use')) heavy.dig(dv);
-      if (dv.def.hopper && input.pressed('secondary')) heavy.dump(dv);
+      if (dv.def.hopper && input.pressed('use')) coop.isGuest() ? coop.queue({ k: 'xdig' }) : heavy.dig(dv);
+      if (dv.def.hopper && input.pressed('secondary')) coop.isGuest() ? coop.queue({ k: 'xdump' }) : heavy.dump(dv);
     }
     if (!coop.isGuest()) heavy.update(dt);
     soundT -= dt; if (soundT <= 0) { soundT = 0.1; updateSound(dv); }

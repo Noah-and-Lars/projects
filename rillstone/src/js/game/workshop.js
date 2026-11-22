@@ -152,8 +152,14 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
     for (const e of list) {
       const n = stage.needs.find(k => remaining(k) > 1e-6 && needMatches(k, e));
       if (!n) continue;
-      st.got[needKey(n)] = (st.got[needKey(n)] || 0) + (n.kind === 'ingot' ? e.item.kg : 1);
-      items.remove(e.id); used++;
+      if (n.kind === 'ingot') {
+        // Take only what the stage still needs; the rest comes back as a smaller ingot.
+        const take = Math.min(e.item.kg, remaining(n)), left = Math.round((e.item.kg - take) * 1000) / 1000, pos = e.pos.slice(), it = { ...e.item };
+        st.got[needKey(n)] = (st.got[needKey(n)] || 0) + take;
+        items.remove(e.id);
+        if (left >= 0.05) items.spawn('nugget', [pos[0], pos[1] + 0.1, pos[2]], { item: { ...it, kg: left } });
+      } else { st.got[needKey(n)] = (st.got[needKey(n)] || 0) + 1; items.remove(e.id); }
+      used++;
     }
     if (!used) { audio.play('error'); hud.toast(`Nothing there for stage ${st.stage + 1} (${stage.needs.map(n => needLabel(n, MATERIALS)).join(', ')})`, 'err'); return; }
     audio.play('coins');

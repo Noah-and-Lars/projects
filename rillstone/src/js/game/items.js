@@ -29,9 +29,21 @@ export function createItems({ scene, physics, materials }) {
   // One InstancedMesh per material and shape (nugget/crystal, cut gem, ingot, hot ingot).
   const shapeOf2 = (it) => (it.stage === 'cut' ? 'cut' : it.stage === 'ingot' ? (it.hotUntil && it.hotUntil > api.clock ? 'hot' : 'ingot') : '');
   const keyOf = (it) => it.material + ':' + shapeOf2(it);
+  // Dirt clods are instanced too, one mesh per band (performance, BUILD_BRIEF 8).
+  const isInst = (e) => e.type === 'nugget' || e.type === 'clod';
+  const instKey = (e) => (e.type === 'clod' ? 'clod:' + (e.data.band | 0) : keyOf(e.item));
+  const scaleOf = (e) => (e.type === 'clod' ? 1 : nuggetSize(e.item.kg, e.item.material, e.item.stage));
   function instFor(key) {
     if (inst[key]) return inst[key];
     const [material, shape] = key.split(':');
+    if (material === 'clod') {
+      const N = CAP * 2;
+      const mesh = new THREE.InstancedMesh(clodGeometry(+shape), materials.vcolor, N);
+      mesh.count = N; mesh.castShadow = true; mesh.receiveShadow = true; mesh.frustumCulled = false;
+      for (let i = 0; i < N; i++) mesh.setMatrixAt(i, ZERO);
+      group.add(mesh);
+      return (inst[key] = { mesh, free: Array.from({ length: N }, (_, i) => N - 1 - i), dirty: true, used: new Uint8Array(N) });
+    }
     const kind = MATERIALS[material].kind;
     const mat = nuggetMaterial(material, shape);
     materials.litMaterial(mat);
@@ -39,7 +51,7 @@ export function createItems({ scene, physics, materials }) {
     mesh.count = CAP; mesh.castShadow = true; mesh.receiveShadow = true; mesh.frustumCulled = false;
     for (let i = 0; i < CAP; i++) mesh.setMatrixAt(i, ZERO);
     group.add(mesh);
-    inst[key] = { mesh, free: Array.from({ length: CAP }, (_, i) => CAP - 1 - i), dirty: true };
+    inst[key] = { mesh, free: Array.from({ length: CAP }, (_, i) => CAP - 1 - i), dirty: true, used: new Uint8Array(CAP) };
     return inst[key];
   }
 
@@ -57,6 +69,7 @@ export function createItems({ scene, physics, materials }) {
   function massOf(e) { if (e.item) return Math.max(0.2, e.item.kg); if (TOOLS[e.type]) return TOOLS[e.type].kg; if (EXTRA_MASS[e.type]) return EXTRA_MASS[e.type](e); return 3; }
 
   function makeMesh(e) {
+    if (isNugget(e)) { const m = api.buildMesh(e); m.castShadow = m.receiveShadow = true; m.userData.ent = e.id; return m; }
     let geo, mat = materials.vcolor;
     if (e.type === 'clod') geo = clodGeometry(e.data.band);
     else if (EXTRA_MESH[e.type]) geo = EXTRA_MESH[e.type](e);
@@ -72,11 +85,12 @@ export function createItems({ scene, physics, materials }) {
     return m;
   }
   function show(e) {
-    if (isNugget(e)) {
-      e.ikey = keyOf(e.item);
+    // A full instanced mesh (thousands of one material) falls back to a mesh of its own.
+    if (isInst(e) && (e.slot !== undefined || instFor(instKey(e)).free.length)) {
+      e.ikey = instKey(e);
       const I = instFor(e.ikey);
-      if (e.slot === undefined) e.slot = I.free.pop();
-      const s = nuggetSize(e.item.kg, e.item.material, e.item.stage);
+      if (e.slot === undefined) { e.slot = I.free.pop(); I.used[e.slot] = 1; (I.ids ||= [])[e.slot] = e.id; }
+      const s = scaleOf(e);
       I.mesh.setMatrixAt(e.slot, _m.compose(_v.fromArray(e.pos), _q.fromArray(e.quat), _s.set(s, s, s)));
       I.dirty = true;
     } else if (!meshes.has(e.id)) {
@@ -87,8 +101,8 @@ export function createItems({ scene, physics, materials }) {
     }
   }
   function hide(e) {
-    if (isNugget(e)) {
-      if (e.slot !== undefined) { const I = instFor(e.ikey || keyOf(e.item)); I.mesh.setMatrixAt(e.slot, ZERO); I.free.push(e.slot); I.dirty = true; e.slot = undefined; }
+    if (isInst(e) && e.slot !== undefined) {
+      { const I = instFor(e.ikey || instKey(e)); I.mesh.setMatrixAt(e.slot, ZERO); I.free.push(e.slot); I.used[e.slot] = 0; I.dirty = true; e.slot = undefined; }
     } else { const m = meshes.get(e.id); if (m) { group.remove(m); m.geometry.dispose(); meshes.delete(e.id); } }
   }
   // Co-op guests (api.remote) keep no bodies: the host's snapshots place things.
@@ -132,17 +146,18 @@ export function createItems({ scene, physics, materials }) {
     },
     // Draw a non-physical entity (on a belt) at its pos, or stop drawing it.
     showAt(e) {
-      if (isNugget(e)) {
-        const k = keyOf(e.item);
+      if (isInst(e)) {
+        const k = instKey(e);
         if (e.slot !== undefined && e.ikey !== k) hide(e);
         show(e);
-        const I = inst[e.ikey], sz = nuggetSize(e.item.kg, e.item.material, e.item.stage);
+        if (e.slot === undefined) { const m = meshes.get(e.id); if (m) { m.position.fromArray(e.pos); m.quaternion.fromArray(e.quat); } return; }
+        const I = inst[e.ikey], sz = scaleOf(e);
         I.mesh.setMatrixAt(e.slot, _m.compose(_v.fromArray(e.pos), _q.fromArray(e.quat), _s.set(sz, sz, sz))); I.dirty = true;
       } else { show(e); const m = meshes.get(e.id); m.position.fromArray(e.pos); m.quaternion.fromArray(e.quat); }
     },
     hideEnt(e) { hide(e); },
     // A tool's look depends on its loads: rebuild its mesh.
-    refresh(id) { const e = ents.get(id); if (e && meshes.has(id)) { hide(e); show(e); } },
+    refresh(id) { const e = ents.get(id); if (e && (meshes.has(id) || (isInst(e) && e.slot !== undefined))) { hide(e); show(e); } },
     halfHeight(e) { return shapeOf(e).hy; },
     // A standalone mesh for an entity (cargo on a vehicle, crate contents).
     buildMesh(e) {
@@ -159,12 +174,13 @@ export function createItems({ scene, physics, materials }) {
         e.pos[0] = pose.p[0]; e.pos[1] = pose.p[1]; e.pos[2] = pose.p[2];
         e.quat[0] = pose.q[0]; e.quat[1] = pose.q[1]; e.quat[2] = pose.q[2]; e.quat[3] = pose.q[3];
         e._synced = pose.asleep;
-        if (isNugget(e) && e.slot !== undefined) {
-          const I = inst[e.ikey]; const s = nuggetSize(e.item.kg, e.item.material, e.item.stage);
+        if (isInst(e) && e.slot !== undefined) {
+          const I = inst[e.ikey]; const s = scaleOf(e);
           I.mesh.setMatrixAt(e.slot, _m.compose(_v.fromArray(e.pos), _q.fromArray(e.quat), _s.set(s, s, s))); I.dirty = true;
         } else { const m = meshes.get(e.id); if (m) { m.position.fromArray(e.pos); m.quaternion.fromArray(e.quat); } }
       }
-      for (const k in inst) if (inst[k].dirty) { inst[k].mesh.instanceMatrix.needsUpdate = true; inst[k].dirty = false; inst[k].mesh.computeBoundingSphere(); }
+      // Draw only up to the highest slot in use (empty slots still cost vertices).
+      for (const k in inst) if (inst[k].dirty) { const I = inst[k]; let top = I.used.length; while (top > 0 && !I.used[top - 1]) top--; I.mesh.count = top; I.mesh.instanceMatrix.needsUpdate = true; I.dirty = false; }
     },
     // Hover card for the tooltip (BUILD_BRIEF 3.1: name, kg, material and stage, value).
     card(id) {
@@ -238,6 +254,18 @@ export function createItems({ scene, physics, materials }) {
       }
     },
     // ---- Co-op (M7) ----
+    // Raycast the drawn items (guests have no item bodies): { t, p, n, id }.
+    pick(ray) {
+      let best = null;
+      const consider = (h, id) => { if (h && id != null && (!best || h.distance < best.t)) best = { t: h.distance, p: h.point.toArray(), n: h.face ? h.face.normal.clone().transformDirection(h.object.matrixWorld).toArray() : [0, 1, 0], id }; };
+      for (const [id, m] of meshes) { const e = ents.get(id); if (!e || (e.loc !== 'loose' && e.loc !== 'belt') || m.position.distanceTo(ray.ray.origin) > 8) continue; consider(ray.intersectObject(m, false)[0], id); }
+      for (const k in inst) {
+        const I = inst[k]; if (!I.mesh.count) continue;
+        I.mesh.computeBoundingSphere();
+        for (const h of ray.intersectObject(I.mesh, false)) { const id = I.ids?.[h.instanceId]; if (id != null) { consider(h, id); break; } }
+      }
+      return best;
+    },
     // Apply a pose from the host (guests).
     setPose(id, p, q) {
       const e = ents.get(id); if (!e) return;

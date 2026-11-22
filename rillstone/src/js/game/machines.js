@@ -48,12 +48,23 @@ export function createMachines({ scene, physics, materials, items, claims, water
 
   // ---- Building meshes and colliders ----
   const ghostMats = { ok: new THREE.MeshBasicMaterial({ color: 0x3dff7a, transparent: true, opacity: 0.38, depthWrite: false }), bad: new THREE.MeshBasicMaterial({ color: 0xff3df0, transparent: true, opacity: 0.38, depthWrite: false }) };
+  // Performance (BUILD_BRIEF 8): machine bodies share one BatchedMesh, one
+  // geometry per machine type, so a base of 100 machines is a handful of
+  // draw calls. Logic parts keep their own mesh (levers move, labels hang off it).
+  let batch = null; const batchGeo = new Map();
+  function batchAdd(m, def) {
+    if (!batch) { batch = new THREE.BatchedMesh(4096, 1500000, 0, materials.vcolor); batch.castShadow = batch.receiveShadow = true; batch.frustumCulled = false; group.add(batch); }
+    if (!batchGeo.has(m.def)) { let geo = def.build(m.state); if (geo.index) geo = geo.toNonIndexed(); batchGeo.set(m.def, batch.addGeometry(geo)); }
+    m._bi = batch.addInstance(batchGeo.get(m.def));
+    batch.setMatrixAt(m._bi, new THREE.Matrix4().compose(new THREE.Vector3().fromArray(m.pos), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rotY(m.rot), 0)), new THREE.Vector3(1, 1, 1)));
+  }
   function buildVisual(m) {
     const def = MACHINES[m.def];
     const g = new THREE.Group();
-    const body = new THREE.Mesh(def.build(m.state), materials.vcolor); body.castShadow = body.receiveShadow = true; body.userData.machine = m.id; g.add(body);
+    if (def.role === 'logic') { const body = new THREE.Mesh(def.build(m.state), materials.vcolor); body.castShadow = body.receiveShadow = true; body.userData.machine = m.id; g.add(body); }
+    else batchAdd(m, def);
     if (def.spin) { const sp = new THREE.Mesh(spinPart(def), materials.vcolor); sp.position.fromArray(def.spin.at); sp.castShadow = true; g.add(sp); m._spin = sp; }
-    if (def.role === 'consumer') { const n = new THREE.Mesh(needle(), materials.vcolor); m._needle = n; g.add(n); placeNeedle(m, def); }
+    if (def.role === 'consumer') { const n = new THREE.Mesh(needle(), materials.vcolor); m._needle = n; g.add(n); placeNeedle(m, def); } // (tiny: no shadow)
     if (def.sheet) { // the animated sheet of water running down a sluice
       const s = def.sheet, geo = new THREE.PlaneGeometry(s.w, s.z1 - s.z0, 1, 8).rotateX(-Math.PI / 2 + s.tilt);
       const mat = water.sheetMaterial(); const sh = new THREE.Mesh(geo, mat); sh.position.set(0, s.y, (s.z0 + s.z1) / 2); g.add(sh); m._sheet = sh;
@@ -73,7 +84,10 @@ export function createMachines({ scene, physics, materials, items, claims, water
     return ops;
   }
   function addVisual(m) { m._g = buildVisual(m); group.add(m._g); api.onVisual?.(m); }
-  function removeVisual(m) { if (m._g) { group.remove(m._g); m._g.traverse(o => o.geometry?.dispose()); m._g = null; } }
+  function removeVisual(m) {
+    if (m._bi != null && batch) { batch.deleteInstance(m._bi); m._bi = null; }
+    if (m._g) { group.remove(m._g); m._g.traverse(o => o.geometry?.dispose()); m._g = null; }
+  }
 
   // ---- Pipe runs: a tube between two ports ----
   function runCurve(a, b) {
@@ -492,14 +506,19 @@ export function createMachines({ scene, physics, materials, items, claims, water
   api.setGhostOk = (ok) => { if (ghost) ghost.material = ok ? ghostMats.ok : ghostMats.bad; };
 
   // ---- Pipe run in progress (holding a coil) ----
-  let runStart = null, preview = null;
-  api.runStart = () => runStart;
-  api.cancelRun = () => { runStart = null; if (preview) { scene.remove(preview); preview = null; } };
+  // The first click of a run is kept on the coil itself, so co-op players
+  // laying pipe at once don't pick up each other's start (and guests see it).
+  let preview = null;
+  api.runStart = (coil) => (coil && coil.data && coil.data.runFrom) || null;
+  api.cancelRun = (coil) => { if (coil?.data) delete coil.data.runFrom; if (preview) { scene.remove(preview); preview = null; } };
   api.coilClick = (coil, aimP) => {
     const cable = coil.data.tier === 'cable';
+    let runStart = coil.data.runFrom || null;
+    // The start machine may have been picked up since the first click.
+    if (runStart && (!list.get(runStart.m) || !portOf(runStart))) { delete coil.data.runFrom; runStart = null; }
     const port = freePortNear(aimP, SOCKET_SNAP, cable);
     if (!port) { hud.toast(cable ? 'Aim at a free signal terminal (the brass studs on logic parts)' : 'Aim at a free water port (the brass flanges)', 'err'); return false; }
-    if (!runStart) { runStart = port; audio.play('pickup'); hud.toast('Run started — now click the other port'); return true; }
+    if (!runStart) { coil.data.runFrom = { ...port }; audio.play('pickup'); hud.toast('Run started — now click the other port'); return true; }
     if (runStart.m === port.m) { hud.toast('Pick a port on a different machine'); return false; }
     if (cable && runStart.kind === port.kind) { hud.toast('Join an output (right side) to an input (left side)'); return false; }
     const pa = portOf(runStart), pb = portOf(port);
@@ -509,13 +528,14 @@ export function createMachines({ scene, physics, materials, items, claims, water
     const [ra, rb] = cable && runStart.kind === 'sig-in' ? [port, runStart] : [runStart, port];
     api.layRun(coil.data.tier, { m: ra.m, s: ra.s }, { m: rb.m, s: rb.s });
     coil.data.m = Math.round((coil.data.m - need) * 10) / 10;
-    api.cancelRun(); audio.play('drop');
+    api.cancelRun(coil); audio.play('drop');
     hud.toast(`Laid ${need.toFixed(1)} m of ${PIPE_TIERS[coil.data.tier].name.toLowerCase()} pipe`);
     return 'laid';
   };
   api.previewRun = (coil, aimP) => {
-    if (!runStart || !coil) { if (preview) { scene.remove(preview); preview = null; } return; }
-    const a = portOf(runStart); if (!a) { api.cancelRun(); return; }
+    const runStart = coil?.data?.runFrom || null;
+    if (!runStart) { if (preview) { scene.remove(preview); preview = null; } return; }
+    const a = list.get(runStart.m) && portOf(runStart); if (!a) { api.cancelRun(coil); return; }
     const near = freePortNear(aimP, SOCKET_SNAP, coil.data.tier === 'cable');
     const b = near ? portOf(near) : { p: aimP, d: [0, 0, 0] };
     const curve = runCurve(a, b);

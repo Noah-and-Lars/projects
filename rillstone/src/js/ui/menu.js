@@ -57,7 +57,7 @@ export function createMenu(root, { settings, input, onPlay, onSettingsChanged, o
   function openSettings() { back = !title.classList.contains('hidden') ? title : pause; title.classList.add('hidden'); pause.classList.add('hidden'); settingsEl.classList.remove('hidden'); renderSettings(); }
   function closeSettings() { settingsEl.classList.add('hidden'); (back || pause).classList.remove('hidden'); }
   const extra = title.querySelector('#title-extra');
-  function setTitleItems(list) { extra.replaceChildren(...list.map(it => h('button', { class: 'btn primary', onclick: it.onclick }, it.label))); title.querySelector('#btn-play').className = list.length ? 'btn' : 'btn primary'; }
+  function setTitleItems(list) { extra.replaceChildren(...list.map(it => h('button', { class: it.secondary ? 'btn' : 'btn primary', onclick: it.onclick }, it.label))); title.querySelector('#btn-play').className = list.some(it => !it.secondary) ? 'btn' : 'btn primary'; }
   setTitleItems(titleItems);
   return {
     setTitleItems,

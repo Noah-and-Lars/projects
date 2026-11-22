@@ -72,7 +72,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (outline) { scene.remove(outline); outline.geometry.dispose(); outline = null; }
     const e = id != null ? items.get(id) : null; if (!e) return;
     let geo;
-    if (e.type === 'nugget') geo = items.buildMesh(e).geometry;
+    if (e.type === 'nugget' || e.type === 'clod') geo = items.buildMesh(e).geometry;
     else { const m = items.meshes.get(id); if (!m) return; geo = m.geometry.clone(); }
     geo.computeBoundingSphere();
     const grow = 1 + Math.min(0.08, 0.008 / Math.max(0.02, geo.boundingSphere.radius)); // thin, roughly constant width
@@ -340,7 +340,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (info.kind === 'item' && near) parts.push(`${k('E')} pick up`);
     if (e && e.type === 'crate') parts.unshift(`${k('LMB')} place · ${k('R')} rotate`);
     { const t = e && H.hintHook?.(e, info); if (t) parts.unshift(t.replace(/\{(\w+)\}/g, (_, a) => k(a))); }
-    if (e && e.type === 'coil') parts.unshift(H.machines?.runStart() ? `${k('LMB')} finish run · ${k('RMB')} cancel` : `${k('LMB')} start a pipe run at a port`);
+    if (e && e.type === 'coil') parts.unshift(H.machines?.runStart(e) ? `${k('LMB')} finish run · ${k('RMB')} cancel` : `${k('LMB')} start a pipe run at a port`);
     if (info.kind === 'machine' && info.dist < REACH + 0.5 && !info.m.run) {
       if (e && e.type === 'mallet') parts.unshift(`${k('LMB')} lock · ${k('RMB')} unlock`);
       else if (e && (e.type === 'wrench' || e.type === 'repairkit')) parts.unshift(`${k('LMB')} repair`);
@@ -363,7 +363,12 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
   H.update = function (dt, input, enabled) {
     // Aim ray for next frame.
     const o = camera.getWorldPosition(new THREE.Vector3()), d = camDir();
-    if (!H.manualAim) physics.query({ type: 'ray', o: [o.x, o.y, o.z], d: [d.x, d.y, d.z], max: 8 }).then((r) => { if (!H.manualAim) H.aim = r; });
+    if (!H.manualAim) physics.query({ type: 'ray', o: [o.x, o.y, o.z], d: [d.x, d.y, d.z], max: 8 }).then((r) => {
+      if (H.manualAim) return;
+      // Co-op guests also test item and vehicle meshes (they have no bodies).
+      if (H.remotePick) { const q = H.remotePick([o.x, o.y, o.z], [d.x, d.y, d.z]); if (q && (!r || r.t == null || q.t < r.t)) r = q; }
+      H.aim = r;
+    });
     const info = aimInfo();
     H.cooldown -= dt;
     if (enabled && H.remote) remoteControls(input, info);
@@ -375,7 +380,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       if (input.pressed('pickup')) pickup();
       if (input.pressed('secondary') && H.machines) {
         const held = heldEnt();
-        if (held && held.type === 'coil' && H.machines.runStart()) { H.machines.cancelRun(); say('Run cancelled'); }
+        if (held && held.type === 'coil' && H.machines.runStart(held)) { H.machines.cancelRun(held); say('Run cancelled'); }
         else if (info.kind === 'machine' && info.dist < REACH + 0.5 && !info.m.run) {
           if (held && held.type === 'mallet') { info.m.locked = false; audio.play('pickup'); say(`${H.machines.name(info.m.def)} unlocked`); }
           else H.machines.openPanel(info.id);
@@ -455,7 +460,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       else H.remote({ k: 'pick' });
     }
     if (input.pressed('secondary') && H.machines) {
-      if (e && e.type === 'coil' && H.machines.runStart()) H.remote({ k: 'sec' });
+      if (e && e.type === 'coil' && H.machines.runStart(e)) H.remote({ k: 'sec' });
       else if (info.kind === 'machine' && info.dist < REACH + 0.5 && !info.m.run) {
         if (e && e.type === 'mallet') H.remote({ k: 'unlock', id: info.id });
         else H.machines.openPanel(info.id);

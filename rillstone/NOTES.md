@@ -616,3 +616,97 @@ A drill and sluice of each tier run for 2 simulated minutes in their own claim a
     both;
   - 400+ loose bodies near the guest agree within 1 mm;
   - the host leaving ends the guest's session.
+
+## M8: polish
+
+### Performance (BUILD_BRIEF 8)
+
+Measured in headless Chromium with software GL (SwiftShader), at medium graphics (2 shadow cascades):
+
+| Scene | Main-pass draw calls | All draw calls (with shadow passes) | Triangles | Physics step | Sim tick |
+| --- | --- | --- | --- | --- | --- |
+| Spawn | 73 | 352 | 0.88 M | 0.3–0.6 ms | — |
+| Millbrook | 60 | 337 | 0.83 M | 0.2–0.6 ms | — |
+| Busy base: 100 machines, 150 clods, 300 nuggets | 120 | 396 | 1.18 M | 0.5–0.9 ms | 0.1 ms (100 machines) |
+
+- **What changed for M8:**
+  - **Town meshes:** the static town meshes (buildings, counters, stalls,
+    the bridge) are baked into one mesh at boot, which took spawn from 505
+    to 349 calls.
+  - **Machine bodies:** they share one `BatchedMesh`, with one geometry per
+    machine type. Logic parts keep their own mesh.
+  - **Dirt clods:** they're instanced per band, like nuggets.
+  - **Instanced meshes:** they now draw only up to their highest used slot.
+    Before, every material drew all 2,048 slots, and the zero-scale empty
+    ones still cost vertices: 3.5 M triangles in the busy base, down to
+    1.18 M.
+  - **The busy base overall:** 1,456 draw calls before, 396 now.
+- **Against the budgets:**
+  - **Main pass:** well under 300.
+  - **With shadows:** the cascaded shadow passes add about 280 calls.
+    Graphics: Low and the shadow settings trade that away.
+  - **Physics and sim:** both far inside their budgets (6 ms and 2 ms).
+- **Debug overlay (F3):** it also shows co-op role, player count and net
+  messages per second.
+
+### Onboarding and accessibility
+
+- **Guide (B).**
+  - **Guided contracts:** eleven first-hour steps, each paying a little
+    Scrip: scoop, wash, pick up, sell, load the truck, a better shovel, a
+    contract, the starter kit, set up a line, bring the water, Willow Bend.
+  - **The card:** the current step shows top-left. The guide panel lists
+    every step plus short reference notes, and can hide the card.
+  - **Saving and co-op:** progress lives in the economy flags, so it saves
+    and is shared in co-op. Guests show the host's progress.
+- **Map (M).** A top-down valley map with your claims, the places, the road,
+  vehicles, other players and you.
+- **Colour-blind-safe shapes.** Each metal has its own nugget and ingot
+  shape, and a glyph on its tooltip:
+
+  | Metal | Nugget | Ingot | Glyph |
+  | --- | --- | --- | --- |
+  | Copper | lobed lump | rounded loaf | ● |
+  | Iron | angular block | plain bar | ■ |
+  | Silver | flat flake | hexagonal bar | ⬢ |
+  | Gold | smooth pebble | classic trapezoid | ▲ |
+  | Glimmerite | crystal cluster | — | ✦ |
+  | Emberite | spiky shards | — | ✸ |
+- **Settings.**
+  - **Already there:** key rebinding (keyboard and mouse, with reset),
+    captions for every sound cue, field of view, sensitivity, invert look,
+    sprint toggle, head-bob, graphics, and volume buses.
+  - **New:** "Clear loose clods and piles" (BUILD_BRIEF 9).
+
+### Review fixes (a second read of the M6–M8 code)
+
+- **Co-op:**
+  - **Teleports:** the host now follows a guest's teleport, whether it sent
+    the teleport or the guest's own rescue or "Return to claim post" did.
+    Before, the guest's position froze on the host.
+  - **Driving:** getting out goes through the host, so the driver seat is
+    freed.
+  - **Excavator:** a guest's digs and dumps are sent to the host. Before,
+    they ran only on the guest's own copy.
+  - **Aiming:** guests aim at items and vehicles through their meshes
+    (guests have no bodies), so hover cards, E on a truck and dropping into
+    a bed work for them.
+  - **Rails and pipes:** the first click of a rail line or pipe run is kept
+    per player (pipe runs on the coil itself). Before, two players shared one
+    start point.
+  - **Joining:** a guest can no longer load the world package twice at once.
+  - **Saving:** a guest's manual save no longer overwrites their own slot
+    with the host's world.
+  - **Trams:** a guest's trams no longer leave stale colliders.
+  - **Messages:** toasts from a guest's actions reach that guest, not the
+    host, and everyone sees the end screen.
+- **Rails:** extending a line at its start keeps trams on it in place.
+- **Pumphouse:** it takes only what a stage still needs from an ingot and
+  returns the rest, like the Machine Shop.
+- **Selling vehicles:** a vehicle can't be sold with loads in its hopper,
+  and selling goes through one function (no local refund on guests).
+- **Truck bed:** bed actions on a bad vehicle no longer throw.
+- **Instanced items:** a full instanced mesh falls back to a mesh of its own
+  instead of hiding the item.
+- **Title screen:** the co-op panel opened from the title no longer sits
+  behind the title card.

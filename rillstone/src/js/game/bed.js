@@ -64,7 +64,8 @@ export function createBed({ panels, items, vehicles, hands, hud, audio }) {
   }
   // Put an item into the next free spot on the bed floor.
   function putIn(vid, e, H = hands) {
-    const v = vehicles.list.get(vid), b = v.def.bed;
+    const v = vehicles.list.get(vid), b = v?.def.bed;
+    if (!b || !e) return 'none';
     const n = v.cargo.length, cols = 4;
     const lx = -b.x + 0.2 + (n % cols) * ((2 * b.x - 0.4) / (cols - 1)), lz = b.z1 - 0.25 - Math.floor(n / cols) % 6 * 0.38;
     const wp = new THREE.Vector3(lx, b.y, lz).applyMatrix4(v.group.matrixWorld).toArray();
@@ -74,7 +75,7 @@ export function createBed({ panels, items, vehicles, hands, hud, audio }) {
     return r;
   }
   function unloadAll(vid) {
-    const v = vehicles.list.get(vid);
+    const v = vehicles.list.get(vid); if (!v || !v.def.bed) return;
     const ids = v.cargo.slice();
     ids.forEach((id, i) => {
       const e = items.get(id); if (!e) return;

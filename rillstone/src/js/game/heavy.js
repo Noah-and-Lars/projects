@@ -152,18 +152,26 @@ export function createHeavy({ scene, physics, items, vehicles, claims, economy, 
     if (!pts.length) return 'short';
     // Too steep for a tram (over 1 in 4)?
     let prev = start; for (const q of pts) { if (Math.abs(q[1] - prev[1]) > 0.5) return 'steep'; prev = q; }
-    if (snap) { if (snap.end === 0) snap.L.pts.unshift(...pts.reverse()); else snap.L.pts.push(...pts); }
+    if (snap) {
+      if (snap.end === 0) {
+        // Growing the line at its start: trams on it keep their place.
+        const before = lineLengths(snap.L).len;
+        snap.L.pts.unshift(...pts.reverse());
+        const grown = lineLengths(snap.L).len - before;
+        for (const v of vehicles.list.values()) if (v.tram && v.tram.line === snap.L.id) v.tram.s += grown;
+      } else snap.L.pts.push(...pts);
+    }
     else api.lines.push({ id: api.nextLine++, pts: [[start[0], start[1] + 0.02, start[2]], ...pts] });
     kit.data.n -= segs;
     rebuildRails();
     return 'ok';
   };
-  let railStart = null;
+  // The first click of a line is kept per player (each has their own hands).
   hands.useHook = (e, info, H = hands) => {
     if (e.type === 'railkit') {
       if (!info.p || info.dist > 8) { hud.toast('Aim at the ground'); return true; }
-      if (!railStart) { const sn = nearestEnd(info.p); railStart = sn ? sn.L.pts[sn.end].slice() : info.p.slice(); audio.play('pickup'); hud.toast(sn ? 'Extending the line: click where it should run to' : 'Rails start here: click where they should run to'); return true; }
-      const r = api.layRails(e, railStart, info.p); railStart = null;
+      if (!H.railStart) { const sn = nearestEnd(info.p); H.railStart = sn ? sn.L.pts[sn.end].slice() : info.p.slice(); audio.play('pickup'); hud.toast(sn ? 'Extending the line: click where it should run to' : 'Rails start here: click where they should run to'); return true; }
+      const r = api.layRails(e, H.railStart, info.p); H.railStart = null;
       if (r === 'ok') { audio.play('drop'); H.play?.('place'); if (e.data.n <= 0) { items.remove(e.id); H.hand = null; } else items.refresh(e.id); }
       else { audio.play('error'); hud.toast(r === 'steep' ? 'Too steep for rails (over 1 in 4)' : 'Too short: lay at least 2 m', 'err'); }
       return true;
@@ -180,7 +188,7 @@ export function createHeavy({ scene, physics, items, vehicles, claims, economy, 
     return false;
   };
   hands.hintHook = (e, info) => {
-    if (e.type === 'railkit') return railStart ? `{LMB} lay rails to here (${e.data.n} segments left)` : `{LMB} start rails here`;
+    if (e.type === 'railkit') return hands.railStart ? `{LMB} lay rails to here (${e.data.n} segments left)` : `{LMB} start rails here`;
     if (e.type === 'tramkit') return '{LMB} set the tram on a rail';
     return '';
   };
@@ -193,7 +201,7 @@ export function createHeavy({ scene, physics, items, vehicles, claims, economy, 
     v.group.rotation.set(-Math.atan2(a.d[1], Math.hypot(a.d[0], a.d[2])), Math.atan2(a.d[0], a.d[2]), 0, 'YXZ');
     v.group.updateMatrixWorld(true);
   }
-  const collide = (v, on) => physics.post(on ? { op: 'setStaticBox', key: 'veh' + v.id, hx: v.def.hx, hy: v.def.hy, hz: v.def.hz, pos: [v.group.position.x, v.group.position.y + v.def.bodyY, v.group.position.z], quat: v.group.quaternion.toArray(), owner: v.id, group: 'machine' } : { op: 'setStaticBox', key: 'veh' + v.id, remove: true });
+  const collide = (v, on) => vehicles.remote ? null : physics.post(on ? { op: 'setStaticBox', key: 'veh' + v.id, hx: v.def.hx, hy: v.def.hy, hz: v.def.hz, pos: [v.group.position.x, v.group.position.y + v.def.bodyY, v.group.position.z], quat: v.group.quaternion.toArray(), owner: v.id, group: 'machine' } : { op: 'setStaticBox', key: 'veh' + v.id, remove: true });
   vehicles.onTram = (v) => {
     const L = api.lines.find(l => l.id === v.tram.line); if (!L) return;
     if (v.tram.moving) { v.tram.moving = false; collide(v, true); hud.toast('Tram stopped'); return; }

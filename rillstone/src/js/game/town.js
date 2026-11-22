@@ -225,11 +225,20 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
       const body = h('div', {}, h('p', { class: 'small' }, S.blurb + ' · deliveries go to the pad beside the counter'),
         ...S.items.map(it => h('div', { class: 'entry' }, h('b', {}, it.name), it.standing && economy.state.standing < it.standing ? h('span', { class: 'pill' }, `Needs ★ ${it.standing}`) : h('button', { class: 'btn primary', disabled: economy.state.scrip < it.price, onclick: () => { api.buy(shopId, it.id); render(); } }, `§ ${it.price.toLocaleString('en-GB')}`), h('span', { class: 'desc' }, it.desc))),
         ...(S.callVehicle ? [h('h3', {}, 'Your vehicles'), ...[...vehicles.list.values()].filter(v => !v.def.kinematic).map(v => h('div', { class: 'entry' }, h('b', {}, v.def.name),
-          h('span', { class: 'row' }, h('button', { class: 'btn', onclick: () => { api.callVehicle(v.id); panels.close(); } }, 'Call'), ' ', h('button', { class: 'btn', onclick: async () => { if (v.cargo.length) { audio.play('error'); hud.toast('Empty its bed first', 'err'); return; } if (vehicles.driving === v.id) return; const back = Math.round((v.def.price || 0) * 0.5); await vehicles.remove(v.id); economy.state.scrip += back; audio.play('coins'); hud.toast(`Sold the ${v.def.name} back for § ${back}`, 'gold'); render(); } }, `Sell § ${Math.round((v.def.price || 0) * 0.5)}`)),
+          h('span', { class: 'row' }, h('button', { class: 'btn', onclick: () => { api.callVehicle(v.id); panels.close(); } }, 'Call'), ' ', h('button', { class: 'btn', onclick: async () => { await api.sellVehicle(v.id); render(); } }, `Sell § ${Math.round((v.def.price || 0) * 0.5)}`)),
           h('span', { class: 'desc' }, `Fuel ${v.def.fuelMax ? Math.round(v.fuel / v.def.fuelMax * 100) + '%' : '—'}${v.cargo.length ? ` · ${v.cargo.length} in the bed` : ''} · Call brings it to the yard.`)))] : []));
       panels.show('shop:' + shopId, S.name, body, { badge: `§ ${economy.state.scrip.toLocaleString('en-GB')}` });
     };
     render();
+  }
+  // Sell a vehicle back for half its price (bed and hopper must be empty).
+  async function sellVehicle(id) {
+    const v = vehicles.list.get(id); if (!v) return false;
+    if (v.cargo.length || v.hopper?.length) { audio.play('error'); hud.toast('Empty it first', 'err'); return false; }
+    if (vehicles.driving === v.id || vehicles.remoteDrivers?.has(v.id)) { hud.toast('Someone is driving it', 'err'); return false; }
+    const back = Math.round((v.def.price || 0) * 0.5);
+    await vehicles.remove(v.id); economy.state.scrip += back; audio.play('coins'); hud.toast(`Sold the ${v.def.name} back for § ${back}`, 'gold');
+    return true;
   }
   function callVehicle(id) {
     const v = id != null ? vehicles.list.get(id) : [...vehicles.list.values()].find(k => !k.def.kinematic); if (!v) return;
@@ -275,7 +284,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     update(dt) {
       for (const c of clerks) { c.phase += dt; c.busy = Math.max(0, c.busy - dt); c.mesh.position.y = c.base + Math.sin(c.phase * 1.6) * 0.012 + (c.busy > 0 ? Math.abs(Math.sin(c.busy * 9)) * 0.05 : 0); c.mesh.rotation.z = Math.sin(c.phase * 0.7) * 0.02; }
     },
-    ringBell, buy, deliver, callVehicle, counterItems, openGuild, openShop, workshop, cutter, faceYaw, local, put, box, prop,
+    ringBell, buy, deliver, callVehicle, sellVehicle, counterItems, openGuild, openShop, workshop, cutter, faceYaw, local, put, box, prop,
   };
   void MATERIALS; void itemName;
   return api;

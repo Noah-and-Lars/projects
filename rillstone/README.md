@@ -59,6 +59,10 @@ in Settings → Keys; bindings and settings are saved in `localStorage`.
 | Use held tool | LMB | RT |
 | Secondary | RMB | LT |
 | Quick-swap tool | Q | Y |
+| Enter / exit vehicle | F | |
+| Unflip vehicle (hold) | H | |
+| Rotate placement | R / T / Y | |
+| Guide / map | B / M | |
 | Lantern | L | |
 | Debug overlay | F3 | |
 | Menu | Esc | Start |
@@ -67,6 +71,12 @@ Movement is 4.2 m/s walking, 6.8 m/s sprinting (Shift, or a toggle in
 Settings), 2.0 m/s crouched, with a 1.1 m jump under 22 m/s² gravity. The
 character steps up 0.35 m and climbs slopes up to 50°. There's no fall damage;
 "Return to claim post" in the pause menu gets you unstuck.
+
+## First hour
+
+A guide card in the top-left corner walks you through your first hour: scoop, wash, sell, load the truck, buy a better shovel, finish a contract, set up a drill line and buy your next claim. Each step pays a little Scrip. **B** opens the full guide with reference notes, and **M** opens the map.
+
+Every metal has its own shape as well as its colour, so finds read without colour (● copper lump, ■ iron block, ⬢ silver flake, ▲ gold pebble). Tooltips show the same glyph.
 
 ## Digging and washing
 
@@ -108,7 +118,7 @@ Millbrook sits across the bridge from the Gravel Bar.
   their chalkboards. They pay up to 130% of base, falling as you sell to them.
 - **Shops.** The **General Store** sells tools and shovel upgrades, the
   **Millwright** sells the starter automation kit as crates, and the **Wagon
-  Shed** sells charcoal and can call your truck to its yard. Purchases
+  Shed** sells charcoal and can call your truck to its yard. E on any claim post calls your vehicle to that claim. Purchases
   appear on the delivery pad by each shop.
 - **Guild board.** It has three contracts, which pay Scrip and Guild
   Standing, and claim deeds (see Claims below). From ★ 4, contracts also ask

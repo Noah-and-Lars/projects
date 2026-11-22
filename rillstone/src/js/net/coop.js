@@ -80,7 +80,7 @@ export function createCoop(ctx) {
   function guestHud(g) {
     return { toast: (text, kind) => toGuest(g, { toast: [text, kind || ''] }), tooltip() {}, hint() {}, caption() {} };
   }
-  function toGuest(g, payload) { net.send('to', { to: g.id, ...payload }); }
+  function toGuest(g, payload) { if (payload.tp) g.tpOk = true; net.send('to', { to: g.id, ...payload }); }
   function addGuest(m) {
     if (C.guests.has(m.id)) return C.guests.get(m.id);
     const cam = new THREE.PerspectiveCamera(70, 1.6, 0.05, 50);
@@ -127,7 +127,7 @@ export function createCoop(ctx) {
       else if (a.k === 'pick') H.pickup();
       else if (a.k === 'drop') { if (a.ring) H.dropAt(a.ring, a.yaw || 0); else H.drop(); }
       else if (a.k === 'swap') H.swap();
-      else if (a.k === 'sec') machines.cancelRun();
+      else if (a.k === 'sec') { const c = H.hand ? items.get(H.hand) : null; if (c?.type === 'coil') machines.cancelRun(c); }
       else if (a.k === 'unlock') { const m = machines.get(a.id); if (m) { m.locked = false; g.hands.hud.toast(`${machines.name(m.def)} unlocked`); } }
       else if (a.k === 'place') {
         const e = H.hand ? items.get(H.hand) : null;
@@ -145,6 +145,9 @@ export function createCoop(ctx) {
         const v = vehicles.list.get(g.drv);
         if (v) { const p = new THREE.Vector3().fromArray(v.def.door).applyMatrix4(v.group.matrixWorld); toGuest(g, { tp: [p.x, p.y + 1.2, p.z] }); }
         vehicles.remoteDrivers.delete(g.drv); g.drv = null;
+      } else if (a.k === 'xdig' || a.k === 'xdump') {
+        const v = vehicles.list.get(g.drv);
+        if (v?.def.hopper) a.k === 'xdig' ? heavy.dig(v) : heavy.dump(v);
       } else if (a.k === 'ui') uiAction(g, a);
     } finally { C.acting = null; }
   }
@@ -157,7 +160,7 @@ export function createCoop(ctx) {
       case 'bp': { const bp = BLUEPRINTS.find(b => b.id === a.id); if (bp) workshop.buyBlueprint(bp); break; }
       case 'build': { const bp = BLUEPRINTS.find(b => b.id === a.id); if (bp) workshop.build(bp); break; }
       case 'vcall': town.callVehicle(a.id); break;
-      case 'vsell': { const v = vehicles.list.get(a.id); if (v && !v.cargo.length && vehicles.driving !== v.id && !vehicles.remoteDrivers.has(v.id)) { const back = Math.round((v.def.price || 0) * 0.5); vehicles.remove(v.id); E.scrip += back; hud.toast(`Sold the ${v.def.name} back for § ${back}`, 'gold'); } break; }
+      case 'vsell': town.sellVehicle(a.id); break;
       case 'pour': machines.pour(a.id); break;
       case 'interact': { const m = machines.get(a.id); if (m) auto.interact(m); break; }
       case 'take': { const m = machines.get(a.id); if (m) auto.takeFrom(m, a.i, H); break; }
@@ -175,8 +178,11 @@ export function createCoop(ctx) {
     // unless the host teleported them).
     if (Array.isArray(p.p) && p.p.every(Number.isFinite)) {
       const dt = Math.max(0.05, (performance.now() - (g.lastIn || 0)) / 1000);
-      if (Math.hypot(p.p[0] - g.pose.p[0], p.p[2] - g.pose.p[2]) / dt < 40 || g.tpOk || !g.lastIn) { g.pose.p = p.p; g.tpOk = false; }
-      g.pose.yaw = +p.yaw || 0; g.pose.pitch = +p.pitch || 0; g.lastIn = performance.now();
+      // A jump is accepted after a teleport we sent, or when it persists for
+      // half a second (the guest's own rescue or "Return to claim post").
+      const ok = Math.hypot(p.p[0] - g.pose.p[0], p.p[2] - g.pose.p[2]) / dt < 40 || g.tpOk || !g.lastIn || (g.rejects || 0) >= 10;
+      if (ok) { g.pose.p = p.p; g.tpOk = false; g.rejects = 0; g.lastIn = performance.now(); } else g.rejects = (g.rejects || 0) + 1;
+      g.pose.yaw = +p.yaw || 0; g.pose.pitch = +p.pitch || 0;
     }
     if (g.drv != null && p.vi) { const d = vehicles.remoteDrivers.get(g.drv); if (d) d.input = { throttle: Math.max(-1, Math.min(1, +p.vi.throttle || 0)), steer: Math.max(-1, Math.min(1, +p.vi.steer || 0)), brake: !!p.vi.brake }; }
     for (const a of p.a || []) if (g.queue.length < 30) g.queue.push(a);
@@ -276,6 +282,7 @@ export function createCoop(ctx) {
       case 'vc': { const v = vehicles.list.get(op[1]); if (v) { vehicles.syncCargo(op[1], op[2]); v.hopper.length = 0; for (let i = 0; i < op[3]; i++) v.hopper.push({}); } break; }
       case 'r': heavy.restore(op[1]); break;
       case 't': hud.toast(op[1], op[2]); break;
+      case 'fin': workshop.finale(true); break;
     }
   }
   function applySnapshot(s) {
@@ -324,12 +331,23 @@ export function createCoop(ctx) {
   }
   function patchGuestUI() {
     hands.remote = (a) => queue(a);
+    // Guests keep no item or vehicle bodies: aim at them through the meshes.
+    hands.remotePick = (o, d) => {
+      const ray = new THREE.Raycaster(new THREE.Vector3(...o), new THREE.Vector3(...d), 0, 6);
+      let best = items.pick(ray);
+      for (const v of vehicles.list.values()) {
+        if (v.group.position.distanceTo(ray.ray.origin) > 12) continue;
+        const h = ray.intersectObject(v.group, true)[0];
+        if (h && (!best || h.distance < best.t)) best = { t: h.distance, p: h.point.toArray(), n: h.face ? h.face.normal.clone().transformDirection(h.object.matrixWorld).toArray() : [0, 1, 0], id: v.id };
+      }
+      return best;
+    };
     town.buy = (shop, item) => { ui('buy', { shop, item }); return true; };
     town.callVehicle = (id) => ui('vcall', { id });
     economy.buyClaim = (id) => { ui('claim', { id }); return 'sent'; };
     workshop.buyBlueprint = (bp) => { ui('bp', { id: bp.id }); return 'sent'; };
     workshop.build = (bp) => { ui('build', { id: bp.id }); return 'sent'; };
-    vehicles.remove = async (id) => ui('vsell', { id });
+    town.sellVehicle = async (id) => { ui('vsell', { id }); return true; };
     machines.pour = (id) => ui('pour', { id });
     auto.interact = (m) => { ui('interact', { id: m.id }); return true; };
     auto.takeFrom = (m, i) => ui('take', { id: m.id, i });
@@ -356,7 +374,7 @@ export function createCoop(ctx) {
     ctx.onMembers?.(list);
   });
   net.on_('hi', (p) => { if (C.role !== 'host') return; const m = net.members.find(x => x.id === p.f); const g = C.guests.get(p.f) || (m && addGuest(m)); if (g) sendPackage(g); });
-  net.on_('pk', (p) => { if (C.role !== 'guest' || p.to !== net.id || C.ready) return; if (!C.pkT0) C.pkT0 = performance.now(); const s = net.takeBig(p); if (s) { C.stats.pkgBytes = s.length; C.stats.pkgMs = performance.now() - C.pkT0; loadPackage(s); } });
+  net.on_('pk', (p) => { if (C.role !== 'guest' || p.to !== net.id || C.ready || C.loading) return; if (!C.pkT0) C.pkT0 = performance.now(); const s = net.takeBig(p); if (s) { C.stats.pkgBytes = s.length; C.stats.pkgMs = performance.now() - C.pkT0; loadPackage(s); } });
   net.on_('in', (p) => { if (C.role === 'host') onIntent(p); });
   net.on_('s', (s) => { if (C.role !== 'guest') return; const host = net.host(); if (host && s.f !== host.id) return; if (!C.ready) { buffered.push(s); if (buffered.length > 200) buffered.shift(); return; } applySnapshot(s); });
   net.on_('to', (p) => {
@@ -382,11 +400,18 @@ export function createCoop(ctx) {
     vehicles.spawn = async (...a) => { const v = await spawn(...a); push(['vs', { id: v.id, type: v.type, pos: v.group.position.toArray(), quat: v.group.quaternion.toArray(), fuel: v.fuel, cargo: v.cargo.slice(), hopper: v.hopper.slice(), tram: v.tram }]); return v; };
     vehicles.remove = async (id) => { await vrem(id); push(['vx', id]); };
     // Sales, contracts and other gold news reach everyone.
+    // Gold news (sales, contracts, builds) reaches everyone; anything else
+    // said while running a guest's action goes to that guest only.
     const toast = hud.toast;
-    hud.toast = (text, kind) => { toast(text, kind); if (kind === 'gold') push(['t', text, kind]); };
-    // Panels a guest's action would open on the host stay shut.
+    hud.toast = (text, kind) => {
+      if (kind === 'gold') { toast(text, kind); push(['t', text, kind]); return; }
+      if (C.acting) { toGuest(C.acting, { toast: [text, kind || ''] }); return; }
+      toast(text, kind);
+    };
+    // Panels a guest's action would open on the host stay shut, except the
+    // end screen, which everyone sees.
     const show = panels.show;
-    panels.show = (...a) => { if (C.acting) return; return show(...a); };
+    panels.show = (...a) => { if (a[0] === 'finale') push(['fin']); else if (C.acting) return; return show(...a); };
     // Everything that exists now is in each guest's world package.
     for (const e of items.ents.values()) sigs.set(e.id, items.sig(e));
     for (const v of vehicles.list.values()) vSig.set(v.id, `${v.cargo.join(',')}|${v.hopper.length}|${v.tram ? v.tram.line : ''}`);
@@ -417,10 +442,13 @@ export function createCoop(ctx) {
       scanT -= dt; if (scanT <= 0) { scanT = 1 / SCAN_HZ; scanEntities(); }
       snapT -= dt; if (snapT <= 0) { snapT = 1 / SNAP_HZ; hostSnapshot(); }
     } else if (C.role === 'guest') {
-      if (!C.ready) { hiT -= dt; if (hiT <= 0 && hiTries < 6) { hiT = 3; hiTries++; net.send('hi', {}); } return; }
+      if (!C.ready) { hiT -= dt; if (hiT <= 0 && hiTries < 6 && !C.loading && !C.pkT0) { hiT = 3; hiTries++; net.send('hi', {}); } return; }
       inT -= dt; if (inT <= 0) { inT = 1 / IN_HZ; sendIntent(); }
     }
   };
+  C.queue = (a) => queue(a);
+  // Guests: leave the vehicle through the host (it clears the driver seat).
+  C.exitVehicle = () => { if (vehicles.driving) { queue({ k: 'vexit' }); vehicles.driving = null; } };
   C.isGuest = () => C.role === 'guest';
   C.isHost = () => C.role === 'host';
   void MACHINES;

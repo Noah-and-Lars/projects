@@ -660,6 +660,11 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       for (let i = 0; i < 400; i++) R.heavy.update(0.05);
       out.tram = { s: +tram.tram.s.toFixed(1), moving: tram.tram.moving, x: +tram.group.position.x.toFixed(1), cargo: tram.cargo.length };
       out.bx = +b[0].toFixed(1);
+      // A claim post calls your vehicle to it.
+      const post = [...R.town.props.values()].find(q => q.kind === 'post' && q.claim === 'willow');
+      R.town.interact(post.id); for (let i = 0; i < 30; i++) await R.tick(1);
+      const hv = [...R.vehicles.list.values()].find(v => v.type === 'hauler');
+      out.called = +Math.hypot(hv.group.position.x - post.at.x, hv.group.position.z - post.at.z).toFixed(1);
       // The guide: with its checks on, finished steps pay out.
       const g0s = R.guide.steps.length, s0g = E.scrip;
       E.flags.guide = { step: 0 }; R.hands.digs = 1; R.hands.washed = 1;
@@ -687,6 +692,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     check(pr.cut === 1 && pr.cutFee > 0, `Upper Falls gem cutter cut the garnet for § ${pr.cutFee}`);
     check(pr.pump === '1,2,3,4,5' && pr.finale && pr.goldwheel, `Pumphouse stages ${pr.pump}, end screen shown, gold-plated wheel delivered`);
     check(pr.hopper === 3 && pr.dumped === 3 && pr.cells.split(' ').every(c => c.split(',').every(v => Math.abs(v % 1) === 0.5)), `excavator dug 3 loads from world-grid cell ${pr.cells.split(' ')[0]} into its hopper and dumped them`);
+    check(pr.called < 6, `a claim post calls the hauler to it (${pr.called} m away)`);
     check(pr.guide.step >= 2 && pr.guide.paid >= 15, `the guide's first steps complete and pay (step ${pr.guide.step} of ${pr.guide.of}, § ${pr.guide.paid})`);
     check(pr.voices2 === 2 && pr.voicesMax === 8, `machine audio: 2 drills + a sluice play ${pr.voices2} voices; 12 drills are capped at ${pr.voicesMax}`);
     check(pr.rails === 'ok' && pr.railLen > 19 && pr.load === 'ok' && !pr.tram.moving && pr.tram.cargo === 1 && Math.abs((pr.tram?.x ?? 1e9) - pr.bx) < 1, `20 m of rails (${pr.rails}); the tram carried 1 nugget to the far end (x ${pr.tram?.x} vs ${pr.bx})`);
@@ -860,6 +866,10 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     await G.pg.waitForTimeout(2000);
     const poses = () => { const o = {}; for (const e of __rill.items.ents.values()) if (e.loc === 'loose') o[e.id] = e.pos; return o; };
     const hp = await H.pg.evaluate(poses), gp = await G.pg.evaluate(poses);
+    // The host followed the guest's teleport back to the Gravel Bar.
+    const gid = await G.pg.evaluate(() => __rill.net.id), gpos = await G.pg.evaluate(() => __rill.player.cur.toArray());
+    const seen = await H.pg.evaluate((id) => __rill.coop.guests.get(id)?.pose.p, gid);
+    const tpErr = seen ? Math.hypot(seen[0] - gpos[0], seen[2] - gpos[2]) : 1e9;
     // (bodies stream within 60 m of a guest, BUILD_BRIEF 7: compare those)
     const me = await G.pg.evaluate(() => __rill.player.cur.toArray());
     for (const id of Object.keys(hp)) if (Math.hypot(hp[id][0] - me[0], hp[id][2] - me[2]) > 55) delete hp[id];
@@ -879,6 +889,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     check(bought === 1, 'the bucket the guest bought appears on the store pad for the guest');
     check(missing === 0 && worst < 0.1 && n > 300, `${n} loose things within 55 m of the guest agree within ${worst.toFixed(3)} m (${missing} missing)`);
     check(avatars === 1, 'the guest sees the host\'s avatar');
+    check(tpErr < 1, `the host follows a guest who teleported (${tpErr.toFixed(2)} m off)`);
     check(H.e2.length === 0 && G.e2.length === 0, 'no console errors in either context' + (H.e2.length + G.e2.length ? ': ' + [...H.e2, ...G.e2].slice(0, 4).join(' | ') : ''));
     // Screenshots: the co-op panel on the host, and each player seeing the other.
     await H.pg.evaluate(async (g) => { const R = __rill; R.noRender(false); R.setTime(0.45); await R.teleport(g.x0 - 2, g.top + 1.5, g.z0 + 4, Math.PI * 0.75, -0.05); }, g0);
