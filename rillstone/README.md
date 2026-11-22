@@ -364,6 +364,8 @@ outside request to prove the file is self-contained. Add `--src` to test
 - drops 80 copper nuggets in one spot and checks they merge into a pile;
 - holds G, turns the held item with R and drops it on release, then
   presses B over it for its look-up entry;
+- fills and levels claim ground with the shovel's RMB, and checks a dozen
+  resting clods merge into a dirt pile you can scoop from;
 - earns § 1,000 by panning and selling, buys the starter kit, carries a
   nugget in the truck bed, drives over fresh ruts (benchmark 3), unflips the
   truck, saves, reloads the page and checks everything persists (`--town`);
@@ -376,7 +378,9 @@ outside request to prove the file is self-contained. Add `--src` to test
 - checks M6: all six claims, the relic, the Ember Seam door, the lamp and
   veins, a Machine Shop build with leftovers, the gem cutter, all five
   Pumphouse stages and the end screen, the Excavator's grid cuts, rails and
-  a tram run, and the machine-sound voice limit (`--progress`);
+  a tram run, the machine-sound voice limit, and the camp gear (bedroll,
+  scale, Saw Bench, firewood into charcoal, smelter auto-pour, scrapping)
+  (`--progress`);
 - fast-forwards a drill and sluice of every tier in its own claim and band,
   and checks the pacing targets: hand washing, one Mk I line, and a late
   base (`--pacing`);
