@@ -42,18 +42,28 @@ export function createNet() {
   const listMembers = () => {
     const st = ch ? ch.presenceState() : {}, out = [];
     for (const k in st) { const m = st[k] && st[k][0]; if (m && typeof m.id === 'string') out.push(m); }
-    return out.sort((a, b) => (b.h | 0) - (a.h | 0) || (a.t - b.t) || (a.id < b.id ? -1 : 1));
+    // Order by when this client first saw each member, not by the join
+    // time members report (their clocks can disagree). Members seen in the
+    // same sync are ordered by reported time, with this client last: so a
+    // newcomer always counts as the newest, and a full room turns it away
+    // instead of bumping someone already playing.
+    for (const id of [...firstSeen.keys()]) if (!out.some(m => m.id === id)) firstSeen.delete(id);
+    const fresh = out.filter(m => !firstSeen.has(m.id)).sort((a, b) => (a.id === myId) - (b.id === myId) || (a.t - b.t) || (a.id < b.id ? -1 : 1));
+    for (const m of fresh) firstSeen.set(m.id, seenSeq++);
+    return out.sort((a, b) => (b.h | 0) - (a.h | 0) || firstSeen.get(a.id) - firstSeen.get(b.id));
   };
+  const firstSeen = new Map(); let seenSeq = 0;
   api.host = () => api.members.find(m => m.h) || null;
   api.isHost = () => !!me && !!me.h;
   api.on_ = (event, fn) => handlers.set(event, fn);
   api.send = (event, payload) => {
     if (!ch || ch.state !== 'joined') return false;
-    const p = Object.assign({ f: myId }, payload);
+    const p = Object.assign({}, payload, { f: myId }); // the sender id can't be overridden
     try { const r = ch.send({ type: 'broadcast', event, payload: p }); if (r && r.catch) r.catch(() => {}); } catch (_) { return false; }
     api.stats.out++; return true;
   };
   function drop() {
+    firstSeen.clear(); seenSeq = 0;
     if (ch) { const c = ch; ch = null; try { c.untrack && c.untrack(); } catch (_) {} try { const p = client.removeChannel(c); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
     api.members = [];
   }
@@ -65,7 +75,7 @@ export function createNet() {
       ch = client.channel(`${BASE}-r-${code}`, { config: { broadcast: { self: false, ack: false }, presence: { key: myId } } });
       const c = ch;
       let done = false;
-      const to = setTimeout(() => { if (!done) { done = true; rej(new Error('offline')); } }, 10000);
+      const to = setTimeout(() => { if (!done) { done = true; if (c === ch) drop(); rej(new Error('offline')); } }, 10000);
       ch.on('presence', { event: 'sync' }, () => {
         if (c !== ch) return;
         const before = api.members;
@@ -88,7 +98,7 @@ export function createNet() {
       });
       ch.subscribe((st) => {
         if (st === 'SUBSCRIBED') { try { const p = ch.track(me); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
-        else if ((st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') && !done) { done = true; clearTimeout(to); rej(new Error('offline')); }
+        else if ((st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') && !done) { done = true; clearTimeout(to); if (c === ch) drop(); rej(new Error('offline')); }
       });
     });
   }
@@ -118,6 +128,7 @@ export function createNet() {
     api.stats.outBytes += str.length;
     return n;
   };
+  api.clearParts = () => parts.clear();
   // Feed chunk messages; returns the whole string when the last one lands.
   api.takeBig = (p) => {
     let e = parts.get(p.k);

@@ -823,3 +823,48 @@ A read-only review found ten issues, all now fixed:
     - "Take one" from a bin in co-op takes the item the guest saw, even if
       the bin shifted.
     - The tram's hover card no longer says "Fuel NaN%".
+
+### Fourth review pass (menus, saves, networking, frame loop)
+
+1. **Title card stuck after Settings.** Settings opened from the title
+   remembered the title as "back", and `play()` closed Settings with the
+   same call, which showed the title again over the game. Leaving for play
+   now hides Settings without restoring anything.
+2. **Stuck after closing a panel from the pause menu.** Closing Save game,
+   Load game or Co-op opened from pause showed nothing. There was no way
+   back without a reload. Panels now remember the card they replaced and
+   restore it on close.
+3. **Panels under the menus.** A panel could open beneath the title or
+   pause card. The panel screen now sits above them (z-index), and opening
+   it hides the cards.
+4. **New game overwrote slot 1.** Autosave went to slot 1 even when it held
+   another game. New game now autosaves to the first empty slot. With all
+   three full, autosave is off until the player picks a slot with Save
+   game.
+5. **Stalled join.** A world package that stalls (a lost chunk) is asked
+   for again after 10 s. After six tries the guest gets a message instead
+   of waiting forever.
+6. **Full rooms.** Members are now ordered by when each client first saw
+   them, not by the join time they report, which depends on their clocks.
+   A newcomer to a full room is turned away instead of bumping a player.
+   A failed or timed-out join leaves the channel. A member can no longer
+   set the sender id (`f`) and pass as the host, and guests accept world
+   packages and private messages only from the host.
+7. **Items near a driving guest.** These kept updating only within 60 m of
+   where the guest got in. The host now uses the vehicle's position for a
+   guest who is driving.
+8. **Vehicle lock.** A guest asking to drive a second vehicle before the
+   first was confirmed could leave the first locked for the session. A
+   guest now drives one vehicle at a time.
+9. **Guest input checked on the host.**
+   - Camera poses, drop rings, placement positions and the guest's own
+     position must be finite numbers and within reach.
+   - Machine settings are clamped or refused, for example a NaN throttle
+     that would have poisoned the water network.
+   - Guest placements get the host's overlap check.
+10. **Frame loop.**
+    - An exception in a frame is logged and the next frame still runs.
+      Before, one exception stopped the game.
+    - A host whose tab is hidden keeps the world running on a 50 ms timer
+      while guests are connected, without rendering, so guests don't
+      freeze.

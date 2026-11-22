@@ -20,11 +20,27 @@ import { clerk, textPlane } from '../render/buildings.js';
 import { BLUEPRINTS } from '../defs/progression.js';
 import { SHOPS } from '../defs/shops.js';
 import { MACHINES } from '../defs/machines.js';
+import { MATERIALS } from '../defs/materials.js';
 
 const SNAP_HZ = 12, IN_HZ = 20, SCAN_HZ = 5, STATUS_HZ = 2;
 const COLORS = [0x2a8a86, 0xc8902c, 0xa84a3a, 0x6e56a8];
 const NEAR = 60; // moving bodies are sent within this range of a guest
 const SETTINGS = ['throttle', 'filter', 'value', 'period', 'delay', 'op'];
+// Guest messages are untrusted: numbers must be finite, vectors the right
+// size, and machine settings in range, before the host acts on them.
+const num = (v) => typeof v === 'number' && Number.isFinite(v);
+const vec = (v, n = 3) => Array.isArray(v) && v.length === n && v.every(num);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const STAGES = ['ore', 'uncut', 'cut', 'ingot', 'crafted'];
+function cleanSetting(k, v, materials) {
+  switch (k) {
+    case 'throttle': return num(v) ? clamp(v, 0, 1) : undefined;
+    case 'value': return num(v) ? clamp(v, -1e6, 1e6) : undefined;
+    case 'period': case 'delay': return num(v) ? clamp(v, 0.1, 3600) : undefined;
+    case 'op': return ['>', '<', '='].includes(v) ? v : undefined;
+    case 'filter': return v && typeof v === 'object' && materials[v.material] && STAGES.includes(v.stage) ? { material: v.material, stage: v.stage } : undefined;
+  }
+}
 const r3 = (v) => Math.round(v * 1000) / 1000, r4 = (v) => Math.round(v * 10000) / 10000;
 const b64 = {
   enc(buf) { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); },
@@ -106,7 +122,8 @@ export function createCoop(ctx) {
   function removeGuest(id) {
     const g = C.guests.get(id); if (!g) return;
     // Whatever they held lands where they stood.
-    for (const k of ['hand', 'slot']) { const e = g.hands[k] ? items.get(g.hands[k]) : null; if (e) items.place(e.id, [g.pose.p[0], g.pose.p[1] + 0.2, g.pose.p[2]]); }
+    const gp = guestPos(g);
+    for (const k of ['hand', 'slot']) { const e = g.hands[k] ? items.get(g.hands[k]) : null; if (e) items.place(e.id, [gp[0], gp[1] + 0.2, gp[2]]); }
     C.left.set(g.name, { hand: g.hands.hand, slot: g.hands.slot });
     if (g.drv != null) vehicles.remoteDrivers.delete(g.drv);
     dropAvatar(id); C.guests.delete(id);
@@ -121,9 +138,16 @@ export function createCoop(ctx) {
     const n = net.sendBig('pk', g.id, str);
     C.stats.pkgBytes = str.length; C.stats.pkgChunks = n; C.stats.pkgMs = performance.now() - t0;
   }
+  // Where a guest is: their vehicle while they drive (their own pose stays
+  // where they got in), otherwise their reported position.
+  function guestPos(g) { const v = g.drv != null ? vehicles.list.get(g.drv) : null; return v ? v.group.position.toArray() : g.pose.p; }
   // Run one queued action of a guest, with their camera.
   async function runAction(g, a) {
-    if (a.cam) { g.cam.position.fromArray(a.cam); g.cam.quaternion.fromArray(a.q); g.cam.updateMatrixWorld(); }
+    if (a.cam) {
+      // The guest's camera must be a real pose near where we know they are.
+      const gp = guestPos(g); if (!vec(a.cam) || !vec(a.q, 4) || Math.hypot(a.cam[0] - gp[0], a.cam[2] - gp[2]) > 12) return;
+      g.cam.position.fromArray(a.cam); g.cam.quaternion.fromArray(a.q).normalize(); g.cam.updateMatrixWorld();
+    }
     const d = new THREE.Vector3(0, 0, -1).applyQuaternion(g.cam.quaternion);
     g.hands.aim = await physics.query({ type: 'ray', o: g.cam.position.toArray(), d: d.toArray(), max: 8 });
     g.hands.cooldown = 0;
@@ -132,20 +156,22 @@ export function createCoop(ctx) {
       const H = g.hands;
       if (a.k === 'use') H.use();
       else if (a.k === 'pick') H.pickup();
-      else if (a.k === 'drop') { if (a.ring) H.dropAt(a.ring, +a.yaw || 0, a.rot); else { if (a.reach) H.reach = Math.max(1.5, Math.min(6, +a.reach || 3.5)); H.drop(); } }
+      else if (a.k === 'drop') { if (a.ring) { if (vec(a.ring) && g.cam.position.distanceTo(new THREE.Vector3(...a.ring)) < 8) H.dropAt(a.ring, num(a.yaw) ? a.yaw : 0, a.rot); } else { if (a.reach) H.reach = Math.max(1.5, Math.min(6, +a.reach || 3.5)); H.drop(); } }
       else if (a.k === 'swap') H.swap();
       else if (a.k === 'sec') { const c = H.hand ? items.get(H.hand) : null; if (c?.type === 'coil') machines.cancelRun(c); }
       else if (a.k === 'unlock') { const m = machines.get(a.id); if (m) { m.locked = false; g.hands.hud.toast(`${machines.name(m.def)} unlocked`); } }
       else if (a.k === 'place') {
         const e = H.hand ? items.get(H.hand) : null;
-        if (e && e.id === a.ent && e.type === 'crate' && e.data.def === a.def) {
+        if (e && e.id === a.ent && e.type === 'crate' && e.data.def === a.def && vec(a.pos) && num(a.rot) && g.cam.position.distanceTo(new THREE.Vector3(...a.pos)) < 10) {
           const why = machines.requirement(a.def, a.pos, a.rot);
           if (why) H.hud.toast(why, 'err');
+          else if (!(await machines.checkFree(a.def, a.pos, a.rot))) H.hud.toast('Something is in the way', 'err');
           else { machines.place(a.def, a.pos, a.rot, e.data.state || {}, { wear: e.data.wear || 0 }); items.remove(e.id); H.hand = null; H.hud.toast(`${machines.name(a.def)} placed · lock it with the mallet`); }
         }
       } else if (a.k === 'veh') {
         const v = vehicles.list.get(a.id);
-        if (v && !v.def.kinematic && vehicles.driving !== a.id && !vehicles.remoteDrivers.has(a.id)) { vehicles.remoteDrivers.set(a.id, { guest: g.id, input: {} }); g.drv = a.id; }
+        if (v && !v.def.kinematic && g.drv != null) { /* already driving: one seat at a time */ }
+        else if (v && !v.def.kinematic && vehicles.driving !== a.id && !vehicles.remoteDrivers.has(a.id)) { vehicles.remoteDrivers.set(a.id, { guest: g.id, input: {} }); g.drv = a.id; }
         else if (v?.def.kinematic) vehicles.onTram?.(v);
         else H.hud.toast('Someone else is driving that');
       } else if (a.k === 'vexit') {
@@ -177,7 +203,7 @@ export function createCoop(ctx) {
         if (i >= 0) auto.takeFrom(m, i, H); break;
       }
       case 'craft': { const held = H.hand ? items.get(H.hand) : null; if (held?.item?.stage === 'ingot' && held.item.hotUntil > items.clock && ['toolhead', 'ring', 'chain', 'chalice'].includes(a.kind)) machines.craft(held, H, a.kind); break; }
-      case 'mset': { const m = machines.get(a.id); if (!m) break; if (typeof a.on === 'boolean') m.on = a.on; for (const k of SETTINGS) if (a.set && k in a.set) m.state[k] = a.set[k]; break; }
+      case 'mset': { const m = machines.get(a.id); if (!m) break; if (typeof a.on === 'boolean') m.on = a.on; for (const k of SETTINGS) if (a.set && k in a.set) { const v = cleanSetting(k, a.set[k], MATERIALS); if (v !== undefined) m.state[k] = v; } break; }
       case 'bedTake': bed.take(a.vid, a.ent, H); break;
       case 'bedPut': { const e = H.hand ? items.get(H.hand) : null; if (e) bed.putIn(a.vid, e, H); break; }
       case 'bedUnload': bed.unloadAll(a.vid); break;
@@ -188,13 +214,13 @@ export function createCoop(ctx) {
     if (p.s <= g.seq) return; g.seq = p.s;
     // Accept the guest's own movement if it is plausible (no 40 m/s jumps
     // unless the host teleported them).
-    if (Array.isArray(p.p) && p.p.every(Number.isFinite)) {
+    if (vec(p.p)) {
       const dt = Math.max(0.05, (performance.now() - (g.lastIn || 0)) / 1000);
       // A jump is accepted after a teleport we sent, or when it persists for
       // half a second (the guest's own rescue or "Return to claim post").
       const ok = Math.hypot(p.p[0] - g.pose.p[0], p.p[2] - g.pose.p[2]) / dt < 40 || g.tpOk || !g.lastIn || (g.rejects || 0) >= 10;
       if (ok) { g.pose.p = p.p; g.tpOk = false; g.rejects = 0; g.lastIn = performance.now(); } else g.rejects = (g.rejects || 0) + 1;
-      g.pose.yaw = +p.yaw || 0; g.pose.pitch = +p.pitch || 0;
+      g.pose.yaw = num(p.yaw) ? p.yaw : 0; g.pose.pitch = num(p.pitch) ? p.pitch : 0;
     }
     if (g.drv != null && p.vi) { const d = vehicles.remoteDrivers.get(g.drv); if (d) d.input = { throttle: Math.max(-1, Math.min(1, +p.vi.throttle || 0)), steer: Math.max(-1, Math.min(1, +p.vi.steer || 0)), brake: !!p.vi.brake }; }
     for (const a of p.a || []) if (g.queue.length < 30) g.queue.push(a);
@@ -237,7 +263,8 @@ export function createCoop(ctx) {
     return out;
   }
   function hostSnapshot() {
-    const nearGuest = (p) => { for (const g of C.guests.values()) if (Math.hypot(p[0] - g.pose.p[0], p[2] - g.pose.p[2]) < NEAR) return true; return false; };
+    const gps = [...C.guests.values()].map(guestPos);
+    const nearGuest = (p) => { for (const q of gps) if (Math.hypot(p[0] - q[0], p[2] - q[2]) < NEAR) return true; return false; };
     const b = [];
     for (const e of items.ents.values()) {
       if (e.loc !== 'loose' && e.loc !== 'belt') continue;
@@ -394,11 +421,11 @@ export function createCoop(ctx) {
     ctx.onMembers?.(list);
   });
   net.on_('hi', (p) => { if (C.role !== 'host') return; const m = net.members.find(x => x.id === p.f); const g = C.guests.get(p.f) || (m && addGuest(m)); if (g) sendPackage(g); });
-  net.on_('pk', (p) => { if (C.role !== 'guest' || p.to !== net.id || C.ready || C.loading) return; if (!C.pkT0) C.pkT0 = performance.now(); const s = net.takeBig(p); if (s) { C.stats.pkgBytes = s.length; C.stats.pkgMs = performance.now() - C.pkT0; loadPackage(s); } });
+  net.on_('pk', (p) => { if (C.role !== 'guest' || p.to !== net.id || C.ready || C.loading || p.f !== net.host()?.id) return; if (!C.pkT0) C.pkT0 = performance.now(); C.pkLast = performance.now(); const s = net.takeBig(p); if (s) { C.stats.pkgBytes = s.length; C.stats.pkgMs = performance.now() - C.pkT0; loadPackage(s); } });
   net.on_('in', (p) => { if (C.role === 'host') onIntent(p); });
   net.on_('s', (s) => { if (C.role !== 'guest') return; const host = net.host(); if (host && s.f !== host.id) return; if (!C.ready) { buffered.push(s); if (buffered.length > 200) buffered.shift(); return; } applySnapshot(s); });
   net.on_('to', (p) => {
-    if (C.role !== 'guest' || p.to !== net.id) return;
+    if (C.role !== 'guest' || p.to !== net.id || p.f !== net.host()?.id) return;
     if (p.toast) hud.toast(p.toast[0], p.toast[1]);
     if (p.snd) audio.play(p.snd);
     if (p.tp) teleport(p.tp[0], p.tp[1], p.tp[2]);
@@ -462,7 +489,17 @@ export function createCoop(ctx) {
       scanT -= dt; if (scanT <= 0) { scanT = 1 / SCAN_HZ; scanEntities(); }
       snapT -= dt; if (snapT <= 0) { snapT = 1 / SNAP_HZ; hostSnapshot(); }
     } else if (C.role === 'guest') {
-      if (!C.ready) { hiT -= dt; if (hiT <= 0 && hiTries < 6 && !C.loading && !C.pkT0) { hiT = 3; hiTries++; net.send('hi', {}); } return; }
+      if (!C.ready) {
+        // A world package that stalls (a lost chunk) is asked for again;
+        // after six tries, say so instead of waiting forever.
+        if (C.pkT0 && !C.loading && performance.now() - C.pkLast > 10000) { C.pkT0 = 0; net.clearParts(); hiT = 0; }
+        hiT -= dt;
+        if (hiT <= 0 && !C.loading && !C.pkT0) {
+          if (hiTries < 6) { hiT = 3; hiTries++; net.send('hi', {}); }
+          else if (!C.gaveUp) { C.gaveUp = true; hud.toast("Couldn't load the host's world. Leave from the Co-op menu and try again.", 'err'); }
+        }
+        return;
+      }
       inT -= dt; if (inT <= 0) { inT = 1 / IN_HZ; sendIntent(); }
     }
   };

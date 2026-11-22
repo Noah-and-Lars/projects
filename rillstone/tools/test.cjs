@@ -1047,6 +1047,20 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     await p.screenshot({ path: `${out}/settings-keys.png` });
     await p.click('text=Reset to defaults', { timeout: 120000 });
     await p.evaluate(() => { __rill.menu.closeSettings(); __rill.menu.showPause(false); });
+    // Menu flows: a panel opened from the pause menu sits on top of it, and
+    // closing it brings the pause menu back (it used to leave no way out).
+    const flow = await p.evaluate(async () => {
+      const R = __rill, wait = (ms) => new Promise(r => setTimeout(r, ms));
+      R.state.mode = 'pause'; R.menu.showPause(true);
+      [...document.querySelectorAll('#scr-pause button')].find(b => b.textContent === 'Save game').click();
+      for (let i = 0; i < 100 && R.panels.current !== 'saves'; i++) await wait(50);
+      const r = document.querySelector('#scr-panel').getBoundingClientRect(), top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('.screen')?.id;
+      R.panels.close();
+      const back = R.menu.pauseShown && R.state.mode === 'pause';
+      R.menu.showPause(false); R.state.mode = 'play';
+      return { top, back };
+    });
+    check(flow.top === 'scr-panel' && flow.back, `Save game from the pause menu sits on top (${flow.top}) and closing it returns to the pause menu`);
     errs.push(...fresh.errs);
   }
   check(errs.length === 0, 'no console errors' + (errs.length ? ': ' + errs.slice(0, 5).join(' | ') : ''));

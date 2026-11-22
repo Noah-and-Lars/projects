@@ -100,3 +100,6 @@ select { font: 15px var(--font); padding: 4px 8px; border-radius: 8px; border: 1
 #guide small { opacity: 0.6; font-size: 11px; }
 .mapwrap { display: flex; flex-direction: column; align-items: center; }
 canvas.map { width: min(560px, 80vw); height: auto; aspect-ratio: 1; border-radius: 10px; box-shadow: inset 0 0 0 2px rgba(43, 52, 64, 0.2); }
+
+/* Panels (shops, saves, co-op) sit above the title and pause cards. */
+#scr-panel { z-index: 5; }

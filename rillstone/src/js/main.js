@@ -96,9 +96,22 @@ async function boot() {
 
   const economy = createEconomy(econRng); economy.init();
   hands.owns = (id) => economy.owns(id);
+  let underPanel = { title: false, pause: false }, menuRef = null;
   const panels = createPanels(ui, {
-    onOpen: () => { if (state.mode === 'play') state.mode = 'panel'; input.unlock(); },
-    onClose: () => { if (state.mode === 'panel') { state.mode = 'play'; if (!TEST) input.lock(); } else if (state.mode === 'title') menu.showTitle(true); },
+    // A panel opened from the title or pause menu sits in place of that card,
+    // and closing it brings the card back (menu is created below; these run later).
+    onOpen: (id, again) => {
+      const mn = menuRef;
+      if (!again) underPanel = { title: !!mn?.titleShown, pause: !!mn?.pauseShown };
+      mn?.showTitle(false); mn?.showPause(false);
+      if (state.mode === 'play') state.mode = 'panel'; input.unlock();
+    },
+    onClose: () => {
+      if (state.mode === 'panel') { state.mode = 'play'; if (!TEST) input.lock(); }
+      else if (state.mode === 'title' || underPanel.title) menuRef?.showTitle(true);
+      else if (state.mode === 'pause' || underPanel.pause) menuRef?.showPause(true);
+      underPanel = { title: false, pause: false };
+    },
   });
   const vehicles = createVehicles({ scene, physics, items, materials: view.materials, hud, audio });
   hands.vehicles = vehicles;
@@ -197,7 +210,18 @@ async function boot() {
   }
   const menu = createMenu(ui, {
     settings, input,
-    onPlay: () => play(),
+    // New game: autosave into the first empty slot, never over another game.
+    // With all three full, autosave waits until the player picks a slot.
+    onPlay: () => {
+      play();
+      if (!state.slotChosen) {
+        state.slotChosen = true;
+        saves.list().catch(() => []).then((list) => {
+          const free = list.find(m => m.empty); state.slot = free ? free.slot : (list.length ? null : 1);
+          if (!state.slot) hud.toast('All three save slots are in use: Save game (Esc) to pick one. Autosave is off until then.');
+        });
+      }
+    },
     onSettingsChanged: () => { view.applySettings(); audio.apply(); },
     // Settings: clear loose dirt clods and nugget piles (BUILD_BRIEF 9).
     onCleanup: () => { if (coop.isGuest()) return 0; let n = 0; for (const e of [...items.ents.values()]) if ((e.type === 'clod' || e.type === 'pile') && e.loc === 'loose') { items.remove(e.id); n++; } return n; },
@@ -208,10 +232,11 @@ async function boot() {
       { label: 'Return to claim post', onclick: () => { if (vehicles.driving) exitVehicle(); const s = spawnPoint(); teleport(s.x, height(s.x, s.z) + 1, s.z, s.yaw); play(); } },
     ],
   });
+  menuRef = menu;
   function play() {
     if (panels.open) panels.close();
     state.mode = 'play'; state.playing = true;
-    menu.showTitle(false); menu.showPause(false); menu.closeSettings(); menu.showPause(false);
+    menu.showTitle(false); menu.showPause(false); menu.hideSettings();
     hud.show(true);
     if (!TEST) input.lock();
   }
@@ -275,7 +300,7 @@ async function boot() {
     const fmt = (m) => m.empty ? 'Empty' : `Day ${m.day} · § ${m.scrip.toLocaleString('en-GB')} · ${new Date(m.savedAt).toLocaleString()}`;
     const fileIn = h('input', { type: 'file', accept: '.rillsave', style: { display: 'none' }, onchange: async (e) => {
       const f = e.target.files[0]; if (!f) return;
-      try { const snap = await saves.importFile(f); await saves.save(state.slot, snap); hud.toast(`Imported into slot ${state.slot}`); loadSlot(state.slot); } catch (err) { hud.toast('Import failed: ' + err.message, 'err'); }
+      try { const snap = await saves.importFile(f); state.slot ||= 1; await saves.save(state.slot, snap); hud.toast(`Imported into slot ${state.slot}`); loadSlot(state.slot); } catch (err) { hud.toast('Import failed: ' + err.message, 'err'); }
     } });
     const body = h('div', {},
       h('p', { class: 'small' }, mode === 'save' ? 'Pick a slot. The game also autosaves to your current slot every 3 minutes.' : 'Load a saved game.'),
@@ -354,7 +379,7 @@ async function boot() {
     items.clock += 1 / SIM_HZ;
     if (state.simTick % SIM_HZ === 0) { items.mergePiles(); items.cool(); }
   }
-  async function frame(now) {
+  async function frameBody(now) {
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     input.poll();
     const lookD = input.look();
@@ -427,7 +452,7 @@ async function boot() {
       if (driveEl.dataset.html !== html) { driveEl.dataset.html = html; driveEl.innerHTML = html; if (dh.scanner) driveEl.append(scanCanvas); }
       if (dh.scanner) heavy.drawScanner(scanCanvas, dh.v);
     }
-    if (state.mode === 'play') { state.playTime += dt; state.autosaveT += dt; if (state.autosaveT > 180 && !coop.isGuest()) { state.autosaveT = 0; saveTo(state.slot, true); } }
+    if (state.mode === 'play') { state.playTime += dt; state.autosaveT += dt; if (state.autosaveT > 180 && !coop.isGuest() && state.slot) { state.autosaveT = 0; saveTo(state.slot, true); } }
     coop.update(dt);
     // (tests switch the guide on only when they check it: it pays out Scrip)
     guide.auth = !coop.isGuest() && (!TEST || !!state.guideOn);
@@ -436,7 +461,7 @@ async function boot() {
     hud.clock(state.time, state.day);
     hud.wallet(economy.state.scrip, economy.state.standing);
     const t2 = performance.now();
-    if (!state.noRender) view.render();
+    if (!state.noRender && !document.hidden) view.render();
     timings.render = performance.now() - t2;
     frames++; fpsT += dt; if (fpsT > 0.5) { fps = frames / fpsT; frames = 0; netRate = (net.stats.in + net.stats.out - netLast) / fpsT; netLast = net.stats.in + net.stats.out; fpsT = 0; }
     if (hud.debugOn()) {
@@ -444,11 +469,22 @@ async function boot() {
       hud.debug.textContent = `${fps.toFixed(0)} fps\nphysics step ${(st.stepMs || 0).toFixed(2)} ms (rtt ${timings.physics.toFixed(1)})\nsim ${timings.sim.toFixed(2)} ms · render ${timings.render.toFixed(1)} ms\ndraw calls ${ri.calls} · tris ${(ri.triangles / 1000).toFixed(0)}k\nbodies awake ${st.awake ?? 0} / asleep ${st.asleep ?? 0} · items ${items.ents.size} · machines ${machines.counts().mach}\nremesh queue ${claims.busy} · mesh ${avg(claims.stats.meshMs).toFixed(1)} ms · collider ${avg(claims.stats.colliderMs).toFixed(1)} ms\npos ${player.cur.x.toFixed(1)} ${player.cur.y.toFixed(1)} ${player.cur.z.toFixed(1)}${net.on ? `\nnet ${coop.role} · ${net.members.length} players · ${netRate.toFixed(1)} msg/s` : ''}`;
     }
     input.endFrame();
-    requestAnimationFrame(frame);
+  }
+  // One frame at a time; an exception is logged but never stops the loop.
+  // A host whose tab is hidden (no animation frames) keeps the world running
+  // on a timer while guests are connected, so their game doesn't freeze.
+  let frameBusy = false;
+  async function frame(now) {
+    if (frameBusy) return; frameBusy = true;
+    try { await frameBody(now); } catch (e) { console.error(e); } finally { frameBusy = false; scheduleFrame(); }
+  }
+  function scheduleFrame() {
+    if (document.hidden && coop.role === 'host' && coop.guests.size) setTimeout(() => frame(performance.now()), 50);
+    else requestAnimationFrame(frame);
   }
   let pending = null;
   try { pending = sessionStorage.getItem('rill-load'); sessionStorage.removeItem('rill-load'); } catch (_) {}
-  if (pending) { const snap = await saves.load(+pending); if (snap) { await restore(snap); state.slot = +pending; play(); hud.toast(`Loaded slot ${pending}`); } }
+  if (pending) { const snap = await saves.load(+pending); if (snap) { await restore(snap); state.slot = +pending; state.slotChosen = true; play(); hud.toast(`Loaded slot ${pending}`); } }
   requestAnimationFrame(frame);
 
   // Test hook (BUILD_BRIEF section 12). Pointer Lock doesn't work headless,

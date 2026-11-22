@@ -55,7 +55,9 @@ export function createMenu(root, { settings, input, onPlay, onSettingsChanged, o
     settingsEl.replaceChildren(h('div', { class: 'panel wide' }, h('h2', {}, 'Settings'), tabs, body, h('div', { class: 'col' }, h('button', { class: 'btn primary', onclick: closeSettings }, 'Done'))));
   }
   function openSettings() { back = !title.classList.contains('hidden') ? title : pause; title.classList.add('hidden'); pause.classList.add('hidden'); settingsEl.classList.remove('hidden'); renderSettings(); }
-  function closeSettings() { settingsEl.classList.add('hidden'); (back || pause).classList.remove('hidden'); }
+  function closeSettings() { settingsEl.classList.add('hidden'); (back || pause).classList.remove('hidden'); back = null; }
+  // Leaving the menus for play: hide settings without showing what was behind them.
+  function hideSettings() { settingsEl.classList.add('hidden'); back = null; }
   const extra = title.querySelector('#title-extra');
   function setTitleItems(list) { extra.replaceChildren(...list.map(it => h('button', { class: it.secondary ? 'btn' : 'btn primary', onclick: it.onclick }, it.label))); title.querySelector('#btn-play').className = list.some(it => !it.secondary) ? 'btn' : 'btn primary'; }
   setTitleItems(titleItems);
@@ -64,7 +66,9 @@ export function createMenu(root, { settings, input, onPlay, onSettingsChanged, o
     showTitle(v) { title.classList.toggle('hidden', !v); },
     showPause(v) { pause.classList.toggle('hidden', !v); if (v) settingsEl.classList.add('hidden'); },
     get open() { return [title, pause, settingsEl].some(e => !e.classList.contains('hidden')); },
-    openSettings, closeSettings,
+    openSettings, closeSettings, hideSettings,
+    get titleShown() { return !title.classList.contains('hidden'); },
+    get pauseShown() { return !pause.classList.contains('hidden'); },
     settingsOpen: () => !settingsEl.classList.contains('hidden'),
   };
 }

@@ -10,11 +10,12 @@ export function createPanels(root, { onOpen, onClose }) {
     get open() { return !!current; },
     get current() { return current; },
     show(id, title, body, opts = {}) {
+      const again = current != null; // one panel replacing another
       current = id;
       const close = h('button', { class: 'btn', onclick: () => api.close() }, opts.closeLabel || 'Close');
       el.replaceChildren(h('div', { class: 'panel wide shop' + (opts.cls ? ' ' + opts.cls : '') }, h('div', { class: 'panel-head' }, h('h2', {}, title), opts.badge ? h('span', { class: 'pill' }, opts.badge) : null), body, h('div', { class: 'col' }, close)));
       el.classList.remove('hidden');
-      onOpen?.(id);
+      onOpen?.(id, again);
     },
     close() { if (!current) return; current = null; el.classList.add('hidden'); onClose?.(); },
     el,
