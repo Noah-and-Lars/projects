@@ -80,6 +80,11 @@
 .tk-row small { display: block; color: var(--muted); }
 .tk-msg { min-height: 1.4em; font-size: 13.5px; color: #ffb224; }
 .tk-gift .btn[disabled] { cursor: not-allowed; opacity: .55; }
+.tk-gform { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.tk-gform input { height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid #ffffff2a; background: #16161a; color: var(--text); font: 500 15px var(--font); }
+.tk-gform input[type=text] { flex: 1 1 160px; min-width: 0; }
+.tk-gform input[type=number] { width: 84px; }
+.tk-gform[hidden], #giftOff[hidden] { display: none; }
 #tkTour { position: fixed; inset: 0; z-index: 2147482000; display: grid; place-items: center; background: #000b; padding: 16px; }
 #tkTour[hidden] { display: none; }
 #tkTour .box { width: min(440px, 100%); padding: 22px; border-radius: 18px; background: #141418; border: 1px solid #ffffff1f; }
@@ -149,8 +154,19 @@
 
       <section class="tk-card tk-gift" aria-labelledby="giftH">
         <h2 id="giftH">Gift tickets to a friend</h2>
-        <p>Not yet. Your tickets are kept in your browser and synced with your account. That’s fine for unlocking your own looks, but a gift needs the arcade’s server to keep everyone’s balance, so nobody can fake one. When it does, you’ll be able to send friends a few tickets a day.</p>
-        <button type="button" class="btn ghost" disabled aria-disabled="true">Send a gift (coming later)</button>
+        <div id="giftOff">
+          <p id="giftOffP">Not yet. Gifts need The Arcade’s server to keep everyone’s tickets, so nobody can fake one. It’s on its way.</p>
+          <button type="button" class="btn ghost" disabled aria-disabled="true">Send a gift (coming soon)</button>
+        </div>
+        <div id="giftOn" hidden>
+          <p>Send a friend a few of your tickets. You both need to have added each other as friends. <span id="giftLim"></span></p>
+          <form class="tk-gform" id="giftForm">
+            <label class="sr" for="giftTo">Friend’s username</label><input type="text" id="giftTo" placeholder="Friend’s username" autocomplete="off" maxlength="16" required>
+            <label class="sr" for="giftN">Tickets</label><input type="number" id="giftN" min="1" max="20" value="5" required>
+            <button type="submit" class="btn accent" id="giftGo">🎁 Send</button>
+          </form>
+          <p class="tk-msg" id="giftMsg" role="status"></p>
+        </div>
       </section>
 
       <section class="tk-card" aria-labelledby="histH">
@@ -177,9 +193,9 @@
 </footer>
 
 <script src="games.js?v=279"></script>
-<script src="tickets.js?v=1"></script>
+<script src="tickets.js?v=2"></script>
 <script src="notify.js?v=1"></script>
-<script src="account.js?v=43"></script>
+<script src="account.js?v=44"></script>
 <script src="assistant.js?v=7"></script>
 <script src="console.js?v=4"></script>
 <script src="call.js?v=8"></script>
@@ -197,7 +213,8 @@ ArcadeOnline.start('tickets');
     document.querySelectorAll('.capN').forEach(e => e.textContent = T.DAILY_CAP);
     $('tkBal').textContent = st.b;
     const A = window.ArcadeAccount, k = A && A.kind ? A.kind() : '';
-    $('tkSync').textContent = k === 'online' ? 'Synced with your account' : 'On this device only. Make an online account to keep them everywhere.';
+    $('tkSync').textContent = k === 'online' ? (T.server && T.server() ? 'Kept safe on your account' : 'Synced with your account') : 'On this device only. Make an online account to keep them everywhere.';
+    gifts();
     $('tkTodayTxt').textContent = td.earned + ' of ' + td.cap + ' earned' + (td.secs ? ' · ' + Math.round(td.secs / 60) + ' min played' : '');
     $('tkBar').style.width = Math.min(100, td.earned / td.cap * 100) + '%';
     $('tkBarWrap').setAttribute('aria-valuemax', td.cap); $('tkBarWrap').setAttribute('aria-valuenow', td.earned);
@@ -230,7 +247,11 @@ ArcadeOnline.start('tickets');
       const b = el('button', 'btn ' + (own ? 'ghost' : 'accent'), own ? (on ? 'Using' : 'Use') : '🎟️ ' + it.p); b.type = 'button';
       b.disabled = on || (!own && st.b < it.p);
       b.setAttribute('aria-label', own ? (on ? 'Using ' + it.n : 'Use ' + it.n) : 'Buy ' + it.n + ' for ' + it.p + ' tickets');
-      b.onclick = () => { if (own) T.use(kind, it.id); else { const r = T.buy(it.id); $('shopMsg').textContent = r.error || 'You got ' + it.n + '!'; } paint(); };
+      b.onclick = () => {
+        if (own) { T.use(kind, it.id); paint(); return; }
+        b.disabled = true; $('shopMsg').textContent = '';
+        Promise.resolve(T.buy(it.id)).then(r => { $('shopMsg').textContent = r.error || 'You got ' + it.n + '!'; paint(); });
+      };
       c.appendChild(b); box.appendChild(c);
     });
   }
@@ -241,6 +262,21 @@ ArcadeOnline.start('tickets');
   }
   document.querySelectorAll('.tk-tabs button').forEach(b => b.onclick = () => { kind = b.dataset.k; $('shopMsg').textContent = ''; paint(); });
   $('npBox').onchange = e => T.setNoPredict(e.target.checked);
+
+  // gifts (only when the account's server keeps the tickets)
+  function gifts() {
+    const on = !!(T.canGift && T.canGift()), A = window.ArcadeAccount, k = A && A.kind ? A.kind() : '';
+    $('giftOn').hidden = !on; $('giftOff').hidden = on;
+    if (!on) { $('giftOffP').textContent = k === 'online' ? 'Not yet. Gifts need The Arcade’s server to keep everyone’s tickets, so nobody can fake one. It’s on its way.' : 'Gifts need an online account, so your tickets are kept safe on the server. Make one from the account button.'; return; }
+    const L = T.giftLimits(); $('giftN').max = L.max;
+    $('giftLim').textContent = 'Up to ' + L.max + ' at a time and ' + L.day + ' a day' + (L.sent ? ' (' + Math.max(0, L.day - L.sent) + ' left today).' : '.');
+  }
+  $('giftForm').onsubmit = e => {
+    e.preventDefault();
+    const to = $('giftTo').value.trim(), n = +$('giftN').value;
+    $('giftGo').disabled = true; $('giftMsg').textContent = 'Sending…';
+    T.gift(to, n).then(r => { $('giftGo').disabled = false; $('giftMsg').textContent = r.error || 'Sent ' + n + ' tickets to ' + to + '!'; if (r.ok) $('giftTo').value = ''; paint(); });
+  };
 
   // the tickets tour: three short cards, +5 tickets once for finishing
   const STEPS = [

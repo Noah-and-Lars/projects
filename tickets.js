@@ -13,6 +13,13 @@
      prediction-free mode). account.js GROUPS has it as its own group 'tickets' (score = earned ever), so it rides the
      account's cloud save sync and follows the account to other devices. It is still a browser save, so it is easy to
      edit: that is why tickets only buy looks and can't be gifted until the server keeps the balance.
+   - Server mode (2026-11-22): with an online account, the account's server keeps the tickets (/acct/tickets, the
+     private Worker's Account.tickets). `check()` asks it; if it answers, `SRV.on` is set and 'arcade-tickets' becomes
+     a cache of the server's state (`merge`): play.html sends 'play' every PLAY_MS while a game is on screen (the server
+     counts only real time, so editing the browser save changes nothing), the shop and bonuses go to the server, and
+     gifts to friends work (`gift`). The first time, the browser's own tickets are moved over once ('import', capped by
+     the server). A server without the route (404) or a guest/local account keeps the browser-only behaviour above, so
+     the page works before and after the Worker deploy. A gift arrives as { t: 'tk' } on the account's live socket.
    - Prediction-free mode (the player's own switch, `np`) hides predictions but keeps tickets.
      ArcadeTickets.noPredict() tells other code; html gets .arcade-no-predictions and 'arcade:predictions' fires when
      it changes. */
@@ -21,6 +28,8 @@
   var K = 'arcade-tickets';
   var DAILY_CAP = 20, BONUS = 5, BONUS_SECS = 120, STEP = 240, HIST = 100;
   var HELP = { tour: [5, 'Finished the tickets tour'] }; // 'tutorial:<id>': 3 each, see bonus()
+  var PLAY_MS = 120000, GIFT_MAX = 20, GIFT_DAY = 30;
+  var SRV = { on: false, at: 0, busy: null, lastPlay: 0 };
   var ls = {
     get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     json: function (k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } },
@@ -65,6 +74,53 @@
   function fire() { applyLooks(); subs.forEach(function (f) { try { f(); } catch (e) {} }); }
   addEventListener('storage', function (e) { if (e.key === K) { applyPredict(); fire(); } });
 
+  /* ---------- the account's server (server mode) ---------- */
+  function acc() { var A = window.ArcadeAccount; return A && A.kind && A.kind() === 'online' && A.token && A.token() ? A : null; }
+  function srv(method, body) { var A = acc(); if (!A) return Promise.resolve({ error: 'auth', status: 401 }); return A.api('tickets', { method: method, auth: true, body: body }); }
+  function merge(tk) {
+    if (!tk || typeof tk !== 'object') return;
+    var o = read();
+    o.b = N(tk.b); o.e = N(tk.e); o.s = N(tk.s); o.dp = N(tk.dp); o.ps = N(tk.ps); o.db = tk.db === tk.d ? o.d : ''; o.srv = 1;
+    o.own = tk.own && typeof tk.own === 'object' ? tk.own : {}; o.done = tk.done && typeof tk.done === 'object' ? tk.done : {};
+    o.h = Array.isArray(tk.h) ? tk.h.slice(0, HIST) : [];
+    if (typeof tk.giftMax === 'number') GIFT_MAX = tk.giftMax; if (typeof tk.giftDay === 'number') GIFT_DAY = tk.giftDay; SRV.go = N(tk.go);
+    for (var k in o.use) if (o.use[k] && !o.own[o.use[k]]) delete o.use[k]; // a look you don't own on the server comes off
+    write(o);
+  }
+  // ask the server once in a while (and after a sign-in); resolves true when server mode is on
+  function check(force) {
+    if (!acc()) { SRV.on = false; return Promise.resolve(false); }
+    if (SRV.busy) return SRV.busy;
+    if (!force && Date.now() - SRV.at < 60000) return Promise.resolve(SRV.on);
+    SRV.at = Date.now();
+    SRV.busy = srv('GET').then(function (j) {
+      if (j && j.tk) {
+        SRV.on = true;
+        if (!j.tk.im) { // move this browser's tickets over, once (the server caps it)
+          var o = read();
+          return srv('POST', { op: 'import', b: o.b, own: o.own, done: o.done }).then(function (k) { merge(k && k.tk ? k.tk : j.tk); return true; });
+        }
+        merge(j.tk); return true;
+      }
+      if (j && j.status === 404) SRV.on = false; // a server from before tickets moved: stay browser-only
+      return SRV.on;
+    }).catch(function () { return SRV.on; }).then(function (v) { SRV.busy = null; return v; });
+    return SRV.busy;
+  }
+  var ERR = {
+    short: function (j) { return 'You need ' + (j.need || 'more') + ' more tickets.'; },
+    owned: function () { return 'You already have it.'; },
+    not_in_shop: function () { return 'That isn’t in the shop.'; },
+    not_friends: function () { return 'You can only send tickets to a friend (you both need to have added each other).'; },
+    day_limit: function (j) { return j.left ? 'You can send ' + j.left + ' more today.' : 'That’s today’s gifts sent. More tomorrow!'; },
+    their_limit: function () { return 'They’ve had all the gifts they can get today. Try tomorrow!'; },
+    amount: function (j) { return 'Send 1 to ' + (j.max || GIFT_MAX) + ' tickets at a time.'; },
+    bad: function () { return 'That didn’t work. Check the name and try again.'; },
+    offline: function () { return 'Couldn’t reach The Arcade’s server. Check your connection.'; },
+    auth: function () { return 'Sign in with your online account first.'; },
+  };
+  function errText(j) { var f = j && ERR[j.error]; return f ? f(j) : 'That didn’t work. Try again in a moment.'; }
+
   /* ---------- prediction-free mode ---------- */
   var lastNp = null;
   function applyPredict() {
@@ -76,6 +132,7 @@
   var onPlay = /play\.html$/.test(location.pathname) && /[?&]game=/.test(location.search);
   function tick() {
     if (document.hidden) return;
+    if (SRV.on) return tickServer();
     var o = read(), now = Date.now();
     if (now - o.lt < 14000) return; // another tab counted this moment
     o.lt = now; o.ps += 15;
@@ -88,6 +145,21 @@
     if (got) pill('🎟️ +' + got + (msg === 'daily' ? ' daily bonus' : ''));
     if (msg === 'daily' && window.ArcadeNotify) ArcadeNotify.push({ ty: 'tickets', who: 'Daily ticket bonus', tx: '+' + BONUS + ' tickets for playing today. Up to ' + DAILY_CAP + ' a day.', href: 'tickets.html', quiet: true });
     if (capped) setTimeout(function () { pill('That’s today’s ' + DAILY_CAP + ' tickets. Play on for fun!'); }, got ? 3000 : 0);
+  }
+  function tickServer() {
+    var o = read(), now = Date.now();
+    if (o.dp >= DAILY_CAP && o.srv) return; // today's tickets are in: no more calls today
+    if (now - SRV.lastPlay < PLAY_MS - 5000) return;
+    if (now - o.lt < PLAY_MS - 20000) return; // another tab sent one just now
+    SRV.lastPlay = now; o.lt = now; ls.put(K, o);
+    var before = o.dp;
+    srv('POST', { op: 'play', g: gameTitle() }).then(function (j) {
+      if (!j || !j.tk) { if (j && j.status === 404) SRV.on = false; return; }
+      merge(j.tk);
+      var got = N(j.got);
+      if (got) pill('🎟️ +' + got + (before < BONUS && j.tk.dp >= BONUS && got >= BONUS ? ' daily bonus' : ''));
+      if (got && j.tk.dp >= DAILY_CAP) setTimeout(function () { pill('That’s today’s ' + DAILY_CAP + ' tickets. Play on for fun!'); }, 3000);
+    });
   }
   function gameTitle() { try { var id = new URLSearchParams(location.search).get('game'); var g = (typeof GAMES !== 'undefined' ? GAMES : []).filter(function (x) { return x.id === id; })[0]; return g ? g.title : 'a game'; } catch (e) { return 'a game'; } }
   function pill(text) {
@@ -103,6 +175,7 @@
     if (!h) return 0;
     var o = read(); if (o.done[id]) return 0;
     if (/^tutorial:/.test(id) && Object.keys(o.done).filter(function (k) { return /^tutorial:/.test(k); }).length >= 20) return 0;
+    if (SRV.on) { srv('POST', { op: 'bonus', k: id }).then(function (j) { if (j && j.tk) merge(j.tk); }); return h[0]; }
     o.done[id] = Date.now(); earn(o, h[0], h[1]); write(o);
     return h[0];
   }
@@ -111,6 +184,11 @@
     var o = read();
     if (o.own[id]) return { error: 'You already have it.' };
     if (o.b < it.p) return { error: 'You need ' + (it.p - o.b) + ' more tickets.' };
+    if (SRV.on) return srv('POST', { op: 'buy', id: id }).then(function (j) {
+      if (j && j.tk) merge(j.tk);
+      if (!j || !j.ok) return { error: errText(j) };
+      var p = read(); p.use[it.k] = id; write(p); return { ok: true };
+    });
     o.b -= it.p; o.s += it.p; o.own[id] = Date.now(); log(o, -it.p, 'Bought ' + it.n + ' (' + it.k + ')'); o.use[it.k] = id; write(o);
     return { ok: true };
   }
@@ -118,6 +196,17 @@
     var o = read(); if (id && !o.own[id]) return false;
     if (id) o.use[kind] = id; else delete o.use[kind];
     write(o); return true;
+  }
+  // gifts (server mode only): a promise of { ok } or { error: text }
+  function gift(to, n) {
+    to = String(to || '').trim().replace(/^@/, ''); n = Math.floor(+n || 0);
+    if (!SRV.on) return Promise.resolve({ error: 'Gifts need an online account.' });
+    if (!/^[A-Za-z0-9_]{3,16}$/.test(to)) return Promise.resolve({ error: 'Type your friend’s username.' });
+    if (!(n >= 1 && n <= GIFT_MAX)) return Promise.resolve({ error: 'Send 1 to ' + GIFT_MAX + ' tickets at a time.' });
+    return srv('POST', { op: 'gift', to: to, n: n }).then(function (j) {
+      if (j && j.tk) merge(j.tk);
+      return j && j.ok ? { ok: true } : { error: errText(j) };
+    });
   }
   function setNoPredict(v) { var o = read(); o.np = v ? 1 : 0; write(o); applyPredict(); }
 
@@ -182,6 +271,16 @@
   function start() {
     css(); applyPredict(); applyLooks();
     if (onPlay) setInterval(tick, 15000);
+    setTimeout(function () { check(true).then(function (on) { if (on && onPlay) { SRV.lastPlay = 0; tick(); } }); }, 600);
+    var A = window.ArcadeAccount;
+    if (A && A.onPulled) A.onPulled(function () { check(); });
+    if (A && A.onLive) A.onLive(function (m) {
+      if (!m || m.t !== 'tk') return;
+      check(true);
+      var who = String(m.from || 'A friend').slice(0, 20), n = N(m.n);
+      if (window.ArcadeNotify) ArcadeNotify.push({ ty: 'tickets', who: who + ' sent you ' + n + ' tickets', tx: 'A gift! Spend them on looks in the tickets shop.', href: 'tickets.html' });
+      else if (A.toast) A.toast('🎟️ ' + who + ' sent you ' + n + ' tickets!');
+    });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 
@@ -194,8 +293,9 @@
     buy: buy, use: use, bonus: bonus,
     noPredict: function () { return !!read().np; }, setNoPredict: setNoPredict,
     onChange: function (f) { subs.push(f); },
-    // gifts need the server to hold the balance (see tickets.html); there is no client-only version on purpose
-    canGift: function () { return false; },
+    // gifts need the server to hold the balance: only in server mode (there is no browser-only version on purpose)
+    canGift: function () { return SRV.on; }, gift: gift, giftLimits: function () { return { max: GIFT_MAX, day: GIFT_DAY, sent: SRV.go || 0 }; },
+    server: function () { return SRV.on; }, refresh: function () { return check(true); },
     _test: { tick: tick },
   };
 })();

@@ -14,7 +14,7 @@
   'use strict';
   // 2026-11-15: Social profile pictures (avatars.js) and voice notes/replies (voice.js) on every page that has an account button
   (function () { try { var me = document.currentScript && document.currentScript.src, base = me ? me.replace(/account\.js(\?.*)?$/, '') : '';
-    [['ArcadeAvatars', 'avatars.js?v=1'], ['ArcadeVoice', 'voice.js?v=5'], ['ArcadeTickets', 'tickets.js?v=1'], ['ArcadeNotify', 'notify.js?v=1']].forEach(function (x) { if (window[x[0]] || document.querySelector('script[src*="' + x[1].split('?')[0] + '"]')) return; var sc = document.createElement('script'); sc.src = base + x[1]; sc.async = false; document.head.appendChild(sc); }); } catch (e) {} })();
+    [['ArcadeAvatars', 'avatars.js?v=1'], ['ArcadeVoice', 'voice.js?v=5'], ['ArcadeTickets', 'tickets.js?v=2'], ['ArcadeNotify', 'notify.js?v=1']].forEach(function (x) { if (window[x[0]] || document.querySelector('script[src*="' + x[1].split('?')[0] + '"]')) return; var sc = document.createElement('script'); sc.src = base + x[1]; sc.async = false; document.head.appendChild(sc); }); } catch (e) {} })();
   var API = 'https://arcade-realtime.arcade-realtime.workers.dev/acct/';
   try { if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && localStorage.getItem('arcade-acct-api')) API = localStorage.getItem('arcade-acct-api'); } catch (e) {} // tests only: a local copy of the server
   var K_ACCT = 'arcade-acct', K_LOCAL = 'arcade-local', K_SYNC = 'arcade-acct-sync';

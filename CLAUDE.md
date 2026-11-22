@@ -164,8 +164,14 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
   Its keys start `arcade-ntf-` (device only, in NEVER); `arcade-follow-games` syncs. tickets.js + `tickets.html`: Tickets,
   the play currency (no real money, ever): earned on play.html (+5 after 2 min a day, then 1 per 4 min, cap 20 a day),
   one-off helping bonuses (`ArcadeTickets.bonus('tour' | 'tutorial:<id>')`), spent on own cursor trails, colour themes
-  and stickers (only the player sees them). Saved in `arcade-tickets`, its own sync group 'tickets' in account.js. It is
-  a browser save, so gifts stay disabled until the server keeps balances. Prediction-free mode (the player's switch):
+  and stickers (only the player sees them). Saved in `arcade-tickets`, its own sync group 'tickets' in account.js.
+  Server mode (2026-11-22, the owner's request): with an online account and a Worker that has `/acct/tickets` (private repo,
+  `Account.tickets`, storage key 'tk', limits in `TK`), the server keeps the tickets and 'arcade-tickets' is only a cache
+  (`merge`): play.html sends 'play' every 2 minutes while a game is on screen (the server counts only real time, 20 a day,
+  and the page stops calling at the cap), the shop and bonuses go through the server (`TK.items` must match `ITEMS`),
+  gifts to friends work (both ways friends; 1-20 each, 30 sent / 60 received a day; `{t:'tk'}` on the live socket), and a
+  device's old tickets are moved over once ('import', capped at 150). Without the route (404) or for guests/local accounts
+  it stays browser-only, so the page works with old and new Workers. Prediction tickets (`arcade-pred-tickets`) are separate. Prediction-free mode (the player's switch):
   `ArcadeTickets.noPredict()`, html `.arcade-no-predictions` (hides `[data-predictions]`), event 'arcade:predictions'.
   No family or parent features (no PIN parent switch, no family profiles, no parents' safety page): removed
   2026-11-19 at the owner's request; don't add them back. sw.js opens the page on a notification click.
