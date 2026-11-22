@@ -2,6 +2,7 @@
 // controller with step-up and slope limits); this side turns input into a
 // wanted velocity, owns the view angles and smooths the camera.
 import * as THREE from 'three';
+import { riverX, waterY, RIVER_HALF_WIDTH } from '../world/valley.js';
 
 export const MOVE = { walk: 4.2, sprint: 6.8, crouch: 2.0, jumpApex: 1.1, gravity: 22, stepUp: 0.35, maxSlope: 50 };
 // Launch speed for the apex height under the worker's semi-implicit 60 Hz
@@ -13,7 +14,7 @@ export function createPlayer(settings) {
   const p = {
     yaw: 0, pitch: 0, eye: EYE_STAND, crouching: false, sprinting: false, sprintLatched: false,
     pos: new THREE.Vector3(), prev: new THREE.Vector3(), cur: new THREE.Vector3(),
-    grounded: false, fly: false, bob: 0, speed: 0, jumpQueued: false,
+    grounded: false, fly: false, bob: 0, speed: 0, jumpQueued: false, wade: 0,
     look(d) {
       p.yaw -= d.x; p.pitch -= d.y;
       p.pitch = Math.max(-1.55, Math.min(1.55, p.pitch));
@@ -24,7 +25,12 @@ export function createPlayer(settings) {
       p.crouching = enabled && input.held('crouch');
       if (settings.sprintToggle) { if (enabled && input.pressed('sprint')) p.sprintLatched = !p.sprintLatched; if (mv.y <= 0) p.sprintLatched = false; p.sprinting = p.sprintLatched; }
       else p.sprinting = enabled && input.held('sprint') && mv.y > 0;
-      const sp = p.fly ? (p.sprinting ? 30 : 12) : p.crouching ? MOVE.crouch : p.sprinting ? MOVE.sprint : MOVE.walk;
+      // Wading: the deeper the water round your legs, the slower you go
+      // (walking and sprinting alike): knee-deep about 70%, waist-deep 45%.
+      const cx = p.cur.x, cz = p.cur.z;
+      p.wade = !p.fly && Math.abs(cx - riverX(cz)) < RIVER_HALF_WIDTH(cz) + 0.8 ? Math.max(0, waterY(cz) - (p.cur.y - 0.9)) : 0;
+      const wet = p.wade > 0.05 ? Math.max(0.35, 1 - p.wade * 0.6) : 1;
+      const sp = (p.fly ? (p.sprinting ? 30 : 12) : p.crouching ? MOVE.crouch : p.sprinting ? MOVE.sprint : MOVE.walk) * wet;
       const s = Math.sin(p.yaw), c = Math.cos(p.yaw);
       // Forward is -z at yaw 0.
       const vx = (mv.x * c - mv.y * s) * sp, vz = (-mv.x * s - mv.y * c) * sp;

@@ -1098,3 +1098,30 @@ so far:
     - Back to the game, and Stop hosting or Leave (click twice).
   - Status and errors show inline. Without an Arcade login, the Arcade's
     own sign-in prompt appears, as before.
+
+### Water physics: wading and vehicles in the river
+
+- **Wading:** the player controller measures the water round your legs
+  (the water surface minus your feet, inside the river) and scales your
+  speed by `max(0.35, 1 − 0.6 × depth)`, walking and sprinting alike. In
+  0.7 m of water walking goes from 4.2 to 2.3 m/s and sprinting from 6.8 to
+  4.0 m/s. Moving through water throws a small splash at your shins, with a
+  splash sound now and then.
+- **Vehicles:**
+  - each frame the main thread sends the river depth under a vehicle with
+    its drive input;
+  - the physics worker drags the chassis in proportion to the depth;
+  - engine power falls with depth, to a fifth past the vehicle's wading
+    depth: buggy 0.55 m, survey 0.6 m, hauler 0.95 m, hauler Mk II 1.05 m,
+    excavator 1.3 m;
+  - past that depth the engine sputters with a "back out to shallower
+    water" warning. It never dies outright, so a vehicle can't be stranded
+    mid-river;
+  - moving vehicles throw spray off the bow.
+  - Over 3 s at full throttle the hauler covers 25.6 m on land, 18.5 m in
+    0.4 m of water, 10 m in 0.8 m, and 4.7 m in 1.5 m.
+- **Not modelled:** buoyancy and current for loose items. Things dropped in
+  the river still sink and stay put.
+- **Test:** `--move` checks the wading slowdown for walking and sprinting,
+  and that the truck crawls through deep water at under half its land
+  distance.

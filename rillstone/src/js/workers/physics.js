@@ -213,6 +213,15 @@ function driveVehicle(v) {
   else if (throttle < 0) { if (speed > 0.5) brake += d.brake; else engine = throttle * d.engine * 0.6; }
   else if (!inp.driver) brake += d.brake; // parked: handbrake on
   else brake += d.brake * 0.03; // rolling resistance
+  // In the river: water over the bed drags the chassis, and an engine in
+  // deeper water than its wading depth loses most of its power.
+  const wet = inp.water || 0;
+  if (wet > 0.05) {
+    const wade = d.wade ?? 0.8;
+    engine *= wet > wade ? 0.2 : 1 - 0.45 * (wet / wade);
+    const lv = rb.linvel(), k = Math.min(0.9, wet * 1.4) * rb.mass() * DT;
+    rb.applyImpulse({ x: -lv.x * k, y: 0, z: -lv.z * k }, true);
+  }
   for (let i = 0; i < vc.numWheels(); i++) {
     const front = d.wheels[i][2] > 0;
     // Tracks: no steering wheels, every wheel drives (skid steer below).

@@ -137,6 +137,11 @@ function flatRect(h, x, z, x0, z0, x1, z1, y, soft = 8) {
   return lerp(h, y, t);
 }
 
+// Depth of river water over the bed at a point (0 out of the river).
+export function riverDepth(x, z) {
+  if (Math.abs(x - riverX(z)) > RIVER_HALF_WIDTH(z) + 1.5) return 0;
+  return Math.max(0, waterY(z) - height(x, z));
+}
 export function height(x, z) {
   let h = baseHeight(x, z);
   h = flatDisc(h, x, z, TOWN.x, TOWN.z, TOWN.r, TOWN.y);

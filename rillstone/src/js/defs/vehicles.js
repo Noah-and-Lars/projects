@@ -60,6 +60,9 @@ export const VEHICLES = {
     bed: { y: 0.48, x: 0.42, z0: -0.6, z1: 0.6 }, cargoKg: 600, cargoItems: 40, seat: [0, 1, 0], door: [-1.4, 0, 0], fuelMax: 0, model: 'tram', speed: 4,
   },
 };
+// How deep a vehicle can wade (m of water over the bed) before its engine
+// starts to drown: past this it sputters along at a fifth of its power.
+for (const [k, w] of Object.entries({ hauler: 0.95, hauler2: 1.05, buggy: 0.55, survey: 0.6, excavator: 1.3 })) if (VEHICLES[k]) VEHICLES[k].wade = w;
 export const FUEL_PER_SACK = 480; // about 8 minutes
 
 const TEAL = 0x2a8a86, TEAL_DARK = 0x1f6a68, CREAM = 0xf0e4c4, IRON = 0x3a3e44, WOOD = 0xb07a44, WOOD_DARK = 0x8a5a30, BRASS = 0xc89a48, GLASS = 0x22343e, RUBBER = 0x24262a;

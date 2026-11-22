@@ -79,6 +79,10 @@ Movement is 4.2 m/s walking, 6.8 m/s sprinting (Shift, or a toggle in
 Settings), 2.0 m/s crouched, with a 1.1 m jump under 22 m/s² gravity. The
 character steps up 0.35 m and climbs slopes up to 50°. There's no fall damage;
 "Return to claim post" in the pause menu frees you if you get stuck.
+Water slows you down: wading knee-deep drops you to about 70% speed, and
+waist-deep to under half. Vehicles slow down in the river too, throwing
+spray, and past their wading depth the engine sputters at a fifth of its
+power. Back out to shallower water.
 
 ## First hour
 

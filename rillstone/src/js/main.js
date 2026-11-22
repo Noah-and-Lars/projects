@@ -117,6 +117,12 @@ async function boot() {
     },
   });
   const vehicles = createVehicles({ scene, physics, items, materials: view.materials, hud, audio });
+  // Vehicles in the river throw spray off the wheels and bow.
+  vehicles.onSplash = (v, depth, speed) => {
+    const p = v.group.position, wy = waterY(p.z), fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(v.group.quaternion);
+    for (const side of [-1, 1]) fx.burst([p.x + fwd.x * 1.6 + fwd.z * side * 0.9, wy + 0.05, p.z + fwd.z * 1.6 - fwd.x * side * 0.9], 0xffffff, 10 + Math.round(speed * 1.5), { speed: 1.4 + speed * 0.3, size: 0.1, life: 0.6, up: 2.0 });
+    if (Math.random() < 0.35) audio.play('splash');
+  };
   hands.vehicles = vehicles;
   const town = createTown({ scene, physics, materials: view.materials, items, vehicles, economy, hud, audio, panels });
   await town.build();
@@ -422,6 +428,7 @@ async function boot() {
   const scanCanvas = h('canvas', { id: 'scanner', width: 220, height: 220 });
   let last = performance.now(), acc = 0, simAcc = 0, fps = 0, fpsT = 0, frames = 0, netRate = 0, netLast = 0, netKB = 0, netBytesLast = 0;
   const timings = { physics: 0, sim: 0, render: 0 };
+  let wadeT = 0;
   const controls = () => state.mode === 'play' && (input.locked || TEST);
   function simTick() {
     if (coop.isGuest()) return; // the host runs the world
@@ -494,6 +501,12 @@ async function boot() {
     if (!coop.isGuest()) heavy.update(dt);
     soundT -= dt; if (soundT <= 0) { soundT = 0.1; updateSound(dv); }
     camp.update(dt);
+    // Wading: a splash at your shins now and then while you move through water.
+    if (!vehicles.driving && player.wade > 0.08 && player.speed > 0.8 && (wadeT -= dt) <= 0) {
+      wadeT = player.sprinting ? 0.32 : 0.5;
+      const c = player.cur; fx.burst([c.x, waterY(c.z) + 0.03, c.z], 0xe6f4f6, 5, { speed: 0.9, size: 0.045, life: 0.45, up: 1.1 });
+      if (Math.random() < 0.5) audio.play('splash');
+    }
     if (coop.isGuest()) items.smooth(dt);
     progress.update(dt, dv ? dv.group.position.toArray() : camera.position.toArray(), { scanner: !!dv?.def.scanner, guest: coop.isGuest() });
     workshop.update(dt);

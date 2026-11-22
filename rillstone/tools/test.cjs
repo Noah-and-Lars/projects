@@ -80,6 +80,34 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return R.playerState().pos;
     });
     check(edge[2] < 300 - 10 && edge[1] > -5, `walking down the river stops at the boundary (z=${edge[2].toFixed(1)}, y=${edge[1].toFixed(1)})`);
+    // Water: wading slows you (walking and sprinting); the truck slows in the
+    // river and sputters past its wading depth, but can still crawl.
+    const wet = await p.evaluate(async () => {
+      const R = __rill, I = R.input; R.noRender(true); R.fly(false);
+      const walk = async (x, z, keys) => {
+        await R.teleport(x, R.height(x, z) + 1.0, z, Math.PI); for (let i = 0; i < 30; i++) await R.tick(1);
+        const a = R.player.cur.clone(); for (const k of keys) I.simulate(k, true);
+        for (let i = 0; i < 60; i++) await R.tick(1);
+        for (const k of keys) I.simulate(k, false);
+        const b = R.player.cur; return Math.hypot(b.x - a.x, b.z - a.z);
+      };
+      let s = null; for (let z = -100; z < 200; z += 4) { const x = R.riverX(z), d = R.waterY(z) - R.height(x, z); if (d > 0.5 && d < 1.0) { s = { x, z }; break; } }
+      const land = await walk(R.riverX(s.z) - 20, s.z, ['forward']), river = await walk(s.x, s.z, ['forward']);
+      const landS = await walk(R.riverX(s.z) - 20, s.z, ['forward', 'sprint']), riverS = await walk(s.x, s.z, ['forward', 'sprint']);
+      const v = [...R.vehicles.list.values()].find(k => k.type === 'hauler');
+      const drive = async (x, z) => {
+        await R.vehicles.teleport(v.id, [x, R.height(x, z) + 1.4, z], 0); for (let i = 0; i < 40; i++) { R.vehicles.update(1 / 60, I, true); await R.tick(1); }
+        R.vehicles.enter(v.id); const a = R.physics.vehicles.get(v.id).p.slice(); I.simulate('forward', true);
+        for (let i = 0; i < 120; i++) { R.vehicles.update(1 / 60, I, true); await R.tick(1); }
+        I.simulate('forward', false); const b = R.physics.vehicles.get(v.id).p;
+        for (let i = 0; i < 90; i++) { R.vehicles.update(1 / 60, I, true); await R.tick(1); }
+        R.vehicles.driving = null; return Math.hypot(b[0] - a[0], b[2] - a[2]);
+      };
+      let deep = null; for (let z = -120; z < 240; z += 3) { const x = R.riverX(z), d = R.waterY(z) - R.height(x, z); if (d > 1.15) { deep = { x, z }; break; } }
+      const tLand = await drive(R.riverX(40) - 30, 40), tDeep = deep ? await drive(deep.x, deep.z) : 0;
+      return { walk: [land, river].map(v => +v.toFixed(2)), sprint: [landS, riverS].map(v => +v.toFixed(2)), truck: [tLand, tDeep].map(v => +v.toFixed(1)) };
+    });
+    check(wet.walk[1] < wet.walk[0] * 0.75 && wet.sprint[1] < wet.sprint[0] * 0.75 && wet.truck[1] > 0.5 && wet.truck[1] < wet.truck[0] * 0.5, `wading slows walking ${wet.walk[0]} -> ${wet.walk[1]} m/s and sprinting ${wet.sprint[0]} -> ${wet.sprint[1]} m/s; the truck covers ${wet.truck[0]} m on land vs ${wet.truck[1]} m in deep water (still moving)`);
   }
 
   if (all || flags.has('--dig')) {

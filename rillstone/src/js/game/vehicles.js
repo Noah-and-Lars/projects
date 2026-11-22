@@ -3,6 +3,7 @@
 // vehicle (BUILD_BRIEF 3.7): items in the bed are drawn as props parented to
 // the chassis, have no collision, and add their weight to the chassis.
 import * as THREE from 'three';
+import { riverDepth } from '../world/valley.js';
 import { VEHICLES, FUEL_PER_SACK, vehicleBody, wheel, sack, scannerDish, excavatorArm } from '../defs/vehicles.js';
 import { EXTRA_MESH, EXTRA_BOX, EXTRA_CARD, EXTRA_MASS } from './items.js';
 
@@ -127,6 +128,21 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
   };
   api.exit = () => { const p = api.exitPoint(); api.driving = null; return p; };
 
+  // Water: how deep the river is under a vehicle. The worker turns it into
+  // drag and lost engine power; here it throws splashes, and past the wading
+  // depth the engine sputters (it never quite dies, so you can crawl out).
+  function wadeOf(v, dt, remote = false) {
+    const p = v.group.position, d = riverDepth(p.x, p.z), st = physics.vehicles.get(v.id);
+    const speed = Math.abs(st?.speed ?? v.state?.speed ?? 0);
+    v.inWater = d;
+    if (d > 0.08 && speed > 0.8 && (v.splashT = (v.splashT || 0) - dt) <= 0) {
+      v.splashT = Math.max(0.12, 0.45 - speed * 0.03);
+      api.onSplash?.(v, d, speed);
+    }
+    const wade = v.def.wade ?? 0.8;
+    if (!remote && d > wade && (v.drownT = (v.drownT || 0) - dt) <= 0) { v.drownT = 4; audio.play('sputter'); hud.toast('The engine is drowning: back out to shallower water', 'err'); }
+    return d;
+  }
   // Per-frame: inputs to the worker, fuel, unflip, visuals.
   // alpha: how far we are between the last two physics steps (0..1).
   api.update = (dt, input, enabled, alpha = 1) => {
@@ -138,7 +154,7 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
         const throttle = mv.y, steer = -mv.x, brake = enabled && input.held('jump');
         const fuel = v.fuel > 0;
         if (fuel && Math.abs(throttle) > 0.05) v.fuel = Math.max(0, v.fuel - dt * Math.abs(throttle));
-        physics.post({ op: 'vehicleInput', id: v.id, input: { throttle, steer, brake: brake ? 1 : 0, driver: true, fuel } });
+        physics.post({ op: 'vehicleInput', id: v.id, input: { throttle, steer, brake: brake ? 1 : 0, driver: true, fuel, water: wadeOf(v, dt) } });
         if (!fuel && Math.abs(throttle) > 0.05 && (v.sputter -= dt) < 0) { v.sputter = 2.5; hud.toast('Out of fuel — buy charcoal at the Wagon Shed', 'err'); audio.play('error'); }
         else if (fuel && v.fuel < v.def.fuelMax * 0.15 && (v.sputter -= dt) < 0) { v.sputter = 20; hud.toast('Fuel low', 'err'); audio.play('sputter'); }
         // Unflip: hold H for 1 s.
@@ -148,7 +164,7 @@ export function createVehicles({ scene, physics, items, materials, hud, audio })
         const inp = api.remoteDrivers.get(v.id).input || { throttle: 0, steer: 0, brake: 0 };
         const fuel = v.fuel > 0;
         if (fuel && Math.abs(inp.throttle) > 0.05) v.fuel = Math.max(0, v.fuel - dt * Math.abs(inp.throttle));
-        physics.post({ op: 'vehicleInput', id: v.id, input: { throttle: +inp.throttle || 0, steer: +inp.steer || 0, brake: inp.brake ? 1 : 0, driver: true, fuel } });
+        physics.post({ op: 'vehicleInput', id: v.id, input: { throttle: +inp.throttle || 0, steer: +inp.steer || 0, brake: inp.brake ? 1 : 0, driver: true, fuel, water: wadeOf(v, dt, true) } });
         v.remoteDriven = true;
       } else if (v.wasDriven || v.remoteDriven) { physics.post({ op: 'vehicleInput', id: v.id, input: { throttle: 0, steer: 0, brake: 0, driver: false } }); v.remoteDriven = false; }
       v.wasDriven = driver;
