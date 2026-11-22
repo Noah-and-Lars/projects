@@ -180,7 +180,7 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
   `arcade-console`), adds `html.console` (bigger text and cards, a yellow focus ring), a banner "You're on the console
   version" with a Full website button, and spatial navigation: arrow keys / TV remote (OK, Back = 461 webOS, 10009 Tizen,
   BrowserBack), and controllers (standard mapping, polled on a 40 ms timer: D-pad/left stick, A/✕ choose, B/○ back,
-  L1/R1 tabs). The pinned header is its own layer; pop-ups (#acctOv, .ov, dialogs) trap the focus. (2026-11-18: Up at the top no longer jumps from an open pop-up to the header; console.js?v=3.) On play.html it stays
+  L1/R1 tabs). The pinned header is its own layer; pop-ups (#acctOv, .ov, dialogs) trap the focus. (2026-11-18: Up at the top no longer jumps from an open pop-up to the header; console.js?v=3.) (2026-11-22, console.js?v=5: Up/Down first scroll a focused scrollable box, e.g. the Terms of Service text, a page at a time; without it the terms never reached the bottom on TVs/consoles, so the tick box stayed locked.) On play.html it stays
   out of the way while the game frame has focus. A detected device that turned it off gets a small "Console version" button.
 - Trailers (2026-11-12): `TRAILERS` in index.html puts a "▶ Play trailer" button above "playing now" on those cards;
   it opens #trailerOv with the game in an iframe at `?trailer=1`, which plays only the game's opening cinematic and posts

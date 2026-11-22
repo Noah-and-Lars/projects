@@ -14,6 +14,7 @@
    - tv.js (loaded from here) adds the TV menu: settings, the on-screen keyboard, the sleep timer, per-game volume,
      family profiles, signing in with a phone and the first-time tour.
    Settings live in 'arcade-acct-tv' (the arcade-acct prefix keeps them on this device, out of the cloud sync).
+   2026-11-22 (console.js?v=5): Up/Down scroll a focused scrollable box (the Terms of Service) before moving on.
    On an Apple Watch (html.watch) this file only loads watch.js. */
 (function () {
   var me = document.currentScript && document.currentScript.src, base = me ? me.replace(/console\.js(\?.*)?$/, '') : '';
@@ -223,8 +224,19 @@
     var r = el.getBoundingClientRect(), top = el.closest('header,.top,#consoleBar') ? 0 : 130; if (r.top < top) scrollBy(0, r.top - top - 10); else if (r.bottom > innerHeight - 10) scrollBy(0, r.bottom - innerHeight + 20);
   }
   document.addEventListener('focusin', function (e) { if (cur && cur !== e.target) cur.classList.remove('cfocus'); cur = e.target; if (cur.classList) cur.classList.add('cfocus'); });
+  // 2026-11-22 (v=5): Up/Down on a scrollable box that has the focus (the Terms of Service text, long pop-ups) scroll it a
+  // page at a time until it reaches the end, then move the focus on as usual. Before this the arrows only ever moved the
+  // focus, so the terms never scrolled to the bottom and their tick box stayed locked on TVs and consoles.
+  function scrollBox(a, dir) {
+    if (!a || a === document.body || a === document.documentElement || a.tagName === 'IFRAME' || (dir !== 'up' && dir !== 'down')) return false;
+    if (!/auto|scroll/.test(getComputedStyle(a).overflowY) || a.scrollHeight <= a.clientHeight + 2) return false;
+    if (dir === 'down' ? a.scrollTop + a.clientHeight >= a.scrollHeight - 2 : a.scrollTop <= 0) return false;
+    a.scrollTop += (dir === 'down' ? 1 : -1) * Math.max(60, a.clientHeight * 0.8);
+    return true;
+  }
   function move(dir) {
     var l = list(), a = document.activeElement;
+    if (scrollBox(a, dir)) return;
     if (!a || a === document.body || l.indexOf(a) < 0) { var f = firstFocus(); if (f) focus(f); return; }
     var ra = a.getBoundingClientRect(), ax = ra.left + ra.width / 2, ay = ra.top + ra.height / 2, best = null, bd = 1e18;
     // the pinned header is its own layer: it is only reached by going up from the top of the page, and down leaves it
