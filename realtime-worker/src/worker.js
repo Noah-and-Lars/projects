@@ -25,7 +25,7 @@ const SWEEP_MS = 5 * 60 * 1000;
 // Online play is for the official arcade only. The browser sets the Origin header on the WebSocket
 // handshake and page code can't forge it, so a downloaded/edited copy (origin null) or a copy re-hosted
 // elsewhere is refused here, on the server, where a cheater can't edit this rule.
-const ALLOWED_ORIGINS = ['https://noah-and-lars.github.io', 'https://thearcade.pages.dev']; // 2026-11-13: the Cloudflare Pages copy shares this server
+const ALLOWED_ORIGINS = ['https://noah-and-lars.github.io', 'https://thearcade.pages.dev', 'https://playthearcade.github.io']; // 2026-11-23: the new GitHub address (playthearcade org) // 2026-11-13: the Cloudflare Pages copy shares this server
 // 2026-11-17: per-IP rate limits (Workers rate limiting bindings, counted per Cloudflare location, per minute)
 async function rateLimited(req, env) {
   const p = new URL(req.url).pathname;
@@ -183,14 +183,14 @@ export class Room extends DurableObject {
                                               ADMINTEST; only its SHA-256 is here; 5 wrong tries lock it for 15 minutes)
    Deleting an account wipes its object, so the name can be registered again.
    ========================================================================== */
-const ACCT_ORIGINS = ['https://noah-and-lars.github.io', 'https://thearcade.pages.dev'];
+const ACCT_ORIGINS = ['https://noah-and-lars.github.io', 'https://thearcade.pages.dev', 'https://playthearcade.github.io'];
 const NAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 const RESERVED = /admin|moderator|^mods?$|official|staff|owner|^arcade|gametester|imacheater|^system$|^support$|^server$|^null$|^undefined$|^guest$|^anonymous$/;
 const BAD_NAME = /fuck|fuk|shit|bitch|cunt|dick|pussy|asshole|bastard|slut|whore|nigg|niga|fag|retard|twat|wank|porn|penis|vagina|rape|nazi|hitler/;
 const KEY_RE = /^[0-9a-f]{64}$/, GAME_RE = /^[a-z0-9-]{1,32}$/;
 // The admin password (2026-11-13): only its SHA-256 is kept, as the Worker secret ADMIN_PW_HASH (npx wrangler secret put
 // ADMIN_PW_HASH), so it isn't in this public file. With no secret set, the password works nowhere (admin accounts still do).
-const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call', 'turn', 'group', 'rename', 'hbcheat', 'chess', 'play', 'visit']; // what a browser may ask an account for
+const ROUTES = ['check', 'signup', 'login', 'recover', 'sync', 'game', 'password', 'logout', 'delete', 'social', 'friend', 'block', 'dm', 'profile', 'call', 'turn', 'group', 'rename', 'hbcheat', 'chess', 'play', 'visit', 'tickets']; // what a browser may ask an account for
 const HB_CHEATERS = ['noah', 'archiemccarthy', 'lars']; // Havoc Bay cheat menu accounts
 const CHUNK = 40000, MAX_GAME = 5e6, MAX_TOTAL = 2e7, MAX_GAMES = 40, MAX_SESS = 20;
 
@@ -410,7 +410,7 @@ async function admin(env, body, out, auth) {
    GET /notice -> { n: { id, text, level: 'info'|'warn'|'alert', until, link, linkText, at, by } | null }
    Each Worker instance keeps it for a minute so page views don't each wake the object; account.js keeps it for 2 minutes. */
 let noticeCache = { at: 0, v: null, de: 0 };
-const NOTICE_LINK = /^(https:\/\/(noah-and-lars\.github\.io|thearcade\.pages\.dev)\/[^\s"'<>]*|[a-z0-9][a-z0-9_\-./?=&#]*)$/i;
+const NOTICE_LINK = /^(https:\/\/(noah-and-lars\.github\.io|thearcade\.pages\.dev|playthearcade\.github\.io)\/[^\s"'<>]*|[a-z0-9][a-z0-9_\-./?=&#]*)$/i;
 function cleanNotice(b, who) {
   const text = tidy(b.text).slice(0, 280), level = ['info', 'warn', 'alert'].includes(b.level) ? b.level : 'info', now = Date.now();
   const until = +b.until || 0, link = String(b.link || '').trim().slice(0, 300), linkText = tidy(b.linkText).slice(0, 40);
@@ -732,6 +732,7 @@ export class Account extends DurableObject {
     if (['social', 'friend', 'block', 'dm', 'profile', 'call'].includes(route)) return this.social(route, req, url, body, a, j, now);
     if (route === 'group') return this.group(req, url, body, a, j, now);
     if (route === 'chess') return this.chess(req, body, a, j, now);
+    if (route === 'tickets') return this.tickets(req, body, a, j, now);
     if (route === 'turn') return this.turn(j, now);
     if (route === 'logout') { a.sess.splice(si, 1); await S.put('acct', a); return j({ ok: true }); }
     if (route === 'password') {
@@ -1139,6 +1140,81 @@ export class Account extends DurableObject {
       .filter(v => v.urls.length);
     return j({ iceServers: list, ttl: TURN_TTL });
   }
+  /* Tickets (2026-11-22, the owner's request): the play currency moves onto the account, so it can't be edited in the
+     browser and can be gifted. No real money, ever. Storage key 'tk' (tkFresh): b balance, e earned ever, s spent ever,
+     d UTC day, dp tickets from playing today, ps seconds of play counted today, db daily-bonus day, lt last play call,
+     own {item id: time}, done {bonus id: time}, h history (newest TK.hist), go/gi gifts sent/received today, im imported.
+     GET -> { tk }. POST { op }:
+       'play'   tickets.js on play.html every ~2 minutes while a game is on screen; only real time since the last call
+                counts (gaps over TK.gap start again), +TK.bonus after TK.bonusSecs a day, then 1 per TK.step seconds, at
+                most TK.cap a day from playing. The page stops calling once the day's cap is reached.
+       'bonus'  { k: 'tour' | 'tutorial:<game id>' } once each (TK.help; at most 20 tutorials).
+       'buy'    { id } at the price in TK.items (keep in step with ITEMS in tickets.js).
+       'gift'   { to, n } to a friend (both ways), 1..TK.giftMax each, TK.giftDay sent and TK.giftInDay received a day.
+       'import' { b, own, done } once: the browser's old balance (capped at TK.importMax), its items and bonuses. */
+  async tickets(req, body, a, j, now) {
+    const S = this.ctx.storage, t = tkFresh(await S.get('tk'), now), out = x => j(Object.assign({ tk: tkView(t) }, x || {}));
+    if (req.method === 'GET') return out();
+    const op = String((body && body.op) || '');
+    if (op === 'play') {
+      let got = 0;
+      const gap = t.lt ? now - t.lt : 0;
+      t.lt = now;
+      if (gap > 0 && gap <= TK.gap && t.dp < TK.cap) {
+        t.ps += Math.round(gap / 1000);
+        if (t.db !== t.d && t.ps >= TK.bonusSecs) { const n = Math.min(TK.bonus, TK.cap - t.dp); t.db = t.d; t.dp += n; got += n; t.b += n; t.e += n; tkLog(t, n, 'Daily bonus for playing', now); }
+        const want = Math.min(TK.cap, (t.db === t.d ? TK.bonus : 0) + Math.floor(Math.max(0, t.ps - TK.bonusSecs) / TK.step));
+        if (t.db === t.d && want > t.dp) { const n = want - t.dp; t.dp += n; got += n; t.b += n; t.e += n; tkLog(t, n, 'Playing ' + (tidy(String((body && body.g) || '')).slice(0, 40) || 'a game'), now); }
+      }
+      await S.put('tk', t);
+      return out({ got });
+    }
+    if (op === 'bonus') {
+      const id = String((body && body.k) || ''), h = TK.help[id] || (/^tutorial:[a-z0-9-]{1,40}$/.test(id) ? [3, 'Finished a tutorial'] : null);
+      if (!h) return j({ error: 'bad' }, 400);
+      if (t.done[id]) return out({ got: 0 });
+      if (/^tutorial:/.test(id) && Object.keys(t.done).filter(x => /^tutorial:/.test(x)).length >= 20) return out({ got: 0 });
+      t.done[id] = now; t.b += h[0]; t.e += h[0]; tkLog(t, h[0], h[1], now);
+      await S.put('tk', t);
+      return out({ got: h[0] });
+    }
+    if (op === 'buy') {
+      const id = String((body && body.id) || ''), it = TK.items[id];
+      if (!it) return j({ error: 'not_in_shop' }, 400);
+      if (t.own[id]) return j({ error: 'owned', tk: tkView(t) }, 409);
+      if (t.b < it[0]) return j({ error: 'short', need: it[0] - t.b, tk: tkView(t) }, 402);
+      t.b -= it[0]; t.s += it[0]; t.own[id] = now; tkLog(t, -it[0], 'Bought ' + it[1], now);
+      await S.put('tk', t);
+      return out({ ok: true });
+    }
+    if (op === 'gift') {
+      const to = String((body && body.to) || ''), k = to.toLowerCase(), n = Math.floor(+(body && body.n) || 0);
+      if (!NAME_RE.test(to) || k === a.name.toLowerCase()) return j({ error: 'bad' }, 400);
+      if (!(n >= 1 && n <= TK.giftMax)) return j({ error: 'amount', max: TK.giftMax }, 400);
+      const s = await this.soc();
+      if (!s.f[k] || s.f[k].st !== 'f') return j({ error: 'not_friends' }, 403);
+      if (t.go + n > TK.giftDay) return j({ error: 'day_limit', left: Math.max(0, TK.giftDay - t.go) }, 429);
+      if (t.b < n) return j({ error: 'short', need: n - t.b }, 402);
+      t.b -= n; t.go += n; await S.put('tk', t); // pay first, so a second request can't spend the same tickets
+      const r = await peerCall(this.env, to, 'p-tkgift', { from: a.name, n }).catch(() => ({ status: 502 }));
+      const t2 = tkFresh(await S.get('tk'), now);
+      if (r.status !== 200) { t2.b += n; t2.go = Math.max(0, t2.go - n); await S.put('tk', t2); return j({ error: r.error || 'failed', tk: tkView(t2) }, r.status === 429 ? 429 : r.status === 403 ? 403 : 502); }
+      t2.s += n; tkLog(t2, -n, 'Gift to ' + (r.n || to), now); await S.put('tk', t2);
+      return j({ ok: true, tk: tkView(t2) });
+    }
+    if (op === 'import') {
+      if (t.im) return out({ got: 0 });
+      const b = Math.min(TK.importMax, Math.max(0, Math.floor(+(body && body.b) || 0)));
+      const own = body && body.own && typeof body.own === 'object' ? body.own : {}, done = body && body.done && typeof body.done === 'object' ? body.done : {};
+      for (const id of Object.keys(own).slice(0, 60)) if (TK.items[id] && !t.own[id]) t.own[id] = now;
+      for (const id of Object.keys(done).slice(0, 30)) if ((TK.help[id] || /^tutorial:[a-z0-9-]{1,40}$/.test(id)) && !t.done[id]) t.done[id] = now;
+      t.im = now;
+      if (b) { t.b += b; t.e += b; tkLog(t, b, 'Tickets moved from this device', now); }
+      await S.put('tk', t);
+      return out({ got: b });
+    }
+    return j({ error: 'bad' }, 400);
+  }
   // another account asking (friend requests, messages, an account going away)
   async peer(route, body, j, now) {
     const S = this.ctx.storage, a = await S.get('acct');
@@ -1148,6 +1224,17 @@ export class Account extends DurableObject {
     const from = String(body.from || ''), k = from.toLowerCase();
     if (!NAME_RE.test(from)) return j({ error: 'bad' }, 400);
     const s = await this.soc();
+    if (route === 'p-tkgift') { // 2026-11-22: tickets from a friend (both sides must be friends; the sender already paid)
+      const n = Math.floor(+body.n || 0);
+      if (!s.f[k] || s.f[k].st !== 'f' || s.b[k]) return j({ error: 'not_friends' }, 403);
+      if (!(n >= 1 && n <= TK.giftMax)) return j({ error: 'bad' }, 400);
+      const t = tkFresh(await this.ctx.storage.get('tk'), now);
+      if (t.gi + n > TK.giftInDay) return j({ error: 'their_limit' }, 429);
+      t.gi += n; t.b += n; t.e += n; tkLog(t, n, 'Gift from ' + from, now);
+      await this.ctx.storage.put('tk', t);
+      this.push({ t: 'tk', n, from, b: t.b });
+      return j({ ok: true, n: a.name });
+    }
     if (route === 'p-friend') {
       if (body.op === 'add') {
         if (s.b[k]) return j({ st: 'in', n: a.name }); // blocked: looks sent, nothing arrives
@@ -1443,6 +1530,26 @@ export class Account extends DurableObject {
 const RENAME_NAMES = ['lars'], RENAME_BEFORE = 1794280371000;
 const mustRename = a => RENAME_NAMES.includes(String(a.name || '').toLowerCase()) && (a.created || 0) < RENAME_BEFORE;
 // Chess Elo (1.6.1): Glicko like chess.com, the same numbers Chess 1.5.1 used in the browser
+// Tickets (see Account.tickets): limits and the shop's prices ([price, name]; same ids and prices as ITEMS in tickets.js)
+const TK = {
+  cap: 20, bonus: 5, bonusSecs: 120, step: 240, gap: 150e3, hist: 60, giftMax: 20, giftDay: 30, giftInDay: 60, importMax: 150,
+  help: { tour: [5, 'Finished the tickets tour'] },
+  items: {
+    'trail:sparkle': [40, 'Sparkles'], 'trail:bubbles': [40, 'Bubbles'], 'trail:stars': [60, 'Stars'], 'trail:rainbow': [80, 'Rainbow'],
+    'theme:ocean': [50, 'Ocean'], 'theme:mint': [50, 'Mint'], 'theme:grape': [50, 'Grape'], 'theme:gold': [50, 'Gold'], 'theme:rose': [50, 'Rose'],
+    'sticker:controller': [15, 'Controller'], 'sticker:star': [15, 'Star'], 'sticker:rocket': [20, 'Rocket'], 'sticker:alien': [20, 'Alien'],
+    'sticker:fire': [20, 'Fire'], 'sticker:octopus': [25, 'Octopus'], 'sticker:dino': [25, 'Dino'], 'sticker:trophy': [30, 'Trophy'],
+  },
+};
+function tkFresh(t, now) {
+  t = t && typeof t === 'object' ? t : {};
+  const o = { b: +t.b || 0, e: +t.e || 0, s: +t.s || 0, d: t.d || '', dp: +t.dp || 0, ps: +t.ps || 0, db: t.db || '', lt: +t.lt || 0, own: t.own || {}, done: t.done || {}, h: Array.isArray(t.h) ? t.h : [], go: +t.go || 0, gi: +t.gi || 0, im: +t.im || 0 };
+  const d = new Date(now).toISOString().slice(0, 10);
+  if (o.d !== d) { o.d = d; o.dp = 0; o.ps = 0; o.go = 0; o.gi = 0; }
+  return o;
+}
+const tkLog = (t, n, w, now) => { t.h.unshift({ t: now, n, w: String(w).slice(0, 80) }); t.h = t.h.slice(0, TK.hist); };
+const tkView = t => ({ b: t.b, e: t.e, s: t.s, d: t.d, dp: t.dp, ps: t.ps, db: t.db, own: t.own, done: t.done, h: t.h, go: t.go, im: t.im ? 1 : 0, cap: TK.cap, giftMax: TK.giftMax, giftDay: TK.giftDay });
 const CHESS = { start: 2000, rd0: 350, rdMin: 30, c: 18, floor: 0, pairWins: 3, dayGain: 300, quietMs: 100e3, drawGain: 25 };
 // 1.8.1: a game's time control as the game mode the Elo rules care about
 const chessMode = tc => { tc = String(tc || ''); return ['15+0', '30+0', '0+1'].includes(tc) ? 'ultra' : ['60+0', '60+1', '120+1'].includes(tc) ? 'bullet' : tc ? 'other' : ''; }; // 1.6.2: limits

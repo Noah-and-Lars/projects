@@ -375,7 +375,7 @@ body.locked .topbar, body.locked .frame { display: none; }
 </div>
 <script>
 // on the arcade's own addresses, cover everything until the password is checked (sample previews elsewhere stay open)
-if (['https://noah-and-lars.github.io', 'https://thearcade.pages.dev'].includes(location.origin)) { document.body.classList.add('locked'); document.getElementById('gate').hidden = false; }
+if (['https://noah-and-lars.github.io', 'https://thearcade.pages.dev', 'https://playthearcade.github.io'].includes(location.origin)) { document.body.classList.add('locked'); document.getElementById('gate').hidden = false; }
 </script>
 <header class="topbar">
   <a class="brand" href="#dashboard" aria-label="Arcade Ops Console home">
@@ -763,8 +763,8 @@ const CFG = {
   ws: 'wss://arcade-realtime.arcade-realtime.workers.dev/ws',
   http: 'https://arcade-realtime.arcade-realtime.workers.dev/',
   topic: 'online:arcade',
-  origins: ['https://noah-and-lars.github.io', 'https://thearcade.pages.dev'], // the GitHub site and its Cloudflare Pages copy
-  siteUrl: location.origin === 'https://thearcade.pages.dev' ? 'https://thearcade.pages.dev/admin/' : 'https://noah-and-lars.github.io/projects/admin/',
+  origins: ['https://noah-and-lars.github.io', 'https://thearcade.pages.dev', 'https://playthearcade.github.io'], // the old + new GitHub sites and the Cloudflare Pages copy
+  siteUrl: location.origin === 'https://thearcade.pages.dev' ? 'https://thearcade.pages.dev/admin/' : location.origin === 'https://noah-and-lars.github.io' ? 'https://noah-and-lars.github.io/projects/admin/' : 'https://playthearcade.github.io/admin/',
   roomMax: 400,        // MAX_SOCKETS per room in worker.js
 };
 const GAME_NAMES = { home: 'Home page', chat: 'Global chat', 'throttle-ridge': 'Throttle Ridge', 'turn-turn-turn': 'Turn! Turn! TURN!', 'krill-dive': 'Krill Dive', 'card-royale': 'Card Royale', siege: 'Siege', uno: 'UNO!', 'rocket-rivals': 'Rocket Rivals', football: 'Football', 'havoc-bay': 'Havoc Bay', 'bull-run': 'Stocks Game', chess: 'Chess', checkers: 'Checkers', 'russian-roulette': 'Russian Roulette', 'gamble-your-life-away': 'Gamble Your Life Away', 'cube-tower-defense': 'Cube Tower Defense', 'free-criminal': 'Free Criminal', 'cube-assault': 'Cube Assault', 'block-drop': 'Blocktris', 2048: '2048', 'poly-racer': 'Poly Racer', blockcraft: 'Blockcraft' };
@@ -1130,7 +1130,7 @@ function renderBanners() {
     const why = S.sampleReason === 'origin'
       ? `The realtime server only accepts connections from the arcade's own addresses, and this page is somewhere else, so the numbers below are sample data.`
       : `The realtime server didn't let this page into the presence room, so the numbers below are sample data. Check the Worker in the Cloudflare dashboard.`;
-    html += `<div class="banner" data-kind="info"><div><b>Showing sample data</b><p>${why} For live data, open <code>noah-and-lars.github.io/projects/admin/</code> or <code>thearcade.pages.dev/admin/</code>.</p></div><button class="btn" type="button" data-act="live">Try live again</button></div>`;
+    html += `<div class="banner" data-kind="info"><div><b>Showing sample data</b><p>${why} For live data, open <code>playthearcade.github.io/admin/</code> or <code>thearcade.pages.dev/admin/</code>.</p></div><button class="btn" type="button" data-act="live">Try live again</button></div>`;
   } else if (S.mode === 'sample') {
     html += `<div class="banner" data-kind="warn"><div><b>Showing sample data</b><p>These numbers are made up. Switch back to see the real arcade.</p></div><button class="btn" type="button" data-act="live">Back to live</button></div>`;
   } else if (S.everJoined && !S.joined && !S.idle) {
@@ -1314,7 +1314,7 @@ else startLive();
 'use strict';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const SITES = ['https://noah-and-lars.github.io', 'https://thearcade.pages.dev'];
+const SITES = ['https://playthearcade.github.io', 'https://noah-and-lars.github.io', 'https://thearcade.pages.dev'];
 const LIVE = SITES.includes(location.origin);
 const SITE = LIVE ? location.origin : SITES[0];
 const SERVER = 'https://arcade-realtime.arcade-realtime.workers.dev';
@@ -1426,7 +1426,7 @@ $('auditClear').addEventListener('click', async () => {
 const shield = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>';
 function renderAccess() {
   const el = $('ctlAccess'), a = acct();
-  if (!LIVE) el.innerHTML = `<span class="who">${shield}Sample mode</span><span class="tag">Sample</span><span class="note">Admin tools only work on the arcade's own admin page (noah-and-lars.github.io/projects/admin/ or thearcade.pages.dev/admin/). Here nothing is sent to the arcade and every player, post and result is made up.</span>`;
+  if (!LIVE) el.innerHTML = `<span class="who">${shield}Sample mode</span><span class="tag">Sample</span><span class="note">Admin tools only work on the arcade's own admin page (playthearcade.github.io/admin/ or thearcade.pages.dev/admin/). Here nothing is sent to the arcade and every player, post and result is made up.</span>`;
   else if (isAdminAcct()) el.innerHTML = `<span class="who">${shield}Signed in as ${esc(a.name)}</span><span class="chip on">Admin account</span><span class="note">Every tool is unlocked, including approving Social posts.</span>`;
   else if (adminPw) el.innerHTML = `<span class="who">${shield}Unlocked with the admin password</span><span class="note">For this visit only. Approving Social posts still needs an admin account.</span><button class="btn sm" type="button" id="ctlLock">Lock</button>`;
   else el.innerHTML = `<span class="who">${shield}${a ? 'Signed in as ' + esc(a.name) : 'Not signed in'}</span><span class="note">${a ? 'That isn’t an admin account.' : `Sign in with an admin account <a class="name-link" href="../" target="_blank" rel="noopener">on the arcade</a>, then reload, or`} enter the admin password. 5 wrong tries lock it for 15 minutes.</span>
@@ -2324,7 +2324,7 @@ document.querySelectorAll('.ctl-pane').forEach(p => { p.hidden = p.dataset.pane 
 setInterval(() => { if (inView() && tab === 'directory' && dir.loaded) { const s = $('dirStats'); if (s) s.innerHTML = dirStats().map(([k, v]) => `<div class="stat"><dt>${k}</dt><dd>${v}</dd></div>`).join(''); } }, 15e3);
 })();
 </script>
-<script src="../moving.js?v=1"></script>
+<script src="../moving.js?v=2"></script>
 <script src="../cursors.js?v=2"></script>
 <script src="../outage.js?v=2"></script>
 </body>

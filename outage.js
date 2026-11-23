@@ -13,7 +13,7 @@
 (function () {
   if (window.ArcadeOutage) return;
   var H = location.hostname, LOCAL = /^(localhost|127\.0\.0\.1)$/.test(H);
-  var OFFICIAL = H === 'thearcade.pages.dev' || /\.thearcade\.pages\.dev$/.test(H) || H === 'noah-and-lars.github.io';
+  var OFFICIAL = H === 'thearcade.pages.dev' || /\.thearcade\.pages\.dev$/.test(H) || H === 'noah-and-lars.github.io' || H === 'playthearcade.github.io';
   var TEST = false; try { TEST = LOCAL && localStorage.getItem('arcade-outage-test') === '1'; } catch (e) {}
   var inFrame = false; try { inFrame = window.top !== window && !!window.top.ArcadeOutage; } catch (e) {}
   var WORKER = 'https://arcade-realtime.arcade-realtime.workers.dev/notice';

@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Game over · The Arcade</title>
 <meta name="theme-color" content="#050506">
-<!-- This page can show up at any address, so every link is from the site root -->
-<link rel="icon" href="/projects/logo.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/projects/arcade.css?v=25">
+<!-- This page can show up at any address: the base points at the site root (/projects/ on the old GitHub address, / everywhere else) -->
+<script>document.write('<base href="' + (location.hostname === 'noah-and-lars.github.io' ? '/projects/' : '/') + '">');</script>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="arcade.css?v=25">
 <style>
   .lost { flex: 1; display: grid; place-items: center; text-align: center; padding: 40px 20px; }
   .lost .code { font: 800 clamp(80px, 22vw, 180px)/1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: -0.04em;
@@ -22,18 +23,18 @@
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="/projects/"><img class="logo" src="/projects/logo.svg" alt="">The Arcade</a>
+  <a class="brand" href="./"><img class="logo" src="logo.svg" alt="">The Arcade</a>
 </header>
 <main class="lost">
   <div>
     <div class="code">404</div>
     <h1>Game over</h1>
     <p>There's nothing at this address. The link might have a typo, or the page was moved.</p>
-    <a class="btn" href="/projects/">Insert coin<span class="blink">_</span> Back to the arcade</a>
+    <a class="btn" href="./">Insert coin<span class="blink">_</span> Back to the arcade</a>
   </div>
 </main>
-<script src="/projects/moving.js?v=1"></script>
-<script src="/projects/cursors.js?v=2"></script>
-<script src="/projects/outage.js?v=2"></script>
+<script src="moving.js?v=2"></script>
+<script src="cursors.js?v=2"></script>
+<script src="outage.js?v=2"></script>
 </body>
 </html>

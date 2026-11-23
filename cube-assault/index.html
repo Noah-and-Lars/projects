@@ -1590,7 +1590,7 @@ const ENEMY_KEYS = Object.keys(ENEMY_TYPES);
   window.caOnlineOK = (() => {
     try {
       const h = location.hostname;
-      return h === 'noah-and-lars.github.io' || h === 'thearcade.pages.dev' || h === 'localhost' || h === '127.0.0.1' || h === '[::1]';
+      return h === 'noah-and-lars.github.io' || h === 'playthearcade.github.io' || h === 'thearcade.pages.dev' || h === 'localhost' || h === '127.0.0.1' || h === '[::1]';
     } catch (e) { return false; }
   })();
 
@@ -1598,7 +1598,7 @@ const ENEMY_KEYS = Object.keys(ENEMY_TYPES);
   window.caNeedWebsite = () => {
     if (window.caOnlineOK) return true;
     if (document.getElementById('caE3')) return false;
-    const SITE = 'https://noah-and-lars.github.io/projects/cube-assault/index.html';
+    const SITE = 'https://playthearcade.github.io/cube-assault/index.html';
     const d = document.createElement('div'); d.id = 'caE3';
     d.style.cssText = 'position:fixed;inset:0;z-index:2147483646;background:rgba(6,10,18,.82);display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif';
     d.innerHTML = '<div style="max-width:460px;width:100%;background:#141a24;border:1px solid #273142;border-radius:16px;padding:26px 24px;text-align:center;color:#eaf0f8;box-shadow:0 20px 60px rgba(0,0,0,.5)">'
@@ -19326,7 +19326,7 @@ window.startIntro = function (post) {
   (function loop() { tick(); requestAnimationFrame(loop); })();
 })();
 </script>
-<script src="../moving.js?v=1"></script>
+<script src="../moving.js?v=2"></script>
 <script src="../cursors.js?v=2"></script>
 <script src="../outage.js?v=2"></script>
 </body>
