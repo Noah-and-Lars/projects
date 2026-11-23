@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>SQL Injection Lab — intentionally vulnerable</title>
+<style>
+  :root{
+    --bg:#0f1117; --panel:#171a22; --panel2:#1e2230; --ink:#e7e9ee; --mut:#9aa3b2;
+    --line:#2a3040; --accent:#6ea8fe; --ok:#49c17a; --bad:#ff6b6b; --warn:#f7b955;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:860px;margin:0 auto;padding:0 16px 64px}
+  .banner{background:repeating-linear-gradient(45deg,#3a1113,#3a1113 14px,#4a161a 14px,#4a161a 28px);
+    border-bottom:2px solid var(--bad);padding:14px 16px;text-align:center;font-weight:700;
+    letter-spacing:.3px;color:#ffd9d9}
+  .banner small{display:block;font-weight:500;color:#ffb3b3;letter-spacing:0}
+  h1{font-size:26px;margin:28px 0 6px}
+  h2{font-size:19px;margin:30px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  p{color:var(--ink)}.mut{color:var(--mut)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:14px 0}
+  label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
+  input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+    color:var(--ink);padding:10px 12px;font:14px ui-monospace,SFMono-Regular,Menlo,monospace}
+  input:focus{outline:2px solid var(--accent);border-color:transparent}
+  button{background:var(--accent);color:#0b1020;border:0;border-radius:8px;padding:10px 16px;
+    font-weight:650;cursor:pointer;margin-top:12px}
+  button.ghost{background:transparent;color:var(--accent);border:1px solid var(--line);
+    padding:6px 10px;font-size:12px;margin:4px 6px 0 0;font-weight:500}
+  button:hover{filter:brightness(1.08)}
+  .row{display:flex;gap:14px;flex-wrap:wrap}.row>div{flex:1;min-width:240px}
+  pre{background:#0b0d13;border:1px solid var(--line);border-radius:8px;padding:12px;
+    overflow:auto;font:12.5px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-word}
+  .q{color:var(--warn)}
+  .status{font-weight:700;padding:3px 9px;border-radius:999px;font-size:12px}
+  .status.ok{background:#12351f;color:var(--ok)}.status.bad{background:#3a1113;color:var(--bad)}
+  code{background:var(--panel2);padding:1px 6px;border-radius:5px;font-size:13px}
+  .pay{cursor:pointer}
+  details{margin-top:8px}summary{cursor:pointer;color:var(--accent)}
+  a{color:var(--accent)}
+  .foot{color:var(--mut);font-size:13px;margin-top:40px;border-top:1px solid var(--line);padding-top:16px}
+</style>
+</head>
+<body>
+<div class="banner">⚠️ INTENTIONALLY VULNERABLE — SQL INJECTION TEACHING LAB
+  <small>Fake data only. Do not deploy this pattern in a real app. Built to learn how SQLi works &amp; how to fix it.</small>
+</div>
+
+<div class="wrap">
+  <h1>SQL Injection Lab</h1>
+  <p class="mut">Two endpoints below build SQL queries by <b>pasting your input straight into the query string</b> — the root cause of SQL injection. Every response shows you the exact query that ran. Nothing here is real: the "users" table holds four made-up accounts with fake passwords and fake (4111-prefixed) card numbers.</p>
+
+  <h2>1 · Login bypass</h2>
+  <div class="card">
+    <p class="mut">Server builds: <code>SELECT id, username, role FROM users WHERE username = '<span class="q">INPUT</span>' AND password = '<span class="q">INPUT</span>'</code></p>
+    <div class="row">
+      <div>
+        <label>Username</label>
+        <input id="u" value="admin" autocomplete="off">
+      </div>
+      <div>
+        <label>Password</label>
+        <input id="p" value="wrong-password" autocomplete="off">
+      </div>
+    </div>
+    <div>
+      <span class="mut" style="font-size:12px">Try a payload:</span><br>
+      <button class="ghost pay" data-u="admin" data-p="S3cr3t-Admin-PW!">honest admin login</button>
+      <button class="ghost pay" data-u="' OR '1'='1' -- " data-p="x">' OR '1'='1' --</button>
+      <button class="ghost pay" data-u="admin' -- " data-p="x">admin' --  (no password)</button>
+    </div>
+    <button id="loginBtn">Log in</button>
+    <div id="loginOut"></div>
+  </div>
+
+  <h2>2 · Data exfiltration via UNION</h2>
+  <div class="card">
+    <p class="mut">Server builds: <code>SELECT id, name, price FROM products WHERE name LIKE '%<span class="q">INPUT</span>%'</code></p>
+    <label>Search products</label>
+    <input id="q" value="Blue" autocomplete="off">
+    <div>
+      <span class="mut" style="font-size:12px">Try a payload:</span><br>
+      <button class="ghost pay2" data-q="Blue">normal search</button>
+      <button class="ghost pay2" data-q="zzz' UNION SELECT username, password, card FROM users -- ">UNION dump users</button>
+    </div>
+    <button id="searchBtn">Search</button>
+    <div id="searchOut"></div>
+  </div>
+
+  <h2>Why it happens &amp; how to fix it</h2>
+  <div class="card">
+    <p>The bug is not the quote character — it's that <b>user input is concatenated into SQL as code</b>. The fix is to make input always <i>data</i>, using <b>parameterized (bound) queries</b>:</p>
+<pre>// ❌ vulnerable (what this lab does)
+const q = `SELECT ... WHERE username = '${username}' AND password = '${password}'`;
+
+// ✅ fixed — Cloudflare D1 / most drivers
+await env.DB
+  .prepare('SELECT id, username, role FROM users WHERE username = ? AND password = ?')
+  .bind(username, password)
+  .all();</pre>
+    <p class="mut">Also: hash passwords (bcrypt/scrypt/argon2) instead of storing plaintext, give the DB user least-privilege, and don't return raw DB errors to clients. Parameterization is the one that actually closes the injection.</p>
+    <details><summary>What the payloads do</summary>
+      <pre><b>' OR '1'='1' -- </b>
+closes the username string, adds an always-true OR, and -- comments out
+the rest (including the password check). WHERE becomes always true.
+
+<b>admin' -- </b>
+closes the string right after admin and comments out "AND password = ...",
+so you authenticate as admin with no password at all.
+
+<b>zzz' UNION SELECT username, password, card FROM users -- </b>
+the search matches no product, then UNION appends rows from the users
+table into the results — leaking credentials through a product search.</pre>
+    </details>
+  </div>
+
+  <div class="foot">
+    SQL injection teaching lab · fake data · endpoints: <a href="/api/login?username=admin&password=S3cr3t-Admin-PW!">/api/login</a> ·
+    <a href="/api/search?q=Blue">/api/search</a><br>
+    Source lives in your <code>sqli-lab</code> project. Delete the project when you're done learning.
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+function render(el, data, okKey){
+  const ok = okKey ? data[okKey] : (data.rowsReturned > 0);
+  el.innerHTML =
+    '<p style="margin:14px 0 6px">'+
+      '<span class="status '+(ok?'ok':'bad')+'">'+(okKey? (ok?'AUTHENTICATED':'DENIED') : data.rowsReturned+' row(s)')+'</span>'+
+    '</p>'+
+    '<label>Query that ran on the server</label>'+
+    '<pre class="q">'+esc(data.query)+'</pre>'+
+    '<label>Response</label>'+
+    '<pre>'+esc(JSON.stringify({authenticated:data.authenticated,loggedInAs:data.loggedInAs,results:data.results,rowsReturned:data.rowsReturned,error:data.error}, (k,v)=>v===undefined?undefined:v, 2))+'</pre>';
+}
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+$('loginBtn').onclick = async () => {
+  const r = await fetch('/api/login', {method:'POST',headers:{'content-type':'application/json'},
+    body: JSON.stringify({username:$('u').value, password:$('p').value})});
+  render($('loginOut'), await r.json(), 'authenticated');
+};
+$('searchBtn').onclick = async () => {
+  const r = await fetch('/api/search?q='+encodeURIComponent($('q').value));
+  render($('searchOut'), await r.json());
+};
+document.querySelectorAll('.pay').forEach(b=>b.onclick=()=>{$('u').value=b.dataset.u;$('p').value=b.dataset.p;});
+document.querySelectorAll('.pay2').forEach(b=>b.onclick=()=>{$('q').value=b.dataset.q;});
+</script>
+</body>
+</html>
