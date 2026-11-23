@@ -1,5 +1,5 @@
 /* The Arcade is moving (2026-11-23, the owner's request): the old GitHub address (noah-and-lars.github.io/projects)
-   exposes personal information, so everyone moves to the new GitHub address https://playthearcade.github.io as soon as
+   has the owners' real names in it (noah-and-lars), so everyone moves to the new GitHub address https://playthearcade.github.io as soon as
    possible. Both sites run the same files and the same server (accounts, chat, Social, online play), but browser
    storage is kept per address, so only ONLINE accounts carry progress over. Local accounts (and guests) must turn
    their progress into an online account before Wednesday 25 November 2026, or it won't be transferred.
@@ -48,7 +48,7 @@
     var c = el('div', 'max-width:460px;width:100%;box-sizing:border-box;background:#1b1835;color:#f1effa;border:2px solid #c8342a;border-radius:18px;padding:22px 20px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.6)');
     c.appendChild(el('div', 'font-size:40px;line-height:1', '🚚'));
     c.appendChild(el('h2', 'margin:10px 0 8px;font-size:22px', 'We’re moving to a new link!'));
-    c.appendChild(el('p', 'margin:0 0 10px;font-size:15px;line-height:1.45', 'This address exposes personal information, so The Arcade is moving to a new link. Everyone must move to the new site as soon as possible.'));
+    c.appendChild(el('p', 'margin:0 0 10px;font-size:15px;line-height:1.45', 'The old link has the owners’ real names in it, so to keep our own details private The Arcade is moving to a new link. Your account and data are safe: nothing has been leaked or stolen. Everyone must move to the new site as soon as possible.'));
     var link = el('p', 'margin:0 0 12px;font-size:17px;font-weight:800;color:#ffd34d;word-break:break-all', NEW.replace('https://', ''));
     c.appendChild(link);
     var warn = 'margin:0 0 14px;font-size:15px;line-height:1.45;padding:10px 12px;border-radius:12px;background:#c8342a22;border:1px solid #c8342a';

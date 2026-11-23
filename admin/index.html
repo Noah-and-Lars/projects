@@ -2324,7 +2324,7 @@ document.querySelectorAll('.ctl-pane').forEach(p => { p.hidden = p.dataset.pane 
 setInterval(() => { if (inView() && tab === 'directory' && dir.loaded) { const s = $('dirStats'); if (s) s.innerHTML = dirStats().map(([k, v]) => `<div class="stat"><dt>${k}</dt><dd>${v}</dd></div>`).join(''); } }, 15e3);
 })();
 </script>
-<script src="../moving.js?v=2"></script>
+<script src="../moving.js?v=3"></script>
 <script src="../cursors.js?v=2"></script>
 <script src="../outage.js?v=2"></script>
 </body>
