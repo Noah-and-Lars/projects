@@ -1,0 +1,10 @@
+name = "sqli-lab-d1"
+main = "src/index.js"
+compatibility_date = "2026-11-18"
+workers_dev = true
+
+# Fill database_id with the value printed by:  npx wrangler d1 create sqli-lab-db
+[[d1_databases]]
+binding = "DB"
+database_name = "sqli-lab-db"
+database_id = "PASTE_DATABASE_ID_HERE"
