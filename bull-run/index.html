@@ -562,7 +562,7 @@ function showReport(final) {
   $('repShare').hidden = !final; $('repGo').textContent = final ? 'Back to your career' : 'Continue';
   if (final) {
     try { const prev = JSON.parse(localStorage.getItem(DAILY_KEY + '-best') || 'null'); if (!prev || w > prev.worth) localStorage.setItem(DAILY_KEY + '-best', JSON.stringify({ date: G.daily, worth: w, ret })); } catch (e) {}
-    $('repShare').onclick = () => { const text = `Stocks Game daily · ${fmtDate(new Date(G.daily + 'T12:00:00Z'))}\n${fmt(w, 0)} (${pct(ret)}) ${rank}\nThe market did ${pct(mkt)}.\nhttps://noah-and-lars.github.io/projects/play.html?game=bull-run`; (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Copied to the clipboard', 'gold'), () => prompt('Copy your score:', text)); };
+    $('repShare').onclick = () => { const text = `Stocks Game daily · ${fmtDate(new Date(G.daily + 'T12:00:00Z'))}\n${fmt(w, 0)} (${pct(ret)}) ${rank}\nThe market did ${pct(mkt)}.\nhttps://playthearcade.github.io/play.html?game=bull-run`; (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Copied to the clipboard', 'gold'), () => prompt('Copy your score:', text)); };
   } else G.year = newYear(w, G.day);
   setSpeed(0); openModal('mReport'); snd && Sound.win();
 }
@@ -1054,7 +1054,7 @@ renderLog();
 if (!G.intro) { openModal('mIntro'); setSpeed(0); $('introGo').addEventListener('click', () => setSpeed(1), { once: true }); }
 requestAnimationFrame(frame);
 </script>
-<script src="../moving.js?v=3"></script>
+<script src="../moving.js?v=4"></script>
 <script src="../cursors.js?v=2"></script>
 <script src="../outage.js?v=2"></script>
 </body>

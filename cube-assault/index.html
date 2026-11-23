@@ -12526,7 +12526,7 @@ document.getElementById('achToggle').addEventListener('click', () => {
 // the site. A good check lasts a minute, so the buttons don't wait every time.
 (function () {
   const $ = id => document.getElementById(id);
-  const LIVE = new URLSearchParams(location.search).get('vcheck') || 'https://noah-and-lars.github.io/projects/cube-assault/index.html';
+  const LIVE = new URLSearchParams(location.search).get('vcheck') || 'https://playthearcade.github.io/cube-assault/index.html';
   const newer = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0; } return false; };
   let okAt = 0, outdated = null, pending = null, bypass = false;
   function check() {
@@ -19326,7 +19326,7 @@ window.startIntro = function (post) {
   (function loop() { tick(); requestAnimationFrame(loop); })();
 })();
 </script>
-<script src="../moving.js?v=3"></script>
+<script src="../moving.js?v=4"></script>
 <script src="../cursors.js?v=2"></script>
 <script src="../outage.js?v=2"></script>
 </body>

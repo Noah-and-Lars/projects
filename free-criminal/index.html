@@ -4430,7 +4430,7 @@ const NET=(()=>{
 // online, check again every 2 minutes, and if a newer one is out, back to the menu to refresh.
 const verNewer=(a,b)=>{const x=String(a||'0').split('.').map(Number),y=String(b||'0').split('.').map(Number);for(let i=0;i<Math.max(x.length,y.length);i++){const d=(x[i]||0)-(y[i]||0);if(d)return d>0;}return false;};
 let outdatedTo=null;
-const LIVE_URL=new URLSearchParams(location.search).get('vcheck')||'https://noah-and-lars.github.io/projects/free-criminal/index.html';
+const LIVE_URL=new URLSearchParams(location.search).get('vcheck')||'https://playthearcade.github.io/free-criminal/index.html';
 function liveVersion(){return fetch(LIVE_URL+(LIVE_URL.includes('?')?'&':'?')+'vc='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{const m=/const VERSION='([\d.]+)'/.exec(t);return m?m[1]:null;}).catch(()=>null);}
 setInterval(()=>{if(!NET.on)return;liveVersion().then(v=>{if(v&&verNewer(v,VERSION)&&NET.on)NET.outdated(v);});},120000);
 async function playOnline(){
@@ -4713,6 +4713,6 @@ async function boot(){
 setTimeout(boot,30);
 })();
 </script>
-<script src="../moving.js?v=3"></script>
+<script src="../moving.js?v=4"></script>
 <script src="../cursors.js?v=2"></script>
 <script src="../outage.js?v=2"></script>

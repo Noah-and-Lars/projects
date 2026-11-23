@@ -2184,7 +2184,7 @@ $('noticeForm').addEventListener('submit', async e => {
   e.preventDefault(); const M = $('ntMsg'), text = $('ntText').value.trim(), link = $('ntLink').value.trim();
   if (!text) { setMsg(M, 'Write the message first.', 'err'); return; }
   if (!canAct()) { setMsg(M, 'Unlock the admin tools first.', 'err'); return; }
-  if (link && (/^\/\/|^javascript:/i.test(link) || (/^https?:/i.test(link) && !/^https:\/\/(noah-and-lars\.github\.io|thearcade\.pages\.dev)\//i.test(link)))) { setMsg(M, 'The link has to be a page on the arcade, like chat.html.', 'err'); return; }
+  if (link && (/^\/\/|^javascript:/i.test(link) || (/^https?:/i.test(link) && !/^https:\/\/(noah-and-lars\.github\.io|playthearcade\.github\.io|thearcade\.pages\.dev)\//i.test(link)))) { setMsg(M, 'The link has to be a page on the arcade, like chat.html.', 'err'); return; }
   const ms = +$('ntUntil').value, until = ms ? Date.now() + ms : 0;
   if (!await ask({ title: ntCur ? 'Replace the announcement?' : 'Post this announcement?', text: 'It shows at the top of every page of the arcade within about 2 minutes. Players can close it.', ok: 'Post' })) return;
   const r = await admin({ op: 'noticeset', text, level: $('ntLevel').value, until, link, linkText: $('ntLinkText').value.trim() });
@@ -2324,7 +2324,7 @@ document.querySelectorAll('.ctl-pane').forEach(p => { p.hidden = p.dataset.pane 
 setInterval(() => { if (inView() && tab === 'directory' && dir.loaded) { const s = $('dirStats'); if (s) s.innerHTML = dirStats().map(([k, v]) => `<div class="stat"><dt>${k}</dt><dd>${v}</dd></div>`).join(''); } }, 15e3);
 })();
 </script>
-<script src="../moving.js?v=3"></script>
+<script src="../moving.js?v=4"></script>
 <script src="../cursors.js?v=2"></script>
 <script src="../outage.js?v=2"></script>
 </body>

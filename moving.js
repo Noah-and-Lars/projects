@@ -23,6 +23,8 @@
     try { var l = JSON.parse(localStorage.getItem('arcade-local') || 'null'); if (l && l.name) return 'local'; } catch (e) {}
     return '';
   }
+  // inside an Arcade app (1.0.1 and older open this address): the app needs updating rather than a new link
+  function appInfo() { try { return window.ARCADE_APP || null; } catch (e) { return null; } }
   function el(tag, css, text) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (text) e.textContent = text; return e; }
   var FONT = 'font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;';
 
@@ -62,7 +64,19 @@
         : 'progress without an online account isn’t transferred. Make a free online account before ' + DEADLINE + ', or your progress will be deleted and won’t come over to the new site.'));
       c.appendChild(w);
     }
+    var A = appInfo();
+    if (A) {
+      var self = !A.legacy && (A.os === 'macos' || A.os === 'windows'); // the Mac/Windows app updates itself
+      c.appendChild(el('p', 'margin:0 0 14px;font-size:15px;line-height:1.45;padding:10px 12px;border-radius:12px;background:#6c5ce722;border:1px solid #6c5ce7', self
+        ? '📲 Update The Arcade app: version 1.0.2 opens the new link. Close and reopen the app and choose Install when it offers the update.'
+        : '📲 Update The Arcade app: version 1.0.2 opens the new link. Download it from the new site’s app page and install it over this one.'));
+    }
     var row = el('div', 'display:flex;gap:8px;justify-content:center;flex-wrap:wrap');
+    if (A) {
+      var upd = el('a', 'display:inline-block;padding:10px 18px;border-radius:12px;background:#6c5ce7;color:#fff;font-weight:800;text-decoration:none', 'Get the new app');
+      upd.href = NEW + '/app/'; upd.target = '_blank'; upd.rel = 'noopener';
+      row.appendChild(upd);
+    }
     var go = el('a', 'display:inline-block;padding:10px 18px;border-radius:12px;background:#c8342a;color:#fff;font-weight:800;text-decoration:none', 'Go to the new site');
     go.href = newUrl(); go.target = '_top';
     row.appendChild(go);

@@ -27,7 +27,7 @@
   var gameById = function (id) { for (var i = 0; i < GAMES.length; i++) if (GAMES[i].id === id) return GAMES[i]; return null; };
 
   /* ---------- server parts that don't exist yet ----------
-     Switch these on once the private Worker (Noah-and-Lars/arcade-realtime) has the routes. Until then nothing here
+     Switch these on once the private Worker (arcade-realtime) has the routes. Until then nothing here
      calls the server for them, so they cost nothing.
      tickets: POST /support/report {id, g, v, s} (optional Bearer token) stores a ticket {st:'received', at, by};
               POST /support/tickets {ids:[...]} -> {list:[{id, st, note, at}]}; admin op 'ticketset' {id, st, note}
@@ -234,7 +234,7 @@
         '<p>Logging out clears this device’s copy; it stays safe in your account.</p>' },
     { id: 'lost-progress', cat: 'saves', q: 'My progress is gone', tags: 'lost progress missing save reset',
       a: '<ol><li>Check you’re signed in to the same account (the account button shows the name).</li><li>Open the account panel and press <b>Sync now</b>, then reload the game.</li>' +
-        '<li>The Arcade is at playthearcade.github.io (it used to be noah-and-lars.github.io; thearcade.pages.dev is a copy). Your browser keeps each address apart, so sign in on each one.</li>' +
+        '<li>The Arcade is at playthearcade.github.io (thearcade.pages.dev is a copy). Your browser keeps each address apart, so sign in on each one.</li>' +
         '<li>With a local account, progress only lives in that browser. If its data was cleared, it can’t be brought back.</li></ol>' +
         '<p>Still missing? <a href="#spBug">Send a bug report</a> and say which game.</p>' },
     { id: 'online-cant-connect', cat: 'online', q: 'Online play won’t connect', tags: 'multiplayer offline connect error room join',
@@ -509,7 +509,7 @@
   var KNOWN = {
     _site: [
       ['Online stops when the servers hit their daily limit', 'The Arcade runs on Cloudflare’s free plan. On a very busy day the servers pause until midnight UTC; a red banner shows the time where you are.'],
-      ['Progress is separate on each address', 'playthearcade.github.io, noah-and-lars.github.io and thearcade.pages.dev each keep their own browser storage. Sign in to your online account to take your progress with you.'],
+      ['Progress is separate on each address', 'playthearcade.github.io, the old address and thearcade.pages.dev each keep their own browser storage. Sign in to your online account to take your progress with you.'],
       ['Hidden tabs disconnect after 15 minutes', 'This keeps the servers free. Coming back to the tab reconnects by itself.'],
       ['Video calls may not connect on some networks', 'School and work networks can block the direct link a call needs. The call ends with a message after about 24 seconds.'],
       ['No screen sharing on phones and tablets', 'Their browsers don’t allow it, so the button is hidden there.'],

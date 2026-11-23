@@ -788,7 +788,7 @@
       var b = document.createElement('div'); b.id = 'liveNotice'; b.setAttribute('role', 'status');
       b.style.cssText = 'position:relative;z-index:40;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 44px 8px 14px;font:700 14px/1.35 system-ui,-apple-system,sans-serif;text-align:center;background:' + c[0] + ';color:' + c[1];
       var t = document.createElement('span'); t.textContent = n.text; b.appendChild(t);
-      if (n.link && /^(https:\/\/(noah-and-lars\.github\.io|thearcade\.pages\.dev)\/|[a-z0-9])/i.test(n.link) && !/^javascript:/i.test(n.link)) {
+      if (n.link && /^(https:\/\/(noah-and-lars\.github\.io|playthearcade\.github\.io|thearcade\.pages\.dev)\/|[a-z0-9])/i.test(n.link) && !/^javascript:/i.test(n.link)) {
         var a = document.createElement('a'); a.href = n.link; a.target = '_top'; a.textContent = n.linkText || 'Find out more';
         a.style.cssText = 'color:inherit;text-decoration:underline'; b.appendChild(a);
       }

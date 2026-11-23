@@ -2,7 +2,10 @@
   "_how": "What's new in The Arcade app (Mac/Windows, Tauri). appbridge.js shows notes[<window.ARCADE_APP.version>] once, after the app updates to that version. Add an entry when you publish an app update: \"1.2.0\": [\"Short sentence.\", \"Another.\"]. With no entry for a version it just says which version the app is now on.",
   "notes": {
     "1.0.1": [
-      "The app now opens the GitHub site (noah-and-lars.github.io/projects). Log in with your Arcade account once and all your progress is there."
+      "The app now opens the GitHub site. Log in with your Arcade account once and all your progress is there."
+    ],
+    "1.0.2": [
+      "The app now opens The Arcade's new link, playthearcade.github.io. Log in with your Arcade account once and all your progress is there."
     ]
   }
 }
