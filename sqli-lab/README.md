@@ -41,6 +41,12 @@ This publishes a Worker named `sqli-lab` at `sqli-lab.<your-subdomain>.workers.d
 > Note: it could not be auto-deployed from the Claude cloud sandbox because the
 > sandbox's Cloudflare token is read-only (no Workers/Pages write permission).
 
+> Safety note: the `deploy`/`dev` scripts pass `--config ./wrangler.toml`
+> explicitly. Wrangler otherwise walks *up* the directory tree and can pick up
+> a stray `wrangler.*` in a parent/home folder — if that stray config has an
+> `assets` directory, a plain `wrangler deploy` would publish that folder
+> instead of this Worker. The explicit `--config` prevents it.
+
 ## When you're done
 Delete it so nothing vulnerable stays online:
 ```

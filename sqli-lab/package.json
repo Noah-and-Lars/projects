@@ -6,9 +6,9 @@
   "type": "module",
   "scripts": {
     "test": "node _test/run.mjs",
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --config ./wrangler.toml",
     "build:page": "node -e \"const fs=require('fs');const b=fs.readFileSync('public/index.html').toString('base64');fs.writeFileSync('src/page.js','// Auto-generated from public/index.html. Edit the HTML, then run npm run build:page.\\nexport const PAGE_B64 = \\\"'+b+'\\\";\\n')\"",
-    "deploy": "npm run build:page && wrangler deploy"
+    "deploy": "npm run build:page && wrangler deploy --config ./wrangler.toml"
   },
   "devDependencies": {
     "wrangler": "^4.166.0"
