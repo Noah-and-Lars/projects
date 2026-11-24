@@ -94,7 +94,7 @@ export const harbor: LevelDef = {
     const seed = 11;
     const hm = new Heightmap((x, z) => {
       const n = fbm2(x * 0.02 + 7, z * 0.02 + 3, seed);
-      const land = G + 0.3 + n * 1.6 + smoothstep(-20, -62, z) * (3 + 5 * fbm2(x * 0.015, z * 0.015, seed + 3));
+      const land = G + 0.3 + n * 1.6 + smoothstep(-20, -62, z) * (3 + 5 * fbm2(x * 0.015, z * 0.015, seed + 3)) * (0.08 + 0.92 * smoothstep(7, 30, Math.abs(x)));
       const shore = 32 + 5 * (fbm2(x * 0.03, 0.5, seed + 5) - 0.5) + smoothstep(-30, -62, x) * 9;
       const sea = -3.2 - 1.2 * n;
       return land + (sea - land) * smoothstep(shore - 1.5, shore + 7, z);
