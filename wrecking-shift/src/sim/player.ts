@@ -42,6 +42,9 @@ export class Player {
   private jumpHeld = false;
   /** in water: swim */
   inWater = false;
+  headUnderWater = false;
+  /** seconds of breath left */
+  breath = 12;
   /** accumulated walked distance (footsteps / head bob) */
   stride = 0;
   /** last landing speed for fall damage / audio (consumed by game) */
@@ -134,6 +137,10 @@ export class Player {
   update(): void {
     this.sinceHurt++;
     if (!this.dead && this.sinceHurt > 240 && this.health < 1) this.health = Math.min(1, this.health + DT * 0.12);
+    if (this.headUnderWater && !this.seated) {
+      this.breath -= DT;
+      if (this.breath < 0 && this.sim.tick % 60 === 0) this.damage(0.15, 'drowning');
+    } else this.breath = Math.min(12, this.breath + DT * 4);
     if (this.seated || this.dead) return;
     const inp = this.input;
     // crouch handling

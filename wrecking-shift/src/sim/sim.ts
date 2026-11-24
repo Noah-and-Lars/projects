@@ -121,8 +121,10 @@ export class Sim {
   onSplit: ((parent: VoxelBody, child: VoxelBody, off: [number, number, number]) => void)[] = [];
   /** explosion listeners (fire ignition, player damage, AI hearing ...) */
   onExplosion: ((pos: V3, size: number) => void)[] = [];
+  /** water surface height (set by the level through WaterSystem) or null */
+  waterLevel: number | null = null;
   /** the player character, if any (set by Player) */
-  player: { eye: V3; damage(amount: number, cause?: string): void; vel: V3 } | null = null;
+  player: { eye: V3; pos: V3; damage(amount: number, cause?: string): void; vel: V3 } | null = null;
   /** structural crush check on static bodies (see crushCheck) */
   structural = true;
   /** load / capacity ratio above which a layer fails */

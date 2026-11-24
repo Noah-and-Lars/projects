@@ -4,6 +4,7 @@ import type { LevelDef, LevelInfo } from '../sim/levels/types';
 import { Player } from '../sim/player';
 import { DT, Sim, initPhysics, type SimEvent } from '../sim/sim';
 import { ToolBelt, createBelt, emptyToolInput, type ToolContext, type ToolInput } from '../sim/tools';
+import { WaterSystem } from '../sim/water';
 import { Input } from './input';
 import { LEVELS } from './levels';
 
@@ -87,6 +88,10 @@ export class Game {
     this.fire = new FireSystem(this.sim);
     this.sim.systems.push(this.fire);
     this.level = def.build(this.sim);
+    if (this.level.waterLevel != null) {
+      this.sim.waterLevel = this.level.waterLevel;
+      this.sim.systems.push(new WaterSystem(this.level.waterLevel));
+    }
     this.player = new Player(this.sim, this.level.spawn);
     this.player.yaw = this.level.spawnYaw;
     const oldBelt = this.belt;
