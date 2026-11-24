@@ -1387,7 +1387,7 @@ so far:
   - **Remembered rows:** the server keeps nothing, so each client stores the
     rows it has seen in localStorage (`rill-lb`, up to 100). Offline players
     show their last-seen numbers.
-- **View base:** a `pic?` broadcast asks a player for a picture. Their game
+- **View plot** (was "View base"): a `pic?` broadcast asks a player for a picture. Their game
   renders the view from above its machines' centroid (or the claim post),
   framed by their spread. It sends back a 640 × 360 JPEG of about 10–60 KB,
   in 16 KB chunks, and answers at most once every 5 s.
@@ -1397,3 +1397,55 @@ so far:
 - **Not built:** a permanent, server-side board (scores kept while everyone
   is offline, and pictures of offline bases). That needs a small Cloudflare
   Worker with storage, which hasn't been created.
+
+### Multiplayer worlds (server-backed) and the two leaderboards
+
+- **Server** (`server/worker.mjs`): a Cloudflare Worker with one
+  SQLite-backed Durable Object (`Hub`, using the key-value API).
+  - **What it stores:** world metadata (members by Arcade name plus a hash
+    of each player's key, the owner, invite, rev and stats), the save in
+    ≤ 100 000-char pieces, solo board rows, and plot pictures (≤ 120 kB).
+  - **Routes:** `/mp/create|get|save|join|leave|delete|meta`, `/lb/solo`,
+    `/plot`, `GET /lb`, `GET /plot`.
+  - **Rules:** joining needs the world's invite, which only reaches guests
+    through the host's world package. At most 4 members. Only the owner can
+    delete; the owner can't leave.
+- **Deploying:** `tools/deploy-server.mjs` uploads it, turns on its
+  workers.dev route and prints the URL to put in `net/mp.js` (`MP_SERVER`).
+  This session's Cloudflare access could read the account but not create
+  Workers, so it isn't deployed yet.
+- **Local copy:** `tools/mpserver.mjs` runs the same Worker code in Node
+  with an in-memory storage stand-in, for tests (`rill-mp-url` points the
+  game at it).
+- **Client** (`net/mp.js`): six local slots of world ids (`rill-mp-slots`);
+  a secret key per browser (`rill-mp-key`; the server keeps its hash); and
+  a fixed room code per world (an FNV hash of the id into the room
+  alphabet).
+- **Opening** (`mpBoot` after a reload): try to join the world's room. If
+  nobody is hosting, fetch the save, restore it and host on the fixed code
+  (`net.world` adds `w` to the host's presence).
+  - **Two hosts at once:** if two members open it together, the later host
+    reloads and joins the earlier one (coop.js `onHostClash`).
+  - **New members:** the host's world package carries
+    `{ id, invite, name }`, so a guest who joined with the code is added on
+    the server and to a free slot.
+- **Saving:** while `state.mp` is set, `saveTo`, quick save and autosave
+  call `mpSave()` (the save plus stats plus a plot picture). Guests never
+  save.
+- **Shared cash** needed nothing new: the co-op economy is the host's
+  ledger, shared by everyone in the world.
+- **Leaderboards:**
+  - The host's presence line for a multiplayer world carries `w`, `wn`
+    (world name) and `pl` (members).
+  - `board.mpRows` merge live worlds, stored worlds (`GET /lb`) and
+    remembered ones; solo rows also merge stored rows.
+  - Solo games post their row every 2 minutes and their plot every 10.
+  - View plot asks live first, and falls back to the stored picture.
+- **Test:** `--mp` runs the relay and the local server with two players:
+  - the owner creates a world;
+  - the friend joins by code and gets a slot, with the shared cash;
+  - with the owner offline, the friend reopens it from the owner's save and
+    hosts;
+  - the Multiplayer tab shows 2 players, the cash and View plot;
+  - the friend only gets Remove me and is removed;
+  - the owner deletes it, and everything is gone from the server.

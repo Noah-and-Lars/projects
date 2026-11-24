@@ -5,8 +5,13 @@
 // client also remembers the rows it has seen (localStorage), to show
 // players who aren't online right now.
 //
-// "View base": ask an online player for a picture of their base; their
-// game renders one from above and sends it back in chunks.
+// Two boards: solo games (by Arcade name) and multiplayer worlds (by world,
+// with how many players are in it; the world's Scrip is shared by all of
+// them). When the Rillstone server is up (net/mp.js) its stored rows are
+// merged in too, so players who aren't online still show.
+//
+// "View plot": ask an online player for a picture of their plot; their game
+// renders one from above and sends it back in chunks.
 const RT_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=2';
 const CHANNEL = 'rill1-lb';
 const CHUNK = 16000;
@@ -19,14 +24,18 @@ export function arcadeAccount() {
   try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); return a && a.name && a.token ? { name: cleanName(a.name) } : null; } catch (_) { return null; }
 }
 
-export function createBoard({ entry, picture }) {
-  // entry(): { s: scrip, o: ores sold, kg, d: day } or null (don't publish:
-  // sandbox games and co-op guests). picture(): Promise<dataURL> of your base.
+export function createBoard({ entry, picture, server }) {
+  // entry(): { s: scrip, o: ores sold, kg, d: day, w?: world id, wn?: world
+  // name, pl?: players } or null (don't publish: sandbox games, co-op guests).
+  // picture(): Promise<dataURL> of your plot. server: net/mp.js (optional).
   const myId = (Math.random().toString(36) + '00000000').slice(2, 10);
   let client = null, ch = null, joining = null, lastSent = '', pushT = 0;
-  const api = { on: false, id: myId, rows: [], onChange: null, error: null };
-  const kept = (() => { try { return JSON.parse(localStorage.getItem(KEEP) || '{}') || {}; } catch (_) { return {}; } })();
-  const save = () => { try { const e = Object.entries(kept).sort((a, b) => b[1].t - a[1].t).slice(0, MAX_KEPT); localStorage.setItem(KEEP, JSON.stringify(Object.fromEntries(e))); } catch (_) {} };
+  const api = { on: false, id: myId, rows: [], mpRows: [], onChange: null, error: null };
+  const load = (k) => { try { return JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (_) { return {}; } };
+  const kept = load(KEEP), keptMp = load(KEEP + '-mp');
+  let stored = { solo: [], mp: [] }, storedT = 0;
+  const trim = (o) => Object.fromEntries(Object.entries(o).sort((a, b) => b[1].t - a[1].t).slice(0, MAX_KEPT));
+  const save = () => { try { localStorage.setItem(KEEP, JSON.stringify(trim(kept))); localStorage.setItem(KEEP + '-mp', JSON.stringify(trim(keptMp))); } catch (_) {} };
 
   function getClient() {
     if (client) return Promise.resolve(client);
@@ -42,23 +51,43 @@ export function createBoard({ entry, picture }) {
     for (const k in st) { const m = st[k] && st[k][0]; if (m && typeof m.id === 'string' && typeof m.n === 'string') out.push(m); }
     return out;
   }
-  // Everyone: online players first-hand, then remembered ones (by name).
+  // Everyone: online players first-hand, then stored rows from the server,
+  // then rows this browser remembers. Solo rows by name, worlds by id.
   function rebuild() {
-    const now = Date.now(), live = online(), seen = new Set();
-    for (const m of live) { const n = cleanName(m.n); if (!n) continue; kept[n] = { s: +m.s || 0, o: +m.o || 0, kg: +m.kg || 0, d: +m.d || 1, t: now }; }
+    const now = Date.now(), live = online();
+    for (const m of live) {
+      const n = cleanName(m.n); if (!n) continue;
+      if (m.w) keptMp[m.w] = { wn: String(m.wn || '').slice(0, 40), host: n, pl: +m.pl || 1, s: +m.s || 0, o: +m.o || 0, kg: +m.kg || 0, d: +m.d || 1, t: now };
+      else kept[n] = { s: +m.s || 0, o: +m.o || 0, kg: +m.kg || 0, d: +m.d || 1, t: now };
+    }
     if (live.length) save();
-    const rows = [];
-    for (const m of live) { const n = cleanName(m.n); if (!n || seen.has(n)) continue; seen.add(n); rows.push({ name: n, scrip: +m.s || 0, ores: +m.o || 0, kg: +m.kg || 0, day: +m.d || 1, online: true, id: m.id, me: m.id === myId }); }
-    for (const [n, r] of Object.entries(kept)) if (!seen.has(n)) rows.push({ name: n, scrip: r.s, ores: r.o, kg: r.kg, day: r.d, online: false, seenAt: r.t, me: false });
-    rows.sort((a, b) => b.scrip - a.scrip || b.ores - a.ores);
-    api.rows = rows; api.onChange?.(rows);
+    const rows = [], seen = new Set(), mpRows = [], seenW = new Set();
+    for (const m of live) {
+      const n = cleanName(m.n); if (!n) continue;
+      if (m.w) { if (seenW.has(m.w)) continue; seenW.add(m.w); mpRows.push({ world: m.w, name: String(m.wn || 'Multiplayer world').slice(0, 40), host: n, players: +m.pl || 1, scrip: +m.s || 0, ores: +m.o || 0, kg: +m.kg || 0, day: +m.d || 1, online: true, id: m.id, me: m.id === myId }); continue; }
+      if (seen.has(n)) continue; seen.add(n);
+      rows.push({ name: n, scrip: +m.s || 0, ores: +m.o || 0, kg: +m.kg || 0, day: +m.d || 1, online: true, id: m.id, me: m.id === myId });
+    }
+    for (const r of stored.solo) if (!seen.has(r.n)) { seen.add(r.n); rows.push({ name: r.n, scrip: r.s, ores: r.o, kg: r.kg, day: r.d, online: false, seenAt: r.t, stored: true }); }
+    for (const w of stored.mp) if (!seenW.has(w.id)) { seenW.add(w.id); mpRows.push({ world: w.id, name: w.name, host: w.owner, players: w.players, members: w.members, scrip: w.s, ores: w.o, kg: w.kg, day: w.d, online: false, seenAt: w.t, stored: true }); }
+    for (const [n, r] of Object.entries(kept)) if (!seen.has(n)) rows.push({ name: n, scrip: r.s, ores: r.o, kg: r.kg, day: r.d, online: false, seenAt: r.t });
+    for (const [w, r] of Object.entries(keptMp)) if (!seenW.has(w)) mpRows.push({ world: w, name: r.wn || 'Multiplayer world', host: r.host, players: r.pl, scrip: r.s, ores: r.o, kg: r.kg, day: r.d, online: false, seenAt: r.t });
+    const order = (a, b) => b.scrip - a.scrip || b.ores - a.ores;
+    rows.sort(order); mpRows.sort(order);
+    api.rows = rows; api.mpRows = mpRows; api.onChange?.(rows);
   }
+  // Stored rows from the server (at most once a minute).
+  api.fetchStored = async (force) => {
+    if (!server?.available() || (!force && Date.now() - storedT < 60000)) return;
+    storedT = Date.now();
+    try { const d = await server.boards(); stored = { solo: Array.isArray(d.solo) ? d.solo : [], mp: Array.isArray(d.mp) ? d.mp : [] }; rebuild(); } catch (_) {}
+  };
   const parts = new Map(), waiting = new Map();
   function send(event, payload) { if (!ch || ch.state !== 'joined') return false; try { const r = ch.send({ type: 'broadcast', event, payload: { ...payload, f: myId } }); r?.catch?.(() => {}); } catch (_) { return false; } return true; }
   let lastPic = 0;
   function onMessage(m) {
     const p = m && m.payload; if (!p || typeof p.f !== 'string') return;
-    // Someone wants a picture of my base (one answer every 5 s at most).
+    // Someone wants a picture of my plot (one answer every 5 s at most).
     if (m.event === 'pic?' && p.to === myId) {
       if (Date.now() - lastPic < 5000) return; lastPic = Date.now();
       picture().then((url) => {
@@ -96,25 +125,36 @@ export function createBoard({ entry, picture }) {
     if (!api.on || !ch) return;
     const e = entry(), acct = arcadeAccount();
     if (!e || !acct) { if (lastSent !== 'none') { try { ch.untrack(); } catch (_) {} lastSent = 'none'; } return; }
-    const line = { id: myId, n: acct.name, s: Math.floor(e.s), o: e.o | 0, kg: Math.round(e.kg * 10) / 10, d: e.d | 0 };
+    const line = { id: myId, n: acct.name, s: Math.floor(e.s), o: e.o | 0, kg: Math.round(e.kg * 10) / 10, d: e.d | 0, ...(e.w ? { w: e.w, wn: String(e.wn || '').slice(0, 40), pl: e.pl | 0 } : {}) };
     const key = JSON.stringify(line);
     if (key === lastSent || (!force && Date.now() - pushT < 15000)) return;
     lastSent = key; pushT = Date.now();
     try { const r = ch.track(line); r?.catch?.(() => {}); } catch (_) {}
   };
-  api.update = (dt) => { if (api.on && (api._t = (api._t || 0) + dt) > 15) { api._t = 0; api.push(); } };
-  // Ask an online player for a picture of their base: Promise<dataURL|null>.
-  api.viewBase = (row) => {
+  api.update = (dt) => {
+    if (api.on && (api._t = (api._t || 0) + dt) > 15) { api._t = 0; api.push(); }
+    // Solo games keep a stored row (every 2 min) and plot picture (every 10 min) on the server.
+    if (server?.available() && server.signedIn()) {
+      api._st = (api._st || 100) + dt; api._pt = (api._pt || 580) + dt;
+      const e = entry();
+      if (e && !e.w && api._st > 120) { api._st = 0; server.soloRow({ s: Math.floor(e.s), o: e.o | 0, kg: e.kg, d: e.d | 0 }).catch(() => {}); }
+      if (e && !e.w && api._pt > 600) { api._pt = 0; picture().then(img => img && img.length < 118000 && server.putPlot('s', img)).catch(() => {}); }
+    }
+  };
+  // A picture of a player's (or world's) plot: Promise<dataURL|null>. Online:
+  // their game renders it now; offline: the last one stored on the server.
+  api.viewPlot = (row) => {
     if (row.me) return picture();
-    if (!row.online || !row.id || !api.on) return Promise.resolve(null);
+    if (!row.online || !row.id || !api.on) return server?.available() ? server.plot(row.world ? 'm' : 's', row.world || row.name) : Promise.resolve(null);
     return new Promise((res) => {
       waiting.set(row.id, res);
       send('pic?', { to: row.id });
-      setTimeout(() => { if (waiting.get(row.id) === res) { waiting.delete(row.id); res(null); } }, 15000);
+      // No answer in 15 s: the last picture stored on the server, if any.
+      setTimeout(() => { if (waiting.get(row.id) === res) { waiting.delete(row.id); res(server?.available() ? server.plot(row.world ? 'm' : 's', row.world || row.name).catch(() => null) : null); } }, 15000);
     });
   };
   api.leave = () => { if (ch) { try { ch.untrack(); } catch (_) {} try { client.removeChannel(ch); } catch (_) {} } ch = null; api.on = false; };
-  api.refresh = () => rebuild();
+  api.refresh = () => { rebuild(); api.fetchStored(); };
   rebuild();
   return api;
 }

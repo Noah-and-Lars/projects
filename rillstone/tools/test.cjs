@@ -1312,6 +1312,99 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     await G.c.close(); await relay.close();
   }
 
+  if (all || flags.has('--mp')) {
+    // Multiplayer saves through the Rillstone server (run locally from
+    // server/worker.mjs): the owner makes a world, a friend joins with its
+    // room code and gets it in a slot; with the owner offline the friend
+    // reopens it from the owner's last save; cash is shared; the Multiplayer
+    // leaderboard tab shows it; the friend removes themselves; the owner deletes it.
+    if (!mainPage.isClosed()) await mainPage.close();
+    const { startRelay } = await import('./relay.mjs');
+    const { startMpServer } = await import('./mpserver.mjs');
+    const relay = startRelay(8794), srv = startMpServer(8792);
+    const ctxFor = async (name) => {
+      const c = await b.newContext({ viewport: { width: 960, height: 540 } });
+      await c.addInitScript((n) => { localStorage.setItem('arcade-acct', JSON.stringify({ name: n, token: 'test' })); localStorage.setItem('rill-mp-url', 'http://localhost:8792'); window.ARCADE_RT_URL = 'ws://localhost:8794/ws'; window.RILL_RT_LIB = 'http://localhost:8765/tools/fixtures/rt.js'; }, name);
+      const pg = await c.newPage(); const e2 = []; pg.on('pageerror', e => e2.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error' && !/GL Driver|GPU stall|Failed to load resource/.test(m.text())) e2.push(m.text()); });
+      await pg.goto(URL); await pg.waitForFunction(() => window.__rill && window.__rill.ready, null, { timeout: 120000 });
+      await pg.evaluate(() => __rill.noRender(true));
+      return { c, pg, e2 };
+    };
+    const tag = Math.floor(Math.random() * 9000 + 1000), owner = 'Owner' + tag, friend = 'Friend' + tag;
+    const H = await ctxFor(owner); const G = await ctxFor(friend);
+    const made = await H.pg.evaluate(async () => {
+      const R = __rill; await R.mpBoot({ create: 'Valley Two', slot: 2 });
+      for (let i = 0; i < 40 && R.coop.role !== 'host'; i++) await new Promise(r => setTimeout(r, 250));
+      const E = R.economy.state; E.scrip = 777; E.stats.oresSold = 12; E.stats.oreKg = 6;
+      const saved = await R.mpSave(true);
+      return { id: R.state.mp?.id, slot: R.mp.slots()[2], role: R.coop.role, room: R.net.room, code: R.mp.roomCode(R.state.mp?.id), saved, toasts: [...document.querySelectorAll('#toasts > *')].map(t => t.textContent) };
+    });
+    console.log('     made: ' + JSON.stringify(made));
+    check(made.id && made.slot === made.id && made.role === 'host' && made.room === made.code && made.saved, `the owner started a multiplayer world in slot 3 and hosts it in room ${made.room} (its fixed code)`);
+    const joined = await G.pg.evaluate(async (code) => {
+      const R = __rill; await R.mpBoot({ join: code });
+      for (let i = 0; i < 80 && !(R.coop.ready && R.mp.slots().some(Boolean)); i++) await new Promise(r => setTimeout(r, 250));
+      return { ready: !!R.coop.ready, slot: R.mp.slots().findIndex(Boolean), id: R.mp.slots().find(Boolean), scrip: R.economy.state.scrip };
+    }, made.code);
+    console.log('     joined: ' + JSON.stringify(joined));
+    check(joined.ready && joined.id === made.id && joined.scrip === 777, `the friend joined with the room code; the world went into their slot ${joined.slot + 1}, and they see the shared § ${joined.scrip}`);
+    // The owner goes offline; the friend reopens the world from their slot.
+    // (Only the page closes: the owner's browser keeps their key and slots.)
+    await H.pg.evaluate(() => __rill.mpSave(true)); await H.pg.close();
+    await G.pg.evaluate((id) => { sessionStorage.setItem('rill-mp', JSON.stringify({ open: id })); location.reload(); }, made.id).catch(() => {});
+    await G.pg.waitForFunction(() => window.__rill && window.__rill.ready, null, { timeout: 120000 });
+    const reopened = await G.pg.evaluate(async (id) => {
+      const R = __rill; R.noRender(true);
+      for (let i = 0; i < 80 && !(R.state.mp?.id === id && R.coop.role === 'host'); i++) await new Promise(r => setTimeout(r, 250));
+      return { mp: R.state.mp?.id, role: R.coop.role, scrip: R.economy.state.scrip, ores: R.economy.state.stats?.oresSold, owner: R.state.mp?.isOwner, members: R.state.mp?.members, guest: R.state.mpGuest, toasts: [...document.querySelectorAll('#toasts > *')].map(t => t.textContent), panel: R.panels.current, mpMsg: document.querySelector('#scr-mp .coop-msg')?.textContent };
+    }, made.id);
+    console.log('     reopened: ' + JSON.stringify(reopened) + ' server: ' + JSON.stringify({ members: srv.data.get(`w:${made.id}`)?.members.map(m => m.n), rev: srv.data.get(`w:${made.id}`)?.rev, scrip: srv.data.get(`w:${made.id}`)?.scrip }));
+    check(reopened.mp === made.id && reopened.role === 'host' && reopened.scrip === 777 && reopened.ores === 12 && reopened.owner === false, `with the owner offline, the friend reopened it from the owner's last save (§ ${reopened.scrip}, ${reopened.ores} ores sold) and now hosts it`);
+    // The Multiplayer leaderboard tab: the world, 2 players, its shared cash.
+    const lbm = await G.pg.evaluate(async (id) => {
+      const R = __rill; await R.mpSave(true); R.openLeaderboard(); R.boardPage.setTab('mp');
+      await R.board.fetchStored(true);
+      for (let i = 0; i < 40 && !R.board.mpRows.some(r => r.world === id); i++) await new Promise(r => setTimeout(r, 250));
+      R.boardPage.refresh();
+      const row = R.board.mpRows.find(r => r.world === id), tabs = [...document.querySelectorAll('#scr-board .lb-tabs .tab')].map(t => t.textContent);
+      const ui = [...document.querySelectorAll('#scr-board .lb-row.mp:not(.lb-head)')].map(r => r.textContent);
+      const plotBtn = !!document.querySelector('#scr-board .lb-row.mp:not(.lb-head) button')?.textContent.includes('View plot');
+      R.boardPage.hide();
+      return { row: row && { name: row.name, players: row.players, scrip: row.scrip, ores: row.ores }, tabs, ui: ui.length, plotBtn };
+    }, made.id);
+    check(lbm.tabs.join() === 'Solo,Multiplayer' && lbm.row && lbm.row.players === 2 && lbm.row.scrip === 777 && lbm.row.name === 'Valley Two' && lbm.ui >= 1 && lbm.plotBtn, `leaderboard tabs ${lbm.tabs.join(' / ')}: Multiplayer lists “${lbm.row?.name}” with ${lbm.row?.players} players, § ${lbm.row?.scrip} shared, ${lbm.row?.ores} ores sold, and View plot`);
+    // The friend (not the owner) can only remove themselves.
+    const removed = await G.pg.evaluate(async (id) => {
+      const R = __rill; R.state.mode = 'pause'; await R.openMultiplayer();
+      const slot = [...document.querySelectorAll('#scr-mp .slot')].find(s => s.textContent.includes('Valley Two'));
+      const hasDelete = [...slot.querySelectorAll('button')].some(b => b.textContent.includes('Delete game'));
+      [...slot.querySelectorAll('button')].find(b => b.textContent.includes('Remove me')).click();
+      await new Promise(r => setTimeout(r, 100));
+      [...document.querySelectorAll('#scr-mp .confirm button')].find(b => b.textContent === 'Remove me').click();
+      for (let i = 0; i < 40 && R.mp.slots().includes(id); i++) await new Promise(r => setTimeout(r, 150));
+      return { hasDelete, gone: !R.mp.slots().includes(id) };
+    }, made.id);
+    const afterLeave = srv.data.get(`w:${made.id}`);
+    check(!removed.hasDelete && removed.gone && afterLeave && afterLeave.members.length === 1 && afterLeave.members[0].n === owner, `the friend's slot offers Remove me (not Delete); it took them out of the world (members now: ${afterLeave?.members.map(m => m.n).join(', ')})`);
+    await G.c.close();
+    // The owner deletes it for everyone.
+    H.pg = await H.c.newPage(); H.pg.on('pageerror', e => H.e2.push('pageerror: ' + e.message));
+    await H.pg.goto(URL); await H.pg.waitForFunction(() => window.__rill && window.__rill.ready, null, { timeout: 120000 }); await H.pg.evaluate(() => __rill.noRender(true));
+    const del = await H.pg.evaluate(async (id) => {
+      const R = __rill; await R.openMultiplayer();
+      for (let i = 0; i < 40 && ![...document.querySelectorAll('#scr-mp .slot')].some(s => s.textContent.includes('Valley Two')); i++) await new Promise(r => setTimeout(r, 150));
+      const slot = [...document.querySelectorAll('#scr-mp .slot')].find(s => s.textContent.includes('Valley Two'));
+      [...slot.querySelectorAll('button')].find(b => b.textContent.includes('Delete game')).click();
+      await new Promise(r => setTimeout(r, 100));
+      [...document.querySelectorAll('#scr-mp .confirm button')].find(b => b.textContent === 'Delete for everyone').click();
+      for (let i = 0; i < 40 && R.mp.slots().includes(id); i++) await new Promise(r => setTimeout(r, 150));
+      return { gone: !R.mp.slots().includes(id) };
+    }, made.id);
+    check(del.gone && !srv.data.has(`w:${made.id}`) && ![...srv.data.keys()].some(k => k.includes(made.id)), 'the owner deleted the world for everyone (gone from the server, with its save and plot picture)');
+    check(!H.e2.length && !G.e2.length, 'no console errors in the multiplayer pages' + (H.e2.length || G.e2.length ? ': ' + [...H.e2, ...G.e2].slice(0, 3).join(' | ') : ''));
+    await H.c.close(); await relay.close(); srv.close();
+  }
+
   if (all || flags.has('--shots')) {
     // Fresh page: earlier sections leave a lot of machines and items about.
     if (!mainPage.isClosed()) await mainPage.close();

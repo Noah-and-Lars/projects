@@ -39,6 +39,9 @@ import { createSavesPage, ago, playTime } from './ui/saves.js';
 import { createCoopPage } from './ui/coop.js';
 import { createLeaderboardPage } from './ui/leaderboard.js';
 import { createBoard, arcadeAccount } from './net/board.js';
+import { createMp } from './net/mp.js';
+import { createMpPage } from './ui/mpsaves.js';
+import { b64 } from './net/coop.js';
 import { createGuide } from './game/guide.js';
 import { createMap } from './game/map.js';
 import { h } from './ui/dom.js';
@@ -200,7 +203,12 @@ async function boot() {
     makeHands: (o) => createHands({ ...handsArgs, ...o }),
     snapshot: () => snapshot(), restore: (s) => restore(s), teleport: (x, y, z, yaw) => teleport(x, y, z, yaw),
     onJoined: () => { panels.close(); coopPage.hide(); play(); },
-    onHostLeft: () => { const body = h('div', {}, h('p', {}, 'The host left, so this co-op session has ended. Their save holds the world.')); panels.show('hostleft', 'Host left', body, { closeLabel: 'Back to the title' }); const close = panels.close; panels.close = () => { panels.close = close; location.reload(); }; },
+    // Multiplayer worlds: what a guest needs to reopen it later, and adding
+    // it to their slots when they join.
+    mpInfo: () => (state.mp ? { id: state.mp.id, invite: state.mp.invite, name: state.mp.name } : null),
+    onMpWorld: (info) => joinedMpWorld(info),
+    onHostClash: () => { try { sessionStorage.setItem('rill-mp', JSON.stringify({ open: state.mp?.id })); } catch (_) {} location.reload(); },
+    onHostLeft: () => { const body = h('div', {}, h('p', {}, state.mpGuest ? 'The host left. This is a multiplayer world: open it from Multiplayer to keep playing; it carries on from the last save.' : 'The host left, so this co-op session has ended. Their save holds the world.')); panels.show('hostleft', 'Host left', body, { closeLabel: 'Back to the title' }); const close = panels.close; panels.close = () => { panels.close = close; location.reload(); }; },
     onMembers: () => { if (coopPage.open) coopPage.refresh(); },
   });
   const camp = createCamp({ scene, camera, items, hands, economy, town, hud, audio, state, view, ui, h, settings });
@@ -225,9 +233,14 @@ async function boot() {
   // ---- Leaderboard (net/board.js, ui/leaderboard.js) ----
   // Your line: Scrip and ores sold (not for sandbox games, co-op guests, or
   // if you switched it off in Settings).
+  const mp = createMp();
   const board = createBoard({
-    entry: () => (!state.playing || economy.sandbox || coop.isGuest() || settings.leaderboard === false) ? null : { s: economy.state.scrip, o: economy.state.stats?.oresSold || 0, kg: economy.state.stats?.oreKg || 0, d: state.day },
+    // Solo games: your line. Multiplayer worlds: the host's line stands for the
+    // world (its shared cash, ores sold and how many players are in it).
+    entry: () => (!state.playing || economy.sandbox || coop.isGuest() || settings.leaderboard === false) ? null
+      : { s: economy.state.scrip, o: economy.state.stats?.oresSold || 0, kg: economy.state.stats?.oreKg || 0, d: state.day, ...(state.mp ? { w: state.mp.id, wn: state.mp.name, pl: state.mp.members?.length || 1 } : {}) },
     picture: () => Promise.resolve(basePicture()),
+    server: mp,
   });
   // A picture of your base from above: centred on your machines (or the
   // claim post), framed to fit them.
@@ -253,11 +266,97 @@ async function boot() {
     board,
     onBack: () => { boardPage.hide(); if (boardFrom === 'title') menu.showTitle(true); else menu.showPause(true); },
     status: () => !arcadeAccount() ? 'Sign in to the Arcade with an online account to see the leaderboard and appear on it.'
+      : !mp.available() && boardPage.tab === 'mp' ? 'Multiplayer worlds show here while someone is playing them. (Stored rows need the Rillstone server, which isn’t switched on yet.)'
       : board.error === 'offline' ? 'Could not reach the online service: you may be offline.'
         : !state.playing ? null : economy.sandbox ? 'This is a sandbox game, so you aren’t listed while you play it.'
-          : coop.isGuest() ? 'You’re a guest in a co-op world, so you aren’t listed while you’re here.'
+          : coop.isGuest() ? (state.mpGuest ? 'You’re in a multiplayer world: it’s on the Multiplayer tab under its host.' : 'You’re a guest in a co-op world, so you aren’t listed while you’re here.')
             : settings.leaderboard === false ? 'You’ve switched off appearing on the leaderboard (Settings → Gameplay).' : null,
   });
+  // ---- Multiplayer worlds (net/mp.js, ui/mpsaves.js) ----
+  let mpFrom = 'title';
+  const mpPage = createMpPage(ui, {
+    mp,
+    myName: () => arcadeAccount()?.name || 'Miner',
+    onBack: () => { mpPage.hide(); if (mpFrom === 'title') menu.showTitle(true); else menu.showPause(true); },
+    status: () => !arcadeAccount() ? 'Multiplayer worlds need an online Arcade account: sign in to the Arcade first.'
+      : !mp.available() ? 'Multiplayer saves need the Rillstone server, which isn’t switched on yet. Until then, play together with Co-op (the host’s save keeps the world).' : null,
+    // Opening, starting and joining reload the page into the right world.
+    onOpen: (id) => mpReload({ open: id }),
+    onNew: (slot, name) => mpReload({ create: name, slot }),
+    onJoinCode: (code) => { code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (code.length !== 5) { mpPage.say('A room code is 5 letters and numbers.', 'err'); return; } mpReload({ join: code }); },
+  });
+  function openMultiplayer() {
+    if (panels.open) panels.close();
+    mpFrom = menu.titleShown || !state.playing ? 'title' : 'pause';
+    menu.showTitle(false); menu.showPause(false);
+    return mpPage.show();
+  }
+  async function mpReload(what) {
+    // Leaving a solo game for a multiplayer one: keep it saved first.
+    if (state.playing && !state.mp && !coop.isGuest() && state.slot) await saveTo(state.slot, true);
+    if (state.mp && coop.isHost()) await mpSave(true);
+    try { sessionStorage.setItem('rill-mp', JSON.stringify(what)); } catch (_) {}
+    location.reload();
+  }
+  // Save the multiplayer world being hosted here to the server (with a
+  // picture of its plot for the leaderboard).
+  async function mpSave(quiet) {
+    if (!state.mp || coop.isGuest()) return false;
+    try {
+      const buf = await saves.exportBlob(snapshot()).arrayBuffer();
+      const st = economy.state.stats || {};
+      let plot = basePicture(); if (plot && plot.length > 118000) plot = null;
+      const r = await mp.save(state.mp.id, b64.enc(buf), { day: state.day, scrip: economy.state.scrip, ores: st.oresSold || 0, kg: st.oreKg || 0 }, plot);
+      state.mp.rev = r.rev; if (!quiet) hud.toast(`Saved “${state.mp.name}” for everyone in it`);
+      return true;
+    } catch (e) { if (!quiet || e.code === 'gone') hud.toast(e.code === 'gone' ? 'This world was deleted by its owner' : 'Could not save to the Rillstone server: will try again', 'err'); return false; }
+  }
+  // A guest joined a host who is playing a multiplayer world: put it in a slot.
+  async function joinedMpWorld(info) {
+    if (!info || typeof info.id !== 'string') return;
+    state.mpGuest = { id: info.id, name: String(info.name || '').slice(0, 40) };
+    if (!mp.available() || !mp.signedIn() || mp.slotOf(info.id) >= 0) return;
+    try {
+      await mp.join(info.id, info.invite);
+      const i = mp.addWorld(info.id);
+      hud.toast(i >= 0 ? `“${state.mpGuest.name}” is in your multiplayer slot ${i + 1}: reopen it any time from Multiplayer` : 'Your six multiplayer slots are full: remove one to keep this world', i >= 0 ? 'gold' : 'err');
+    } catch (e) { if (e.code === 'full') hud.toast('That world already has 4 players', 'err'); }
+  }
+  // At boot after a reload: open, start or join a multiplayer world.
+  async function mpBoot(what) {
+    const toastErr = (t) => { state.mode = 'pause'; menu.showTitle(true); hud.toast(t, 'err'); };
+    if (!mp.available() || !mp.signedIn()) return toastErr('Multiplayer worlds need the Rillstone server and an Arcade account');
+    if (what.join) {
+      // A friend's room code: join whoever is in it (the world arrives with its id).
+      let r; try { r = await coop.join(what.join); } catch (_) { r = 'offline'; }
+      if (r !== 'ok') { openMultiplayer(); mpPage.say(r === 'nohost' ? 'Nobody is in that room right now.' : r === 'full' ? 'That room is full (4 players).' : 'Could not reach the online service.', 'err'); }
+      return;
+    }
+    if (what.create) {
+      // A fresh valley, saved to the server as a new world you own.
+      try {
+        const buf = await saves.exportBlob(snapshot()).arrayBuffer();
+        const d = await mp.create(what.create, b64.enc(buf), { day: state.day, scrip: economy.state.scrip, ores: 0, kg: 0 });
+        mp.setSlot(+what.slot || 0, d.meta.id);
+        what = { open: d.meta.id, fresh: true };
+      } catch (e) { openMultiplayer(); mpPage.say(e.code === 'too many' ? 'You own six multiplayer worlds already: delete one first.' : 'Could not create the world on the Rillstone server.', 'err'); return; }
+    }
+    const id = what.open, code = mp.roomCode(id);
+    // Someone already in it? Join them. Otherwise open the last save and host.
+    let r = 'nohost';
+    if (!what.fresh) { try { r = await coop.join(code); } catch (_) { r = 'offline'; } }
+    if (r === 'ok') { state.mpGuest = { id }; return; }
+    if (r === 'full') { openMultiplayer(); mpPage.say('That world is full right now (4 players).', 'err'); return; }
+    let d;
+    try { d = await mp.get(id); } catch (e) { openMultiplayer(); mpPage.say(e.code === 'gone' ? 'That world was deleted by its owner.' : e.code === 'member' ? 'You’re not in that world any more.' : 'Could not load the world from the Rillstone server.', 'err'); return; }
+    if (!what.fresh) await restore(await saves.importFile(new Blob([b64.dec(d.save)])));
+    state.mp = { id, name: d.meta.name, invite: d.meta.invite, isOwner: d.meta.isOwner, owner: d.meta.owner, members: d.meta.members, rev: d.meta.rev };
+    state.slot = null; state.slotChosen = true; state.saveName = d.meta.name;
+    play();
+    net.world = id;
+    try { await coop.host(code); hud.toast(`“${d.meta.name}” is open · room ${code} · friends in it can join from Multiplayer`, 'gold'); }
+    catch (_) { hud.toast('Playing offline: the room could not open, so friends can’t join right now', 'err'); }
+  }
   function openLeaderboard() {
     if (panels.open) panels.close();
     boardFrom = menu.titleShown || !state.playing ? 'title' : 'pause';
@@ -295,6 +394,7 @@ async function boot() {
       { label: 'Save', icon: 'save', onclick: () => quickSave() },
       { label: 'Saves', icon: 'saves', onclick: () => openSavesPage() },
       { label: 'Settings', icon: 'settings', onclick: () => menu.openSettings() },
+      { label: 'Multiplayer', icon: 'world', onclick: () => openMultiplayer() },
       { label: 'Co-op', icon: 'coop', onclick: () => openCoop() },
       { label: 'Leaderboard', icon: 'trophy', onclick: () => openLeaderboard() },
       { label: 'How to play', icon: 'help', onclick: () => { play(); guide.open(); } },
@@ -390,6 +490,7 @@ async function boot() {
     } catch (_) { return null; }
   }
   async function saveTo(slot, quiet) {
+    if (state.mp) return mpSave(quiet); // a multiplayer world saves to the server
     // In someone else's world the host's save keeps it; yours stays as it was.
     if (coop.isGuest()) { if (!quiet) hud.toast("You're in the host's world: their save keeps it", 'err'); return false; }
     try { await saves.save(slot, { ...snapshot(), thumb: thumbnail(), saveName: state.saveName || undefined }); state.slot = slot; if (!quiet) hud.toast(`Saved to slot ${slot}`); return true; }
@@ -437,6 +538,7 @@ async function boot() {
   }
   async function quickSave() {
     if (coop.isGuest()) { hud.toast("You're in the host's world: their save keeps it", 'err'); return; }
+    if (state.mp) { if (await mpSave()) menu.showPause(true); return; }
     if (!state.slot) { openSavesPage(); return; }
     if (await saveTo(state.slot, true)) { hud.toast(`Saved “${state.saveName || `Claim ${state.slot}`}” to slot ${state.slot}`); menu.showPause(true); }
   }
@@ -446,6 +548,7 @@ async function boot() {
     menu.setTitleItems([
       { label: 'New game', icon: 'new', primary: true, onclick: () => openSavesPage('new') },
       { label: 'Saves', icon: 'saves', onclick: () => openSavesPage() },
+      { label: 'Multiplayer', icon: 'world', sub: 'Shared worlds anyone in them can reopen', onclick: () => openMultiplayer() },
       { label: 'Co-op', icon: 'coop', sub: 'Host or join a friend', onclick: () => openCoop() },
       { label: 'Leaderboard', icon: 'trophy', onclick: () => openLeaderboard() },
       { label: 'Settings', icon: 'settings', onclick: () => menu.openSettings() },
@@ -456,6 +559,7 @@ async function boot() {
       if (latest) items2.push({ label: 'Continue', icon: 'cont', sub: `${latest.name || `Claim ${latest.slot}`} · day ${latest.day} · ${ago(latest.savedAt)}`, primary: true, onclick: () => loadSlot(latest.slot) });
       items2.push({ label: 'New game', icon: 'new', primary: !latest, onclick: () => openSavesPage('new') });
       items2.push({ label: 'Saves', icon: 'saves', sub: `${list.filter(m => !m.empty).length} of ${list.length} slots used`, onclick: () => openSavesPage() });
+      items2.push({ label: 'Multiplayer', icon: 'world', sub: `${mp.slots().filter(Boolean).length} of 6 shared worlds`, onclick: () => openMultiplayer() });
       items2.push({ label: 'Co-op', icon: 'coop', sub: 'Host or join a friend', onclick: () => openCoop() });
       items2.push({ label: 'Leaderboard', icon: 'trophy', onclick: () => openLeaderboard() });
       items2.push({ label: 'Settings', icon: 'settings', onclick: () => menu.openSettings() });
@@ -622,7 +726,7 @@ async function boot() {
       if (driveEl.dataset.html !== html) { driveEl.dataset.html = html; driveEl.innerHTML = html; if (dh.scanner) driveEl.append(scanCanvas); }
       if (dh.scanner) heavy.drawScanner(scanCanvas, dh.v);
     }
-    if (state.mode === 'play') { state.playTime += dt; state.autosaveT += dt; if (state.autosaveT > 180 && !coop.isGuest() && state.slot) { state.autosaveT = 0; saveTo(state.slot, true); } }
+    if (state.mode === 'play') { state.playTime += dt; state.autosaveT += dt; if (state.autosaveT > 180 && !coop.isGuest() && (state.slot || state.mp)) { state.autosaveT = 0; saveTo(state.slot, true); } }
     coop.update(dt);
     board.update(dt);
     // (tests switch the guide on only when they check it: it pays out Scrip)
@@ -667,6 +771,9 @@ async function boot() {
     let autohost = null; try { autohost = sessionStorage.getItem('rill-autohost'); sessionStorage.removeItem('rill-autohost'); } catch (_) {}
     if (snap && autohost) { state.mode = 'pause'; input.unlock(); openCoop(); coopPage.refresh(); coop.host().then(() => coopPage.refresh()).catch(() => coopPage.refresh()); }
   }
+  let mpWant = null;
+  try { mpWant = JSON.parse(sessionStorage.getItem('rill-mp') || 'null'); sessionStorage.removeItem('rill-mp'); } catch (_) {}
+  if (mpWant && !pending) mpBoot(mpWant);
   requestAnimationFrame(frame);
 
   // Test hook (BUILD_BRIEF section 12). Pointer Lock doesn't work headless,
@@ -676,6 +783,7 @@ async function boot() {
     THREE, view, player, input, state, settings, hud, menu, savesPage, coopPage, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, machines, auto, progress, workshop, heavy, adit, coop, net, guide, map, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
     places: { TOWN, HAMLET, ADIT, CLAIMS, FALLS_Z, PUMPHOUSE, spawn: spawnPoint() },
     board, boardPage, openLeaderboard: () => openLeaderboard(), basePicture: () => basePicture(),
+    mp, mpPage, openMultiplayer: () => openMultiplayer(), mpSave: (q) => mpSave(q), mpBoot: (w) => mpBoot(w),
     relicSpot, veins: VEINS, rollLoot, itemValue, pumpStages: PUMP_STAGES,
     height, riverX, waterY,
     play,

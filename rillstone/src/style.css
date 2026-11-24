@@ -296,3 +296,16 @@ body.paused #hud > :not(#toasts), body.paused #guide, body.paused #drive { visib
 .lb-pic { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; object-fit: cover; background: #2b3440; }
 .lb-pic.wait { display: grid; place-items: center; color: #e8dcc0; font-size: 15px; text-align: center; padding: 20px; }
 @media (max-width: 560px) { .lb-row { grid-template-columns: 30px minmax(0, 1fr) 80px; } .lb-row > :nth-child(4) { display: none; } .lb-row > :nth-child(5) { grid-column: 2 / 4; } }
+.lb-tabs { display: flex; gap: 8px; margin: 0 0 12px; }
+.lb-tabs .tab { font: 700 16px var(--font); padding: 10px 22px; border-radius: 12px; background: rgba(246, 238, 219, 0.9); color: var(--slate); box-shadow: 0 3px 0 #cdbf9f; }
+.lb-tabs .tab.on { background: var(--teal); color: #f6fbfa; box-shadow: 0 3px 0 #155656; }
+.lb-row.mp { grid-template-columns: 42px minmax(0, 2fr) 80px minmax(96px, 1fr) minmax(104px, 1fr) 96px; }
+@media (max-width: 560px) { .lb-row.mp { grid-template-columns: 30px minmax(0, 1fr) 80px; } .lb-row.mp > :nth-child(3), .lb-row.mp > :nth-child(5) { display: none; } .lb-row.mp > :nth-child(6) { grid-column: 2 / 4; } }
+/* Multiplayer slots. */
+.mp-pic { background: linear-gradient(135deg, #1f7a7a, #2b3440); display: grid; place-items: center; }
+.mp-pic.empty { background: repeating-linear-gradient(45deg, #e8dcc0, #e8dcc0 12px, #e2d4b4 12px, #e2d4b4 24px); }
+.mp-code { display: flex; flex-direction: column; align-items: center; color: #f6fbfa; }
+.mp-code small { font-size: 12px; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.08em; }
+.mp-code b { font-size: 34px; letter-spacing: 0.18em; }
+.mp-join { margin-top: 18px; }
+.page-inner.narrow.lb { width: min(880px, calc(100vw - 32px)); }

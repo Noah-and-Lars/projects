@@ -44,7 +44,7 @@ function cleanSetting(k, v, materials) {
   }
 }
 const r3 = (v) => Math.round(v * 1000) / 1000, r4 = (v) => Math.round(v * 10000) / 10000;
-const b64 = {
+export const b64 = {
   enc(buf) { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); },
   dec(str) { const s = atob(str), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; },
 };
@@ -135,6 +135,8 @@ export function createCoop(ctx) {
     const t0 = performance.now();
     scanEntities(); // pending changes go to everyone first (seq after the package's)
     const snap = snapshot(); snap.coop = { seq: C.seq };
+    // A multiplayer world: the guest gets its id and invite, and can reopen it later.
+    const mpw = ctx.mpInfo?.(); if (mpw) snap.mp = mpw;
     const blob = saves.exportBlob(snap), buf = await blob.arrayBuffer();
     const str = b64.enc(buf);
     const n = net.sendBig('pk', g.id, str);
@@ -374,6 +376,7 @@ export function createCoop(ctx) {
       vol.modified.clear();
     }
     await restore(snap);
+    if (snap.mp) ctx.onMpWorld?.(snap.mp);
     const seq = snap.coop?.seq ?? 0;
     for (const s of buffered) if (s.q > seq) applySnapshot(s);
     buffered = [];
@@ -419,6 +422,10 @@ export function createCoop(ctx) {
   // -------------------------------------------------------------- handlers
   net.on_('members', (list, before) => {
     if (C.role === 'host') {
+      // Two members opened the same multiplayer world at once and both
+      // hosted: the one who came second steps down and joins the first.
+      const self = net.self?.(), other = self?.w && list.find(m => m.h && m.id !== net.id && m.w === self.w);
+      if (other && (other.t < self.t || (other.t === self.t && other.id < net.id))) { ctx.onHostClash?.(); return; }
       for (const m of list) if (m.id !== net.id && !C.guests.has(m.id)) { addGuest(m); hud.toast(`${m.n} joined`, 'gold'); }
       for (const id of [...C.guests.keys()]) if (!list.some(m => m.id === id)) removeGuest(id);
     } else if (C.role === 'guest') {
@@ -439,8 +446,8 @@ export function createCoop(ctx) {
   });
 
   // ------------------------------------------------------------------ API
-  C.host = async () => {
-    const code = await net.create();
+  C.host = async (fixed) => {
+    const code = await net.create(fixed);
     if (typeof code !== 'string' || code.length !== 5) return code;
     C.role = 'host';
     editLog.fn = (op) => push(op);

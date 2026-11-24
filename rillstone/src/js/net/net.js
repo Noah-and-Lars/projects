@@ -56,6 +56,7 @@ export function createNet() {
   };
   const firstSeen = new Map(); let seenSeq = 0;
   api.host = () => api.members.find(m => m.h) || null;
+  api.self = () => me;
   api.isHost = () => !!me && !!me.h;
   api.on_ = (event, fn) => handlers.set(event, fn);
   api.send = (event, payload) => {
@@ -74,7 +75,7 @@ export function createNet() {
   function enter(code, host) {
     return new Promise((res, rej) => {
       drop();
-      me = { id: myId, n: myName(), t: Date.now(), h: host ? 1 : 0 };
+      me = { id: myId, n: myName(), t: Date.now(), h: host ? 1 : 0, ...(host && api.world ? { w: api.world } : {}) };
       ch = client.channel(`${BASE}-r-${code}`, { config: { broadcast: { self: false, ack: false }, presence: { key: myId } } });
       const c = ch;
       let done = false;
@@ -105,10 +106,11 @@ export function createNet() {
       });
     });
   }
-  api.create = async () => {
+  // Open a room: a random code, or a fixed one (a multiplayer world's room).
+  api.create = async (fixed) => {
     await getClient();
-    let code = '';
-    for (let i = 0; i < 5; i++) code += ALPH[Math.floor(Math.random() * ALPH.length)];
+    let code = typeof fixed === 'string' && /^[A-Z0-9]{5}$/.test(fixed) ? fixed : '';
+    if (!code) for (let i = 0; i < 5; i++) code += ALPH[Math.floor(Math.random() * ALPH.length)];
     const r = await enter(code, true);
     if (r === 'ok') { api.on = true; api.room = code; }
     return r === 'ok' ? code : r;

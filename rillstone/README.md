@@ -168,8 +168,8 @@ they used to.
   the change since yesterday; E on it opens the full list.
 - **Leaderboard** (pause menu or title). Players with an online Arcade
   account are listed by their Arcade name, ranked by Scrip, with how many
-  ores they've sold. **View base** on an online player asks their game for
-  a picture of their base from above. Players who aren't online show their
+  ores they've sold. **View plot** on an online player asks their game for
+  a picture of their plot from above. Players who aren't online show their
   last-seen numbers. Sandbox games and co-op guests aren't listed, and
   Settings → Gameplay can take you off it.
 - **Shops.** Every shop counter in Millbrook (General Store, Millwright,
@@ -384,6 +384,36 @@ Up to 4 players share one world. Open **Co-op** from the pause menu.
 - **Sharing.** Scrip and claims are shared. Everyone can dig, build and drive anywhere the group owns.
 - **Accounts.** Online play goes through the arcade's realtime server and needs an Arcade account.
 - **If the host leaves,** the session ends for everyone else with a "host left" message.
+
+### Multiplayer worlds
+
+**Multiplayer** on the title screen (and in the pause menu) has six slots
+for shared worlds. A shared world lives on the Rillstone server rather than
+in one player's browser, so anyone who has joined it can reopen it, even
+when its owner is offline.
+
+- **Starting one:** pick an empty slot, then **New multiplayer world**.
+  You own it.
+- **Room code:** each world has a fixed 5-letter room code, shown on its
+  slot. Friends type it under "Join a friend's world"; once they've joined,
+  it goes into one of their slots.
+- **Play:** if someone is already in the world you join them. Otherwise you
+  open its last save and host it, and the others can join you. Whoever
+  hosts saves it to the server (every 3 minutes, and from the pause menu).
+- **Shared cash:** all players' Scrip goes into one pot for the world.
+- **Delete game** (owner only) removes the world for everyone. Anyone else
+  can only **Remove me**, which takes it out of their slots and takes them
+  out of the world.
+- **Leaderboard:** the leaderboard has **Solo** and **Multiplayer** tabs.
+  Multiplayer ranks worlds by shared cash, with how many players are in each
+  world and its ores sold. Both tabs have **View plot**.
+- **Needs** an online Arcade account and the Rillstone server
+  (`server/worker.mjs`, deployed with `node tools/deploy-server.mjs` and a
+  Cloudflare token with Workers Scripts: Edit). Until its URL is set in
+  `src/js/net/mp.js`, the Multiplayer page says so and Co-op works as
+  before.
+- **Identity:** your owner and member rights are tied to a key kept in this
+  browser, so open your worlds from the browser you made or joined them in.
 
 How it works: the host's browser runs the only simulation (physics, machines, economy, terrain). Guests move their own character at once and send what they do (dig, pick up, drop, place, drive, buy) about 20 times a second. The host runs those actions through its own copy of the guest's hands, then sends snapshots 12 times a second. Snapshots carry players, moving bodies within 60 m of a guest, vehicles, terrain edits, entity changes, machine status and the shared ledger. A joiner gets the whole world as one compressed package, sent in 16 KB chunks.
 

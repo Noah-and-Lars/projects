@@ -21,6 +21,7 @@ const ICONS = {
   quit: 'M6 6l12 12M18 6L6 18',
   new: 'M12 5v14M5 12h14',
   cont: 'M5 5v14M10 5v14l9-7z',
+  world: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3.6 9h16.8M3.6 15h16.8M12 3c2.5 2.4 3.8 5.4 3.8 9s-1.3 6.6-3.8 9c-2.5-2.4-3.8-5.4-3.8-9S9.5 5.4 12 3z',
   trophy: 'M8 4h8v5a4 4 0 0 1-8 0zM8 6H4a3 3 0 0 0 4 4M16 6h4a3 3 0 0 1-4 4M12 13v4M8 20h8M9 17h6',
 };
 export function menuIcon(name) {
