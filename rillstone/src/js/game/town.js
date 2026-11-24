@@ -1,15 +1,14 @@
-// Millbrook: buildings, counters, bells, clerks, market stalls, the guild
+// Millbrook: buildings, counters, bells, clerks, the price board, the guild
 // board, delivery pads and the bridge to the Gravel Bar. Selling is
 // physical (BUILD_BRIEF 3.6): put goods on a counter and ring the bell; the
 // clerk weighs and stamps them and the ledger pays out.
 import * as THREE from 'three';
 import { TOWN, HAMLET, riverX, waterY, height, CLAIMS } from '../world/valley.js';
-import { building, counter, bell, stall, chalkboardFrame, textPlane, clerk, pad, bridge } from '../render/buildings.js';
+import { building, counter, bell, textPlane, clerk, pad, bridge } from '../render/buildings.js';
 import { paint, merge, place } from '../render/geom.js';
 import { SHOPS } from '../defs/shops.js';
 import { MACHINES } from '../defs/machines.js';
-import { wantLabel } from '../sim/economy.js';
-import { MATERIALS, itemName } from '../defs/materials.js';
+import { MATERIALS, itemName, CRAFT_MULT } from '../defs/materials.js';
 import { EXTRA_MESH, EXTRA_BOX, EXTRA_CARD, EXTRA_MASS } from './items.js';
 import { h } from '../ui/dom.js';
 
@@ -82,8 +81,8 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
   }
 
   // Layout round the square (BUILD_BRIEF 3.2).
-  shop({ key: 'assay', name: 'Assay Office', x: T.x - 2, z: T.z - 22, w: 9, trim: 0x2a8a86, sells: 'assay' });
-  shop({ key: 'gems', name: 'Gem Buyer', x: T.x - 21, z: T.z - 25, w: 7, trim: 0x9a2a4a, sells: 'gems' });
+  // The one place that buys: the Assay Office takes everything, at today's prices.
+  const assay = shop({ key: 'assay', name: 'Assay Office', sign: 'Assay Office · We buy everything', x: T.x - 2, z: T.z - 22, w: 9, trim: 0x2a8a86, sells: 'assay' });
   shop({ key: 'store', name: 'General Store', x: T.x + 22, z: T.z - 8, trim: 0xc8902c, shopId: 'store' });
   shop({ key: 'mill', name: 'Millwright', x: T.x + 23, z: T.z + 12, trim: 0x2a8a86, shopId: 'millwright' });
   const wag = shop({ key: 'wagons', name: 'Wagon Shed', x: T.x + 6, z: T.z + 26, w: 11, d: 7, trim: 0x56616e, bay: true });
@@ -116,28 +115,15 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     const [fx, fz] = local(x, z, yaw, 0, 0.075); put(face, fx, fz, yaw, gy + 1.6);
     prop('guild', { name: 'Guild board' }, x, gy + 1.6, z, 1.2, 0.8, 0.15, yaw);
   }
-  // Market square: three stalls with chalkboards, and a fourth at Upper Falls.
-  const STALL_TRIM = [0xa84a3a, 0x2a8a86, 0xc8902c, 0x6e56a8];
-  for (let i = 0; i < 4; i++) {
-    const hamlet = i === 3, gy = hamlet ? H.y : T.y;
-    const x = hamlet ? H.x + 1 : T.x - 7 + i * 7, z = hamlet ? H.z + 8 : T.z + 6, yaw = Math.PI; // facing north
-    put(new THREE.Mesh(stall(STALL_TRIM[i]), materials.vcolor), x, z, yaw, gy);
-    put(new THREE.Mesh(counter(2.6), materials.vcolor), x, z - 0.7, yaw, gy);
-    box('stall' + i, x, gy + 0.53, z - 0.7, 1.3, 0.53, 0.45, yaw);
-    for (const [px, pz] of [[-1.3, -0.6], [1.3, -0.6], [-1.3, 0.6], [1.3, 0.6]]) box(`stallpost${i}${px}${pz}`, x - px, gy + 1.3, z - pz, 0.07, 1.3, 0.07);
-    const ck = put(new THREE.Mesh(clerk(STALL_TRIM[i]), materials.vcolor), x, z + 0.1, yaw, gy);
-    clerks.push({ mesh: ck, base: ck.position.y, phase: i * 2.3 + 1, busy: 0 });
-    put(new THREE.Mesh(bell(), materials.vcolor), x + 1.0, z - 0.75, yaw, gy + 1.05);
-    const id = prop('bell', { venue: i, name: hamlet ? 'Upper Falls stall' : `Market stall ${i + 1}` }, x + 1.0, gy + 1.13, z - 0.75, 0.12, 0.1, 0.12);
-    counters.push({ venue: i, bell: id, x, z: z - 0.7, yaw, top: gy + 1.05, w: 2.6, clerk: clerks[clerks.length - 1] });
-    put(new THREE.Mesh(chalkboardFrame(), materials.vcolor), x - 2.1, z - 1.4, yaw + 0.3, gy);
-    const face = textPlane(['…'], { w: 0.9, h: 1.1, bg: '#2a3330', fg: '#f4f0e0', font: 'bold 70px', px: 256, chalk: true });
-    // Match the frame's backward lean (-0.12 about x) and sit just in front of it.
-    const by = yaw + 0.3, off = 0.04;
-    face.position.set(x - 2.1 + Math.sin(by) * off, gy + 1.0 + Math.sin(0.12) * off, z - 1.4 + Math.cos(by) * off);
-    face.rotation.set(-0.12, by, 0, 'YXZ'); group.add(face);
-    boards.push({ stall: i, face });
-    prop('chalk', { stall: i, name: 'Chalkboard' }, x - 2.1, gy + 1.0, z - 1.4, 0.5, 0.65, 0.12, yaw + 0.3);
+  // Today's prices: a big board beside the Assay Office (E opens the full list).
+  {
+    const x0 = T.x - 2, z0 = T.z - 22, yaw = assay.yaw;
+    const [x, z] = local(x0, z0, yaw, -6.4, 4.4), by = yaw + 0.25;
+    put(new THREE.Mesh(merge([paint(place(new THREE.BoxGeometry(2.9, 2.5, 0.12), 0, 1.95, 0), 0x6e4c2e, 0.06), paint(place(new THREE.BoxGeometry(0.14, 3.3, 0.14), -1.35, 1.65, -0.06), 0x5a3c22, 0.06), paint(place(new THREE.BoxGeometry(0.14, 3.3, 0.14), 1.35, 1.65, -0.06), 0x5a3c22, 0.06), paint(place(new THREE.BoxGeometry(3.1, 0.16, 0.3), 0, 3.28, 0), 0x2a8a86, 0.05)]), materials.vcolor), x, z, by);
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(2.7, 2.3), new THREE.MeshBasicMaterial({ toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    const [fx, fz] = local(x, z, by, 0, 0.07); face.position.set(fx, gy + 1.95, fz); face.rotation.y = by; group.add(face);
+    boards.push({ face });
+    prop('prices', { name: "Today's prices" }, x, gy + 1.95, z, 1.45, 1.25, 0.12, by);
   }
   // Bridge to the Gravel Bar.
   {
@@ -189,7 +175,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     const p = props.get(id), c = counters.find(k => k.bell === id);
     audio.play('pickup');
     const list = counterItems(c);
-    if (!list.length) { hud.toast(c.venue === 'gems' ? 'Put uncut gems on the counter, then ring the bell' : c.venue === 'assay' ? 'Put ore and goods on the counter, then ring the bell' : 'Put goods on the stall counter, then ring'); return { total: 0 }; }
+    if (!list.length) { hud.toast('Put ore and goods on the counter, then ring the bell'); return { total: 0 }; }
     const r = economy.sell(list.map(e => e.item), c.venue);
     const soldSet = new Set(r.sold);
     for (const e of list) if (soldSet.has(e.item)) items.remove(e.id);
@@ -197,15 +183,43 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     if (r.total > 0) { audio.play('coins'); hud.toast(`${p.name}: ${r.sold.length} item${r.sold.length > 1 ? 's' : ''} weighed and stamped · § ${r.total.toLocaleString('en-GB')}`, 'gold'); }
     if (r.refused.length) hud.toast(`${r.refused.length} left on the counter · ${r.refused[0].why}`, 'err');
     for (const k of r.completed) { audio.play('contract'); hud.toast(`Contract done: ${k.text} · § ${k.reward}`, 'gold'); }
-    if (c.venue !== 'assay') redrawBoards();
     return r;
   }
+  // The price board's face: every material, its two forms in § per kg, and
+  // whether it went up or down this morning.
+  let drawnDay = -1;
   function redrawBoards() {
-    for (const b of boards) {
-      const m = economy.state.market[b.stall]; if (!m) continue;
-      const pct = Math.round(economy.stallMult(b.stall) * 100);
-      b.face.userData.redraw(['TODAY', wantLabel(m.want), `${pct}% ${pct > 100 ? '↑' : '='}`]);
-    }
+    const list = economy.priceList(); drawnDay = economy.state.day;
+    const c = document.createElement('canvas'); c.width = 1024; c.height = 872; const g = c.getContext('2d');
+    g.fillStyle = '#26302c'; g.fillRect(0, 0, c.width, c.height);
+    g.strokeStyle = 'rgba(244, 240, 224, 0.35)'; g.lineWidth = 6; g.strokeRect(14, 14, c.width - 28, c.height - 28);
+    const font = (px, w = 'bold') => `${w} ${px}px ui-rounded, "Nunito", "Segoe UI", sans-serif`;
+    g.fillStyle = '#f4f0e0'; g.textBaseline = 'middle'; g.textAlign = 'center'; g.font = font(58); g.fillText("TODAY'S PRICES", c.width / 2, 70);
+    g.font = font(28, '600'); g.fillStyle = '#c8d8c8'; g.fillText(`§ per kg · day ${economy.state.day}`, c.width / 2, 118);
+    g.font = font(24, '700'); g.textAlign = 'right'; g.fillText('RAW', 640, 160); g.fillText('REFINED', 870, 160); g.textAlign = 'center'; g.fillText('TODAY', 950, 160);
+    g.font = font(20, '600'); g.textAlign = 'left'; g.fillText('raw: ore or uncut · refined: ingot or cut', 52, c.height - 34);
+    const top = 182, rowH = (c.height - top - 62) / list.length;
+    list.forEach((r, i) => {
+      const y = top + rowH * (i + 0.5);
+      if (i % 2 === 0) { g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(30, y - rowH / 2, c.width - 60, rowH); }
+      g.textAlign = 'left'; g.fillStyle = '#f4f0e0'; g.font = font(Math.min(44, rowH * 0.62)); g.fillText(r.name, 52, y);
+      g.textAlign = 'right'; g.font = font(Math.min(38, rowH * 0.55), '600');
+      r.forms.forEach((f, k) => { g.fillStyle = '#f4f0e0'; g.font = font(Math.min(40, rowH * 0.62)); g.fillText(`§ ${f.perKg % 1 ? f.perKg.toFixed(1) : f.perKg}`, 640 + k * 230, y); });
+      g.textAlign = 'center'; g.font = font(Math.min(42, rowH * 0.6)); g.fillStyle = r.trend > 0 ? '#8ce08c' : r.trend < 0 ? '#f08a7a' : '#a8b0a8'; g.fillText(r.trend > 0 ? '▲' : r.trend < 0 ? '▼' : '–', 950, y);
+    });
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+    for (const b of boards) { b.face.material.map?.dispose(); b.face.material.map = tex; b.face.material.needsUpdate = true; }
+  }
+  // The full list, with what crafted goods and gem sizes do to the price.
+  function openPrices() {
+    const list = economy.priceList();
+    const body = h('div', {},
+      h('p', { class: 'small' }, `Day ${economy.state.day}. The Assay Office buys everything at these prices; they move a little every morning (▲ up, ▼ down since yesterday).`),
+      h('div', { class: 'price-table' },
+        h('div', { class: 'ph' }, h('span', {}, 'Material'), h('span', {}, 'Raw'), h('span', {}, 'Refined'), h('span', {}, 'Today')),
+        ...list.map(r => h('div', { class: 'pr' }, h('b', {}, r.name), ...r.forms.map(f => h('span', {}, `§ ${f.perKg} /kg`, h('small', {}, ` ${f.stage}`))), h('span', { class: r.trend > 0 ? 'up' : r.trend < 0 ? 'down' : '' }, `${r.trend > 0 ? '▲' : r.trend < 0 ? '▼' : '–'} ${Math.round(r.factor * 100)}%`)))),
+      h('p', { class: 'small' }, `Gems: bigger stones pay more per kilo. Crafted goods pay their metal's ingot price × ${Object.entries(CRAFT_MULT).map(([k, v]) => `${k === 'toolhead' ? 'tool head' : k} ${v}`).join(', ')}, plus any gem set in. Quartz is fuel and isn't bought.`));
+    panels.show('prices', "Today's prices", body, { badge: `day ${economy.state.day}` });
   }
   function deliver(shopId, entry) {
     const base = pads[shopId], r = () => (Math.random() - 0.5) * 1.2;
@@ -291,12 +305,13 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
       if (p.kind === 'cutbell' || api.customProp[p.kind]) return (api.customProp[p.kind] || api.customProp.cutbell)?.(p, id);
       if (p.kind === 'shop') return openShop(p.shop);
       if (p.kind === 'guild') return openGuild();
+      if (p.kind === 'prices') return openPrices();
     },
-    hint(id) { const p = props.get(id); if (!p) return ''; if (api.customHint[p.kind]) return api.customHint[p.kind](p); return p.kind === 'bell' ? 'ring the bell to sell' : p.kind === 'shop' ? `browse the ${p.name}` : p.kind === 'guild' ? 'read the contracts' : ''; },
+    hint(id) { const p = props.get(id); if (!p) return ''; if (api.customHint[p.kind]) return api.customHint[p.kind](p); return p.kind === 'bell' ? 'ring the bell to sell' : p.kind === 'shop' ? `browse the ${p.name}` : p.kind === 'guild' ? 'read the contracts' : p.kind === 'prices' ? "read today's prices" : ''; },
     card(id) {
       const p = props.get(id); if (!p) return null;
       if (api.customCard[p.kind]) return api.customCard[p.kind](p, id);
-      if (p.kind === 'chalk') { const m = economy.state.market[p.stall]; return { name: `Stall ${p.stall + 1} wants`, lines: [wantLabel(m.want), `Pays ${Math.round(economy.stallMult(p.stall) * 100)}% of base today`] }; }
+      if (p.kind === 'prices') { if (drawnDay !== economy.state.day) redrawBoards(); const l = economy.priceList().slice().sort((a, b) => b.factor - a.factor); return { name: "Today's prices", lines: [`Best today: ${l[0].name} (${Math.round(l[0].factor * 100)}%)`, 'E for the full list'] }; }
       if (p.kind === 'bell') { const c = counters.find(k => k.bell === id), list = counterItems(c); const q = list.reduce((a, e) => a + (economy.quote(e.item, c.venue) ?? 0), 0); return { name: p.name, lines: [list.length ? `${list.length} on the counter · ≈ § ${Math.round(q)}` : 'Counter is empty'] }; }
       return { name: p.name };
     },

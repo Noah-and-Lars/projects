@@ -95,7 +95,7 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
         ...[
           ['Depth bands', 'Topsoil and clay (0–6 m) dig with any tool; the gravel bed (6–14 m) needs steel, slate (14–22 m) glimmer, basalt (Ember Seam) ember. Deeper finds weigh more.'],
           ['Water', `Intakes give flow (Mk I ${MACHINES.intake1.flow} L/s); each pipe carries its tier's limit. Machines slow down, but never stop, when the flow can't keep up. Settling tanks take silt out, which saves wear.`],
-          ['Selling', 'The Assay Office buys everything at base price: ore, ingots, gems and crafted goods. Market stalls pay more for their want of the day, less as you sell.'],
+          ['Selling', 'The Assay Office is the one shop that buys, and it buys everything: ore, ingots, gems and crafted goods. Prices move a little every morning: the board beside it shows today\'s § per kg for every material.'],
           ['Claims', 'Buy new claims at the Guild Hall with Scrip. Everything else is sold at any shop counter in Millbrook.'],
           ['The Pumphouse', 'The old pumphouse below Millbrook can be restored in five stages: that is the big goal.'],
         ].map(([k, v]) => h('div', { class: 'entry' }, h('b', {}, k), h('span', { class: 'desc' }, v))),

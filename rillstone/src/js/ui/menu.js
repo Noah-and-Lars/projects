@@ -21,6 +21,7 @@ const ICONS = {
   quit: 'M6 6l12 12M18 6L6 18',
   new: 'M12 5v14M5 12h14',
   cont: 'M5 5v14M10 5v14l9-7z',
+  trophy: 'M8 4h8v5a4 4 0 0 1-8 0zM8 6H4a3 3 0 0 0 4 4M16 6h4a3 3 0 0 1-4 4M12 13v4M8 20h8M9 17h6',
 };
 export function menuIcon(name) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -75,7 +76,7 @@ export function createMenu(root, { settings, input, onPlay, onSettingsChanged, o
   }
   const check = (key) => h('input', { type: 'checkbox', class: 'switch', checked: !!draft[key], onchange: (e) => set(d => { d[key] = e.target.checked; }) });
   // Which settings each tab owns (for Restore defaults).
-  const OWNS = { graphics: ['graphics', 'fov', 'headBob'], controls: ['binds'], audio: ['volume'], gameplay: ['sensitivity', 'invertY', 'sprintToggle', 'captions'] };
+  const OWNS = { graphics: ['graphics', 'fov', 'headBob'], controls: ['binds'], audio: ['volume'], gameplay: ['sensitivity', 'invertY', 'sprintToggle', 'captions', 'leaderboard'] };
   function body() {
     if (tab === 'graphics') return h('div', { class: 'srows' },
       row('Quality', h('select', { onchange: (e) => set(d => { d.graphics = e.target.value; }) }, ...[['high', 'High'], ['medium', 'Medium'], ['low', 'Low'], ['verylow', 'Very low (fastest)']].map(([q, l]) => h('option', { value: q, selected: draft.graphics === q }, l))), 'Very low draws at reduced resolution with no shadows and a nearer view'),
@@ -87,6 +88,7 @@ export function createMenu(root, { settings, input, onPlay, onSettingsChanged, o
       row('Invert look', check('invertY')),
       row('Sprint toggles', check('sprintToggle'), 'Shift switches sprint on and off instead of holding it'),
       row('Captions for sounds', check('captions')),
+      row('Show me on the online leaderboard', check('leaderboard'), 'Shares your Arcade name, Scrip and ores sold while you play'),
       onCleanup ? row('Tidy up', h('button', { class: 'btn', onclick: (e) => { const n = onCleanup(); e.currentTarget.textContent = `Cleared ${n}`; } }, 'Clear loose clods and piles'), 'Happens straight away') : null);
     // Controls: a table of key chips (two per action) and what they do.
     const keyChip = (a, i) => h('button', {

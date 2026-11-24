@@ -158,11 +158,20 @@ Prices are low so you progress fast: the starter kit (sluice, drill, intake
 and pipe) costs about § 200, and Machine Shop builds take half the ingots
 they used to.
 
-- **Selling.** Put anything on the **Assay Office** counter and ring the
-  bell (E): ore, ingots, gems (cut or uncut) and crafted goods. The clerk
-  weighs them and the ledger pays base price in Scrip (§).
-- **Market stalls.** The three stalls each want one thing a day, shown on
-  their chalkboards. They pay up to 130% of base, falling as you sell to them.
+- **Selling.** The **Assay Office** is the one shop that buys, and it buys
+  everything: ore, ingots, gems (cut or uncut) and crafted goods. Put things
+  on its counter and ring the bell (E); the clerk weighs them and pays
+  today's price in Scrip (§).
+- **Today's prices.** Prices move a little every morning (between 80% and
+  125% of a material's base value). The big board beside the Assay Office
+  shows today's § per kg for every material, raw and refined, with ▲/▼ for
+  the change since yesterday; E on it opens the full list.
+- **Leaderboard** (pause menu or title). Players with an online Arcade
+  account are listed by their Arcade name, ranked by Scrip, with how many
+  ores they've sold. **View base** on an online player asks their game for
+  a picture of their base from above. Players who aren't online show their
+  last-seen numbers. Sandbox games and co-op guests aren't listed, and
+  Settings → Gameplay can take you off it.
 - **Shops.** Every shop counter in Millbrook (General Store, Millwright,
   Foundry Yard, Signal House, Wagon Shed) sells everything: tools, machines,
   logic parts, fuel and vehicles. What you buy appears on the pad by that
@@ -342,7 +351,7 @@ crates.
 | Mk III | Drill (tip 9 m), Sluice (2 s), River Intake (160 L/s), Glimmer Pick, Glimmer Pipe |
 | Mk IV | Drill (Ember Seam only), Sluice for basalt, Ember Shovel, Ember Pick |
 
-**Upper Falls.** Take the switchback road up the falls step, on the west bank. The **Gem Cutter** cuts any uncut gems on its counter for 12% of their cut value (ring the bell), and the fourth market stall always wants something refined.
+**Upper Falls.** Take the switchback road up the falls step, on the west bank. The **Gem Cutter** cuts any uncut gems on its counter for 12% of their cut value (ring the bell).
 
 **Vehicles** (Wagon Shed). The Wagon Shed also lists your vehicles, so you can call one to the yard or sell it back for half.
 

@@ -15,7 +15,7 @@ export const ACTION_LABELS = {
 export const DEFAULTS = {
   fov: 75, sensitivity: 1, invertY: false, sprintToggle: false, headBob: false, graphics: 'high',
   volume: { master: 0.8, music: 0.5, ambience: 0.7, machines: 0.8, water: 0.7, ui: 0.8 },
-  captions: false, binds: DEFAULT_BINDS,
+  captions: false, leaderboard: true, binds: DEFAULT_BINDS,
 };
 
 export function loadSettings() {

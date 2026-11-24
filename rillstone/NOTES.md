@@ -1357,3 +1357,43 @@ so far:
   - it checks that every pause button has an icon, that Call nearest
     vehicle parks the truck nearby, and that photo mode hides and restores
     the menu.
+
+### One sell shop and today's prices
+
+- **Removed:** the three market stalls in Millbrook, the Upper Falls stall
+  and the Gem Buyer. The Assay Office ("We buy everything") is the only
+  buyer.
+- **Prices:** `economy.state.prices` holds a factor per sellable material. It
+  takes a random walk each new day, pulled gently towards 1 and clamped to
+  0.8–1.25; `pricesPrev` keeps yesterday's for the arrows.
+- **Quote:** `quote(it) = itemValue(it) × factor(material)`. A crafted piece
+  with a gem pays the gem at its own factor.
+- **The board** (town.js `redrawBoards`) is a canvas texture: material, raw
+  and refined § per kg, and the trend. It redraws on a new day (and lazily
+  on guests). E opens a panel with the same table, plus craft multipliers.
+- **Stats:** `economy.state.stats` counts `oresSold`, `oreKg` and
+  `itemsSold` for life (the leaderboard uses them).
+- **Pacing:** unchanged on average. The pacing tests price loot with
+  `itemValue`, so they don't drift.
+
+### Leaderboard
+
+- **How it works** (`net/board.js`, `ui/leaderboard.js`): a presence
+  channel `rill1-lb` on the arcade realtime server.
+  - **Your line:** while you play with an online Arcade account, your game
+    tracks `{ n: Arcade name, s: Scrip, o: ores sold, kg, d: day }`,
+    updated at most every 15 s and only when it changed. Sandbox games, co-op
+    guests and players who switched it off untrack.
+  - **Remembered rows:** the server keeps nothing, so each client stores the
+    rows it has seen in localStorage (`rill-lb`, up to 100). Offline players
+    show their last-seen numbers.
+- **View base:** a `pic?` broadcast asks a player for a picture. Their game
+  renders the view from above its machines' centroid (or the claim post),
+  framed by their spread. It sends back a 640 × 360 JPEG of about 10–60 KB,
+  in 16 KB chunks, and answers at most once every 5 s.
+- **Test:** `--coop` puts two players on the board through the local relay,
+  checks names, Scrip, ores sold and ranking, and opens the page and views
+  the other player's base.
+- **Not built:** a permanent, server-side board (scores kept while everyone
+  is offline, and pictures of offline bases). That needs a small Cloudflare
+  Worker with storage, which hasn't been created.

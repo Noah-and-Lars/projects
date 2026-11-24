@@ -42,18 +42,17 @@ check(Math.abs(itemValue({ material: 'silver', stage: 'crafted', craft: 'ring', 
   const { createEconomy } = await import('../src/js/sim/economy.js');
   const E = createEconomy(mulberry32(4)); E.init();
   const st = E.state;
-  check(st.market.length === 4 && st.contracts.length === 3 && ['ingot', 'cut', 'crafted'].includes(st.market[3].want.stage), '4 market stalls (the Upper Falls one wants refined goods) and 3 contracts');
-  const m = st.market[0], w = m.want;
-  const it = { material: w.kind ? 'garnet' : w.material, stage: w.stage, kg: 1 };
-  const q0 = E.quote(it, 0), base = itemValue(it);
-  check(q0 >= base * 1.05 - 1e-9 && q0 <= base * 1.3 + 1e-9, `stall pays ${(q0 / base * 100).toFixed(0)}% of base`);
-  m.sold = 1000; const q1 = E.quote(it, 0);
-  check(Math.abs(q1 - Math.max(base, base * m.mult * 0.85)) < 1e-9, `after § 1000 sold the stall pays ${(q1 / base * 100).toFixed(0)}% (falls 1.5%/§100, floor at base)`);
-  m.sold = 1e6; check(E.quote(it, 0) === base, 'price floor at base');
+  const gold = { material: 'gold', stage: 'ore', kg: 1 };
+  check(st.contracts.length === 3 && Object.keys(st.prices).length === 10 && st.prices.quartz === undefined, 'one shop with a price for each of the 10 sellable materials, and 3 contracts');
+  check(Math.abs(E.quote(gold) - 30 * st.prices.gold) < 1e-9 && E.quote(gold, 'stall') == null, `gold ore sells at base × today's factor (${st.prices.gold})`);
+  let lo = 9, hi = 0; for (let d = 2; d < 200; d++) { E.newDay(d); for (const v of Object.values(st.prices)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }
+  check(lo >= 0.8 && hi <= 1.25 && hi - lo > 0.2, `prices drift day to day within 80–125% (seen ${lo}–${hi})`);
+  const ore0 = st.stats.oresSold; E.sell([gold, { material: 'gold', stage: 'ingot', kg: 1 }], 'assay');
+  check(st.stats.oresSold === ore0 + 1 && st.stats.oreKg >= 1, 'selling counts ores sold (not ingots)');
   const wrong = { material: 'quartz', stage: 'ore', kg: 1 };
   const r = E.sell([wrong], 'assay');
   check(r.total === 0 && r.refused.length === 1, 'quartz is refused (fuel)');
-  E.newDay(2); check(st.market.every(x => x.sold === 0) && st.soldToday === 0, 'demand recovers overnight');
+  E.newDay(300); check(st.soldToday === 0, 'the day\'s sales reset overnight');
   // Complete a contract by selling.
   const c = st.contracts.find(x => x.kind === 'kg') || st.contracts[0];
   const before = st.scrip;
@@ -62,7 +61,7 @@ check(Math.abs(itemValue({ material: 'silver', stage: 'crafted', craft: 'ring', 
   { const { CLAIMS } = await import('../src/js/world/valley.js'); const w = CLAIMS.find(c => c.id === 'willow'); const s0 = st.scrip; st.scrip = w.price - 1;
     check(E.buyClaim('willow') === 'poor' && (st.scrip = w.price, E.buyClaim('willow')) === 'ok' && st.scrip === 0, `the Willow Bend deed costs § ${w.price}, money only`); st.scrip = s0; }
   const gem = { material: 'garnet', stage: 'uncut', kg: 1 }, ore = { material: 'gold', stage: 'ore', kg: 1 };
-  check(E.quote(gem, 'assay') > 0 && E.quote(ore, 'assay') === 30, 'the Assay Office buys gems and ore alike');
+  check(E.quote(gem, 'assay') > 0 && Math.abs(E.quote(ore, 'assay') - 30 * st.prices.gold) < 1e-9, 'the Assay Office buys gems and ore alike');
   const rg = E.sell([gem], 'assay'); check(rg.total > 0 && !rg.refused.length, 'selling a gem at the Assay Office pays');
   { const { CLAIMS } = await import('../src/js/world/valley.js'); E.makeSandbox(); check(E.sandbox && E.spend(1e9) && st.scrip === 9999999 && st.owned.length === CLAIMS.length, 'sandbox: spending never runs out and every claim is owned'); st.flags.sandbox = false; }
 }

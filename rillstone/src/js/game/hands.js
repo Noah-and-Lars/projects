@@ -552,7 +552,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
   // ---- Co-op guest: actions go to the host, which runs the real thing ----
   // Panels (shops, the guild board, machine panels, the truck bed) open here;
   // what they change is sent on as UI actions.
-  const LOCAL_PROPS = new Set(['shop', 'guild', 'pumpboard', 'chalk']);
+  const LOCAL_PROPS = new Set(['shop', 'guild', 'pumpboard', 'prices']);
   function remoteControls(input, info) {
     const e = heldEnt();
     if (input.pressed('use') || (input.held('use') && H.cooldown <= -0.15)) {

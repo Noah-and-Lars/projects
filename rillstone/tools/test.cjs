@@ -351,8 +351,20 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     });
     check(kit.ok === 12 && kit.crates === 4 && kit.coils === 8, `bought the starter kit: ${kit.crates} machine crates and ${kit.coils} pipe coils for § ${kit.spent}`);
     // Market saturation in the live game.
-    const mkt = await p.evaluate(() => { const E = __rill.economy; const m = E.state.market[0]; const a = E.stallMult(0); m.sold += 500; const b = E.stallMult(0); m.sold -= 500; return { a, b, want: m.want }; });
-    check(mkt.b < mkt.a || mkt.a === 1, `stall 1 price drops after sales (${(mkt.a * 100).toFixed(0)}% -> ${(mkt.b * 100).toFixed(0)}%)`);
+    // One shop buys everything, at today's prices from the board beside it.
+    const px = await p.evaluate(() => {
+      const R = __rill, E = R.economy, T = R.town;
+      const sellers = T.counters.filter(c => c.venue !== 'cutter').map(c => c.venue);
+      const board = [...T.props.values()].find(q => q.kind === 'prices');
+      const list = E.priceList(), gold = list.find(r => r.material === 'gold');
+      const q = E.quote({ material: 'gold', stage: 'ore', kg: 1 }, 'assay');
+      const f0 = { ...E.state.prices }; E.newDay(E.state.day + 1); const f1 = { ...E.state.prices };
+      const moved = Object.keys(f1).some(k => f1[k] !== f0[k]), inRange = Object.values(f1).every(v => v >= 0.8 && v <= 1.25);
+      T.interact(board && [...T.props.entries()].find(([, v]) => v === board)[0]);
+      const rows = document.querySelectorAll('#scr-panel .price-table .pr').length; R.panels.close();
+      return { sellers, board: !!board, n: list.length, gold: gold.forms[0].perKg, q: +q.toFixed(2), moved, inRange, rows, quartz: list.some(r => r.material === 'quartz') };
+    });
+    check(px.sellers.join() === 'assay' && px.board && px.n === px.rows && !px.quartz && Math.abs(px.gold - px.q) < 0.06 && px.moved && px.inRange, `one sell shop (${px.sellers.join()}); the price board lists ${px.n} materials (gold ore § ${px.gold}/kg today, the counter pays § ${px.q}); a new day moves prices within 80–125%`);
     // Cargo: a nugget rides in the truck bed while driving, then comes back out.
     const cargo = await p.evaluate(async () => {
       const R = __rill, V = R.vehicles; R.noRender(true);
@@ -1133,10 +1145,32 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     if (!mainPage.isClosed()) await mainPage.close();
     const { startRelay } = await import('./relay.mjs');
     const relay = startRelay(8790);
-    const init = () => { localStorage.setItem('arcade-acct', JSON.stringify({ name: 'Tester' + Math.floor(Math.random() * 90 + 10), token: 'test' })); window.ARCADE_RT_URL = 'ws://localhost:8790/ws'; window.RILL_RT_LIB = 'http://localhost:8765/tools/fixtures/rt.js'; };
+    const init = () => { localStorage.setItem('arcade-acct', JSON.stringify({ name: 'Tester' + Math.floor(Math.random() * 9000 + 1000), token: 'test' })); window.ARCADE_RT_URL = 'ws://localhost:8790/ws'; window.RILL_RT_LIB = 'http://localhost:8765/tools/fixtures/rt.js'; };
     const openCtx = async () => { const c = await b.newContext({ viewport: { width: 960, height: 540 } }); await c.addInitScript(init); const pg = await c.newPage(); const e2 = []; pg.on('pageerror', e => e2.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error' && !/GL Driver|GPU stall/.test(m.text())) e2.push(m.text()); }); await pg.goto(URL); await pg.waitForFunction(() => window.__rill && window.__rill.ready, null, { timeout: 120000 }); await pg.evaluate(() => { __rill.play(); __rill.noRender(true); }); return { c, pg, e2 }; };
     if (!all) {} // the main page stays open; the co-op pages are separate contexts
     const H = await openCtx(), G = await openCtx();
+    // Leaderboard: both players appear with their Arcade names, Scrip and
+    // ores sold; G opens the page and views H's base (a picture from above).
+    await H.pg.evaluate(() => { const E = __rill.economy.state; E.scrip = 4321; E.stats.oresSold = 17; E.stats.oreKg = 9.5; __rill.board.push(true); });
+    await G.pg.evaluate(() => { const E = __rill.economy.state; E.scrip = 1234; E.stats.oresSold = 3; E.stats.oreKg = 1.2; __rill.board.push(true); });
+    const lb = await G.pg.evaluate(async () => {
+      const R = __rill, B = R.board, wait = (ms) => new Promise(r => setTimeout(r, ms));
+      for (let i = 0; i < 80 && B.rows.filter(r => r.online).length < 2; i++) await wait(250);
+      R.openLeaderboard(); await wait(300);
+      const ui = document.querySelectorAll('#scr-board .lb-row:not(.lb-head)').length;
+      const other = B.rows.find(r => r.online && !r.me);
+      const btn = [...document.querySelectorAll('#scr-board .lb-row')].find(r => r.textContent.includes(other?.name || '?'))?.querySelector('button');
+      btn?.click();
+      for (let i = 0; i < 80 && !document.querySelector('#scr-board img.lb-pic'); i++) await wait(250);
+      const img = document.querySelector('#scr-board img.lb-pic');
+      const out = { rows: B.rows.filter(r => r.online).map(r => ({ name: r.name, scrip: r.scrip, ores: r.ores, me: r.me })), ui, pic: img ? img.src.slice(0, 23) : null, size: img ? img.src.length : 0, me: JSON.parse(localStorage.getItem('arcade-acct')).name };
+      R.boardPage.hide(); R.menu.showPause(false);
+      return out;
+    });
+    console.log('     leaderboard: ' + JSON.stringify(lb));
+    const hostRow = lb.rows.find(r => !r.me), meRow = lb.rows.find(r => r.me);
+    check(lb.rows.length === 2 && hostRow?.scrip === 4321 && hostRow?.ores === 17 && meRow?.name === lb.me && lb.rows[0].scrip === 4321 && lb.ui >= 2 && lb.pic === 'data:image/jpeg;base64,' && lb.size > 5000,
+      `leaderboard: ${lb.rows.map(r => `${r.name} § ${r.scrip} · ${r.ores} ores`).join(', ')} (ranked by Scrip); View base brought back a ${(lb.size / 1024).toFixed(0)} KB picture of the other player's base`);
     // Benchmark 5: a well-used world (dug claims, 400 loose finds, machines).
     const world = await H.pg.evaluate(async () => {
       const R = __rill, I = R.items, C = R.places.CLAIMS;

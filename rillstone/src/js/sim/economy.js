@@ -1,22 +1,11 @@
 // The economy, held by the host (BUILD_BRIEF 3.6): an abstract ledger in
-// Scrip (§), market buyers that saturate during the day,
-// guild contracts and claim deeds. Plain data, so it saves and syncs.
+// Scrip (§), one shop that buys everything (the Assay Office) at prices that
+// drift a little each day, guild contracts and claim deeds. Plain data, so it
+// saves and syncs.
 import { MATERIALS, itemValue, itemName } from '../defs/materials.js';
 import { CLAIMS } from '../world/valley.js';
 
-// What market buyers want (BUILD_BRIEF 3.6): raw ore of Y, ingots of X, cut
-// gems or crafted goods. Millbrook's stalls start with raw goods; the Upper
-// Falls buyer (stall 4) always wants something refined.
-const RAW_WANTS = [
-  { stage: 'ore', material: 'copper' }, { stage: 'ore', material: 'iron' }, { stage: 'ore', material: 'silver' },
-  { stage: 'ore', material: 'gold' }, { stage: 'uncut', kind: 'gem' },
-];
-const REFINED_WANTS = [
-  { stage: 'ingot', material: 'copper' }, { stage: 'ingot', material: 'iron' }, { stage: 'ingot', material: 'silver' },
-  { stage: 'ingot', material: 'gold' }, { stage: 'cut', kind: 'gem' }, { stage: 'crafted' },
-];
-const CRAFT_NAMES = { toolhead: 'tool head', ring: 'ring', chain: 'chain', chalice: 'chalice' };
-export const wantLabel = (w) => (w.stage === 'crafted' ? (w.material ? `${MATERIALS[w.material].name} ${CRAFT_NAMES[w.craft] || 'piece'}` : 'Crafted goods') : w.kind === 'gem' ? (w.stage === 'cut' ? 'Cut gems' : 'Uncut gems') : `${MATERIALS[w.material].name} ${w.stage === 'ore' ? 'ore' : w.stage + 's'}`);
+const CRAFT_NAMES = { toolhead: 'tool head', ring: 'ring', chain: 'chain', pendant: 'pendant', chalice: 'chalice', blade: 'blade' };
 const matches = (w, it) => it.stage === w.stage && (w.kind ? MATERIALS[it.material]?.kind === w.kind : !w.material || it.material === w.material) && (!w.craft || it.craft === w.craft);
 
 // Contract templates, scaled by how many contracts you've finished (a
@@ -47,20 +36,22 @@ function makeContract(rng, standing, id) {
 }
 
 export const SANDBOX_SCRIP = 9999999;
+export const PRICE_MIN = 0.8, PRICE_MAX = 1.25;
 export function createEconomy(rng) {
   const S = {
     scrip: 0, standing: 0, day: 1, soldToday: 0, totalEarned: 0, ledger: [],
-    market: [], contracts: [], nextContract: 1, owned: ['gravel'], flags: {},
+    market: [], prices: null, pricesPrev: null, stats: { oresSold: 0, oreKg: 0, itemsSold: 0 }, contracts: [], nextContract: 1, owned: ['gravel'], flags: {},
   };
   const api = { state: S };
+  // Today's price of each material at the shop, as a factor of its base
+  // value: a gentle random walk each morning between 80% and 125%.
+  const SELLABLE = Object.keys(MATERIALS).filter(m => MATERIALS[m].kind !== 'fuel');
   function rollMarket() {
-    // After a few contracts, Millbrook's stalls mix in refined wants.
-    const pool = S.standing >= 4 ? RAW_WANTS.concat(REFINED_WANTS.slice(0, 4)) : RAW_WANTS.slice();
-    const refined = REFINED_WANTS.slice();
-    const mk = (i, w) => ({ stall: i, want: w, mult: Math.round((1.05 + rng() * 0.25) * 100) / 100, sold: 0 });
-    S.market = [0, 1, 2].map((i) => mk(i, pool.splice(Math.floor(rng() * pool.length), 1)[0]));
-    S.market.push(mk(3, refined[Math.floor(rng() * refined.length)]));
+    S.prices ||= {}; S.pricesPrev = { ...S.prices };
+    for (const m of SELLABLE) { const f = S.prices[m] ?? 1; S.prices[m] = Math.round(Math.min(PRICE_MAX, Math.max(PRICE_MIN, f * (0.93 + rng() * 0.14) + (1 - f) * 0.15)) * 100) / 100; }
+    S.market = [];
   }
+  api.priceFactor = (material) => S.prices?.[material] ?? 1;
   function refillContracts() {
     S.contracts = S.contracts.filter(c => !c.done);
     // A day contract that turns up mid-day counts sales from now on.
@@ -69,27 +60,23 @@ export function createEconomy(rng) {
   api.init = () => { rollMarket(); refillContracts(); };
   api.newDay = (day) => { S.day = day; S.soldToday = 0; rollMarket(); for (const c of S.contracts) if (c.kind === 'day' && !c.done) { c.progress = 0; c.base = 0; } refillContracts(); };
 
-  // A market stall pays 105-130% of base, falling 1.5% per § 100 sold there
-  // today, never below base.
-  api.stallMult = (i) => { const m = S.market[i]; return m ? Math.max(1, m.mult * (1 - 0.015 * (m.sold / 100))) : 1; };
-  // Who buys what: the Assay Office buys everything (ore, ingots, gems cut or
-  // uncut, crafted goods) at base price. The Gem Buyer also takes gems, and
-  // the market stalls pay a bonus for their want of the day.
-  const isGem = (it) => MATERIALS[it.material]?.kind === 'gem';
-  api.refuseReason = (it, venue) => {
-    if (MATERIALS[it.material]?.kind === 'fuel') return 'Quartz is fuel, not for sale';
-    if (venue === 'gems' && !isGem(it)) return 'The Gem Buyer only takes gems';
-    if (typeof venue === 'number' && api.quote(it, venue) == null) return 'Not what this stall wants today';
-    return null;
+  // One shop buys everything (ore, ingots, gems cut or uncut, crafted goods)
+  // at today's price: its base value times the material's factor. A crafted
+  // piece with a gem set in pays the gem at the gem's own factor.
+  api.refuseReason = (it) => (MATERIALS[it.material]?.kind === 'fuel' ? 'Quartz is fuel, not for sale' : null);
+  api.quote = (it, venue = 'assay') => {
+    if (venue !== 'assay' || !MATERIALS[it.material]) return null;
+    if (it.gem) { const { gem, ...rest } = it; return itemValue(rest) * api.priceFactor(it.material) + itemValue(gem) * 1.1 * api.priceFactor(gem.material); }
+    return itemValue(it) * api.priceFactor(it.material);
   };
-  api.quote = (it, venue) => {
-    const base = itemValue(it);
-    if (venue === 'assay') return base;
-    if (venue === 'gems') return isGem(it) ? base : null;
-    const m = S.market[venue]; if (!m || !matches(m.want, it)) return null;
-    return base * api.stallMult(venue);
-  };
-  // Sell a list of items (plain item data) at a venue: 'assay' or a stall index.
+  // The board outside the shop: § per kg for each material and form today,
+  // with the change since yesterday.
+  api.priceList = () => SELLABLE.map(m => {
+    const M = MATERIALS[m], f = api.priceFactor(m), prev = S.pricesPrev?.[m] ?? f;
+    const forms = M.kind === 'gem' ? [['uncut', M.ore], ['cut', M.refined]] : [['ore', M.ore], ['ingot', M.refined]];
+    return { material: m, name: M.name, kind: M.kind, factor: f, trend: f > prev + 0.005 ? 1 : f < prev - 0.005 ? -1 : 0, forms: forms.map(([stage, base]) => ({ stage, perKg: Math.round(base * f * 10) / 10 })) };
+  });
+  // Sell a list of items (plain item data) at the Assay Office.
   api.sell = (list, venue) => {
     let total = 0; const sold = [], refused = [];
     for (const it of list) {
@@ -97,7 +84,9 @@ export function createEconomy(rng) {
       const q = why ? null : api.quote(it, venue);
       if (q == null) { refused.push({ it, why: why || 'Not wanted here' }); continue; }
       total += q; sold.push(it);
-      if (typeof venue === 'number') S.market[venue].sold += q;
+      // Lifetime tallies (the leaderboard shows ores sold).
+      const st = (S.stats ||= { oresSold: 0, oreKg: 0, itemsSold: 0 });
+      st.itemsSold++; if (it.stage === 'ore') { st.oresSold++; st.oreKg = Math.round((st.oreKg + it.kg) * 100) / 100; }
       progressContracts(it, q);
     }
     total = Math.round(total);
@@ -149,6 +138,6 @@ export function createEconomy(rng) {
   };
   api.describe = (it) => itemName(it);
   api.serialize = () => JSON.parse(JSON.stringify(S));
-  api.restore = (d) => { Object.assign(S, d); S.flags ||= {}; if (S.market.length < 4) rollMarket(); };
+  api.restore = (d) => { Object.assign(S, d); S.flags ||= {}; S.stats ||= { oresSold: 0, oreKg: 0, itemsSold: 0 }; if (!S.prices) rollMarket(); };
   return api;
 }

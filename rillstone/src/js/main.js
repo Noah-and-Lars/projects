@@ -37,6 +37,8 @@ import { createCamp } from './game/camp.js';
 import { createMachines4 } from './game/machines4.js';
 import { createSavesPage, ago, playTime } from './ui/saves.js';
 import { createCoopPage } from './ui/coop.js';
+import { createLeaderboardPage } from './ui/leaderboard.js';
+import { createBoard, arcadeAccount } from './net/board.js';
 import { createGuide } from './game/guide.js';
 import { createMap } from './game/map.js';
 import { h } from './ui/dom.js';
@@ -220,6 +222,49 @@ async function boot() {
     setName: (n) => { try { localStorage.setItem('rill-name', cleanName(n) || ''); } catch (_) {} },
     onBack: () => { coopPage.hide(); if (coopFrom === 'title') menu.showTitle(true); else menu.showPause(true); },
   });
+  // ---- Leaderboard (net/board.js, ui/leaderboard.js) ----
+  // Your line: Scrip and ores sold (not for sandbox games, co-op guests, or
+  // if you switched it off in Settings).
+  const board = createBoard({
+    entry: () => (!state.playing || economy.sandbox || coop.isGuest() || settings.leaderboard === false) ? null : { s: economy.state.scrip, o: economy.state.stats?.oresSold || 0, kg: economy.state.stats?.oreKg || 0, d: state.day },
+    picture: () => Promise.resolve(basePicture()),
+  });
+  // A picture of your base from above: centred on your machines (or the
+  // claim post), framed to fit them.
+  function basePicture() {
+    try {
+      const mine = [...machines.list.values()].filter(m => !m.run);
+      let cx, cz;
+      if (mine.length) { cx = mine.reduce((a, m) => a + m.pos[0], 0) / mine.length; cz = mine.reduce((a, m) => a + m.pos[2], 0) / mine.length; }
+      else { const s = spawnPoint(); cx = s.x; cz = s.z; }
+      const spread = Math.min(60, Math.max(12, ...mine.map(m => Math.hypot(m.pos[0] - cx, m.pos[2] - cz) + 4)));
+      const cy = height(cx, cz), p0 = camera.position.clone(), q0 = camera.quaternion.clone();
+      camera.position.set(cx + spread * 0.8, cy + spread * 1.1 + 6, cz + spread * 0.8); camera.lookAt(cx, cy, cz); camera.updateMatrixWorld();
+      hands.setVisible(false); view.render(); hands.setVisible(true);
+      const src = view.renderer.domElement, c = document.createElement('canvas'); c.width = 640; c.height = 360;
+      const sw = Math.min(src.width, src.height * 16 / 9), sh = sw * 9 / 16;
+      c.getContext('2d').drawImage(src, (src.width - sw) / 2, (src.height - sh) / 2, sw, sh, 0, 0, c.width, c.height);
+      camera.position.copy(p0); camera.quaternion.copy(q0); camera.updateMatrixWorld(); view.render();
+      return c.toDataURL('image/jpeg', 0.72);
+    } catch (_) { return null; }
+  }
+  let boardFrom = 'title';
+  const boardPage = createLeaderboardPage(ui, {
+    board,
+    onBack: () => { boardPage.hide(); if (boardFrom === 'title') menu.showTitle(true); else menu.showPause(true); },
+    status: () => !arcadeAccount() ? 'Sign in to the Arcade with an online account to see the leaderboard and appear on it.'
+      : board.error === 'offline' ? 'Could not reach the online service: you may be offline.'
+        : !state.playing ? null : economy.sandbox ? 'This is a sandbox game, so you aren’t listed while you play it.'
+          : coop.isGuest() ? 'You’re a guest in a co-op world, so you aren’t listed while you’re here.'
+            : settings.leaderboard === false ? 'You’ve switched off appearing on the leaderboard (Settings → Gameplay).' : null,
+  });
+  function openLeaderboard() {
+    if (panels.open) panels.close();
+    boardFrom = menu.titleShown || !state.playing ? 'title' : 'pause';
+    menu.showTitle(false); menu.showPause(false);
+    boardPage.show();
+    board.join().then(() => { board.push(true); boardPage.refresh(); });
+  }
   function openCoop() {
     if (panels.open) panels.close();
     coopFrom = menu.titleShown || !state.playing ? 'title' : 'pause';
@@ -251,6 +296,7 @@ async function boot() {
       { label: 'Saves', icon: 'saves', onclick: () => openSavesPage() },
       { label: 'Settings', icon: 'settings', onclick: () => menu.openSettings() },
       { label: 'Co-op', icon: 'coop', onclick: () => openCoop() },
+      { label: 'Leaderboard', icon: 'trophy', onclick: () => openLeaderboard() },
       { label: 'How to play', icon: 'help', onclick: () => { play(); guide.open(); } },
       { label: 'Photo mode', icon: 'camera', onclick: () => photoMode() },
       { label: 'Return to claim post', icon: 'post', onclick: () => { if (vehicles.driving) exitVehicle(); const s = spawnPoint(); teleport(s.x, height(s.x, s.z) + 1, s.z, s.yaw); play(); } },
@@ -287,6 +333,7 @@ async function boot() {
     menu.showTitle(false); menu.showPause(false); menu.hideSettings();
     hud.show(true);
     if (!TEST) input.lock();
+    if (arcadeAccount() && settings.leaderboard !== false) board.join();
   }
   input.onLockChange = (locked) => {
     if (!locked && state.mode === 'play' && !TEST && !panels.open) { state.mode = 'pause'; menu.showPause(true); }
@@ -400,6 +447,7 @@ async function boot() {
       { label: 'New game', icon: 'new', primary: true, onclick: () => openSavesPage('new') },
       { label: 'Saves', icon: 'saves', onclick: () => openSavesPage() },
       { label: 'Co-op', icon: 'coop', sub: 'Host or join a friend', onclick: () => openCoop() },
+      { label: 'Leaderboard', icon: 'trophy', onclick: () => openLeaderboard() },
       { label: 'Settings', icon: 'settings', onclick: () => menu.openSettings() },
     ]);
     return saves.list().then((list) => {
@@ -409,6 +457,7 @@ async function boot() {
       items2.push({ label: 'New game', icon: 'new', primary: !latest, onclick: () => openSavesPage('new') });
       items2.push({ label: 'Saves', icon: 'saves', sub: `${list.filter(m => !m.empty).length} of ${list.length} slots used`, onclick: () => openSavesPage() });
       items2.push({ label: 'Co-op', icon: 'coop', sub: 'Host or join a friend', onclick: () => openCoop() });
+      items2.push({ label: 'Leaderboard', icon: 'trophy', onclick: () => openLeaderboard() });
       items2.push({ label: 'Settings', icon: 'settings', onclick: () => menu.openSettings() });
       menu.setTitleItems(items2);
     });
@@ -505,7 +554,7 @@ async function boot() {
     while (simAcc >= 1 / SIM_HZ) { simAcc -= 1 / SIM_HZ; const t1 = performance.now(); simTick(); timings.sim = performance.now() - t1; }
 
     // Time of day.
-    if (state.mode === 'play' && !coop.isGuest()) { state.time += dt / DAY_SECONDS; if (state.time >= 1) { state.time -= 1; state.day++; economy.newDay(state.day); town.newDay(); hud.toast(`Day ${state.day}: new market wants on the chalkboards`); } }
+    if (state.mode === 'play' && !coop.isGuest()) { state.time += dt / DAY_SECONDS; if (state.time >= 1) { state.time -= 1; state.day++; economy.newDay(state.day); town.newDay(); hud.toast(`Day ${state.day}: new prices on the board at the Assay Office`); } }
     player.camera(camera, Math.min(1, acc * 60), dt);
     if (vehicles.driving) vehicles.camera(camera, controls() ? lookD : { x: 0, y: 0 }, dt);
     // Safety net: fell through the world somehow? Back to the claim post.
@@ -575,6 +624,7 @@ async function boot() {
     }
     if (state.mode === 'play') { state.playTime += dt; state.autosaveT += dt; if (state.autosaveT > 180 && !coop.isGuest() && state.slot) { state.autosaveT = 0; saveTo(state.slot, true); } }
     coop.update(dt);
+    board.update(dt);
     // (tests switch the guide on only when they check it: it pays out Scrip)
     guide.auth = !coop.isGuest() && (!TEST || !!state.guideOn);
     guide.update(dt, state.mode === 'play');
@@ -625,6 +675,7 @@ async function boot() {
   if (TEST) Object.assign(api, {
     THREE, view, player, input, state, settings, hud, menu, savesPage, coopPage, water, flora, claims, items, hands, audio, lootRng, economy, vehicles, town, panels, saves, bed, machines, auto, progress, workshop, heavy, adit, coop, net, guide, map, snapshot, restore, saveTo, loadSlot, toggleVehicle, exitVehicle,
     places: { TOWN, HAMLET, ADIT, CLAIMS, FALLS_Z, PUMPHOUSE, spawn: spawnPoint() },
+    board, boardPage, openLeaderboard: () => openLeaderboard(), basePicture: () => basePicture(),
     relicSpot, veins: VEINS, rollLoot, itemValue, pumpStages: PUMP_STAGES,
     height, riverX, waterY,
     play,
