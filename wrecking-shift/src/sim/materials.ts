@@ -134,7 +134,9 @@ function buildPalette() {
       g = ((SPRAY_COLOR >> 8) & 255) / 255;
       b = (SPRAY_COLOR & 255) / 255;
     } else {
-      const k = s === 6 ? 0.22 : 0.14;
+      // soot in two steps (6 = light, 7 = heavy). It used to be 22 % / 14 % of the colour: blast marks read as
+      // black holes. The genre reference soots in gradual tint steps; the surface stays recognisable.
+      const k = s === 6 ? 0.5 : 0.27;
       const grey = (r + g + b) / 3;
       r = (r * 0.5 + grey * 0.5) * k; g = (g * 0.5 + grey * 0.5) * k; b = (b * 0.5 + grey * 0.5) * k;
     }

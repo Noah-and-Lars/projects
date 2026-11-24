@@ -36,7 +36,7 @@ export interface CarveOptions {
   ignore?: VoxelBody | null;
   /** only carve bodies passing this test */
   filter?: (b: VoxelBody) => boolean;
-  /** roughness of the hole edge 0..1 (default 0.25) */
+  /** roughness of the hole edge 0..1 (default 0.15) */
   rough?: number;
   /** tool / cause label carried on the event */
   cause?: string;
@@ -252,7 +252,10 @@ export class Sim {
     if (!p) return 0;
     g.data[i] = 0;
     g.count--;
-    body.col.setVoxel(x, y, z, false);
+    // Rapier 0.21's setVoxel can hit an "unreachable" panic on small, sparse dynamic voxel colliders (seen on fresh
+    // debris with 1-5 voxels left in a 26x10x26 grid); those get their collider rebuilt once before the next step
+    if (body.dynamic && g.count < 4000) body.colliderDirty = true;
+    else body.col.setVoxel(x, y, z, false);
     body.markDirtyVoxel(x, y, z);
     const { sx, sy, sz } = g;
     const sxy = sx * sy;
@@ -340,7 +343,7 @@ export class Sim {
     const rad = [rSoft, rMed, rHard, 0];
     const rMax = Math.max(rSoft, rMed, rHard);
     const sc = opts.scorch ?? 0;
-    const rough = opts.rough ?? 0.25;
+    const rough = opts.rough ?? 0.15;
     const byMat = new Uint32Array(MATERIALS.length);
     const res: CarveResult = { removed: 0, byMat, bodies: [] };
     const samples: { p: V3; pal: number }[] = [];
@@ -397,8 +400,10 @@ export class Sim {
               }
             } else if (sc > 0 && h < 3) {
               const rs = Math.sqrt(rr) + scV;
-              if (d2 < rs * rs && (p & 7) < 6 && hash3(x, y, z, 17) > (Math.sqrt(d2) - Math.sqrt(rr)) / scV * 0.8) {
-                g.data[i] = scorchPal(p, x + y + z);
+              const t = (Math.sqrt(d2) - Math.sqrt(rr)) / scV; // 0 at the hole rim .. 1 at the edge of the soot
+              if (d2 < rs * rs && (p & 7) < 6 && hash3(x, y, z, 17) > t * 0.8) {
+                // heavy soot near the rim, light soot further out (dithered border between the two)
+                g.data[i] = scorchPal(p, t < 0.3 + 0.25 * hash3(x, y, z, 23) ? 1 : 0);
                 body.markDirtyVoxel(x, y, z);
               }
             }
@@ -468,6 +473,11 @@ export class Sim {
   /** Run pending connectivity searches and split islands off. Called automatically each step. */
   processEdits(): void {
     for (let pass = 0; pass < 3 && this.editQueue.size > 0; pass++) this.processEditsOnce();
+    for (const b of this.bodies.values()) {
+      if (!b.colliderDirty) continue;
+      b.colliderDirty = false;
+      if (b.grid.count > 0 && !b.removed) this.rebuildCollider(b);
+    }
   }
 
   private processEditsOnce(): void {
@@ -649,7 +659,7 @@ export class Sim {
    * `size` ~ carve radius of soft material in metres (0.5 small .. 4 huge).
    */
   explode(pos: V3, size: number): void {
-    this.carve(pos, size, size * 0.72, size * 0.42, { scorch: Math.min(0.6, size * 0.3), cause: 'explosion', rough: 0.35, fracture: 0.3 });
+    this.carve(pos, size, size * 0.72, size * 0.42, { scorch: Math.min(0.6, size * 0.3), cause: 'explosion', rough: 0.2, fracture: 0.3 });
     // islands must exist as bodies before we push them
     this.processEdits();
     const R = size * 3.2;
@@ -765,10 +775,15 @@ export class Sim {
     for (const b of this.bodies.values()) {
       if (!b.dynamic) continue;
       if (b.rb.translation().y < -60) { this.removeBody(b); continue; }
-      // small hit chunks settle, then crumble away after a while
-      if (b.user.chip) {
-        const age = this.tick - b.createdTick;
-        if ((age > 900 && b.rb.isSleeping()) || age > 2400) {
+      // Small settled debris is cleaned up only where the player is not looking at it closely (more than 20 m
+      // away), like the genre reference's cleanup script (< 200 voxels, < 10 voxels per side, slow, > 20 m).
+      // Hammer chunks used to crumble 15 s after settling, right in front of the player.
+      if (b.kind === 'debris' && b.tags.size === 0 && b.grid.count < 200 && b.grid.sx < 10 && b.grid.sy < 10 && b.grid.sz < 10 && this.tick - b.createdTick > 300 && (this.tick + b.id) % 30 === 0) {
+        const pl = this.player?.pos;
+        const t = b.rb.translation();
+        const far = !pl || (t.x - pl.x) ** 2 + (t.y - pl.y) ** 2 + (t.z - pl.z) ** 2 > 400;
+        const v = b.rb.linvel();
+        if (far && (b.rb.isSleeping() || v.x * v.x + v.y * v.y + v.z * v.z < 1)) {
           this.out.push({ type: 'crumb', pos: b.rb.worldCom(), pal: firstPal(b.grid), count: Math.min(b.grid.count, 6) });
           this.removeBody(b);
           continue;

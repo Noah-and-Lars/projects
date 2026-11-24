@@ -38,6 +38,7 @@ export interface LookShared {
   uInvVoxel: { value: number };
   /** emissive voxel radiance multiplier */
   uEmissive: { value: number };
+  uDebugAO: { value: number };
   /** ambient left in fully occluded places (0..1) */
   uAOMin: { value: number };
   /** sun cone radius (radians) for soft shadows */
@@ -53,7 +54,7 @@ export function makeLookShared(): LookShared {
   return {
     uBits: { value: null }, uDens: { value: null },
     uVolSize: { value: new THREE.Vector3(4, 4, 4) }, uVolOrigin: { value: new THREE.Vector3() }, uInvVoxel: { value: 1 / VOXEL },
-    uEmissive: { value: 3 }, uAOMin: { value: 0.12 }, uSunSpread: { value: 0.012 }, uSaturation: { value: 0.72 }, uInflate: { value: 0.0015 },
+    uEmissive: { value: 3 }, uDebugAO: { value: 0 }, uAOMin: { value: 0.12 }, uSunSpread: { value: 0.012 }, uSaturation: { value: 0.72 }, uInflate: { value: 0.0015 },
     uSkyZenith: { value: new THREE.Color(0.2, 0.4, 0.8) }, uSkyHorizon: { value: new THREE.Color(0.7, 0.8, 0.9) },
   };
 }
@@ -83,10 +84,14 @@ function definesFor(kind: Kind, cfg: LookConfig): Record<string, string | number
 }
 
 const FRAG_PARS = /* glsl */ `
-uniform float uEmissive; uniform float uAOMin; uniform float uSunSpread; uniform float uSaturation;
+uniform float uDebugAO; uniform float uEmissive; uniform float uAOMin; uniform float uSunSpread; uniform float uSaturation;
 uniform vec3 uSkyZenith; uniform vec3 uSkyHorizon;
 #ifdef VX_OWN
 varying vec2 vAux; centroid varying vec3 vWPos; varying vec3 vWNrm; centroid varying vec3 vVox;
+float vxFp = 1.0; // voxels per pixel (set in color_fragment)
+#ifndef VX_FACE_AO
+varying vec3 vMx; varying vec3 vMy; varying vec3 vMz;
+#endif
 #endif
 float vxGrain(vec3 p) { p = fract(p * 0.1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }
 #ifdef VX_VOLUME
@@ -144,6 +149,45 @@ const LIGHTS_PRE = /* glsl */ `
   if (vxSolidSafe(ivec3(floor(vxP + vxN * 0.5)))) discard;
   #endif
 #endif
+#ifdef VX_OWN
+  // Shading normal (lights only; traces and AO keep the true face normal vxN):
+  // 1. every voxel face is tilted a few degrees at random, constant across the voxel, so big flat walls break
+  //    up into a mosaic of slightly different shading steps (the genre's per-voxel normal detail);
+  // 2. near the camera, convex voxel edges of static bodies get a narrow soft bevel that catches the light.
+  {
+    vec3 vxSn = vxN;
+    float vxNear = 1.0 - smoothstep(0.35, 1.1, vxFp);
+    if (vxNear > 0.0) {
+      vec3 vc = floor(vVox);
+      vec3 h = vec3(vxGrain(vc + 11.3), vxGrain(vc + 23.7), vxGrain(vc + 5.1)) - 0.5;
+      #ifndef VX_FACE_AO
+      h = h.x * vMx + h.y * vMy + h.z * vMz; // dynamic bodies: the tilt rotates with the body
+      #endif
+      h -= vxSn * dot(h, vxSn);
+      vxSn = normalize(vxSn + h * (0.16 * vxNear));
+      #if defined(VX_VOLUME) && defined(VX_FACE_AO)
+      float vxBev = 1.0 - smoothstep(0.08, 0.25, vxFp); // bevel only where a voxel spans > 4 pixels
+      if (vxBev > 0.0) {
+        vec3 an = abs(vxN);
+        vec3 U = an.x > 0.5 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+        vec3 V = an.z > 0.5 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0);
+        if (an.y > 0.5) { U = vec3(1.0, 0.0, 0.0); V = vec3(0.0, 0.0, 1.0); }
+        ivec3 cell = ivec3(floor(vxP - vxN * 0.5));
+        float fu = fract(dot(vxP, U)), fv = fract(dot(vxP, V));
+        const float W = 0.14; // bevel width (voxels)
+        vec3 bend = vec3(0.0);
+        // an edge is convex when the in-plane neighbour voxel is empty
+        if (fu < W && !vxSolidSafe(cell - ivec3(U))) bend -= U * (1.0 - fu / W);
+        if (fu > 1.0 - W && !vxSolidSafe(cell + ivec3(U))) bend += U * (1.0 - (1.0 - fu) / W);
+        if (fv < W && !vxSolidSafe(cell - ivec3(V))) bend -= V * (1.0 - fv / W);
+        if (fv > 1.0 - W && !vxSolidSafe(cell + ivec3(V))) bend += V * (1.0 - (1.0 - fv) / W);
+        vxSn = normalize(vxSn + bend * (0.7 * vxBev));
+      }
+      #endif
+    }
+    normal = normalize((viewMatrix * vec4(vxSn, 0.0)).xyz);
+  }
+#endif
 `;
 
 const AO_CODE = /* glsl */ `
@@ -154,14 +198,21 @@ const AO_CODE = /* glsl */ `
     reflectedLight.directDiffuse *= mix(1.0, vxBakedAO, 0.3);
   #endif
   #ifdef VX_VOLUME
-    #ifdef VX_FACE_AO
+    // face AO (contact darkening) and cone AO (sky visibility) both see the walls right next to a face; their
+    // product counted those twice and turned sun-shadowed nooks almost black, so the darker of the two wins
+    #if defined(VX_FACE_AO) && defined(VX_CONE_AO)
+      vxao *= min(mix(0.3, 1.0, vxFaceAO(vxP, vxN)), vxConeAO(vxP, vxN));
+    #elif defined(VX_FACE_AO)
       vxao *= mix(0.3, 1.0, vxFaceAO(vxP, vxN));
-    #endif
-    #ifdef VX_CONE_AO
+    #elif defined(VX_CONE_AO)
       vxao *= vxConeAO(vxP, vxN);
     #endif
   #endif
   reflectedLight.indirectDiffuse *= mix(uAOMin, 1.0, vxao);
+  #if defined(VX_FACE_AO) && defined(VX_CONE_AO)
+  if (uDebugAO > 1.5) { gl_FragColor = vec4(reflectedLight.indirectDiffuse * 4.0, 1.0); return; }
+  if (uDebugAO > 0.5) { gl_FragColor = vec4(vxFaceAO(vxP, vxN), vxConeAO(vxP, vxN), vxao, 1.0); return; }
+  #endif
 }
 `;
 
@@ -189,7 +240,10 @@ function makeBase(kind: Kind, shared: LookShared, cfg: LookConfig, params: THREE
     vs = mustReplace(vs, '#include <common>', `#include <common>
       attribute vec3 aux;
       uniform float uInflate;
-      varying vec2 vAux; centroid varying vec3 vWPos; varying vec3 vWNrm; centroid varying vec3 vVox;`);
+      varying vec2 vAux; centroid varying vec3 vWPos; varying vec3 vWNrm; centroid varying vec3 vVox;
+      #ifndef VX_FACE_AO
+      varying vec3 vMx; varying vec3 vMy; varying vec3 vMz;
+      #endif`);
     // Overlap quads along edges where the surface continues, proportional to the view distance: rasterizers snap
     // vertices to a sub-pixel grid, so T-junctions of greedy meshes need a (tiny) screen-space overlap, not a
     // fixed world-space one, or distant ground sparkles with background pixels.
@@ -200,8 +254,12 @@ function makeBase(kind: Kind, shared: LookShared, cfg: LookConfig, params: THREE
         vec3 vxU = vxa.x > 0.5 ? vec3(0.0, 1.0, 0.0) : (vxa.y > 0.5 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0));
         vec3 vxV = vxa.x > 0.5 ? vec3(0.0, 0.0, 1.0) : (vxa.y > 0.5 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0));
         float vxk = uInflate * length((modelViewMatrix * vec4(transformed, 1.0)).xyz);
-        if ((vxc & 4) != 0) transformed += vxU * ((vxc & 1) != 0 ? vxk : -vxk);
-        if ((vxc & 8) != 0) transformed += vxV * ((vxc & 2) != 0 ? vxk : -vxk);
+        // convex edges: a third of the overlap (well under a pixel), enough to close T-junction cracks along the
+        // edge (they showed the dark hollow inside of the terrain as black slivers at the ends of terrace steps)
+        float vxku = (vxc & 4) != 0 ? vxk : (vxc & 16) != 0 ? vxk * 0.35 : 0.0;
+        float vxkv = (vxc & 8) != 0 ? vxk : (vxc & 32) != 0 ? vxk * 0.35 : 0.0;
+        transformed += vxU * ((vxc & 1) != 0 ? vxku : -vxku);
+        transformed += vxV * ((vxc & 2) != 0 ? vxkv : -vxkv);
       }`);
     vs = mustReplace(vs, '#include <project_vertex>', `#include <project_vertex>
       vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
@@ -213,7 +271,10 @@ function makeBase(kind: Kind, shared: LookShared, cfg: LookConfig, params: THREE
       #else
       vVox = transformed * ${(1 / VOXEL).toFixed(1)} - normal * 0.5;
       #endif
-      vAux = aux.xy;`);
+      vAux = aux.xy;
+      #ifndef VX_FACE_AO
+      vMx = mat3(modelMatrix)[0]; vMy = mat3(modelMatrix)[1]; vMz = mat3(modelMatrix)[2];
+      #endif`);
     shader.vertexShader = vs;
 
     let fs = patchFragmentLighting(shader.fragmentShader);
@@ -226,7 +287,7 @@ function makeBase(kind: Kind, shared: LookShared, cfg: LookConfig, params: THREE
         // per-voxel grain + a little 4-voxel blotchiness (greedy quads stay big, the shader adds the detail).
         // Both fade to their mean once a cell is smaller than about a pixel: point-sampled sub-pixel noise is
         // pure aliasing and made distant ground sparkle with the slightest camera motion.
-        float vxFp = max(length(dFdx(vVox)), length(dFdy(vVox))); // voxels per pixel
+        vxFp = max(length(dFdx(vVox)), length(dFdy(vVox)));
         float vxG1 = mix(vxGrain(vox + 0.5), 0.5, smoothstep(0.5, 1.5, vxFp));
         float vxG4 = mix(vxGrain(floor(vox * 0.25) + 7.5), 0.5, smoothstep(2.0, 6.0, vxFp));
         alb *= 0.9 + 0.14 * vxG1 + 0.06 * vxG4;

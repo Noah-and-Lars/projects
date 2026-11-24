@@ -268,3 +268,34 @@ Scripted, deterministic playthroughs of all 11 big-map missions live in `tests/u
   after every step, before the next step's systems run, so contact-force crashes never wear vehicles in the real game
   (ramming damage still works). Fixing it would suddenly make vehicles take crash damage everywhere; left for a
   deliberate decision. Also noted: a player running into the parked escape van shoves it a metre or two.
+## Still-camera ground flicker + voxel look pass (see docs/research/09-voxels-deep-dive.md)
+- **Standing-still deadband** (`Player.update`): with no movement input, vertical corrections < 0.3 mm while grounded
+  or held up, and sideways drift < 0.3 mm per tick, are dropped. Cause found by logging the eye: Rapier's controller
+  lifts the character by its normal nudge (1e-4 m) every call and the -1 m/s ground-stick speed pulls it back; on terraced
+  slopes the cylinder rests on voxel edges, is never "grounded" and crept ~4 cm / 10 s. Only without input, because while
+  walking those nudges are what slides the cylinder over voxel edges (a playthrough got stuck otherwise). Not changed:
+  Rapier's nudge factor itself (lowering it risks getting stuck in geometry).
+- **Grain anti-aliasing**: per-voxel grain fades to its mean between 0.5 and 1.5 voxels per pixel (4-voxel blotches
+  between 2 and 6). Static bodies use world-space grain so abutting ground tiles match in their overlap strips.
+- **Crack overlap**: concave edges are overlapped like flat continuations (the overlap slides between two solid voxels,
+  hidden). Convex edges get 35 % of the distance-proportional overlap (sub-pixel, no constant part), which closed the
+  black slivers at terrace step ends. Guess: fins of < 0.5 px at silhouettes are invisible.
+- **Grade contrast** is a power curve around 0.18 instead of `mix(0.5, c, k)` in linear space, which clipped every
+  linear value < 0.0098 to black.
+- **AO combination** = min(face AO term, cone AO) instead of the product (both see the adjacent walls); cones start
+  2 voxels off the surface and take their first sample at 6 voxels (they used to sample the 4³ density cell of the
+  surface they start from). Interiors stay dark (cone AO is the smaller term there).
+- **Per-voxel normal tilt** ±~4° (hash of the voxel cell; rotates with dynamic bodies) and a 0.14-voxel convex-edge
+  bevel on static volume-lit bodies; both fade out with distance (tilt below ~1 px per voxel, bevel below ~4 px). The
+  reference's bevel is a screen-space normal blur; ours is analytic from the occupancy volume (cheaper, no extra pass).
+  Amounts are guesses tuned on screenshots.
+- **Chips**: 2.5-5 cm, tumbling, colour 55 % material / 45 % grey, lifetime 0.6 + 3·r³ s; a chip inside solid matter
+  never comes to rest (they hung in the air around fresh holes).
+- **Soot** shades 50 % / 27 % of the greyed colour; explosions put heavy soot near the rim and light soot further out.
+- **Debris cleanup**: debris bodies < 200 voxels, < 10 per side, untagged, slow or asleep, older than 5 s and more than
+  20 m from the player are removed (numbers from the reference's shipped cleanup script). Replaces "hammer chunks
+  crumble 15 s after settling". The `maxDebris` budget still applies everywhere.
+- **Hole edge roughness** lowered (sledge 0.6 → 0.2, explosions 0.35 → 0.2, default 0.25 → 0.15): the reference
+  carves exact spheres; raggedness comes from overlapping hits. Our crack-seam fracture of blasts is kept (own design).
+- **Bricks** are 3 × 1 voxels, staggered by one voxel per course (were 4 × 2): real-brick scale at 10 cm voxels.
+  Costs ~3-4 % more quads on the big maps (harbor 372 k → 384 k).

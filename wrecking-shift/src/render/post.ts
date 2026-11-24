@@ -59,7 +59,10 @@ void main() {
   c = AgXToneMapping(max(c, vec3(0.0)));
   // grade: a little contrast + saturation back after AgX's gentle desaturation
   c = clamp(c, 0.0, 1.0);
-  c = mix(vec3(0.5), c, uContrast);
+  // contrast as a power curve around mid grey (log space). The old linear mix(0.5, c, k) pushed every value below
+  // 0.5 - 0.5 / k (0.0098 for k = 1.02, i.e. sRGB < 23/255) negative, so sun-shadowed corners clipped to pure black
+  // specks on the ground.
+  c = 0.18 * pow(c / 0.18, vec3(uContrast));
   float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
   c = mix(vec3(l), c, uSaturationOut);
   vec2 q = vUv - 0.5;

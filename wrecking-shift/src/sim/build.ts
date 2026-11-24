@@ -11,10 +11,12 @@ export function shaded(mat: number, block = 1, seed = 0): PalFn {
 }
 /** brick pattern: staggered rows with darker mortar-ish variation */
 export function bricks(mat: number = MAT.brick, seed = 0): PalFn {
+  // bricks are 3 x 1 voxels (30 x 10 cm, about real brick scale at 10 cm voxels; they used to be 40 x 20 cm, which
+  // made brick walls read like breeze blocks and the voxels look coarse), staggered by half a brick per course
   return (x, y, z) => {
-    const row = (y / 2) | 0;
-    const off = row % 2 ? 2 : 0;
-    const bx = ((x + z + off) / 4) | 0;
+    const row = y;
+    const off = row % 2 ? 1 : 0;
+    const bx = Math.floor((x + z + off) / 3);
     return pal(mat, (hash3(bx, row, 0, seed) * 5) | 0);
   };
 }

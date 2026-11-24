@@ -11,7 +11,8 @@ export interface ChunkMesh {
   /**
    * 3 bytes per vertex: x = emissive (0..255), y = glass flag (0 / 255),
    * z = corner code: bit 0 / 1 = corner is on the +u / +v side of its quad (u = axis after the normal axis, v = the one
-   * after that), bit 2 / 3 = the surface continues past that u / v edge (the edge may be overlapped to hide cracks)
+   * after that), bit 2 / 3 = the surface continues past that u / v edge, flat or concave (the edge may be overlapped
+   * to hide cracks), bit 4 / 5 = that edge is convex (or the grid boundary): only a sub-pixel overlap is allowed
    */
   aux: Uint8Array;
   /** triangles of the opaque quads */
@@ -223,16 +224,18 @@ export function meshChunk(grid: VoxelGrid, cx: number, cy: number, cz: number, o
             const p = key & 255;
             const r = (PAL_RGB[p * 3] * 255) | 0, g = (PAL_RGB[p * 3 + 1] * 255) | 0, bl = (PAL_RGB[p * 3 + 2] * 255) | 0;
             const em = (PAL_EMISSIVE[p] * 255) | 0, gl = PAL_GLASS[p] * 255;
-            // Does the surface continue past each edge? (that is where greedy T-junctions can crack; such edges
-            // get overlapped: by `inflate` here and / or by a distance-proportional amount in the vertex shader,
-            // driven by the corner byte.) Convex edges stay exact, so nothing pokes out of neighbouring surfaces.
+            // Does the surface continue past each edge, flat or concave? (that is where greedy T-junctions can crack;
+            // such edges get overlapped: by `inflate` here and / or by a distance-proportional amount in the vertex
+            // shader, driven by the corner byte.) Past a concave edge the overlap slides between two solid voxels, so
+            // it is hidden; without it the foot of every terrace riser showed dark pinholes into the hollow terrain.
+            // Convex edges stay exact, so nothing pokes out of neighbouring surfaces.
             let cU0 = edgeOut, cU1 = edgeOut, cV0 = edgeOut, cV1 = edgeOut;
             {
               const cb = sBase + i * su + j * sv;
-              if (i + cu !== 0) { cU0 = 0; for (let k = 0; k < h; k++) { const c = cb - su + k * sv, pp = pad[c]; if (pp && (PAL_GLASS[pp] ? !pad[c + nOff] : SEE[pad[c + nOff]])) { cU0 = 1; break; } } }
-              if (i + w !== gu) { cU1 = 0; for (let k = 0; k < h; k++) { const c = cb + w * su + k * sv, pp = pad[c]; if (pp && (PAL_GLASS[pp] ? !pad[c + nOff] : SEE[pad[c + nOff]])) { cU1 = 1; break; } } }
-              if (j + cv !== 0) { cV0 = 0; for (let k = 0; k < w; k++) { const c = cb - sv + k * su, pp = pad[c]; if (pp && (PAL_GLASS[pp] ? !pad[c + nOff] : SEE[pad[c + nOff]])) { cV0 = 1; break; } } }
-              if (j + h !== gv) { cV1 = 0; for (let k = 0; k < w; k++) { const c = cb + h * sv + k * su, pp = pad[c]; if (pp && (PAL_GLASS[pp] ? !pad[c + nOff] : SEE[pad[c + nOff]])) { cV1 = 1; break; } } }
+              if (i + cu !== 0) { cU0 = 0; for (let k = 0; k < h; k++) { const c = cb - su + k * sv, pp = pad[c]; if (pp && (PAL_GLASS[pp] ? !pad[c + nOff] : gl ? SEE[pad[c + nOff]] : 1)) { cU0 = 1; break; } } }
+              if (i + w !== gu) { cU1 = 0; for (let k = 0; k < h; k++) { const c = cb + w * su + k * sv, pp = pad[c]; if (pp && (PAL_GLASS[pp] ? !pad[c + nOff] : gl ? SEE[pad[c + nOff]] : 1)) { cU1 = 1; break; } } }
+              if (j + cv !== 0) { cV0 = 0; for (let k = 0; k < w; k++) { const c = cb - sv + k * su, pp = pad[c]; if (pp && (PAL_GLASS[pp] ? !pad[c + nOff] : gl ? SEE[pad[c + nOff]] : 1)) { cV0 = 1; break; } } }
+              if (j + h !== gv) { cV1 = 0; for (let k = 0; k < w; k++) { const c = cb + h * sv + k * su, pp = pad[c]; if (pp && (PAL_GLASS[pp] ? !pad[c + nOff] : gl ? SEE[pad[c + nOff]] : 1)) { cV1 = 1; break; } } }
             }
             const inU0 = cU0 ? inflate : 0, inU1 = cU1 ? inflate : 0, inV0 = cV0 ? inflate : 0, inV1 = cV1 ? inflate : 0;
             // quad corners in (d,u,v) space
@@ -257,7 +260,8 @@ export function meshChunk(grid: VoxelGrid, cx: number, cy: number, cz: number, o
               oCol[q * 16 + c * 4] = r; oCol[q * 16 + c * 4 + 1] = g; oCol[q * 16 + c * 4 + 2] = bl;
               oCol[q * 16 + c * 4 + 3] = AO_LEVELS[a];
               oAux[q * 12 + c * 3] = em; oAux[q * 12 + c * 3 + 1] = gl;
-              oAux[q * 12 + c * 3 + 2] = fu | (fv << 1) | ((fu ? cU1 : cU0) << 2) | ((fv ? cV1 : cV0) << 3);
+              const eu = fu ? cU1 : cU0, ev = fv ? cV1 : cV0;
+              oAux[q * 12 + c * 3 + 2] = fu | (fv << 1) | (eu << 2) | (ev << 3) | ((eu ^ 1) << 4) | ((ev ^ 1) << 5);
             }
             // triangulate; flip diagonal for AO anisotropy; winding by direction
             const vi = q * 4;

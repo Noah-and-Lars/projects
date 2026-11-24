@@ -40,7 +40,7 @@ export class Sledge extends Tool {
     const c = { x: hit.point.x + dir.x * 0.15, y: hit.point.y + dir.y * 0.15, z: hit.point.z + dir.z * 0.15 };
     // soft only: medium / hard radius 0 (sledge never breaks brick, metal, concrete).
     // A ragged bite; a good part of it comes away as loose chunks knocked through to the far side.
-    const res = sim.carve(c, 0.55, 0, 0, { cause: 'sledge', rough: 0.6, debris: 9, pushDir: dir, debrisSpeed: 5 });
+    const res = sim.carve(c, 0.55, 0, 0, { cause: 'sledge', rough: 0.2, debris: 9, pushDir: dir, debrisSpeed: 5 });
     if (res.removed === 0) emit(sim, 'tool:clang', { pos: hit.point, pal: hit.palette });
     emit(sim, 'tool:impact', { tool: this.id, pos: hit.point, power: res.removed > 0 ? 0.9 : 0.6, kick: res.removed > 0 ? 1.5 : 2.2, broke: res.removed > 0 });
     // shove dynamic bodies (light debris flies, heavy props barely move)

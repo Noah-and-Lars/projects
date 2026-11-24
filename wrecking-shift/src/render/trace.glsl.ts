@@ -120,13 +120,13 @@ float vxConeAO(vec3 pv, vec3 n) {
   vec3 t2 = cross(n, t1);
   float C = float(VX_COARSE);
   vec3 invTex = 1.0 / (C * vec3(textureSize(uDens, 0)));
-  vec3 base = pv + n * 1.0;
+  vec3 base = pv + n * 2.0;
   float vis = 0.0, wsum = 0.0;
   for (int d = 0; d < 5; d++) {
     vec3 dir = d == 0 ? n : normalize(n + (d == 1 ? t1 : d == 2 ? -t1 : d == 3 ? t2 : -t2));
     float w = d == 0 ? 1.0 : max(dir.y + 0.6, 0.15); // favour the sky
     float occ = 0.0;
-    float dist = C;
+    float dist = C * 1.5;
     for (int k = 0; k < VX_CONE_STEPS; k++) {
       float diam = max(C, dist);
       vec3 tc = (base + dir * dist) * invTex;

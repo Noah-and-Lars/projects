@@ -45,6 +45,8 @@ export class VoxelBody {
   /** solid voxels adjacent to removed ones -> connectivity search pending */
   pendingSeeds: number[] = [];
   massDirty = false;
+  /** voxels were removed without updating the Rapier collider (small dynamic bodies): rebuild before the next physics step */
+  colliderDirty = false;
   /** structural data per y layer of static bodies (built lazily): carrying capacity (N) and mass (kg) */
   layerCap: Float64Array | null = null;
   layerMass: Float64Array | null = null;
