@@ -59,6 +59,9 @@ export abstract class Tool {
   tick(_ctx: ToolContext): void {}
   onSelect(_ctx: ToolContext): void {}
   onDeselect(_ctx: ToolContext): void {}
+  /** quicksave: extra state beyond ammo (JSON-able), restored with `load` into a fresh tool on a restored sim */
+  save(): any { return undefined; }
+  load(_ctx: ToolContext, _data: any): void {}
   /** refill at mission start */
   refill(): void { this.ammo = this.maxAmmo; }
 

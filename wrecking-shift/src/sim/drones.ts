@@ -76,13 +76,31 @@ export class DroneSystem implements SimSystem {
   spawn(kind: DroneKind, pos: V3, waypoints: V3[] = []): Drone {
     const g = droneGrid(kind);
     const body = this.sim.addBody(g, { x: pos.x - 0.4, y: pos.y, z: pos.z - 0.4 }, { dynamic: true, kind: 'prop', name: kind === 'gunner' ? 'gunner drone' : 'watcher drone', tags: ['drone'] });
+    return this.adopt(body, kind, waypoints.length ? waypoints : [pos]);
+  }
+
+  /** take control of an existing drone body (spawn / quickload) */
+  adopt(body: VoxelBody, kind: DroneKind, waypoints: V3[]): Drone {
     body.indestructible = true; body.impactProof = true; body.noSplit = true;
     body.rb.setGravityScale(0, true);
     body.rb.setEnabledRotations(false, true, false, true);
     body.rb.setLinearDamping(1.5);
-    const d = new Drone(body, kind, waypoints.length ? waypoints : [pos]);
+    const d = new Drone(body, kind, waypoints);
     this.drones.push(d);
     return d;
+  }
+
+  save(): any {
+    return this.drones.filter((d) => !d.body.removed).map((d) => ({ body: d.body.id, kind: d.kind, waypoints: d.waypoints, wp: d.wp, dead: d.state === 'dead', alarm: d.alarmRaised }));
+  }
+  load(data: any): void {
+    for (const s of data ?? []) {
+      const body = this.sim.bodies.get(s.body);
+      if (!body) continue;
+      const d = this.adopt(body, s.kind, s.waypoints);
+      d.wp = s.wp; d.alarmRaised = s.alarm;
+      if (s.dead) { d.state = 'dead'; body.rb.setGravityScale(1, true); body.rb.setEnabledRotations(true, true, true, true); body.rb.setLinearDamping(0.05); }
+    }
   }
 
   private hear(pos: V3, size: number): void {

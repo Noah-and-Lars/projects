@@ -124,6 +124,17 @@ export class MissionModule implements GameModule {
     this.reported = this.mission.ended;
   }
 
+  save(): any {
+    return { mission: this.mission?.toJSON() ?? null, sandbox: this.sandbox, sandboxLevel: this.sandboxLevel };
+  }
+  load(game: Game, data: any): void {
+    if (data?.mission) {
+      this.restore(data.mission);
+      game.infiniteAmmo = false;
+      if (this.def?.timeOfDay) game.level.sky = this.def.timeOfDay;
+    } else if (data?.sandbox) { this.sandbox = true; this.sandboxLevel = data.sandboxLevel; game.infiniteAmmo = true; }
+  }
+
   onLevelLoaded(game: Game): void {
     this.mission?.dispose();
     this.mission = null;

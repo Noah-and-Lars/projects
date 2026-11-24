@@ -69,6 +69,29 @@ export class Plank extends TwoPointTool {
     return true;
   }
 
+  override save(): any {
+    return {
+      planks: this.planks.filter((b) => !b.removed).map((b) => b.id),
+      links: this.links.filter((l) => !l.plank.removed && l.partner.alive()).map((l) => ({
+        plank: l.plank.id, partner: l.partner.body.id, pv: [l.partner.vx, l.partner.vy, l.partner.vz], ov: [l.own.vx, l.own.vy, l.own.vz], lb: l.lb,
+      })),
+    };
+  }
+  override load(ctx: ToolContext, data: any): void {
+    if (!data) return;
+    const sim = ctx.sim;
+    for (const id of data.planks ?? []) { const b = sim.bodies.get(id); if (b) this.planks.push(b); }
+    for (const l of data.links ?? []) {
+      const plank = sim.bodies.get(l.plank), partner = sim.bodies.get(l.partner);
+      if (!plank || !partner) continue;
+      const p = bodyWorld(plank, l.lb);
+      this.links.push({
+        plank, joint: fixJoint(sim, partner, plank, p), partner: new Anchor(partner, l.pv[0], l.pv[1], l.pv[2]),
+        own: new Anchor(plank, l.ov[0], l.ov[1], l.ov[2]), la: bodyLocal(partner, p), lb: l.lb,
+      });
+    }
+  }
+
   private hooked: Sim | null = null;
 
   /** a plank was cut: glued ends that went with the cut-off piece move their joint to it */

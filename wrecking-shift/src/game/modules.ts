@@ -1,6 +1,7 @@
 import { createAudioModule } from './audioModule';
 import { fireModule } from './fireModule';
 import type { GameModule } from './game';
+import { createQuicksaveModule } from './quicksaveModule';
 import { ToolsModule } from './toolsModule';
 import { createWaterModule } from './waterModule';
 import { createWeatherModule } from './weatherModule';
@@ -19,6 +20,7 @@ export function createModules(): GameModule[] {
     fireModule(),
     createAudioModule(),
     new MissionModule(),
+    createQuicksaveModule(),
     // keep the UI last: it reads state the other modules produced this frame (camera overrides, prompts)
     new UiModule(),
   ];

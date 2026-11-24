@@ -4,6 +4,7 @@ import { FireSystem } from '../sim/fire';
 import type { LevelDef, LevelInfo } from '../sim/levels/types';
 import { Player } from '../sim/player';
 import { DT, Sim, initPhysics, type SimEvent } from '../sim/sim';
+import { restoreSim, snapshotSim } from '../sim/snapshot';
 import { ToolBelt, createBelt, emptyToolInput, type ToolContext, type ToolInput } from '../sim/tools';
 import { WaterSystem } from '../sim/water';
 import { Input } from './input';
@@ -22,6 +23,9 @@ export interface GameModule {
   fixedUpdate?(game: Game): void;
   /** sim events of the tick that just ran (particles, sounds, mission triggers) */
   onEvents?(game: Game, events: SimEvent[]): void;
+  /** quicksave: JSON-able module state; `load` runs after the world was restored and `onLevelLoaded` was called */
+  save?(game: Game): any;
+  load?(game: Game, data: any): void;
   /** once per rendered frame, before drawing (dt in seconds) */
   frameUpdate?(game: Game, dt: number): void;
 }
@@ -88,31 +92,83 @@ export class Game {
   loadLevel(id: string, seed = 1234): void {
     const def: LevelDef = LEVELS[id] ?? Object.values(LEVELS)[0];
     this.levelId = def.id;
-    this.sim = new Sim(seed);
+    this.seed = seed;
+    this.setupWorld((sim) => { this.level = def.build(sim); });
+  }
+
+  private seed = 1234;
+
+  /** create a fresh Sim + systems + player; `fill` builds the level or restores a snapshot */
+  private setupWorld(fill: (sim: Sim) => void, after?: () => void): void {
+    this.sim = new Sim(this.seed);
     this.fire = new FireSystem(this.sim);
     this.sim.systems.push(this.fire);
     this.drones = new DroneSystem(this.sim);
     this.sim.ext.drones = this.drones;
     this.sim.systems.push(this.drones);
-    this.level = def.build(this.sim);
+    fill(this.sim);
     if (this.level.waterLevel != null) {
       this.sim.waterLevel = this.level.waterLevel;
       this.sim.systems.push(new WaterSystem(this.level.waterLevel));
     }
     this.player = new Player(this.sim, this.level.spawn);
     this.player.yaw = this.level.spawnYaw;
+    this.player.pitch = 0;
     const oldBelt = this.belt;
     this.belt = createBelt();
     if (oldBelt) for (const t of this.belt.tools) { const o = oldBelt.byId(t.id); if (o) { t.unlocked = o.unlocked; t.maxAmmo = o.maxAmmo; } }
     this.belt.refillAll();
     this.cameraOverride = null;
+    this.toolsEnabled = true;
     this.renderer.setLevel(this.level);
     this.renderer.reset();
     this.acc = 0;
     for (const m of this.modules) m.onLevelLoaded?.(this);
+    after?.();
     this.sim.step();
     this.sim.drainEvents();
     this.renderer.render(this.sim, 0, true);
+  }
+
+  /** single-slot quicksave (in memory). Returns false when nothing was saved. */
+  private slot: any = null;
+  hasQuicksave(): boolean { return !!this.slot && this.slot.levelId === this.levelId; }
+  quicksave(): boolean {
+    const p = this.player;
+    if (p.dead) return false;
+    this.slot = {
+      levelId: this.levelId, seed: this.seed, sky: this.level.sky,
+      sim: snapshotSim(this.sim),
+      player: { pos: p.pos, yaw: p.yaw, pitch: p.pitch, health: p.health, seated: p.seated },
+      belt: { index: this.belt.index, tools: this.belt.tools.map((t) => ({ id: t.id, ammo: t.ammo === Infinity ? -1 : t.ammo, state: t.save() })) },
+      drones: this.drones.save(),
+      modules: this.modules.map((m) => (m.save ? m.save(this) : undefined)),
+    };
+    this.sim.out.push({ type: 'custom', name: 'game:quicksave', data: {} });
+    return true;
+  }
+  quickload(): boolean {
+    const s = this.slot;
+    if (!s || s.levelId !== this.levelId) return false;
+    const oldBelt = this.belt;
+    this.setupWorld((sim) => restoreSim(s.sim, sim), () => {
+      const p = this.player;
+      p.teleport(s.player.pos); p.yaw = s.player.yaw; p.pitch = s.player.pitch; p.health = s.player.health;
+      const ctx = this.toolCtx;
+      for (const ts of s.belt.tools) {
+        const t = this.belt.byId(ts.id);
+        if (!t) continue;
+        const o = oldBelt.byId(ts.id);
+        if (o) { t.unlocked = o.unlocked; t.maxAmmo = o.maxAmmo; }
+        t.ammo = ts.ammo < 0 ? Infinity : ts.ammo;
+        t.load(ctx, ts.state);
+      }
+      this.belt.index = Math.min(s.belt.index, this.belt.tools.length - 1);
+      this.drones.load(s.drones);
+      this.modules.forEach((m, i) => { if (m.load && s.modules[i] !== undefined) m.load(this, s.modules[i]); });
+    });
+    this.sim.out.push({ type: 'custom', name: 'game:quickload', data: {} });
+    return true;
   }
 
   /** one fixed 60 Hz simulation tick */

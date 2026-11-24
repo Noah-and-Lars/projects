@@ -58,6 +58,20 @@ export class Cable extends TwoPointTool {
     return out;
   }
 
+  override save(): any {
+    return this.ropes.filter((r) => r.a.alive() && r.b.alive()).map((r) => ({
+      a: r.a.body.id, av: [r.a.vx, r.a.vy, r.a.vz], b: r.b.body.id, bv: [r.b.vx, r.b.vy, r.b.vz], la: r.la, lb: r.lb, length: r.length,
+    }));
+  }
+  override load(ctx: ToolContext, data: any): void {
+    for (const r of data ?? []) {
+      const a = ctx.sim.bodies.get(r.a), b = ctx.sim.bodies.get(r.b);
+      if (!a || !b) continue;
+      const joint = ctx.sim.world.createImpulseJoint(RAPIER.JointData.rope(Math.max(0.1, r.length), r.la, r.lb), a.rb, b.rb, true);
+      this.ropes.push({ id: this.nextId++, joint, a: new Anchor(a, r.av[0], r.av[1], r.av[2]), b: new Anchor(b, r.bv[0], r.bv[1], r.bv[2]), la: r.la, lb: r.lb, length: r.length });
+    }
+  }
+
   /** cut ropes whose segment passes within `r` of a point (bullets, blasts) */
   cutNear(ctx: ToolContext, p: V3, r: number): number {
     let n = 0;
