@@ -204,9 +204,13 @@ export class Player {
     // On terraced slopes the cylinder rests on voxel edges, the controller never reports "grounded" and the
     // nudge along the slanted edge normals made a standing player creep (~4 cm per 10 s on Kestrel Ridge).
     // So the same applies while the fall is held up, and tiny sideways drift without movement input is dropped.
+    // Only without movement input: while walking, those sub-mm nudges are what lets the cylinder slide up
+    // over voxel edges (dropping them got the player stuck in a Kestrel Ridge playthrough).
     const held = desired.y < 0 && m.y > desired.y * 0.5;
-    if ((this.grounded || held) && Math.abs(m.y) < 0.0003) m.y = 0;
-    if (ml < 1e-3 && Math.abs(m.x) < 0.0003 && Math.abs(m.z) < 0.0003) { m.x = 0; m.z = 0; }
+    if (ml < 1e-3) {
+      if ((this.grounded || held) && Math.abs(m.y) < 0.0003) m.y = 0;
+      if (Math.abs(m.x) < 0.0003 && Math.abs(m.z) < 0.0003) { m.x = 0; m.z = 0; }
+    }
     const t = this.rb.translation();
     this.rb.setNextKinematicTranslation({ x: t.x + m.x, y: t.y + m.y, z: t.z + m.z });
 
