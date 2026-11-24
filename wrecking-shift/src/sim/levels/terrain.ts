@@ -1,4 +1,4 @@
-import { MAT, pal, VOXEL } from '../materials';
+import { MAT, VOXEL, pal } from '../materials';
 import { hash3 } from '../rng';
 import type { Sim } from '../sim';
 import { VoxelGrid } from '../voxels';
@@ -164,4 +164,73 @@ export function buildTerrain(sim: Sim, o: TerrainOptions): Terrain {
       return H(ix, iz) * VOXEL;
     },
   };
+}
+
+/** ------------------------------------------------------------------ terrain with sloped roads */
+
+export interface RoadPt { x: number; z: number; y: number }
+
+interface Road { pts: RoadPt[]; half: number; blend: number; surface: number; x0: number; z0: number; x1: number; z1: number }
+
+/**
+ * Heightmap with sloped road ribbons applied after the flat pads: inside `half` metres of a road's
+ * centre line the ground is set to the road height (interpolated along the polyline), blending back
+ * to the terrain over `blend` metres. Road surface material wins over the natural surface but not
+ * over pads that set their own surface.
+ */
+export class RoadHeightmap extends Heightmap {
+  roads: Road[] = [];
+  addRoad(pts: RoadPt[], half = 3, blend = 3.5, surface: number = MAT.asphalt): this {
+    let x0 = 1e9, z0 = 1e9, x1 = -1e9, z1 = -1e9;
+    for (const p of pts) { x0 = Math.min(x0, p.x); z0 = Math.min(z0, p.z); x1 = Math.max(x1, p.x); z1 = Math.max(z1, p.z); }
+    const m = half + blend;
+    this.roads.push({ pts, half, blend, surface, x0: x0 - m, z0: z0 - m, x1: x1 + m, z1: z1 + m });
+    return this;
+  }
+  /** nearest road centre line: distance, road height there, road */
+  nearestRoad(x: number, z: number): { d: number; y: number; road: Road } | null {
+    let best: { d: number; y: number; road: Road } | null = null;
+    for (const r of this.roads) {
+      if (x < r.x0 || x > r.x1 || z < r.z0 || z > r.z1) continue;
+      for (let i = 0; i + 1 < r.pts.length; i++) {
+        const a = r.pts[i], b = r.pts[i + 1];
+        const ex = b.x - a.x, ez = b.z - a.z;
+        const l2 = ex * ex + ez * ez || 1;
+        const t = Math.max(0, Math.min(1, ((x - a.x) * ex + (z - a.z) * ez) / l2));
+        const d = Math.hypot(x - a.x - ex * t, z - a.z - ez * t);
+        if (!best || d < best.d) best = { d, y: a.y + (b.y - a.y) * t, road: r };
+      }
+    }
+    return best;
+  }
+  /**
+   * Roads apply in order like pads: a later road overrides earlier ones inside its half width and blends over
+   * its `blend` band. (Taking only the nearest road left a vertical step along the line where the nearest road
+   * changes: on Kestrel Ridge the switchback leaving the shore lane grew a 1.4 m cliff across the carriageway
+   * that stopped every vehicle; tests/unit/ridgeRoads.test.ts.)
+   */
+  override height(x: number, z: number): number {
+    let h = super.height(x, z);
+    for (const road of this.roads) {
+      if (x < road.x0 || x > road.x1 || z < road.z0 || z > road.z1) continue;
+      let d = Infinity, y = 0;
+      for (let i = 0; i + 1 < road.pts.length; i++) {
+        const a = road.pts[i], b = road.pts[i + 1];
+        const ex = b.x - a.x, ez = b.z - a.z;
+        const l2 = ex * ex + ez * ez || 1;
+        const t = Math.max(0, Math.min(1, ((x - a.x) * ex + (z - a.z) * ez) / l2));
+        const di = Math.hypot(x - a.x - ex * t, z - a.z - ez * t);
+        if (di < d) { d = di; y = a.y + (b.y - a.y) * t; }
+      }
+      if (d >= road.half + road.blend) continue;
+      h = y + (h - y) * smoothstep(road.half, road.half + road.blend, d);
+    }
+    return h;
+  }
+  override padSurface(x: number, z: number): number | undefined {
+    const s = super.padSurface(x, z);
+    if (s !== undefined) return s;
+    const r = this.nearestRoad(x, z);
+    return r && r.d < r.road.half ? r.road.surface : undefined;
+  }
 }

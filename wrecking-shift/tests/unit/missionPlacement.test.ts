@@ -1,7 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { HARBOR_MISSIONS } from '../../src/game/missionsHarbor';
+import { HARBOR_MISSIONS, RIDGE_MISSIONS, WORKS_MISSIONS } from '../../src/game/missions';
 import { DroneSystem } from '../../src/sim/drones';
-import { MORE_MISSIONS } from '../../src/game/missionsMore';
 import { LEVELS } from '../../src/game/levels';
 import { Mission } from '../../src/sim/mission';
 import { Player } from '../../src/sim/player';
@@ -11,7 +10,7 @@ import { WaterSystem } from '../../src/sim/water';
 beforeAll(async () => { await initPhysics(); });
 
 describe('map missions', () => {
-  for (const def of [...HARBOR_MISSIONS, ...MORE_MISSIONS]) {
+  for (const def of [...HARBOR_MISSIONS, ...RIDGE_MISSIONS, ...WORKS_MISSIONS]) {
     it(`${def.id}: props rest where placed and planning stays quiet`, () => {
       const sim = new Sim(1234);
       const ds = new DroneSystem(sim); sim.ext.drones = ds; sim.systems.push(ds);

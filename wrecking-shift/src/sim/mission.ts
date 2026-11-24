@@ -2,10 +2,10 @@
  * Heist mission framework — deterministic mission logic (pure TS, runs in Node, no DOM / three.js).
  *
  * ================================================================================================
- *  AUTHORING GUIDE (level designers: read this, then look at src/game/missions.ts for examples)
+ *  AUTHORING GUIDE (level designers: read this, then look at src/game/missions/ for examples)
  * ================================================================================================
  *
- * A mission = a `MissionDef` (data, registered in src/game/missions.ts) played on a level
+ * A mission = a `MissionDef` (data, registered in src/game/missions/) played on a level
  * (`LevelDef`, registered in src/game/levels.ts). One level can host many missions. Everything the
  * mission needs to know about the level comes from BODY TAGS, NAMES and LEVEL MARKERS:
  *

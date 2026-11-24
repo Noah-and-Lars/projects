@@ -106,3 +106,16 @@ export function valuable(sim: Sim, pos: V3, kind: ValuableKind, amount: number, 
   }
   return prop(sim, g, pos, name, ['valuable:' + Math.round(amount)]);
 }
+
+/** heavy steel strongbox (deliver target, ~190 kg: too heavy to carry far, fine to drag, push or tow) */
+export function strongbox(sim: Sim, pos: V3, id: string, name: string): VoxelBody {
+  const g = new VoxelGrid(6, 5, 5);
+  box(g, 0, 0, 0, 6, 5, 5, flat(MAT.sheetmetal, 1));
+  box(g, 1, 1, 1, 5, 4, 4, 0);
+  box(g, 0, 2, 0, 6, 3, 1, pal(MAT.paintedmetal, 2));
+  box(g, 2, 1, 2, 4, 3, 3, pal(MAT.gold, 2));
+  g.recount();
+  const b = sim.addBody(g, pos, { dynamic: true, kind: 'prop', name, tags: ['target:' + id] });
+  b.impactProof = true;
+  return b;
+}

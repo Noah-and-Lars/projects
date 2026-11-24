@@ -16,7 +16,9 @@ src/sim/        deterministic simulation — pure TS, runs in Node, fixed 60 Hz 
                 + splitting), step(), event queue `sim.out` (SimEvent), `sim.systems` (SimSystem.update before physics)
   connectivity.ts  island search   mesher.ts  greedy mesher + AO (pure, used by render)
   player.ts     first-person character (Rapier kinematic controller), health / damage()
-  build.ts      voxel authoring helpers       levels/   level generators (LevelDef.build(sim) -> LevelInfo)
+  build.ts      voxel authoring helpers
+  levels/       level generators (LevelDef.build(sim) -> LevelInfo); terrain.ts (heightmap + sloped roads ->
+                ground tiles); kit/ (buildings.ts: buildings + geometry helpers, scenery.ts, props.ts)
   tools/        Tool base class + ToolBelt + one file per tool      fire.ts  FireApi
                 also: water.ts, drones.ts, vehicle.ts + prefabs/, mission.ts + missionProps.ts, challenge.ts,
                 snapshot.ts (quicksave), grab.ts
@@ -25,7 +27,7 @@ src/render/     three.js presentation: renderer.ts, bodyViews.ts (chunk meshes p
                 sky.ts, lamps.ts, post.ts, particles.ts, fireFx.ts, toolFx.ts, viewModel.ts, vehicleFx.ts, water.ts,
                 backdrop.ts, lookModule.ts
 src/game/       app glue: game.ts (main loop, GameModule, level loading, quicksave), modules.ts (module registry),
-                levels.ts (level registry), missions*.ts (mission definitions), progress.ts (save data), input.ts,
+                levels.ts (level registry), missions/ (one file of mission definitions per level + helpers.ts), progress.ts (save data), input.ts,
                 one *Module.ts per feature, ui/ (DOM HUD + menus + map)
 src/audio/      WebAudio (procedural): engine.ts, bank.ts, director.ts (events -> sounds), music.ts
 tests/unit/     Vitest (Node)         tests/e2e/   Playwright smoke tests against dist/ (run.mjs + harness.mjs)

@@ -33,41 +33,33 @@ physics WebAssembly and pointer lock is unverified — if it shows "Failed to st
   backdrop hills + soft map boundary. Not done: wet-road physics, any mission that uses rain/snow.
 
 ## Tests
-`npm test`: typecheck (with unused-code checks), 209 unit/sim tests in Node, build, headless-browser tests (boot,
-audio, 14 tools, missions/UI, vehicles, lighting incl. GPU-vs-CPU ray check, fire, quicksave, challenge/photo modes).
+`npm test`: typecheck (with unused-code checks), 224 unit/sim tests in Node (incl. 11 scripted mission playthroughs
+and a vehicle road test, ~3 min), build, headless-browser tests (boot, audio, 14 tools, missions/UI, vehicles,
+lighting incl. GPU-vs-CPU ray check, fire, quicksave, challenge/photo modes, one mission played through per big map).
 
 ## Code review (after the first build)
-Two independent review passes (simulation; app/render/UI) reported 20 defects; all were fixed, with regression
-tests in `tests/unit/regressions.test.ts`. The worst: a crash when a burning body was removed, vehicles never taking
-collision damage in the real game loop, and the physics world leaking on every level load (~47 MB per harbour load).
-A third pass over the lighting shaders and level generators is recorded below if it found anything.
-`npm test`: typecheck, 212 unit/sim tests in Node (incl. 11 mission playthroughs, ~2.5 min), build, headless-browser tests (boot, audio, 14 tools, missions/UI,
-vehicles, lighting incl. GPU-vs-CPU ray check, fire, quicksave, one mission played through per big map). All green at the last commit.
+Three independent review passes (simulation; app/render/UI; lighting shaders + level generators + missions). The
+first two reported 20 defects, all fixed, with regression tests in `tests/unit/regressions.test.ts`. The worst: a crash
+when a burning body was removed, vehicles never taking collision damage in the real game loop, and the physics world
+leaking on every level load (~47 MB per harbour load). The third found no crashes or leaks; it reported visual and
+placement defects, which are fixed: off-grid trees/rocks shadowing their own sunlit faces, the "Lights Out" lamp housing
+spawning inside the lighthouse wall (it chewed 469 voxels out at load), mission props inside geometry, two floating lamps.
 
 ## Known issues / not verified
 - **Never run on a real GPU.** The container renders in software, so frame rate, the medium/high tiers' cost and the
   96 MiB lighting-volume budget are untested on real hardware. Sim cost is measured: ~0.1–2 ms per tick idle.
-- Nobody has played it with a real mouse and keyboard: pointer lock, Esc/pause, feel of movement, driving and
-  difficulty/score balance are tuned by numbers and scripted tests only.
-- The 9 missions on the three big maps are only tested for "props rest where placed, nothing trips on its own";
-  none has been played start to finish (the two test-yard missions are completed in tests). Some may be too hard
-  or too easy with the tools unlocked at that point.
+- Only lightly played by a human so far: feel, difficulty and score balance are tuned mostly by numbers and scripted
+  tests. The playthrough scripts are optimal players, so real difficulty for humans is still unmeasured.
+- Audio levels were balanced by measurement; nobody has reported on how it sounds.
 - Level load takes ~5 s on the big maps (progress bar; the build step itself still blocks for a few seconds).
 - Quickload restores bodies, tools, planks/cables, placed charges, rockets, fires (fuel restarts) and drones, but not
   the player's crouch state or pending chain explosions.
 - Glass is opaque-ish from inside vehicles (hood camera instead of a true driver view); the Kestrel Ridge pool is
-  empty (one water level per map); roads on Kestrel Ridge are steep (13–17%) and untested with vehicles.
-- All 11 missions on the three big maps are played start to finish by scripted runs (see "Mission playthroughs");
-  the scripts are optimal players, so real difficulty for humans is still unmeasured.
-- Level load takes ~5 s on the big maps (no progress bar, just "LOADING…").
-- Quickload does not restore fires, thrown/placed explosives in flight, or drone alert state.
-- Glass is opaque-ish from inside vehicles (hood camera instead of a true driver view); the Kestrel Ridge pool is
-  empty (one water level per map). Kestrel Ridge roads (15-16 %) are driven up and down by van, hatchback and loader
-  in `tests/unit/ridgeRoads.test.ts`.
-- Vehicle contact-force crash wear never applies in the real game (impact events are drained before the vehicle
-  system reads them); see DECISIONS.md.
-- The map edges are abrupt: terrain simply ends at the water plane.
-- A 5-hour account usage limit paused all work from ~13:10 to 16:20 UTC; nothing was lost.
+  empty (one water level per map).
+- After one failed lighting-volume allocation the renderer stays on the low tier for the rest of the session.
+- Resuming from pause with Esc may need one click to recapture the mouse (browser rule; not reproducible headless).
+- Two alarm boxes (Payday boiler house, Controlled Burn bund wall) sit partly buried in curved walls (cosmetic).
+- Usage limits paused work twice (~13:10–16:20 and ~20:00–21:20 UTC); nothing was lost.
 - Nothing was blocked by approval prompts.
 
 ## Mission playthroughs

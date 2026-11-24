@@ -4,9 +4,8 @@ import { hash3 } from '../rng';
 import type { Sim } from '../sim';
 import type { V3 } from '../vec';
 import { VoxelGrid } from '../voxels';
-import { barrel, boat, crate, pier, pine, rock, shelf, table, tree } from './kit';
-import { RoadHeightmap, addStatic, bed, bookcase, chair, hedge, plant, railing, sculpture, sofa, stairs, streetLamp, wallRun } from './kit2';
-import { buildTerrain, fbm2, smoothstep } from './terrain';
+import { addStatic, barrel, bed, boat, bookcase, chair, crate, hedge, pier, pine, plant, railing, rock, sculpture, shelf, sofa, stairs, streetLamp, table, tree, wallRun } from './kit';
+import { RoadHeightmap, buildTerrain, fbm2, smoothstep } from './terrain';
 import type { LevelDef, LevelInfo } from './types';
 
 /**

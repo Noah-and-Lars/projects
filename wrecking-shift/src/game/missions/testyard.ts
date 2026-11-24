@@ -1,26 +1,7 @@
-/**
- * Mission registry. Add new missions to MISSIONS (order = order in the job list).
- * Authoring contract (tags, markers, MissionDef fields): see the header of src/sim/mission.ts.
- * Pure data + deterministic setup code (no DOM) so unit tests can load it in Node.
- */
-import { tagBodies, type MissionDef } from '../sim/mission';
-import { alarmBox, goldIdol, paintCan, serverBox, valuable } from '../sim/missionProps';
-import type { VoxelBody } from '../sim/body';
-import type { Sim } from '../sim/sim';
-import { HARBOR_MISSIONS } from './missionsHarbor';
-import { MORE_MISSIONS } from './missionsMore';
-
-/** nearest body with a given name to a point (for tagging level geometry in MissionDef.setup) */
-export function nearestNamed(sim: Sim, name: string, x: number, z: number): VoxelBody | null {
-  let best: VoxelBody | null = null, bd = Infinity;
-  for (const b of sim.bodies.values()) {
-    if (b.name !== name) continue;
-    const c = b.center();
-    const d = (c.x - x) ** 2 + (c.z - z) ** 2;
-    if (d < bd) { bd = d; best = b; }
-  }
-  return best;
-}
+/** Missions on the Test Yard (src/sim/levels/testyard.ts). */
+import { tagBodies, type MissionDef } from '../../sim/mission';
+import { alarmBox, goldIdol, paintCan, serverBox, valuable } from '../../sim/missionProps';
+import { nearestNamed } from './helpers';
 
 /** Demo heist on the test yard: two alarmed targets, one optional, three valuables. */
 export const housewarming: MissionDef = {
@@ -85,8 +66,4 @@ export const shedHappens: MissionDef = {
   },
 };
 
-export const MISSIONS: MissionDef[] = [housewarming, shedHappens, ...HARBOR_MISSIONS, ...MORE_MISSIONS];
-
-export function missionById(id: string): MissionDef | undefined {
-  return MISSIONS.find((m) => m.id === id);
-}
+export const TESTYARD_MISSIONS: MissionDef[] = [housewarming, shedHappens];

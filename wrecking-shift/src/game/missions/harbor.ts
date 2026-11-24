@@ -1,26 +1,8 @@
 /** Missions on Gullwick Harbour (src/sim/levels/harbor.ts). Authoring contract: header of src/sim/mission.ts. */
-import { box, flat } from '../sim/build';
-import { MAT, pal } from '../sim/materials';
-import { tagBodies, type MissionDef } from '../sim/mission';
-import { alarmBox, goldIdol, serverBox, valuable } from '../sim/missionProps';
-import type { Sim } from '../sim/sim';
-import type { V3 } from '../sim/vec';
-import { VoxelGrid } from '../sim/voxels';
+import { tagBodies, type MissionDef } from '../../sim/mission';
+import { alarmBox, goldIdol, serverBox, strongbox, valuable } from '../../sim/missionProps';
 
-const G = 1.4;
-
-/** heavy steel strongbox (deliver target, ~190 kg: too heavy to carry far, fine to drag, push or tow) */
-function strongbox(sim: Sim, pos: V3, id: string, name: string) {
-  const g = new VoxelGrid(6, 5, 5);
-  box(g, 0, 0, 0, 6, 5, 5, flat(MAT.sheetmetal, 1));
-  box(g, 1, 1, 1, 5, 4, 4, 0);
-  box(g, 0, 2, 0, 6, 3, 1, pal(MAT.paintedmetal, 2));
-  box(g, 2, 1, 2, 4, 3, 3, pal(MAT.gold, 2));
-  g.recount();
-  const b = sim.addBody(g, pos, { dynamic: true, kind: 'prop', name, tags: ['target:' + id] });
-  b.impactProof = true;
-  return b;
-}
+const G = 1.4; // quay level of Gullwick Harbour
 
 export const paperTrail: MissionDef = {
   id: 'paper-trail',
