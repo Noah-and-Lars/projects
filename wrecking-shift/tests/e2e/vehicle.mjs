@@ -65,6 +65,40 @@ export async function vehicleTests(url, test) {
     assert(errors.length === 0, 'console errors: ' + errors.join('\n'));
     await browser.close();
   });
+
+  await test('vehicle: line-up of all prefabs (wheels on the ground, nothing sunk)', async () => {
+    const { browser, page, errors } = await openGame(url, 'test=1&level=testyard');
+    const g = (fn, arg) => page.evaluate(fn, arg);
+    const res = await g(() => {
+      const G = window.__game, V = G.game.ext.vehicles;
+      V.spawn('loader', 12, 0, 14, Math.PI / 2);
+      V.spawn('hatchback', 12, 0, 18.5, Math.PI / 2);
+      V.spawn('van', 12, 0, 10, Math.PI / 2);
+      G.step(120);
+      return V.list.map((v) => ({ name: v.name, up: v.upright, g: v.grounded, speed: v.speed, bottom: v.body.rb.translation().y }));
+    });
+    for (const v of res) assert(v.up > 0.98 && v.g === 4 && Math.abs(v.speed) < 0.1, 'rests on 4 wheels: ' + JSON.stringify(v));
+    await g(() => window.__game.setView(5.5, 0.05, 14, -Math.PI / 2 + 0.1, -0.12));
+    await shot(page, 'v7-lineup');
+    await g(() => window.__game.setView(10.2, 0.05, 20.8, -2.3, -0.2));
+    await shot(page, 'v8-hatchback-close');
+    // drive the loader into the shed wall (static sheet metal + concrete pillars)
+    const r = await g(() => {
+      const G = window.__game, V = G.game.ext.vehicles;
+      const l = V.list.find((v) => v.name === 'loader');
+      const c = l.com;
+      G.setView(c.x - 3, 0.05, c.z, -Math.PI / 2, -0.2);
+      G.step(2);
+      V.enter(l);
+      V.camMode = 'hood';
+      G.step(2);
+      return V.current && V.current.name;
+    });
+    assert(r === 'loader', 'entered the loader');
+    await shot(page, 'v9-loader-hood');
+    assert(errors.length === 0, 'console errors: ' + errors.join('\n'));
+    await browser.close();
+  });
 }
 
 // standalone: node tests/e2e/vehicle.mjs

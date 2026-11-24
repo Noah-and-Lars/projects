@@ -15,3 +15,18 @@
 - **Player** uses Rapier's kinematic character controller with a *cylinder* (experiment: capsule fails to auto-step 0.2 m
   voxel stairs, cylinder climbs them).
 - **Raycasts for tools** use our own DDA through voxel grids (need voxel coords + material, and determinism).
+- **Vehicles** (`src/sim/vehicle.ts`): one dynamic voxel body + Rapier `DynamicRayCastVehicleController`. Chassis frame: +Z
+  forward, +X across (x=0 = right side). The forward axis is set with the oddly named setter `setIndexForwardAxis = 2`
+  (checked in Node: the default forward axis is X). Wheel rotation is positive when rolling forward (measured). Brake = impulse per tick.
+- **Vehicle mass** is the voxel mass scaled to a target (`body.massScale`, a new additive field), because 0.1 m sheet-metal panels
+  would make a car weigh ~3 t. The targets are guesses, roughly real-world: hatchback 1150 kg, van 2300 kg, loader 7500 kg.
+- **Ramming** is a guess tuned by Node experiments. Severity = approach speed × cbrt(mass/1500), plus a push bonus for the loader.
+  The carve radius per hardness is clamp((sev − thr)·k, 0, rmax), with thr soft/medium/hard = 2 / 4.5 / 26. The whole vehicle
+  cross-section is projected onto the obstacle plane and carved. Only the rammed body is carved; neighbours (the ground) are
+  shielded, so corners and the belly never snag. The vehicle loses 0.25 × removed mass × speed of momentum (capped at 30 % per tick).
+- **Vehicle health** = 0.7 × vital (steel frame + engine-bay voxels) + 0.3 × all voxels − wear (blast waves, hard crashes).
+  The vehicle dies below 0.12 health or when less than 25 % of the engine bay is left. It smokes below 0.3 health or below 55 %
+  engine bay. Own design.
+- **First-person vehicle camera** is a hood camera in front of the windshield, because glass voxels currently render opaque.
+- `tests/unit/mesher.test.ts > is fast enough` (40 ms threshold) fails intermittently on this loaded shared container,
+  even without the vehicle code. Left unchanged.

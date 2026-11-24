@@ -105,7 +105,7 @@ export class VehicleFx {
         wv.group.position.set(t.x + this.tmpV.x, t.y + this.tmpV.y, t.z + this.tmpV.z);
         const steer = ctrl.wheelSteering(i) ?? 0;
         wv.group.quaternion.copy(cq).multiply(this.tmpQ2.setFromAxisAngle(Y_AXIS, steer));
-        wv.spin.quaternion.setFromAxisAngle(X_AXIS, -(ctrl.wheelRotation(i) ?? 0));
+        wv.spin.quaternion.setFromAxisAngle(X_AXIS, ctrl.wheelRotation(i) ?? 0); // forward roll = +X rotation
       }
       // engine smoke
       if (v.smoking) {

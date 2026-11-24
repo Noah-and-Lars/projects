@@ -2,6 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { VehicleFx } from '../render/vehicleFx';
 import type { VoxelBody } from '../sim/body';
 import { EYE_OFFSET } from '../sim/player';
+import { spawnVehicle } from '../sim/prefabs/vehicles';
 import { GROUP_ALL, GROUP_PLAYER, groups } from '../sim/sim';
 import { qrot, type V3 } from '../sim/vec';
 import { VehicleSystem, type Vehicle } from '../sim/vehicle';
@@ -24,6 +25,8 @@ export interface VehiclesExt {
   /** short prompt for the HUD ('E  drive van', 'R  flip hatchback') or '' */
   readonly hint: string;
   enter(v: Vehicle): void;
+  /** spawn a prefab ('hatchback' | 'van' | 'loader') at a ground point (sandbox / debug / missions) */
+  spawn(id: string, x: number, y: number, z: number, yaw?: number): Vehicle;
   exit(): void;
 }
 
@@ -70,6 +73,7 @@ export class VehicleModule implements GameModule {
       set camMode(m: VehicleCamMode) { self.camMode = m; },
       get hint() { return self.hint; },
       enter: (v) => this.enter(v),
+      spawn: (id, x, y, z, yaw = 0) => spawnVehicle(game.sim, id, x, y, z, yaw),
       exit: () => this.exit(),
     };
     game.ext.vehicles = ext;

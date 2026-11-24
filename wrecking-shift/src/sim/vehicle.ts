@@ -109,7 +109,7 @@ export const DEAD_ENGINE = 0.25;
 let vehicleSerial = 0;
 
 /** ramming probe origin (voxel coords); `low` = underside band */
-interface Probe extends V3 { low: boolean }
+interface Probe extends V3 { low: boolean; edge: boolean }
 
 export class Vehicle {
   readonly id: number;
@@ -444,9 +444,14 @@ export class Vehicle {
         const px = x0 === 0 ? 0.5 : x1 >= g.sx ? g.sx - 0.5 : (x0 + x1) / 2;
         const py = y0 === 0 ? 0.5 : y1 >= g.sy ? g.sy - 0.5 : (y0 + y1) / 2;
         const low = y0 === 0;
-        fwd.push({ x: px, y: py, z: zf + 0.5, low });
-        back.push({ x: px, y: py, z: zb + 0.5, low });
+        const edge = low || x0 === 0 || x1 >= g.sx || y1 >= g.sy;
+        fwd.push({ x: px, y: py, z: zf + 0.5, low, edge });
+        back.push({ x: px, y: py, z: zb + 0.5, low, edge });
       }
+    // silhouette edge probes first: interior carves that would overlap them are skipped (cost)
+    const byEdge = (a: Probe, b: Probe) => Number(b.edge) - Number(a.edge);
+    fwd.sort(byEdge);
+    back.sort(byEdge);
     this.probesFwd = fwd;
     this.probesBack = back;
     this.probeCount = g.count;
@@ -504,6 +509,8 @@ export class Vehicle {
       // projected onto the obstacle plane), so the hole is vehicle-shaped and the corners never snag
       const rMax = Math.max(r[0], r[1], r[2]);
       const shielded: VoxelBody[] = [];
+      const done: V3[] = [];
+      const spacing2 = Math.max(0.25, r[1] * 0.85) ** 2;
       for (let k = 0; k < probes.length; k++) {
         const o = body.toWorld(probes[k]);
         const h = hits[k];
@@ -517,6 +524,10 @@ export class Vehicle {
         }
         // underside probes carve a bit lower so no stub is left for the belly to snag on
         const c = { x: o.x + dir.x * (d + 0.12), y: o.y + dir.y * (d + 0.12) - (probes[k].low ? 0.2 : 0), z: o.z + dir.z * (d + 0.12) };
+        let near = false;
+        for (const q of done) if ((q.x - c.x) ** 2 + (q.y - c.y) ** 2 + (q.z - c.z) ** 2 < spacing2) { near = true; break; }
+        if (near) continue;
+        done.push(c);
         // only the rammed body is carved (never the ground under it or a neighbour)
         for (const b of sim.bodiesNear(c, rMax)) if (b !== wall && b !== self && !b.indestructible) { b.indestructible = true; shielded.push(b); }
         const res = sim.carve(c, r[0], r[1], r[2], { cause: 'ram', fracture: 0.2, ignore: self, rough: 0.2, silent: removedCount > 300 });
