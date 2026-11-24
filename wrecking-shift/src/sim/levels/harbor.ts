@@ -4,6 +4,7 @@ import { hash3 } from '../rng';
 import type { Sim } from '../sim';
 import { VoxelGrid } from '../voxels';
 import { barrel, boat, container, crate, fence, lampPost, makeBuilding, pier, pine, placeBuilding, rock, shelf, table, tank, tree } from './kit';
+import { hatchback, loader, van } from '../prefabs/vehicles';
 import { Heightmap, buildTerrain, fbm2, smoothstep } from './terrain';
 import type { LevelDef, LevelInfo } from './types';
 
@@ -164,6 +165,11 @@ export const harbor: LevelDef = {
       rock(sim, x, gy(x, z), z, 5 + ((hash3(i, 7, 0, seed) * 9) | 0), i);
     }
     fence(sim, -24, gy(-24, -22), -22, 18, false, MAT.wood, 10);
+
+    // --- vehicles: the escape van waits at the spawn; a loader on the quay; a runabout by the office
+    van(sim, -1.5, gy(-1.5, -55), -55, Math.PI).body.tags.add('escape');
+    loader(sim, -8, G, 23, Math.PI / 2);
+    hatchback(sim, 30, G, -11.5, -Math.PI / 2);
 
     return {
       name: 'Gullwick Harbour',
