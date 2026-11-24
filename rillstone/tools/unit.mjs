@@ -43,7 +43,7 @@ check(Math.abs(itemValue({ material: 'silver', stage: 'crafted', craft: 'ring', 
   const E = createEconomy(mulberry32(4)); E.init();
   const st = E.state;
   const gold = { material: 'gold', stage: 'ore', kg: 1 };
-  check(st.contracts.length === 3 && Object.keys(st.prices).length === 10 && st.prices.quartz === undefined, 'one shop with a price for each of the 10 sellable materials, and 3 contracts');
+  check(st.contracts.length === 3 && Object.keys(st.prices).length === 15 && st.prices.quartz === undefined, 'one shop with a price for each of the 15 sellable materials (5 alloys), and 3 contracts');
   check(Math.abs(E.quote(gold) - 30 * st.prices.gold) < 1e-9 && E.quote(gold, 'stall') == null, `gold ore sells at base × today's factor (${st.prices.gold})`);
   let lo = 9, hi = 0; for (let d = 2; d < 200; d++) { E.newDay(d); for (const v of Object.values(st.prices)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }
   check(lo >= 0.8 && hi <= 1.25 && hi - lo > 0.2, `prices drift day to day within 80–125% (seen ${lo}–${hi})`);
@@ -103,5 +103,27 @@ check(Math.abs(itemValue({ material: 'silver', stage: 'crafted', craft: 'ring', 
   const tank = N(2, 'tank', { tank: { level: 1000, cap: 2000 } });
   r = solveFlow([N(1, 'source', { flow: 10 }), tank, N(3, 'consumer', { demand: 50 })], [[1, 2], [2, 3]], 1);
   check(Math.abs(r.get(3).satisfaction - 1) < 1e-9 && tank.tank.level < 1000, 'header tank tops up a short network and drains');
+}
+// Alloys: two metals in one furnace pour an ingot graded by its mix.
+{
+  const { ALLOYS, MATERIALS, alloyOf, alloyGrade, itemName } = await import('../src/js/defs/materials.js');
+  const { createEconomy } = await import('../src/js/sim/economy.js');
+  check(alloyOf('iron', 'copper') === 'millbrass' && alloyOf('gold', 'silver') === 'electrum' && alloyOf('copper', 'silver') === null && alloyOf('iron', 'iron') === null, 'alloy recipes match either order; other pairs make none');
+  check(alloyGrade('millbrass', { copper: 6, iron: 4 }) === 'fine' && alloyGrade('millbrass', { copper: 6.5, iron: 3.5 }) === 'fine' && alloyGrade('millbrass', { copper: 7, iron: 3 }) === 'good' && alloyGrade('millbrass', { copper: 9, iron: 1 }) === 'rough', 'grade: fine within 5 points of the ideal share, good within 15, else rough');
+  const ing = (mix, grade, kg = 10) => ({ material: 'electrum', stage: 'ingot', kg, mix, grade });
+  const parts = 10 * (0.5 * MATERIALS.gold.refined + 0.5 * MATERIALS.silver.refined);
+  check(Math.abs(itemValue(ing({ gold: 0.5, silver: 0.5 }, 'fine')) - parts * 1.25) < 1e-9 && Math.abs(itemValue(ing({ gold: 0.6, silver: 0.4 }, 'good')) - 10 * (0.6 * 36 + 0.4 * 23) * 1.12) < 1e-9, `a fine pour pays ×1.25 the metals' ingot worth, good ×1.12 (fine 10 kg electrum: $${(parts * 1.25).toFixed(0)})`);
+  // No mixing exploit: a rough pour never beats selling the same metals as ingots.
+  let worst = 0; for (const id in ALLOYS) { const r = ALLOYS[id]; for (let a = 0.02; a < 1; a += 0.02) { const mix = { [r.a]: a, [r.b]: 1 - a }, g = alloyGrade(id, mix); if (g !== 'rough') continue; const it = { material: id, stage: 'ingot', kg: 1, mix, grade: g }; worst = Math.max(worst, itemValue(it) - (a * MATERIALS[r.a].refined + (1 - a) * MATERIALS[r.b].refined)); } }
+  check(worst < 1e-9, 'a rough alloy pays exactly its metals as ingots, never more');
+  check(itemName(ing({ gold: 0.5, silver: 0.5 }, 'fine')) === 'Fine electrum ingot' && itemName({ ...ing({}, 'good'), stage: 'crafted', craft: 'ring' }) === 'Good electrum ring', 'alloy names carry the grade');
+  const crafted = { ...ing({ gold: 0.5, silver: 0.5 }, 'fine'), stage: 'crafted', craft: 'blade' };
+  check(Math.abs(itemValue(crafted) - parts * 1.25 * 1.35) < 1e-9, 'a crafted alloy keeps its premium (blade ×1.35 on top)');
+  const E = createEconomy(mulberry32(9)); E.init();
+  E.state.contracts = [{ id: 1, kind: 'kg', want: { stage: 'ingot', material: 'electrum', grade: 'good' }, target: 15, progress: 0, reward: 50, standing: 1, done: false }];
+  const r = E.sell([ing({ gold: 0.5, silver: 0.5 }, 'fine', 6), ing({ gold: 0.9, silver: 0.1 }, 'rough', 6), ing({ gold: 0.62, silver: 0.38 }, 'good', 6)]);
+  check(r.completed.length === 0 && Math.abs(E.state.contracts[0].progress - 12) < 1e-9, 'an alloy order counts good and fine ingots, not rough ones');
+  let found = 0; const E2 = createEconomy(mulberry32(5)); E2.init(); E2.state.standing = 12; for (let d = 2; d < 300 && !found; d++) { E2.state.contracts = []; E2.newDay(d); found = E2.state.contracts.filter(c => c.want?.grade).length; }
+  check(found > 0, 'experienced players get alloy orders on the Guild board');
 }
 if (fails) { console.log(fails + ' failed'); process.exit(1); }

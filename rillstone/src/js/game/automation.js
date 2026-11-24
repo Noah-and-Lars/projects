@@ -96,9 +96,9 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
       const it = payloadItem(p); if (!it) return false;
       if (it.material === 'quartz' && def.fuelPerSec) { t.state.fuel += it.kg; return finish(p); }
       if (it.stage !== 'ore' || MATERIALS[it.material].kind !== 'metal') return false;
-      if (t.state.material && t.state.material !== it.material) { if (!t._warned) { t._warned = true; hud.toast(`${def.name}: mixed ore refused (it waits on the belt)`, 'err'); } return false; }
-      if (t.state.ore + t.state.molten + it.kg > def.capKg) return false;
-      t.state.material = it.material; t.state.ore += it.kg; t._warned = false; return finish(p);
+      const why = machines.furnaceRefuse(t, def, it, false);
+      if (why) { if (!t._warned && !/full/.test(why)) { t._warned = true; hud.toast(`${why} (it waits on the belt)`, 'err'); } return false; }
+      machines.furnaceAdd(t, it); t._warned = false; return finish(p);
     }
     if (t.def === 'stampmill') { const l = payloadLoad(p); const ent = p.ent; if (!l || !(ent?.data?.ore || p.oreClod)) return false; if ((t.state.queue ||= []).length >= 4) return false; t.state.queue.push(l); return finish(p); }
     if (t.def === 'trommel') { const l = payloadLoad(p); if (!l) return false; if ((t.state.queue ||= []).length >= 6) return false; t.state.queue.push(l); return finish(p); }
@@ -352,7 +352,7 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
       if (def.split === 'filter') {
         const f = m.state.filter || { material: 'iron', stage: 'ore' };
         const sel = h('select', { onchange: (e) => { const [mat, st] = e.target.value.split('|'); m.state.filter = { material: mat, stage: st }; render(); } },
-          ...Object.keys(MATERIALS).flatMap(mat => ['ore', 'uncut', 'cut', 'ingot', 'crafted'].filter(st => (MATERIALS[mat].kind === 'gem') === (st === 'uncut' || st === 'cut') || st === 'crafted').filter(st => !(MATERIALS[mat].kind === 'fuel' && st !== 'ore')).map(st => h('option', { value: `${mat}|${st}`, selected: f.material === mat && f.stage === st }, `${MATERIALS[mat].name} · ${STAGE_NAMES[st] || st}`))));
+          ...Object.keys(MATERIALS).flatMap(mat => ['ore', 'uncut', 'cut', 'ingot', 'crafted'].filter(st => (MATERIALS[mat].kind === 'gem') === (st === 'uncut' || st === 'cut') || st === 'crafted').filter(st => !(MATERIALS[mat].kind === 'fuel' && st !== 'ore') && !(MATERIALS[mat].kind === 'alloy' && st === 'ore')).map(st => h('option', { value: `${mat}|${st}`, selected: f.material === mat && f.stage === st }, `${MATERIALS[mat].name} · ${STAGE_NAMES[st] || st}`))));
         controls.append(h('div', { class: 'entry' }, h('b', {}, 'Sort out (straight on)'), sel, h('span', { class: 'desc' }, 'Matching items go straight through; everything else turns right.')));
       }
     }

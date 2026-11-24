@@ -25,7 +25,7 @@ import { MATERIALS, CRAFT_MULT } from '../defs/materials.js';
 const SNAP_HZ = 12, IN_HZ = 20, SCAN_HZ = 5, STATUS_HZ = 2;
 const COLORS = [0x2a8a86, 0xc8902c, 0xa84a3a, 0x6e56a8];
 const NEAR = 60; // moving bodies are sent within this range of a guest
-const SETTINGS = ['throttle', 'filter', 'value', 'period', 'delay', 'op', 'pulseOnly', 'cutKg'];
+const SETTINGS = ['throttle', 'filter', 'value', 'period', 'delay', 'op', 'pulseOnly', 'cutKg', 'alloy'];
 // Guest messages are untrusted: numbers must be finite, vectors the right
 // size, and machine settings in range, before the host acts on them.
 const num = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -40,7 +40,9 @@ function cleanSetting(k, v, materials) {
     case 'op': return ['>', '<', '='].includes(v) ? v : undefined;
     case 'pulseOnly': return typeof v === 'boolean' ? v : undefined;
     case 'cutKg': return num(v) ? clamp(v, 0.25, 10) : undefined;
-    case 'filter': return v && typeof v === 'object' && materials[v.material] && STAGES.includes(v.stage) ? { material: v.material, stage: v.stage } : undefined;
+    // null clears a sample; the Sorting Hopper also takes 'any' form.
+    case 'filter': return v === null ? null : v && typeof v === 'object' && materials[v.material] && (STAGES.includes(v.stage) || v.stage === 'any') ? { material: v.material, stage: v.stage } : undefined;
+    case 'alloy': return v === null || materials[v]?.kind === 'alloy' ? v : undefined;
   }
 }
 const r3 = (v) => Math.round(v * 1000) / 1000, r4 = (v) => Math.round(v * 10000) / 10000;

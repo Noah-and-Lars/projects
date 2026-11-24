@@ -2,11 +2,13 @@
 // money ($), one shop that buys everything (the Assay Office) at prices that
 // drift a little each day, guild contracts and claim deeds. Plain data, so it
 // saves and syncs.
-import { MATERIALS, itemValue, itemName } from '../defs/materials.js';
+import { MATERIALS, itemValue, itemName, ALLOYS } from '../defs/materials.js';
 import { CLAIMS } from '../world/valley.js';
 
 const CRAFT_NAMES = { toolhead: 'tool head', ring: 'ring', chain: 'chain', pendant: 'pendant', chalice: 'chalice', blade: 'blade' };
-const matches = (w, it) => it.stage === w.stage && (w.kind ? MATERIALS[it.material]?.kind === w.kind : !w.material || it.material === w.material) && (!w.craft || it.craft === w.craft);
+const GRADE_RANK = { rough: 0, good: 1, fine: 2 };
+// A wanted grade means that grade or better.
+const matches = (w, it) => it.stage === w.stage && (w.kind ? MATERIALS[it.material]?.kind === w.kind : !w.material || it.material === w.material) && (!w.craft || it.craft === w.craft) && (!w.grade || (GRADE_RANK[it.grade] ?? -1) >= GRADE_RANK[w.grade]);
 
 // Contract templates, scaled by how many contracts you've finished (a
 // hidden counter, `standing`; it's never shown or required for anything). kind: 'kg' (deliver kg of a
@@ -23,8 +25,10 @@ function makeContract(rng, standing, id) {
     if (u < 0.5 || tier < 3) { const kg = Math.round((10 + rng() * 15) * tier * (metal === 'gold' ? 0.4 : metal === 'silver' ? 0.6 : 1)); c = { kind: 'kg', want: { stage: 'ingot', material: metal }, target: kg, text: `Deliver ${kg} kg of ${MATERIALS[metal].name.toLowerCase()} ingots` }; }
     else if (u < 0.6) { const kg = Math.round((60 + rng() * 80) * tier * (metal === 'gold' ? 0.4 : metal === 'silver' ? 0.6 : 1) / 10) * 10; c = { kind: 'smelt', want: { material: metal }, target: kg, text: `Smelt ${kg} kg of ${metal} (pour it from a kiln or smelter)` }; }
     else if (u < 0.75) { const n = 2 + Math.floor(rng() * tier); c = { kind: 'count', want: { stage: 'cut', kind: 'gem' }, target: n, text: `Deliver ${n} cut gems` }; }
+    // Alloy orders: good-grade (or fine) ingots of one alloy, by weight.
+    else if (u < 0.86) { const alloy = Object.keys(ALLOYS)[Math.min(Object.keys(ALLOYS).length - 1, Math.floor(rng() * (tier + 1)))]; const kg = Math.max(5, Math.round((8 + 6 * tier) * (MATERIALS[alloy].refined > 50 ? 0.25 : 1))); c = { kind: 'kg', want: { stage: 'ingot', material: alloy, grade: 'good' }, target: kg, text: `Deliver ${kg} kg of ${MATERIALS[alloy].name.toLowerCase()} ingots (good grade or better)` }; }
     else { const craft = ['ring', 'chain', 'chalice'][Math.floor(rng() * 3)]; c = { kind: 'count', want: { stage: 'crafted', material: metal, craft }, target: 1, text: `Deliver ${/^[aeiou]/i.test(metal) ? 'an' : 'a'} ${MATERIALS[metal].name.toLowerCase()} ${CRAFT_NAMES[craft]} (1 kg or more)` }; }
-    const reward = Math.round((c.kind === 'smelt' ? c.target * MATERIALS[metal].refined * 0.25 : c.kind === 'kg' ? c.target * MATERIALS[metal].refined * 0.7 : c.want.stage === 'cut' ? c.target * 45 : 150 * tier) / 5) * 5 + 20;
+    const reward = Math.round((c.kind === 'smelt' ? c.target * MATERIALS[metal].refined * 0.25 : c.kind === 'kg' ? c.target * MATERIALS[c.want.material].refined * 0.7 : c.want.stage === 'cut' ? c.target * 45 : 150 * tier) / 5) * 5 + 20;
     return { id, ...c, progress: 0, reward, standing: tier, done: false };
   }
   if (t < 0.4) { const kg = Math.round((6 + rng() * 10) * tier * (metal === 'gold' ? 0.4 : metal === 'silver' ? 0.6 : 1)); c = { kind: 'kg', want: { stage: 'ore', material: metal }, target: kg, text: `Deliver ${kg} kg of ${MATERIALS[metal].name.toLowerCase()} ore` }; }
@@ -73,7 +77,7 @@ export function createEconomy(rng) {
   // with the change since yesterday.
   api.priceList = () => SELLABLE.map(m => {
     const M = MATERIALS[m], f = api.priceFactor(m), prev = S.pricesPrev?.[m] ?? f;
-    const forms = M.kind === 'gem' ? [['uncut', M.ore], ['cut', M.refined]] : [['ore', M.ore], ['ingot', M.refined]];
+    const forms = M.kind === 'gem' ? [['uncut', M.ore], ['cut', M.refined]] : M.kind === 'alloy' ? [['ingot', M.refined]] : [['ore', M.ore], ['ingot', M.refined]];
     return { material: m, name: M.name, kind: M.kind, factor: f, trend: f > prev + 0.005 ? 1 : f < prev - 0.005 ? -1 : 0, forms: forms.map(([stage, base]) => ({ stage, perKg: Math.round(base * f * 10) / 10 })) };
   });
   // Sell a list of items (plain item data) at the Assay Office.

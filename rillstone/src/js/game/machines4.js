@@ -163,7 +163,7 @@ export function createMachines4({ machines, auto, items, physics, hands, hud, au
       const opts = [h('option', { value: '', selected: !f }, 'No sample')];
       for (const mat of Object.keys(MATERIALS)) {
         if (MATERIALS[mat].kind === 'fuel') { opts.push(h('option', { value: `${mat}|ore`, selected: f?.material === mat }, MATERIALS[mat].name)); continue; }
-        const stages = MATERIALS[mat].kind === 'gem' ? ['any', 'uncut', 'cut'] : ['any', 'ore', 'ingot', 'crafted'];
+        const stages = MATERIALS[mat].kind === 'gem' ? ['any', 'uncut', 'cut'] : MATERIALS[mat].kind === 'alloy' ? ['any', 'ingot', 'crafted'] : ['any', 'ore', 'ingot', 'crafted'];
         for (const st of stages) opts.push(h('option', { value: `${mat}|${st}`, selected: f?.material === mat && f?.stage === st }, `${MATERIALS[mat].name} · ${st === 'any' ? 'any form' : STAGE_NAMES[st] || st}`));
       }
       controls.append(h('div', { class: 'entry' }, h('b', {}, 'Sample'), h('select', { onchange: (e) => { const v = e.target.value; m.state.filter = v ? { material: v.split('|')[0], stage: v.split('|')[1] } : null; render(); } }, ...opts),

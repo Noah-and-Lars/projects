@@ -8,7 +8,7 @@ import { building, counter, bell, textPlane, clerk, pad, bridge } from '../rende
 import { paint, merge, place } from '../render/geom.js';
 import { SHOPS } from '../defs/shops.js';
 import { MACHINES } from '../defs/machines.js';
-import { MATERIALS, itemName, CRAFT_MULT } from '../defs/materials.js';
+import { MATERIALS, itemName, CRAFT_MULT, ALLOYS, ALLOY_GRADES } from '../defs/materials.js';
 import { EXTRA_MESH, EXTRA_BOX, EXTRA_CARD, EXTRA_MASS } from './items.js';
 import { h } from '../ui/dom.js';
 
@@ -204,7 +204,8 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
       if (i % 2 === 0) { g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(30, y - rowH / 2, c.width - 60, rowH); }
       g.textAlign = 'left'; g.fillStyle = '#f4f0e0'; g.font = font(Math.min(44, rowH * 0.62)); g.fillText(r.name, 52, y);
       g.textAlign = 'right'; g.font = font(Math.min(38, rowH * 0.55), '600');
-      r.forms.forEach((f, k) => { g.fillStyle = '#f4f0e0'; g.font = font(Math.min(40, rowH * 0.62)); g.fillText(`$${f.perKg % 1 ? f.perKg.toFixed(2) : f.perKg}`, 640 + k * 230, y); });
+      r.forms.forEach((f, k) => { g.fillStyle = '#f4f0e0'; g.font = font(Math.min(40, rowH * 0.62)); g.fillText(`$${f.perKg % 1 ? f.perKg.toFixed(2) : f.perKg}`, 640 + (r.forms.length === 1 ? 1 : k) * 230, y); });
+      if (r.forms.length === 1) { g.fillStyle = '#a8b0a8'; g.fillText('alloy', 640, y); } // alloys only come as ingots
       g.textAlign = 'center'; g.font = font(Math.min(42, rowH * 0.6)); g.fillStyle = r.trend > 0 ? '#8ce08c' : r.trend < 0 ? '#f08a7a' : '#a8b0a8'; g.fillText(r.trend > 0 ? '▲' : r.trend < 0 ? '▼' : '–', 950, y);
     });
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
@@ -217,8 +218,9 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
       h('p', { class: 'small' }, `Day ${economy.state.day}. The Assay Office buys everything at these prices; they move a little every morning (▲ up, ▼ down since yesterday).`),
       h('div', { class: 'price-table' },
         h('div', { class: 'ph' }, h('span', {}, 'Material'), h('span', {}, 'Raw'), h('span', {}, 'Refined'), h('span', {}, 'Today')),
-        ...list.map(r => h('div', { class: 'pr' }, h('b', {}, r.name), ...r.forms.map(f => h('span', {}, `$${f.perKg % 1 ? f.perKg.toFixed(2) : f.perKg} /kg`, h('small', {}, ` ${f.stage}`))), h('span', { class: r.trend > 0 ? 'up' : r.trend < 0 ? 'down' : '' }, `${r.trend > 0 ? '▲' : r.trend < 0 ? '▼' : '–'} ${Math.round(r.factor * 100)}%`)))),
-      h('p', { class: 'small' }, `Gems: bigger stones pay more per kilo. Crafted goods pay their metal's ingot price × ${Object.entries(CRAFT_MULT).map(([k, v]) => `${k === 'toolhead' ? 'tool head' : k} ${v}`).join(', ')}, plus any gem set in. Quartz is fuel and isn't bought.`));
+        ...list.map(r => h('div', { class: 'pr' }, h('b', {}, r.name), ...(r.forms.length === 1 ? [h('span', {}, h('small', {}, 'alloy'))] : []), ...r.forms.map(f => h('span', {}, `$${f.perKg % 1 ? f.perKg.toFixed(2) : f.perKg} /kg`, h('small', {}, ` ${f.stage}`))), h('span', { class: r.trend > 0 ? 'up' : r.trend < 0 ? 'down' : '' }, `${r.trend > 0 ? '▲' : r.trend < 0 ? '▼' : '–'} ${Math.round(r.factor * 100)}%`)))),
+      h('p', { class: 'small' }, `Gems: bigger stones pay more per kilo. Crafted goods pay their metal's ingot price × ${Object.entries(CRAFT_MULT).map(([k, v]) => `${k === 'toolhead' ? 'tool head' : k} ${v}`).join(', ')}, plus any gem set in. Quartz is fuel and isn't bought.`),
+      h('p', { class: 'small' }, `Alloys: melt two metals together in one kiln, crucible or smelter. ${Object.entries(ALLOYS).map(([k, a]) => `${MATERIALS[k].name} ${Math.round(a.ideal * 100)}% ${a.a} + ${a.b}`).join(' · ')}. The refined price is a fine pour (within 5 points of the mix: ×${ALLOY_GRADES.fine.mult} the metals' ingot worth); good pours (within 15) pay ×${ALLOY_GRADES.good.mult}, rough ones ×1.`));
     panels.show('prices', "Today's prices", body, { badge: `day ${economy.state.day}` });
   }
   function deliver(shopId, entry) {

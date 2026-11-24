@@ -11,7 +11,7 @@ Object.assign(MACHINES, MACHINES2, MACHINES3, MACHINES4);
 PIPE_TIERS.cable = { name: 'Signal', cap: 0, hex: 0x8a6ad8, r: 0.022, cable: true };
 import { solveFlow, speedFrom, wearRate, PIPE_LOSS, pressureFactor } from '../sim/flow.js';
 import { rollLoot } from '../sim/loot.js';
-import { MATERIALS, itemName, CRAFT_MULT, GEM_CRAFTS } from '../defs/materials.js';
+import { MATERIALS, itemName, CRAFT_MULT, GEM_CRAFTS, ALLOYS, alloyOf, alloyGrade } from '../defs/materials.js';
 import { bandAtDepth, BEDROCK, surfaceY } from '../world/claims.js';
 import { riverSilt, meshHeight } from '../world/valley.js';
 import { EXTRA_MESH, EXTRA_BOX, EXTRA_CARD, EXTRA_MASS } from './items.js';
@@ -463,16 +463,59 @@ export function createMachines({ scene, physics, materials, items, claims, water
     }
     if (m._glow) m._glow.material.opacity = hot && (s.ore > 0 || s.molten > 0 || s.reheat.length) ? 0.55 + Math.sin(api.clock * 9) * 0.1 : 0;
   }
+  // What a furnace holds, by metal (kg of ore and molten together). Saves
+  // from before alloys only have `material`, so the mix is rebuilt from it.
+  function furnaceMix(s) {
+    if (!s.mix || typeof s.mix !== 'object') s.mix = s.material ? { [s.material]: s.ore + s.molten } : {};
+    return s.mix;
+  }
+  api.furnaceMix = furnaceMix;
+  // "Copper 6.0 kg + iron 4.0 kg (60%: fine millbrass)" or "Copper: 6.0 kg".
+  function furnaceText(s) {
+    const mix = furnaceMix(s), metals = Object.keys(mix).filter(k => mix[k] > 1e-6), tot = s.ore + s.molten;
+    if (metals.length < 2) return `${MATERIALS[s.material]?.name || 'Empty'}: ${tot.toFixed(1)} kg`;
+    const alloy = alloyOf(metals[0], metals[1]), r = ALLOYS[alloy];
+    const share = mix[r.a] / (mix[r.a] + mix[r.b]);
+    return `${metals.map(k => `${k} ${mix[k].toFixed(1)} kg`).join(' + ').replace(/^./, c => c.toUpperCase())} (${Math.round(share * 100)}% ${r.a}: ${alloyGrade(alloy, mix)} ${MATERIALS[alloy].name.toLowerCase()}, best ${Math.round(r.ideal * 100)}%)`;
+  }
+  // Can this ore go into this furnace? Returns null if so, or why not.
+  // A second metal is fine when the two make an alloy: always when fed by
+  // hand, and on a belt only when the smelter's alloy setting allows it.
+  api.furnaceRefuse = (m, def, it, byHand) => {
+    const s = m.state;
+    if (it.stage !== 'ore' || MATERIALS[it.material]?.kind !== 'metal') return `${def.name} melts metal ore only`;
+    if (s.ore + s.molten + it.kg > def.capKg) return `${def.name} is full (${def.capKg} kg)`;
+    const mix = furnaceMix(s), metals = Object.keys(mix).filter(k => mix[k] > 1e-6);
+    if (!byHand && s.alloy) { const r = ALLOYS[s.alloy]; if (r && it.material !== r.a && it.material !== r.b) return `${def.name} is set for ${MATERIALS[s.alloy].name.toLowerCase()} (${r.a} and ${r.b} only)`; }
+    if (!metals.length || metals.includes(it.material) && (metals.length === 1 || alloyOf(metals[0], metals[1]))) return null;
+    if (metals.length >= 2) return `${def.name} already holds two metals: pour it first`;
+    const alloy = alloyOf(metals[0], it.material);
+    if (!alloy) return `${MATERIALS[metals[0]].name} and ${it.material} don't make an alloy: pour the ${def.name.toLowerCase()} first`;
+    if (!byHand && s.alloy !== alloy) return `${def.name}: mixed ore refused (set its alloy to ${MATERIALS[alloy].name.toLowerCase()} to mix)`;
+    return null;
+  };
+  api.furnaceAdd = (m, it) => { const s = m.state, mix = furnaceMix(s); if (!s.material) s.material = it.material; mix[it.material] = (mix[it.material] || 0) + it.kg; s.ore += it.kg; };
   // Pour the molten metal into an ingot (lever, panel, or a logic pulse in M5).
   api.pour = (id, quiet) => {
     const m = list.get(id); if (!m || !m.state || m.state.molten < 0.05) return null;
-    const kg = Math.round(m.state.molten * 1000) / 1000;
-    const it = { material: m.state.material, stage: 'ingot', kg, hotUntil: items.clock + 90 };
-    const mat = m.state.material;
-    m.state.molten = 0; if (m.state.ore <= 0) m.state.material = null;
+    const s = m.state, kg = Math.round(s.molten * 1000) / 1000;
+    const mix = furnaceMix(s), metals = Object.keys(mix).filter(k => mix[k] > 1e-6);
+    const it = { material: s.material, stage: 'ingot', kg, hotUntil: items.clock + 90 };
+    // Two metals pour as an alloy, graded by how close the mix is to its ideal.
+    const alloy = metals.length === 2 ? alloyOf(metals[0], metals[1]) : null;
+    if (alloy) {
+      const tot = mix[metals[0]] + mix[metals[1]];
+      it.material = alloy; it.mix = {}; for (const k of metals) it.mix[k] = Math.round(mix[k] / tot * 1000) / 1000;
+      it.grade = alloyGrade(alloy, mix);
+    }
+    const before = { material: s.material, mix: { ...mix } };
+    // What stays behind is the unmelted ore, in the same proportions.
+    const left = s.ore > 0 ? s.ore / (s.ore + s.molten) : 0;
+    for (const k of metals) s.mix[k] = mix[k] * left;
+    s.molten = 0; if (s.ore <= 0) { s.material = null; s.mix = {}; }
     // Nothing is deleted: if the out port refuses the ingot, the metal stays molten.
-    if (output(m, { item: it }) === false) { m.state.molten = kg; m.state.material = mat; if (!quiet) { hud.toast('The way out is blocked: clear the belt or bin first', 'err'); audio.play('error'); } return null; }
-    audio.play('pour'); hud.toast(`Poured a ${kg.toFixed(1)} kg ${MATERIALS[it.material].name.toLowerCase()} ingot`, 'gold');
+    if (output(m, { item: it }) === false) { s.molten = kg; s.material = before.material; s.mix = before.mix; if (!quiet) { hud.toast('The way out is blocked: clear the belt or bin first', 'err'); audio.play('error'); } return null; }
+    audio.play('pour'); hud.toast(`Poured a ${kg.toFixed(1)} kg ${itemName({ ...it, hotUntil: 0 }).toLowerCase()}${alloy ? ` (${metals.map(k => `${Math.round(it.mix[k] * 100)}% ${k}`).join(', ')})` : ''}`, 'gold');
     for (const k of economy.smelted?.(it.material, kg) || []) { audio.play('contract'); hud.toast(`Contract done: ${k.text} · $${k.reward}`, 'gold'); }
     return it;
   };
@@ -519,11 +562,10 @@ export function createMachines({ scene, physics, materials, items, claims, water
     if (def.meltRate && it) {
       if (it.material === 'quartz' && def.fuelPerSec) { m.state.fuel += it.kg * 60 / 60; consume(held, H); hud.toast(`${def.name} fuel: ${m.state.fuel.toFixed(1)} kg quartz`); return true; }
       if (it.stage === 'ingot') { m.state.reheat.push({ item: { ...it, hotUntil: 0 }, t: 0 }); consume(held, H); hud.toast('Reheating — the ingot comes out hot in 20 s'); return true; }
-      if (it.stage !== 'ore' || MATERIALS[it.material].kind !== 'metal') { hud.toast(`${def.name} melts metal ore only`, 'err'); audio.play('error'); return true; }
-      if (m.state.material && m.state.material !== it.material) { hud.toast(`No alloys: the ${def.name.toLowerCase()} already holds ${MATERIALS[m.state.material].name.toLowerCase()}. Pour it first.`, 'err'); audio.play('error'); return true; }
-      if (m.state.ore + m.state.molten + it.kg > def.capKg) { hud.toast(`${def.name} is full (${def.capKg} kg)`, 'err'); return true; }
-      m.state.material = it.material; m.state.ore += it.kg; consume(held, H); audio.play('drop');
-      hud.toast(`${MATERIALS[it.material].name}: ${(m.state.ore + m.state.molten).toFixed(1)} kg in the ${def.name.toLowerCase()}`);
+      const why = api.furnaceRefuse(m, def, it, true);
+      if (why) { hud.toast(why, 'err'); audio.play('error'); return true; }
+      api.furnaceAdd(m, it); consume(held, H); audio.play('drop');
+      hud.toast(`${furnaceText(m.state)} in the ${def.name.toLowerCase()}`);
       return true;
     }
     if (def.role === 'booster' && it && it.material === 'quartz') { m.state.fuel += it.kg; consume(held, H); hud.toast(`Booster fuel: ${m.state.fuel.toFixed(1)} kg quartz`); return true; }
@@ -565,6 +607,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
   function craft(held, H, k) {
     const gem = H.slot ? items.get(H.slot) : null, gemOk = gem && gem.item && gem.item.stage === 'cut', it = held.item;
     const out = { material: it.material, stage: 'crafted', craft: k, kg: it.kg };
+    if (it.mix) { out.mix = { ...it.mix }; out.grade = it.grade; } // an alloy keeps its mix and grade
     if (gemOk && GEM_CRAFTS.includes(k)) { out.gem = { ...gem.item }; items.remove(gem.id); H.slot = null; }
     items.remove(held.id); H.hand = null;
     const e = items.spawn('crafted', [0, 0, 0], { item: out, loc: 'held' }); H.hand = e.id;
@@ -613,7 +656,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
       if (def.role === 'tank') row('Level', `${Math.round(m.state.level)} / ${def.tankCap} L`);
       if (def.role === 'booster') { row('Fuel', `${m.state.fuel.toFixed(2)} kg quartz (1 kg a minute)`); row('Boosters on this network', `${net.boosters ?? 0} of 4 working · +${(net.boosters ?? 0) * 20}% flow, +${(net.boosters ?? 0) * 10}% pressure`); }
       if (m.state.wood) row('Firewood', `${m.state.wood} bundle${m.state.wood > 1 ? 's' : ''} charring · ${Math.floor(40 - (m.state.charT || 0))} s to the next sack`);
-      if (def.meltRate) { row('Contents', m.state.material ? `${MATERIALS[m.state.material].name} · ${m.state.ore.toFixed(1)} kg ore, ${m.state.molten.toFixed(1)} kg molten` : 'empty'); if (def.fuelPerSec) row('Fuel', `${m.state.fuel.toFixed(2)} kg quartz`); if (m.state.reheat.length) row('Reheating', `${m.state.reheat.length} ingot(s)`); }
+      if (def.meltRate) { row('Contents', m.state.material ? `${furnaceText(m.state)} · ${m.state.ore.toFixed(1)} kg ore, ${m.state.molten.toFixed(1)} kg molten` : 'empty'); if (def.fuelPerSec) row('Fuel', `${m.state.fuel.toFixed(2)} kg quartz`); if (m.state.reheat.length) row('Reheating', `${m.state.reheat.length} ingot(s)`); }
       if (net.demand !== undefined && def.role !== 'none' && def.role !== 'logic' && def.role !== 'belt' || def.drive) row('Network', `${net.supply.toFixed(0)} L/s supply · ${net.demand.toFixed(0)} L/s demand`);
       const controls = h('div', { class: 'col' });
       api.panelRows?.(m, row, controls, render);
@@ -621,6 +664,9 @@ export function createMachines({ scene, physics, materials, items, claims, water
       if (def.role === 'source') controls.append(h('div', { class: 'entry' }, h('b', {}, 'Intake valve'), h('span', {}, ...[0.25, 0.5, 0.75, 1].map(v => h('button', { class: 'btn' + (m.state.throttle === v ? ' primary' : ''), style: { marginLeft: '4px', padding: '6px 10px' }, onclick: () => { m.state.throttle = v; render(); } }, `${v * 100}%`)))));
       if (def.meltRate) controls.append(h('button', { class: 'btn primary', disabled: m.state.molten < 0.05, onclick: () => { api.pour(m.id); render(); } }, `Pour (${m.state.molten.toFixed(1)} kg)`));
       if (m.def === 'sawbench') controls.append(h('div', { class: 'entry' }, h('b', {}, 'Cut'), h('span', {}, ...[0.25, 0.5, 1, 2, 5, 10].map(v => h('button', { class: 'btn' + ((m.state.cutKg || 1) === v ? ' primary' : ''), style: { marginLeft: '4px' }, onclick: () => { m.state.cutKg = v; render(); } }, `${v} kg`)))));
+      if (def.pourOnPulse) controls.append(h('div', { class: 'entry' }, h('b', {}, 'Alloy'), h('select', { onchange: (e) => { m.state.alloy = e.target.value || null; render(); } },
+        h('option', { value: '', selected: !m.state.alloy }, 'Pure metal only'), ...Object.entries(ALLOYS).map(([k, r]) => h('option', { value: k, selected: m.state.alloy === k }, `${MATERIALS[k].name}: ${Math.round(r.ideal * 100)}% ${r.a}, ${Math.round((1 - r.ideal) * 100)}% ${r.b}`))),
+        h('span', { class: 'desc' }, 'With an alloy set, the smelter takes both its metals from the belt. Fine grade within 5 points of the mix, good within 15.')));
       if (def.pourOnPulse) controls.append(h('div', { class: 'entry' }, h('b', {}, 'When full'), h('button', { class: 'btn', onclick: () => { m.state.pulseOnly = !m.state.pulseOnly; render(); } }, m.state.pulseOnly ? 'Waits for a pulse' : 'Pours by itself')));
       panels.show('machine:' + id, def.name, h('div', {}, h('p', { class: 'small' }, `${m.locked ? 'Locked with the mallet' : 'Unlocked: E picks it up, the mallet locks it'}`), ...rows, controls), { badge: def.family });
     };

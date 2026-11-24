@@ -7,7 +7,7 @@ import { MACHINES } from '../defs/machines.js';
 import { SHOPS, STARTER_KIT } from '../defs/shops.js';
 import { CLAIMS } from '../world/valley.js';
 import { BLUEPRINTS } from '../defs/progression.js';
-import { MATERIALS } from '../defs/materials.js';
+import { MATERIALS, ALLOYS, alloyOf } from '../defs/materials.js';
 
 const priceOf = (id) => { for (const S of Object.values(SHOPS)) { const e = S.items.find(i => i.id === id); if (e) return e.price; } return 0; };
 const KIT_COST = Math.ceil(STARTER_KIT.reduce((a, id) => a + priceOf(id), 0) / 50) * 50;
@@ -74,7 +74,8 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
       if (m) {
         if (m.kind === 'gem') desc.push(ref.stage === 'uncut' ? 'Sell gems at the Assay Office, or cut them first on a grinding wheel (or at the Upper Falls cutter) to roughly double their price.' : 'Cut gems sell at the Assay Office, or set one in a ring, pendant or chalice at a workbench.');
         else if (m.kind === 'fuel') desc.push('Quartz is fuel: kilns, smelters and booster pumps burn it.');
-        else if (ref.stage === 'ore') desc.push('Sell it at the Assay Office, or melt 10 kg of one metal in a crucible or kiln into an ingot worth more.');
+        else if (m.kind === 'alloy') { const a = ALLOYS[ref.material]; desc.push(`An alloy of ${a.a} and ${a.b}, best at ${Math.round(a.ideal * 100)}% ${a.a}. A fine pour (within 5 points) sells for a quarter more than the two metals would as ingots; good (within 15) an eighth more. Work it hot at a workbench like any ingot.`); }
+        else if (ref.stage === 'ore') { const mates = Object.keys(MATERIALS).filter(k => MATERIALS[k].kind === 'metal' && alloyOf(ref.material, k)); desc.push(`Sell it at the Assay Office, or melt it in a crucible or kiln into an ingot worth more.${mates.length ? ` Melted with ${mates.join(' or ')} it pours an alloy worth more again.` : ''}`); }
         else desc.push('Refined metal sells for more at the Assay Office. A hot ingot can be worked at a workbench.');
       }
       if (ref.type === 'clod' || ref.type === 'pile') desc.push('Loose things on the ground can be tidied up from the menu: Settings → Clear loose clods and piles.');
@@ -96,6 +97,7 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
           ['Depth bands', 'Topsoil and clay (0–6 m) dig with any tool; the gravel bed (6–14 m) needs steel, slate (14–22 m) glimmer, basalt (Ember Seam) ember. Deeper finds weigh more.'],
           ['Water', `Intakes give flow (Mk I ${MACHINES.intake1.flow} L/s); each pipe carries its tier's limit. Machines slow down, but never stop, when the flow can't keep up. Settling tanks take silt out, which saves wear.`],
           ['Selling', 'The Assay Office is the one shop that buys, and it buys everything: ore, ingots, gems and crafted goods. Prices move a little every morning: the board beside it shows today\'s $ per kg for every material.'],
+          ['Alloys', `Two metals melted together pour an alloy: ${Object.entries(ALLOYS).map(([k, a]) => `${MATERIALS[k].name} (${Math.round(a.ideal * 100)}% ${a.a}, ${Math.round((1 - a.ideal) * 100)}% ${a.b})`).join(', ')}. The closer to the mix, the better the grade and price; the furnace panel shows your mix. Hand-fed kilns and crucibles mix on their own; a smelter mixes from a belt once you pick an alloy on its panel.`],
           ['Claims', 'Buy new claims at the Guild Hall with money. Everything else is sold at any shop counter in Millbrook.'],
           ['The Pumphouse', 'The old pumphouse below Millbrook can be restored in five stages: that is the big goal.'],
         ].map(([k, v]) => h('div', { class: 'entry' }, h('b', {}, k), h('span', { class: 'desc' }, v))),

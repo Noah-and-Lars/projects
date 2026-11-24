@@ -264,6 +264,8 @@ export function ingot(form = 'trap') {
   else if (form === 'hex') g = new THREE.CylinderGeometry(0.3, 0.3, 1.1, 6, 1).rotateZ(Math.PI / 2).scale(1, 0.75, 1);
   // Glimmerite: a long triangular prism; emberite: a stepped double block.
   else if (form === 'tri') g = new THREE.CylinderGeometry(0.36, 0.36, 1.1, 3, 1).rotateZ(Math.PI / 2).rotateX(Math.PI / 6).scale(1, 0.7, 1);
+  // Alloys: two bars cast side by side and joined by a web, for "two metals".
+  else if (form === 'twin') g = mergeG(mergeG(new THREE.BoxGeometry(1.1, 0.26, 0.24).translate(0, 0, -0.17), new THREE.BoxGeometry(1.1, 0.26, 0.24).translate(0, 0, 0.17)), new THREE.BoxGeometry(1.0, 0.12, 0.2).translate(0, -0.05, 0));
   else if (form === 'step') g = mergeG(new THREE.BoxGeometry(1.15, 0.2, 0.6), new THREE.BoxGeometry(0.8, 0.16, 0.42).translate(0, 0.18, 0));
   else g = new THREE.CylinderGeometry(0.42, 0.55, 0.3, 4, 1).rotateY(Math.PI / 4).scale(1.2, 1, 0.6);
   g.computeVertexNormals();

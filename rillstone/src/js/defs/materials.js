@@ -11,7 +11,46 @@ export const MATERIALS = {
   peridot:    { name: 'Peridot',    kind: 'gem',   ore: 16,  refined: 28,  color: 0x7ab830, metal: 0.1 },
   aquamarine: { name: 'Aquamarine', kind: 'gem',   ore: 20,  refined: 32,  color: 0x8ad0e0, metal: 0.1 },
   starstone:  { name: 'Starstone',  kind: 'gem',   ore: 160, refined: 260, color: 0x1a2a6a, metal: 0.2, sparkle: true },
+  // Alloys: poured from a furnace holding two metals (see ALLOYS below).
+  // `refined` is the $/kg of a fine pour at the ideal mix; a real ingot's
+  // value comes from its own mix and grade (alloyPerKg).
+  millbrass:   { name: 'Millbrass',   kind: 'alloy', ore: 0, refined: 0, color: 0xc89a48, ingot: 0xd8b060, metal: 0.8 },
+  rosegold:    { name: 'Rose gold',   kind: 'alloy', ore: 0, refined: 0, color: 0xe0907a, ingot: 0xe8a08a, metal: 0.9 },
+  electrum:    { name: 'Electrum',    kind: 'alloy', ore: 0, refined: 0, color: 0xe0d090, ingot: 0xece0a0, metal: 0.92 },
+  moonsilver:  { name: 'Moonsilver',  kind: 'alloy', ore: 0, refined: 0, color: 0xb0b8f0, ingot: 0xc8ccff, metal: 0.85, glow: 0.12 },
+  cindersteel: { name: 'Cindersteel', kind: 'alloy', ore: 0, refined: 0, color: 0x5a3a34, ingot: 0x8a4a3a, metal: 0.6, glow: 0.1 },
 };
+// Alloy recipes: two metals melted together in one furnace. `a` is the main
+// metal and `ideal` its share of the mix. How close the pour is to the ideal
+// sets its grade, and the grade sets the premium over the metals' own worth.
+export const ALLOYS = {
+  millbrass:   { a: 'copper', b: 'iron',       ideal: 0.6 },
+  rosegold:    { a: 'gold',   b: 'copper',     ideal: 0.75 },
+  electrum:    { a: 'gold',   b: 'silver',     ideal: 0.5 },
+  moonsilver:  { a: 'silver', b: 'glimmerite', ideal: 0.7 },
+  cindersteel: { a: 'iron',   b: 'emberite',   ideal: 0.7 },
+};
+// Fine: within 5 points of the ideal share; good: within 15; rough: anything else.
+export const ALLOY_GRADES = { fine: { name: 'Fine', mult: 1.25, within: 0.05 }, good: { name: 'Good', mult: 1.12, within: 0.15 }, rough: { name: 'Rough', mult: 1, within: 1 } };
+// The alloy two metals make, or null.
+export function alloyOf(m1, m2) {
+  for (const [id, r] of Object.entries(ALLOYS)) if ((r.a === m1 && r.b === m2) || (r.a === m2 && r.b === m1)) return id;
+  return null;
+}
+// Grade of a mix ({ metal: kg or share }) for an alloy.
+export function alloyGrade(alloy, mix) {
+  const r = ALLOYS[alloy], tot = (mix?.[r.a] || 0) + (mix?.[r.b] || 0);
+  if (!(tot > 0)) return 'rough';
+  const off = Math.abs((mix[r.a] || 0) / tot - r.ideal);
+  return off <= ALLOY_GRADES.fine.within + 1e-9 ? 'fine' : off <= ALLOY_GRADES.good.within + 1e-9 ? 'good' : 'rough';
+}
+// $/kg of an alloy ingot from its mix (shares) and grade.
+export function alloyPerKg(alloy, mix, grade) {
+  const r = ALLOYS[alloy]; if (!r) return 0;
+  const sa = mix && (mix[r.a] || mix[r.b]) ? (mix[r.a] || 0) / ((mix[r.a] || 0) + (mix[r.b] || 0)) : r.ideal;
+  return (sa * MATERIALS[r.a].refined + (1 - sa) * MATERIALS[r.b].refined) * (ALLOY_GRADES[grade]?.mult || 1);
+}
+for (const id in ALLOYS) MATERIALS[id].refined = Math.round(alloyPerKg(id, null, 'fine') * 10) / 10;
 export const STAGE_NAMES = { ore: 'Ore', ingot: 'Ingot', uncut: 'Uncut', cut: 'Cut', crafted: 'Crafted' };
 
 // Loot table per band, in percent (BUILD_BRIEF 3.3). 'gem' splits into
@@ -44,7 +83,7 @@ export function itemValue(it) {
   const m = MATERIALS[it.material];
   if (!m) return 0;
   const refined = it.stage === 'ingot' || it.stage === 'cut' || it.stage === 'crafted';
-  const base = refined ? m.refined : m.ore;
+  const base = m.kind === 'alloy' ? alloyPerKg(it.material, it.mix, it.grade || 'rough') : refined ? m.refined : m.ore;
   let v = m.kind === 'gem' ? base * Math.pow(it.kg, 1.15) : base * it.kg;
   if (it.stage === 'crafted') v *= CRAFT_MULT[it.craft] || 1;
   if (it.gem) v += itemValue(it.gem) * 1.1;
@@ -53,9 +92,10 @@ export function itemValue(it) {
 export function itemName(it) {
   const m = MATERIALS[it.material];
   if (!m) return it.material;
-  if (it.stage === 'crafted') return `${m.name} ${({ toolhead: 'tool head', ring: 'ring', chain: 'chain', pendant: 'pendant', chalice: 'chalice', blade: 'blade' })[it.craft] || 'piece'}${it.gem ? ' with ' + MATERIALS[it.gem.material].name.toLowerCase() : ''}`;
+  if (it.stage === 'crafted') return `${m.kind === 'alloy' ? `${ALLOY_GRADES[it.grade]?.name || 'Rough'} ${m.name.toLowerCase()}` : m.name} ${({ toolhead: 'tool head', ring: 'ring', chain: 'chain', pendant: 'pendant', chalice: 'chalice', blade: 'blade' })[it.craft] || 'piece'}${it.gem ? ' with ' + MATERIALS[it.gem.material].name.toLowerCase() : ''}`;
   if (m.kind === 'gem') return `${it.stage === 'cut' ? 'Cut' : 'Uncut'} ${m.name.toLowerCase()}`;
   if (m.kind === 'fuel') return `${m.name} shard`;
+  if (m.kind === 'alloy') return `${it.hotUntil ? 'Hot ' : ''}${ALLOY_GRADES[it.grade]?.name || 'Rough'} ${m.name.toLowerCase()} ingot`;
   if (it.stage === 'ingot') return `${it.hotUntil ? 'Hot ' : ''}${m.name.toLowerCase().replace(/^./, c => c.toUpperCase())} ingot`;
   return `${m.name} nugget`;
 }

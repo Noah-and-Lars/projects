@@ -43,6 +43,9 @@ export const FORMS = {
   // Gems: a rough habit and a cut each, plus a glyph, so none relies on colour.
   quartz: { glyph: '◇' }, garnet: { rough: 'dodeca', cut: 'brilliant', glyph: '⬟' }, peridot: { rough: 'squat', cut: 'step', glyph: '▰' },
   aquamarine: { rough: 'column', cut: 'oval', glyph: '⬭' }, starstone: { rough: 'star', cut: 'star', glyph: '★' },
+  // Alloys share the twin-bar ingot; each has its own glyph.
+  millbrass: { ingot: 'twin', glyph: '◐' }, rosegold: { ingot: 'twin', glyph: '◑' }, electrum: { ingot: 'twin', glyph: '◒' },
+  moonsilver: { ingot: 'twin', glyph: '◓' }, cindersteel: { ingot: 'twin', glyph: '◉' },
 };
 export function nuggetGeometry(kind, seed = 3, shape = '', material = '') {
   const F = FORMS[material] || {};
