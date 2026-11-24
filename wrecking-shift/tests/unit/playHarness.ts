@@ -71,6 +71,8 @@ export interface WalkOpts {
   max?: number;
   /** keep the pitch while walking */
   pitch?: number;
+  /** max yaw change per tick (rad); default: face the waypoint at once */
+  turnRate?: number;
 }
 
 export class Run {
@@ -159,7 +161,7 @@ export class Run {
     ti.scroll = this.scrollNext; this.scrollNext = 0;
     ti.interactPressed = this.interactNext;
     this.prevL = L; this.prevR = R;
-    if (ti.primaryPressed) this.used.add(this.belt.current.id);
+    if (ti.primaryPressed && !this.belt.grab.holding && !p.seated) this.used.add(this.belt.current.id);
     this.belt.update(this.ctx, ti, ctl && !p.seated);
     // vehicle module
     if (this.car) {
@@ -241,7 +243,9 @@ export class Run {
         if (d < r) break;
         if (this.mission.ended) return;
         if (i > max) throw new Error(`${this.def.id}: stuck walking to ${JSON.stringify(wp)} at ${JSON.stringify(roundV(pos))} (t=${this.t.toFixed(1)})`);
-        p.yaw = Math.atan2(-(wp.x - pos.x), -(wp.z - pos.z));
+        const want = Math.atan2(-(wp.x - pos.x), -(wp.z - pos.z));
+        if (o.turnRate) p.yaw += Math.max(-o.turnRate, Math.min(o.turnRate, wrap(want - p.yaw)));
+        else p.yaw = want;
         if (o.pitch != null) p.pitch = o.pitch;
         p.input.moveZ = d < 0.6 ? Math.max(0.3, d) : 1;
         p.input.moveX = 0;
@@ -274,6 +278,42 @@ export class Run {
     if (!this.mission.focus) throw new Error(`${this.def.id}: nothing to take at ${JSON.stringify(roundV(c))} from ${JSON.stringify(roundV(p.pos))} (dist ${hdist(c, p.pos).toFixed(2)})`);
     this.pressE();
     this.log('took', body.name);
+  }
+
+  /** hold RMB on a body until the grabber has it (stand within 3 m, it is aimed at) */
+  grab(body: VoxelBody): void {
+    for (let i = 0; i < 20; i++) {
+      this.aim(body.rb.worldCom());
+      this.rmb = true;
+      this.tick();
+      if (this.belt.grab.body === body) return;
+    }
+    throw new Error(`${this.def.id}: could not grab ${body.name} from ${JSON.stringify(roundV(this.player.pos))} (dist ${hdist(this.player.pos, body.center()).toFixed(2)})`);
+  }
+  /** carry the held body along a route (RMB stays down), then throw it (LMB) toward `throwAt` */
+  carry(route: V3[], throwAt?: V3, o: WalkOpts = {}): void {
+    const body = this.belt.grab.body;
+    if (!body) throw new Error('not holding anything');
+    // turn toward the first waypoint gradually so the held body swings around with the view
+    const p = this.player;
+    const f = route[0];
+    const want = Math.atan2(-(f.x - p.pos.x), -(f.z - p.pos.z));
+    for (let i = 0; i < 90; i++) {
+      const d = wrap(want - p.yaw);
+      if (Math.abs(d) < 0.05) break;
+      p.yaw += Math.sign(d) * Math.min(Math.abs(d), 0.07);
+      p.pitch += (-0.35 - p.pitch) * 0.2;
+      this.tick();
+    }
+    this.walk(route, { pitch: -0.35, sprint: false, turnRate: 0.05, ...o });
+    if (this.belt.grab.body !== body) throw new Error(`${this.def.id}: dropped ${body.name} on the way at ${JSON.stringify(roundV(this.player.pos))}, it is at ${body.removed ? 'removed' : JSON.stringify(roundV(body.center()))}`);
+    if (throwAt) {
+      this.aim(throwAt);
+      this.step(4);
+      this.click();
+    }
+    this.rmb = false;
+    this.tick();
   }
 
   // ---------------------------------------------------------------- vehicles

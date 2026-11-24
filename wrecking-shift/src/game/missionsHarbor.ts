@@ -94,16 +94,19 @@ export const deadWeight: MissionDef = {
     'Two are on Harbour Watch alarm boxes. The third is in the pump house behind the depot fence, which is not ' +
     'alarmed, only concrete.',
   objectives: [
-    { kind: 'deliver', id: 'boxes', target: 'box', count: 3, title: 'Sink all three strongboxes in the harbour', zone: { water: true } },
+    // the alarm is wired per target id, so the unalarmed pump-house box needs its own id (it used to share 'box'
+    // with the two alarmed ones, which made it alarmed too, against the brief)
+    { kind: 'deliver', id: 'boxes', target: 'box', count: 2, title: 'Sink the two alarmed strongboxes in the harbour', zone: { water: true } },
+    { kind: 'deliver', id: 'pump', target: 'pumpbox', count: 1, title: 'Sink the strongbox from the pump house', zone: { water: true } },
   ],
-  alarmSeconds: 75,
+  alarmSeconds: 50,
   reward: { cash: 1100 },
   unlockAfter: ['paper-trail'],
   setup(sim) {
     strongbox(sim, { x: -25, y: G + 0.15, z: 14 }, 'box', 'Strongbox A');
     alarmBox(sim, { x: -25.2, y: G + 1.2, z: 9.7 }, 'box', 'z');
     strongbox(sim, { x: 20, y: G + 0.05, z: 20 }, 'box', 'Strongbox B');
-    strongbox(sim, { x: 41, y: G + 0.15, z: -20.5 }, 'box', 'Strongbox C');
+    strongbox(sim, { x: 41, y: G + 0.15, z: -20.5 }, 'pumpbox', 'Strongbox C');
   },
 };
 

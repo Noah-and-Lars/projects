@@ -54,4 +54,58 @@ describe('Gullwick Harbour playthroughs', () => {
     r.clockOut();
     finish(r);
   }, T);
+
+  it('lights-out: sledge the timber shoring at the foot of the lighthouse, walk back to the van', () => {
+    const r = new Run('lights-out');
+    const c = v3(-52, 3.2, 31);
+    r.select('sledge');
+    r.tp(v3(c.x, 3.3, c.z - 3.1));
+    for (let deg = 0; deg < 360 && !r.mission.objectives()[0].done; deg += 18) {
+      const a = (deg * Math.PI) / 180;
+      r.walk(v3(c.x + Math.sin(a) * 3.1, 3.3, c.z - Math.cos(a) * 3.1), { r: 0.3, sprint: false });
+      for (const h of [3.75, 4.35]) {
+        r.aim(v3(c.x + Math.sin(a) * 2.0, h, c.z - Math.cos(a) * 2.0));
+        r.hold(26);
+      }
+    }
+    r.wait(4);
+    expect(r.mission.objectives()[0].done).toBe(true);
+    expect(r.player.dead).toBe(false);
+    // no alarm on this job: walk back
+    r.walk([v3(-44, 1.6, 25.5), v3(-20, 1.5, 25.5), v3(-15, 1.5, 5), v3(0, 1.5, 0), v3(0, 2, -50), r.mission.escapePos()], { r: 2.5 });
+    r.clockOut();
+    finish(r, null);
+  }, T);
+
+  it('dead-weight: pump-house box while planning, then the two alarmed boxes into the harbour, van', () => {
+    const r = new Run('dead-weight');
+    const box = (n: string) => r.bodies((b) => b.name === n)[0];
+    // planning: the unalarmed box C out of the pump house, through the depot gate, off the quay
+    const C = box('Strongbox C');
+    r.tp(v3(43.2, 1.5, -20.0));
+    r.grab(C);
+    r.carry([v3(41.5, 1.5, -20.0), v3(37.0, 1.5, -20.0), v3(37.0, 1.5, -15.5), v3(42, 1.5, -12), v3(42, 1.5, 32.6)], v3(42, 2.5, 40));
+    r.wait(3);
+    r.log('box C at', C.removed ? 'gone' : C.center());
+    expect(r.phase).toBe('planning');
+    expect(r.mission.objectives()[1].done).toBe(true);
+    // box A in the warehouse -> alarm; out the side door, off the quay
+    const A = box('Strongbox A');
+    // (out the wide front door: the 1 m side door is too narrow to thread a held box through reliably)
+    r.tp(v3(A.center().x, 1.5, A.center().z + 1.9));
+    r.grab(A);
+    r.carry([v3(-27.0, 1.5, 12.5), v3(-28, 1.5, 7.5), v3(-21, 1.5, 6), v3(-20.5, 1.5, 32.6)], v3(-20.5, 2.5, 40));
+    expect(r.phase).toBe('alarm');
+    // box B in the container yard
+    const B = box('Strongbox B');
+    r.walk([v3(18.7, 1.5, 28), v3(18.7, 1.5, 21.5), v3(B.center().x - 1.3, 1.5, B.center().z)]);
+    r.grab(B);
+    r.carry([v3(18.7, 1.5, 21.5), v3(18.7, 1.5, 28), v3(18.7, 1.5, 32.6)], v3(18.7, 2.5, 40));
+    r.step(240, () => r.mission.escapeOpen);
+    r.log('A', A.removed ? '-' : A.center(), 'B', B.removed ? '-' : B.center());
+    expect(r.mission.escapeOpen).toBe(true);
+    r.walk([v3(10, 1.5, 26), v3(2, 1.5, 6), v3(0, 1.5, -20), v3(0, 2, -50), r.mission.escapePos()], { r: 2.5 });
+    r.clockOut();
+    finish(r);
+  }, T);
 });
