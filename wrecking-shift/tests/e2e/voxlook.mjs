@@ -22,6 +22,9 @@ await page.screenshot({ path: `${outDir}/${pre}-4-debris.png` });
 // bomb on the brick office wall (16.2, 6.2, -7.0 faces -z)
 await ev(() => { const g = window.__game; g.game.cameraOverride = null;
   const h = g.sim.raycast({ x: 16, y: 20, z: -11 }, { x: 0, y: -1, z: 0 }, 40);
+  g.setView(16, h.point.y + 0.02, -8.3, Math.PI + 0.5, 0.1); g.step(20); g.render(); });
+await page.screenshot({ path: `${outDir}/${pre}-5a-brick-close.png` });
+await ev(() => { const g = window.__game; const h = g.sim.raycast({ x: 16, y: 20, z: -11 }, { x: 0, y: -1, z: 0 }, 40);
   g.setView(16, h.point.y + 0.02, -11, Math.PI, 0.05); g.step(20); g.explode(16, h.point.y + 1.2, -7.05, 1.4); g.step(8); g.render(); });
 await page.screenshot({ path: `${outDir}/${pre}-5-blast.png` });
 await ev(() => { const g = window.__game; g.step(300); g.render(); });

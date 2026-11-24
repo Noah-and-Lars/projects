@@ -6,6 +6,42 @@ Branch: `teardown-voxel-game`, folder: `wrecking-shift/`. Research: `docs/resear
 (published from `dist/`; it could not be opened from the build container, so whether the artifact sandbox allows the
 physics WebAssembly and pointer lock is unverified — if it shows "Failed to start", run locally: `npm install && npm run dev`).
 
+## Latest pass (2026-11-24): ground glitch fix + voxel look (research: `docs/research/09-voxels-deep-dive.md`)
+**"The ground is glitched even when I am standing still" — cause and fix.** Logged the camera of a standing player:
+on every big map the eye flipped by 0.1 mm every physics tick (Rapier's character controller nudges the character
+off the ground, the -1 m/s ground-stick speed pulls it back), and on Kestrel Ridge's terraced slopes the player crept
+~4 cm per 10 s. A headless probe that renders consecutive frames from a fixed standing position measured ~1050 ground
+pixels changing per frame at 640x360 (harbor, medium); after the fix 0 on harbor / works at every tier (only the
+animated water changes on ridge). The renderer itself had no frame-to-frame noise. Fix: a sub-0.3 mm deadband for a
+standing player without movement input (`src/sim/player.ts`). Also fixed on the way, all visible as "glitchy ground":
+- black specks on terraced hillsides: T-junction cracks at concave/convex step edges (now overlapped) and sun-shadowed
+  nooks clipped to pure black by a linear-space contrast step in the post grade (now a log-space curve) plus an AO that
+  counted nearby walls twice (now min(face AO, cone AO); cones start clear of the surface);
+- distant ground sparkle when moving: per-voxel colour grain now fades out once a voxel is smaller than a pixel.
+Tests: `tests/unit/standstill.test.ts` (eye perfectly still on flat ground, a voxel staircase slope, after walking,
+and around spawn on harbor / ridge / works), `tests/e2e/still.mjs` (consecutive frames identical while standing);
+probe `tests/e2e/stillprobe.mjs [maps] [tiers] [frames]` writes diff masks.
+
+**Voxel look / breaking (compared with the genre reference, see the research file's table):**
+- per-voxel normal tilt (~4°) so flat walls break into a mosaic of shading steps; soft bevel on convex voxel edges of
+  static bodies near the camera;
+- chips are small (2.5-5 cm) tumbling flecks, mostly short-lived, and no longer hang in the air around fresh holes;
+- soot is graded (heavy near a blast hole, light outside) instead of pitch-black blots;
+- hole rims are cleaner (the reference carves exact spheres); bricks are 3x1 voxels (real brick scale) instead of 4x2;
+- small debris is only cleaned up when it is small, slow and more than 20 m from the player (it used to crumble in
+  front of you 15 s after settling).
+- Crash fix found by the playthroughs after these changes: Rapier `setVoxel` panics on small sparse dynamic bodies;
+  those now rebuild their collider once per step.
+
+**What to try:** stand still on Kestrel Ridge or Gullwick Harbour and watch the distant ground (should be perfectly
+still); hammer a wooden wall up close (chips, hole rim, the chunk on the floor); bomb a brick wall (soot gradient).
+
+**Still differs from the reference / known issues:** no TAA (terrace edges and thin distant props still crawl while
+moving; the reference resolves them with TAA); no per-shape grime/rust detail textures; the bevel exists only on
+static (volume-lit) bodies; terraced hills at sunset show many tiny (now dark green, not black) step shadows; glass
+window frames can show a dotted crack line against the glass. Real-GPU behaviour of the fix is reasoned, not seen:
+the container renders with SwiftShader.
+
 ## What to try first
 1. `npm install && npm run dev`, open the URL, **Play — Job Board → Housewarming** (tiny tutorial yard), then
    **Paper Trail** on Gullwick Harbour. Sandbox mode gives every tool with infinite ammo on any map.
@@ -33,7 +69,7 @@ physics WebAssembly and pointer lock is unverified — if it shows "Failed to st
   backdrop hills + soft map boundary. Not done: wet-road physics, any mission that uses rain/snow.
 
 ## Tests
-`npm test`: typecheck (with unused-code checks), 224 unit/sim tests in Node (incl. 11 scripted mission playthroughs
+`npm test`: typecheck (with unused-code checks), 226 unit/sim tests in Node (incl. 11 scripted mission playthroughs
 and a vehicle road test, ~3 min), build, headless-browser tests (boot, audio, 14 tools, missions/UI, vehicles,
 lighting incl. GPU-vs-CPU ray check, fire, quicksave, challenge/photo modes, one mission played through per big map).
 
