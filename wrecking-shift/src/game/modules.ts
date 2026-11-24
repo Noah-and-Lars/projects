@@ -8,6 +8,7 @@ import { createWeatherModule } from './weatherModule';
 import { MissionModule } from './missionModule';
 import { UiModule } from './uiModule';
 import { vehicleModule } from './vehicleModule';
+import { createLookModule } from '../render/lookModule';
 
 /**
  * Module registry. Each feature adds ONE import and ONE entry here.
@@ -15,6 +16,7 @@ import { vehicleModule } from './vehicleModule';
  */
 export function createModules(): GameModule[] {
   return [
+    createLookModule(),
     createWaterModule(),
     createWeatherModule(),
     new ToolsModule(),

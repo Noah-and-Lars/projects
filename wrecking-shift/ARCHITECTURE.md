@@ -18,7 +18,9 @@ src/sim/        deterministic simulation — pure TS, runs in Node, fixed 60 Hz 
   player.ts     first-person character (Rapier kinematic controller), health / damage()
   build.ts      voxel authoring helpers       levels/   level generators (LevelDef.build(sim) -> LevelInfo)
   tools/        Tool base class + ToolBelt + one file per tool      fire.ts  FireApi
-src/render/     three.js presentation: renderer.ts, bodyViews.ts (chunk meshes per body), particles.ts, worldMaterial.ts
+src/render/     three.js presentation: renderer.ts (tiers, time of day, frame), bodyViews.ts (chunk meshes per body),
+                particles.ts, worldMaterial.ts (+ trace.glsl.ts: traced sun / AO), occupancy.ts + worldOccupancy.ts (pure
+                CPU world volume) + volumes.ts (3D textures), sky.ts, lamps.ts, post.ts (bloom / tone map / FXAA)
 src/game/       app glue: game.ts (main loop, GameModule), modules.ts (module registry), levels.ts (level registry),
                 input.ts, ui/ (DOM HUD + menus)
 src/audio/      WebAudio (procedural)
@@ -64,3 +66,15 @@ tests/unit/     Vitest (Node)         tests/e2e/   Playwright smoke tests agains
   Keep viewports small (640×360). Never judge FPS in this container (no GPU); benchmark CPU work in Node instead.
 - Playwright + Chromium are preinstalled (`require('playwright')`); do **not** run `playwright install`.
 - Add tests for what you build (unit tests for sim logic; an e2e check + screenshot for anything visible).
+
+## Rendering notes (see DECISIONS.md "Rendering / look")
+- `renderer.setQuality('low'|'medium'|'high')`, `setTimeOfDay('day'|'sunset'|'overcast'|'night')`, `setResolutionScale(0.5..1)`,
+  `pendingChunks()`, `stats()`, `patchMaterial(mat)`. Old members (`scene`, `camera`, `three`, `chips`, `sun`, `hemi`, `bodies`,
+  `shake`, `setCamera`, `handleEvents`, `render`, `reset`, `setLevel`, `resize`) are unchanged.
+- The scene is drawn into an HDR target and tone-mapped in `post.ts`; colours you put in the scene are linear radiance
+  (values > 1 bloom). Add objects to `renderer.scene` as usual; lit three materials are patched automatically to receive the
+  voxel world's traced shadows. Objects with `castShadow = true` render into the small sun shadow map.
+- Static axis-aligned bodies are mirrored into the occupancy volume automatically (via `body.editBoxes`, filled by
+  `markDirtyVoxel`). Glass and lamp voxels do not block light. `lamp`-like emissive voxel clusters get point lights.
+- Look tests: `node tests/e2e/look.mjs` (also part of run.mjs; `LOOK_FULL=1` renders every tier x preset x viewpoint);
+  dev helpers `tests/e2e/lookdev.mjs`, `probe.mjs`, `specks.py`. CPU benchmarks: `BENCH=1 npx vitest run tests/unit/perf.test.ts`.
