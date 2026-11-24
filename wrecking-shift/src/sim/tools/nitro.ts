@@ -1,7 +1,7 @@
 import { MAT, PAL_EXPLOSIVE, pal } from '../materials';
 import type { V3 } from '../vec';
 import { VoxelGrid } from '../voxels';
-import { checkSticky, placeSticky, type Sticky } from './sticky';
+import { checkSticky, loadSticky, placeSticky, saveSticky, type Sticky } from './sticky';
 import { Tool, type ToolContext, type ToolInput } from './tool';
 import { emit } from './util';
 
@@ -39,6 +39,11 @@ export class Nitro extends Tool {
     const s = placeSticky(sim, nitroGrid(), hit, player.forward, { name: 'nitro', mass: 3, tags: ['explosive', 'tool', 'nograb'] });
     this.placed.push({ ...s, v: { x: 0, y: 0, z: 0 } });
     emit(sim, 'tool:place', { tool: this.id, pos: hit.point });
+  }
+
+  override save(): any { return this.placed.filter((n) => !n.body.removed).map(saveSticky); }
+  override load(ctx: ToolContext, data: any): void {
+    for (const d of data ?? []) { const s = loadSticky(ctx.sim, d, 3); if (s) this.placed.push({ ...s, v: { x: 0, y: 0, z: 0 } }); }
   }
 
   override tick(ctx: ToolContext): void {

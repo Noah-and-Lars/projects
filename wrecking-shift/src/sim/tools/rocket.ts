@@ -66,6 +66,9 @@ export class RocketLauncher extends Tool {
     return false;
   }
 
+  override save(): any { return this.projectiles.map((p) => ({ id: p.id, pos: { ...p.pos }, vel: { ...p.vel }, age: p.age })); }
+  override load(_ctx: ToolContext, data: any): void { for (const p of data ?? []) this.projectiles.push(p); }
+
   override tick(ctx: ToolContext): void {
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];

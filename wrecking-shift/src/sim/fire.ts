@@ -377,6 +377,12 @@ export class FireSystem implements FireApi, SimSystem {
   }
 
   /** debug / tests: list of burning voxels */
+  /** quicksave: burning voxels (re-ignited on load; fuel restarts) */
+  save(): any { return this.list().map((f) => [f.body.id, f.x, f.y, f.z]); }
+  load(data: any): void {
+    for (const f of data ?? []) { const b = this.sim.bodies.get(f[0]); if (b) this.ignite(b, f[1], f[2], f[3]); }
+  }
+
   list(): { body: VoxelBody; x: number; y: number; z: number; fuel: number; intensity: number }[] {
     const out = [];
     for (let s = 0; s < this.hw; s++) {

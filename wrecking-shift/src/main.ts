@@ -50,8 +50,31 @@ async function boot() {
   else game.draw(0, true);
 }
 
-boot().catch((e) => {
+function fail(title: string, detail: string) {
+  const b = document.getElementById('boot') ?? document.body.appendChild(document.createElement('div'));
+  b.id = 'boot';
+  b.style.cssText = 'position:fixed;inset:0;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;padding:24px;text-align:center;background:#101418;color:#f2f2ee;font:15px system-ui,sans-serif;z-index:99';
+  b.innerHTML = '';
+  const h = document.createElement('div'); h.style.cssText = 'font-size:20px;font-weight:700;color:#f5c518'; h.textContent = title;
+  const d = document.createElement('div'); d.style.cssText = 'max-width:560px;line-height:1.5;opacity:.9'; d.textContent = detail;
+  b.append(h, d);
+}
+
+function preflight(): string | null {
+  const c = document.createElement('canvas');
+  if (!c.getContext('webgl2')) return 'This game needs WebGL 2. Use a current desktop Chrome, Edge or Firefox with hardware acceleration enabled.';
+  if (typeof WebAssembly !== 'object') return 'This game needs WebAssembly, which this browser or page does not allow.';
+  return null;
+}
+
+const problem = preflight();
+if (problem) fail('Wrecking Shift cannot start here', problem);
+else boot().catch((e) => {
   console.error(e);
-  const b = document.getElementById('boot');
-  if (b) b.textContent = 'Failed to start: ' + e;
+  const msg = String(e?.message ?? e);
+  const wasm = /wasm|WebAssembly|unsafe-eval|Content Security/i.test(msg);
+  fail('Wrecking Shift failed to start', (wasm
+    ? 'The page hosting the game blocked WebAssembly (needed for physics). '
+    : 'Something went wrong while starting. ') +
+    'Try a current desktop Chrome/Edge/Firefox, or run it locally: npm install && npm run dev in the wrecking-shift folder. (' + msg.slice(0, 200) + ')');
 });

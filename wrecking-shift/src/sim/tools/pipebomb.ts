@@ -69,7 +69,17 @@ export class PipeBomb extends Tool {
     emit(sim, 'tool:throw', { tool: this.id });
   }
 
+  private saveTick = 0;
+  override save(): any { return this.live.filter((c) => !c.body.removed).map((c) => ({ body: c.body.id, left: c.at - this.saveTick, size: c.size })); }
+  override load(ctx: ToolContext, data: any): void {
+    for (const d of data ?? []) {
+      const body = ctx.sim.bodies.get(d.body);
+      if (body) this.live.push({ body, at: ctx.sim.tick + Math.max(1, d.left), size: d.size, pos: body.center() });
+    }
+  }
+
   override tick(ctx: ToolContext): void {
+    this.saveTick = ctx.sim.tick;
     tickCharges(ctx, this.live);
   }
 }

@@ -91,7 +91,7 @@ export class DroneSystem implements SimSystem {
   }
 
   save(): any {
-    return this.drones.filter((d) => !d.body.removed).map((d) => ({ body: d.body.id, kind: d.kind, waypoints: d.waypoints, wp: d.wp, dead: d.state === 'dead', alarm: d.alarmRaised }));
+    return this.drones.filter((d) => !d.body.removed).map((d) => ({ body: d.body.id, kind: d.kind, waypoints: d.waypoints, wp: d.wp, dead: d.state === 'dead', alarm: d.alarmRaised, state: d.state, see: d.seeTime, target: d.target, stun: d.stun }));
   }
   load(data: any): void {
     for (const s of data ?? []) {
@@ -99,6 +99,9 @@ export class DroneSystem implements SimSystem {
       if (!body) continue;
       const d = this.adopt(body, s.kind, s.waypoints);
       d.wp = s.wp; d.alarmRaised = s.alarm;
+      d.seeTime = s.see ?? 0; d.target = s.target ?? null;
+      if (s.state === 'stunned') this.setStunned(d, s.stun ?? 1);
+      else if (s.state && s.state !== 'dead') d.state = s.state;
       if (s.dead) { d.state = 'dead'; body.rb.setGravityScale(1, true); body.rb.setEnabledRotations(true, true, true, true); body.rb.setLinearDamping(0.05); }
     }
   }

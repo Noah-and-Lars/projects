@@ -89,12 +89,51 @@ export class Game {
     return { sim: this.sim, player: this.player, infiniteAmmo: this.infiniteAmmo, fire: this.fire };
   }
 
+  /**
+   * Load a level. While the real-time loop is running the load is deferred by a moment so a loading
+   * screen can be painted first, and meshing is spread over the following frames behind a progress bar.
+   * In test mode (or before `start()`) it is fully synchronous.
+   */
   loadLevel(id: string, seed = 1234): void {
     const def: LevelDef = LEVELS[id] ?? Object.values(LEVELS)[0];
-    this.levelId = def.id;
-    this.seed = seed;
-    this.setupWorld((sim) => { this.level = def.build(sim); });
+    const run = (deferMesh: boolean) => {
+      this.levelId = def.id;
+      this.seed = seed;
+      this.deferMesh = deferMesh;
+      this.setupWorld((sim) => { this.level = def.build(sim); });
+      this.deferMesh = false;
+    };
+    if (this.testMode || !this.running) { run(false); return; }
+    const token = ++this.loadToken;
+    this.loading = { title: def.title, phase: 'build', total: 0 };
+    this.showLoading(0);
+    setTimeout(() => {
+      if (token !== this.loadToken) return;
+      try { run(true); } catch (e) { this.loading = null; this.hideLoading(); throw e; }
+      this.loading = { title: def.title, phase: 'mesh', total: Math.max(1, this.renderer.pendingChunks()) };
+    }, 60);
   }
+
+  /** non-null while a level is being built / meshed (sim is frozen, loading screen is up) */
+  loading: { title: string; phase: 'build' | 'mesh'; total: number } | null = null;
+  private loadToken = 0;
+  private deferMesh = false;
+  private loadEl: HTMLDivElement | null = null;
+  private showLoading(frac: number): void {
+    if (!this.loadEl) {
+      const el = (this.loadEl = document.createElement('div'));
+      el.id = 'loading';
+      el.style.cssText = 'position:fixed;inset:0;z-index:50;background:#101418;color:#f2f2ee;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font:600 15px system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase';
+      el.innerHTML = '<div id="loading-title"></div><div style="width:min(60vw,420px);height:8px;background:#2a3038;border-radius:4px;overflow:hidden"><div id="loading-bar" style="height:100%;width:0;background:#f5c518;transition:width .15s"></div></div><div id="loading-note" style="font-weight:400;font-size:12px;opacity:.7;text-transform:none;letter-spacing:.02em"></div>';
+      document.body.appendChild(el);
+    }
+    const l = this.loading;
+    this.loadEl.style.display = 'flex';
+    (this.loadEl.querySelector('#loading-title') as HTMLElement).textContent = l ? l.title : 'Loading';
+    (this.loadEl.querySelector('#loading-bar') as HTMLElement).style.width = Math.round(frac * 100) + '%';
+    (this.loadEl.querySelector('#loading-note') as HTMLElement).textContent = l?.phase === 'mesh' ? 'Laying bricks…' : 'Surveying the site…';
+  }
+  private hideLoading(): void { if (this.loadEl) this.loadEl.style.display = 'none'; }
 
   private seed = 1234;
 
@@ -127,7 +166,7 @@ export class Game {
     after?.();
     this.sim.step();
     this.sim.drainEvents();
-    this.renderer.render(this.sim, 0, true);
+    this.renderer.render(this.sim, 0, !this.deferMesh);
   }
 
   /** single-slot quicksave (in memory). Returns false when nothing was saved. */
@@ -142,6 +181,7 @@ export class Game {
       player: { pos: p.pos, yaw: p.yaw, pitch: p.pitch, health: p.health, seated: p.seated },
       belt: { index: this.belt.index, tools: this.belt.tools.map((t) => ({ id: t.id, ammo: t.ammo === Infinity ? -1 : t.ammo, state: t.save() })) },
       drones: this.drones.save(),
+      fire: this.fire.save(),
       modules: this.modules.map((m) => (m.save ? m.save(this) : undefined)),
     };
     this.sim.out.push({ type: 'custom', name: 'game:quicksave', data: {} });
@@ -165,6 +205,7 @@ export class Game {
       }
       this.belt.index = Math.min(s.belt.index, this.belt.tools.length - 1);
       this.drones.load(s.drones);
+      this.fire.load(s.fire);
       this.modules.forEach((m, i) => { if (m.load && s.modules[i] !== undefined) m.load(this, s.modules[i]); });
     });
     this.sim.out.push({ type: 'custom', name: 'game:quickload', data: {} });
@@ -234,6 +275,22 @@ export class Game {
     this.last = now;
     this.fpsAcc += dt; this.fpsFrames++;
     if (this.fpsAcc >= 0.5) { this.perf.fps = this.fpsFrames / this.fpsAcc; this.fpsAcc = 0; this.fpsFrames = 0; }
+    if (this.loading) {
+      // level is being meshed: keep the sim frozen, show progress (20% for the build, 80% for meshing)
+      this.input.endFrame();
+      if (this.loading.phase === 'mesh') {
+        // mesh in big slices without drawing (the loading screen covers the view)
+        const b = this.renderer.bodies;
+        const keep = b.budgetMs;
+        b.budgetMs = 40;
+        b.sync(this.sim, false, this.renderer.camera.position);
+        b.budgetMs = keep;
+        const left = this.renderer.pendingChunks();
+        this.showLoading(0.2 + 0.8 * (1 - left / this.loading.total));
+        if (left === 0) { this.loading = null; this.draw(0); this.hideLoading(); this.last = performance.now(); this.acc = 0; }
+      }
+      return;
+    }
     this.gatherInput();
     if (!this.paused) {
       this.acc += dt;

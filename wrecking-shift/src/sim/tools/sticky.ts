@@ -41,3 +41,17 @@ export function checkSticky(sim: Sim, s: Sticky): void {
     if (!s.body.removed) s.body.rb.wakeUp();
   }
 }
+
+/** quicksave helpers */
+export function saveSticky(s: Sticky): any {
+  return { body: s.body.id, glued: !!s.joint && s.anchor.alive(), partner: s.anchor.body.id, av: [s.anchor.vx, s.anchor.vy, s.anchor.vz] };
+}
+export function loadSticky(sim: Sim, d: any, mass: number): Sticky | null {
+  const body = sim.bodies.get(d.body), partner = sim.bodies.get(d.partner);
+  if (!body || !partner) return null;
+  body.noSplit = true;
+  setBodyMass(body, mass);
+  const anchor = new Anchor(partner, d.av[0], d.av[1], d.av[2]);
+  const joint = d.glued && anchor.alive() ? fixJoint(sim, partner, body, anchor.world()) : null;
+  return { body, joint, anchor };
+}

@@ -1,7 +1,7 @@
 import { MAT, pal } from '../materials';
 import { VoxelGrid } from '../voxels';
 import { tickCharges, type LiveCharge } from './pipebomb';
-import { checkSticky, placeSticky, type Sticky } from './sticky';
+import { checkSticky, loadSticky, placeSticky, saveSticky, type Sticky } from './sticky';
 import { Tool, type ToolContext, type ToolInput } from './tool';
 import { emit } from './util';
 
@@ -40,7 +40,17 @@ export class Bomb extends Tool {
     emit(sim, 'tool:beep', { pos: hit.point });
   }
 
+  private saveTick = 0;
+  override save(): any { return this.live.filter((c) => !c.body.removed).map((c) => ({ s: saveSticky(c.stick), left: c.at - this.saveTick, size: c.size })); }
+  override load(ctx: ToolContext, data: any): void {
+    for (const d of data ?? []) {
+      const stick = loadSticky(ctx.sim, d.s, 2);
+      if (stick) this.live.push({ body: stick.body, at: ctx.sim.tick + Math.max(1, d.left), size: d.size, pos: stick.body.center(), stick });
+    }
+  }
+
   override tick(ctx: ToolContext): void {
+    this.saveTick = ctx.sim.tick;
     const sim = ctx.sim;
     if (sim.tick % 10 === 0) for (const c of this.live) checkSticky(sim, c.stick);
     tickCharges(ctx, this.live, (c) => {
