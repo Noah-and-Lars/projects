@@ -31,7 +31,7 @@ export const paperTrail: MissionDef = {
     'The harbour company has been short-weighing our catch for three seasons, and the proof is in two places.\n\n' +
     'Their accounts server sits upstairs in the brick office by the cross street. The paper ledger — they call it ' +
     '"the Idol", because the manager keeps it under a gold paperweight shaped like one — is in the glass office on the ' +
-    'warehouse mezzanine. Both are on alarm boxes wired straight to Harbour Watch. Once either moves you have one minute.\n\n' +
+    'warehouse mezzanine. Both are on alarm boxes wired straight to Harbour Watch. Once either moves you have forty-five seconds.\n\n' +
     'Walk the route first. Knock holes, stack crates, park the van where you need it. Nobody is counting until the alarm does.\n\n' +
     'There is petty cash lying about. I did not tell you that.',
   objectives: [
@@ -39,7 +39,7 @@ export const paperTrail: MissionDef = {
     { kind: 'collect', id: 'idol', title: 'Take the Idol (warehouse mezzanine)' },
     { kind: 'collect', id: 'log', title: 'Take the harbour master\'s log (cottage)', required: false },
   ],
-  alarmSeconds: 60,
+  alarmSeconds: 45,
   fireAlarm: 200,
   reward: { cash: 600 },
   unlockAfter: ['housewarming'],
@@ -65,7 +65,8 @@ export const lightsOut: MissionDef = {
     'My hotel cannot get planning permission while a listed lighthouse stands on the plot. Listed buildings, ' +
     'however, are only listed while they are buildings.\n\n' +
     'Bring the Gullwick light down so that nothing stands taller than a garden wall — six metres. ' +
-    'How is your business. The fuel depot across the harbour is full of ideas.\n\n' +
+    'How is your business. The restorers have propped the bottom of the tower on timber shoring while they repoint ' +
+    'the brickwork, which is very considerate of them. The fuel depot across the harbour is full of ideas, too.\n\n' +
     'No alarm on a lighthouse, so take your time. Do try not to be under it.',
   objectives: [
     { kind: 'demolish', id: 'light', title: 'Demolish the lighthouse (nothing above 6 m)', height: 3.2 + 6 },

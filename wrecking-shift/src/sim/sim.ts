@@ -489,7 +489,7 @@ export class Sim {
     for (const isl of islands) total += isl.indices.length;
     // biggest first so the split budget goes to the pieces that matter
     islands.sort((a, b) => b.indices.length - a.indices.length);
-    const bulk = total > 15000;
+    const bulk = total > 15000 || (parent.dynamic && g.count < 20000);
     const lin = parent.dynamic ? parent.rb.linvel() : { x: 0, y: 0, z: 0 };
     const ang = parent.dynamic ? parent.rb.angvel() : { x: 0, y: 0, z: 0 };
     const pcom = parent.dynamic ? parent.rb.worldCom() : { x: 0, y: 0, z: 0 };
