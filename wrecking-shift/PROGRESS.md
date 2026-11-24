@@ -30,3 +30,8 @@ research session's artifact; lighting prototype source in `docs/research/lookpro
 
 ## Notes for the morning
 - Nothing was blocked by approval prompts so far.
+
+## Timeline notes
+- ~13:10–16:20 UTC: the account's 5-hour usage limit was hit; the vehicles, lighting and extra-maps agents were
+  interrupted mid-work (their worktrees were kept) and resumed at 16:22 UTC. Nothing was lost, ~3 h of wall time were.
+- Merged so far: audio, fire & smoke, 14 tools + grab, heist missions/HUD/menus/progression, 5 harbour missions.
