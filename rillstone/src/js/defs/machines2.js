@@ -113,7 +113,7 @@ const LOGIC = {
   valve: ['Valve', 200, 'VALVE', 1, 0], beltgate: ['Belt Gate', 180, 'GATE', 1, 0], pourer: ['Pour Trigger', 160, 'POUR', 1, 0], lamp: ['Lamp', 60, 'LAMP', 1, 0], siren: ['Siren', 120, 'SIREN', 1, 0],
   charge: ['Logic Charge', 300, 'BOOM', 1, 0], ejector: ['Item Ejector', 260, 'EJECT', 1, 0], display: ['Display Panel', 140, '0', 1, 0],
   mul: ['Multiply', 90, '×', 2, 1], div: ['Divide', 90, '÷', 2, 1], toggle: ['Toggle', 80, 'TOGGLE', 1, 1], pass: ['Pass Gate', 70, '≥1', 1, 1],
-  gauge: ['Pressure Gauge', 140, 'PRESS', 0, 1], switch: ['Machine Switch', 180, 'SWITCH', 1, 0], magnet: ['Magnet', 650, 'MAGNET', 1, 0],
+  gauge: ['Pressure Gauge', 140, 'PRESS', 0, 1], mixsensor: ['Mix Sensor', 160, 'MIX', 0, 1], switch: ['Machine Switch', 180, 'SWITCH', 1, 0], magnet: ['Magnet', 650, 'MAGNET', 1, 0],
 };
 export const LOGIC_PRICES = Object.fromEntries(Object.entries(LOGIC).map(([k, v]) => [k, v[1]]));
 const labelCache = new Map();

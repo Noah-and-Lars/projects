@@ -8,7 +8,7 @@
 // persist until they change, evaluated at 10 Hz.
 import * as THREE from 'three';
 import { beltSurface, logicLabel } from '../defs/machines2.js';
-import { MATERIALS, itemName, STAGE_NAMES } from '../defs/materials.js';
+import { MATERIALS, itemName, STAGE_NAMES, ALLOYS, alloyOf } from '../defs/materials.js';
 import { fmtSig } from './machines.js';
 import { h } from '../ui/dom.js';
 
@@ -218,6 +218,13 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
     m._jam = blocked && !moved ? (m._jam || 0) + dt : 0;
     if (m._beltMat && m.beltSpeed && !m.gateClosed) m._beltMat.map.offset.y -= m.beltSpeed * dt * 2;
   }
+  function mixShare(t) {
+    const mix = machines.furnaceMix(t.state), metals = Object.keys(mix).filter(k => mix[k] > 1e-6);
+    const tot = metals.reduce((a, k) => a + mix[k], 0); if (!(tot > 0)) return 0;
+    const r = ALLOYS[t.state.alloy] || ALLOYS[metals.length === 2 ? alloyOf(metals[0], metals[1]) : null];
+    if (!r) return 100;
+    return Math.round((mix[r.a] || 0) / tot * 1000) / 10;
+  }
   function countOut(m) { auto.counters.set(m.id, (auto.counters.get(m.id) || 0) + 1); }
   function matchesFilter(m, it) { const f = m.state.filter || { material: 'iron', stage: 'ore' }; return it.material === f.material && it.stage === f.stage; }
 
@@ -295,6 +302,10 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
         case 'div': v = b ? a / b : 0; break;
         case 'toggle': if (a > 0 && !(s.lastT > 0)) s.t = !s.t; s.lastT = a; v = s.t ? 1 : 0; break;
         case 'pass': v = a >= 1 ? a : 0; break;
+        // Mix Sensor: the nearest furnace's share (%) of its alloy's main
+        // metal (the smelter's alloy setting, else what the two metals in it
+        // make); 100 for one metal alone, 0 when empty.
+        case 'mixsensor': { const t = nearestMachine(m, d => !!d.meltRate); v = t ? mixShare(t) : 0; break; }
         case 'gauge': { const t = nearestMachine(m, (d, t) => d.role !== 'logic' && t.flow && t.flow.net); v = t ? Math.round((t.pressure || 0) * 100) : 0; break; }
         case 'sub': v = a - b; break;
         case 'latch': if (a > 0) s.held = 1; if (b > 0) s.held = 0; v = s.held || 0; break;
@@ -377,6 +388,7 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
       if (L === 'button') controls.append(h('button', { class: 'btn primary', onclick: () => { auto.interact(m); render(); } }, 'Press'));
       if (L === 'lever') controls.append(h('button', { class: 'btn primary', onclick: () => { auto.interact(m); render(); } }, s.on ? 'Switch off' : 'Switch on'));
       if (L === 'gauge') row('Reads', 'the water pressure at the nearest machine or junction, in %');
+      if (L === 'mixsensor') row('Reads', "the nearest furnace's share of its alloy's main metal, in % (100 for one metal alone). Compare it with the mix (say 60 for millbrass) and gate the belts that feed each metal");
       const help = { mul: 'A × B.', div: 'A ÷ B (0 if B is 0).', toggle: 'Flips between 0 and 1 each time its input rises.', pass: 'Passes its input on when it is 1 or more; otherwise 0.', gauge: 'Outputs the water pressure (%) at the nearest machine or junction.', switch: 'Turns the nearest machine on while its input is above 0, and off at 0.', magnet: 'While its input is above 0, pulls loose finds within 2.5 m towards it.', valve: 'Closes the nearest intake or junction while its input is 0.', beltgate: 'Stops the nearest belt while its input is 0.', pourer: 'Pours the nearest kiln or smelter when its input rises.', scale: 'Outputs the kg of items resting on the plate.', counter: 'Counts items leaving the nearest belt; input A resets it.', fillsensor: 'Outputs the fill of the nearest bin, tank or furnace.', wearsensor: 'Outputs the wear % of the nearest machine.', ejector: 'Pushes one item out of the nearest bin when its input rises.', charge: 'Blasts a hole when its input rises. Inside claims you own only.' }[L];
       if (help) controls.append(h('p', { class: 'small' }, help + ' "Nearest" means within 2.6 m.'));
     }

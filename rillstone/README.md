@@ -339,7 +339,8 @@ crates.
   - **Inputs:** buttons and levers (E), dials, clocks.
   - **Gates:** AND/OR/NOT, compare, add/subtract/multiply/divide, latch,
     toggle, pass gate, pulse, delay.
-  - **Sensors:** scale plate, counter, wear, fill, pressure gauge.
+  - **Sensors:** scale plate, counter, wear, fill, pressure gauge, mix
+    sensor (a furnace's share of its alloy's main metal, in %).
   - **Outputs:** valve, belt gate, pour trigger, machine switch (turns the
     nearest machine on and off), lamp, siren, charge, ejector, display,
     magnet (pulls loose finds within 2.5 m).

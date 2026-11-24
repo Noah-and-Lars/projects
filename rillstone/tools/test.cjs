@@ -744,10 +744,10 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       const kiln = Mc.place('kiln', at(0, 0), 0, { fuel: 20 });
       const keep = [H.hand, H.slot]; H.hand = H.slot = null;
       const feed = (m, material, kg) => { const e = H.give('nugget', {}); e.item = { material, stage: 'ore', kg }; Mc.useOn(m.id, e, H); const left = H.hand === e.id; if (left) { I.remove(e.id); H.hand = null; } return !left; };
-      out.copper = feed(kiln, 'copper', 6); out.iron = feed(kiln, 'iron', 4);
+      out.copper = feed(kiln, 'copper', 6); out.iron = feed(kiln, 'iron', 4); const ms = Mc.place('mixsensor', at(1.5, 1.5), 0, {});
       out.gold = feed(kiln, 'gold', 1); out.goldSaid = said.at(-1);
       for (let i = 0; i < 20 * 12; i++) Mc.tick(0.05);
-      out.molten = +kiln.state.molten.toFixed(2);
+      out.molten = +kiln.state.molten.toFixed(2); out.mix = ms.sig;
       Mc.pour(kiln.id, true); await R.physics.step(6); I.update();
       const ing = fresh(e => e.item?.material === 'millbrass')[0];
       out.ingot = ing ? { grade: ing.item.grade, mix: ing.item.mix, kg: ing.item.kg } : null;
@@ -763,13 +763,13 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       out.beltAlloy = Mc.furnaceRefuse(sm, sd, { material: 'silver', stage: 'ore', kg: 5 }, false);
       // Work the hot ingot into a ring: it keeps its grade.
       if (ing) { H.hand = ing.id; const ring = Mc.craft(ing, H, 'ring'); out.ring = ring?.item ? { grade: ring.item.grade, mat: ring.item.material } : null; if (ring) { I.remove(ring.id); H.hand = null; } }
-      for (const m of [kiln, k2, sm]) Mc.remove(m.id);
+      for (const m of [kiln, k2, sm, ms]) Mc.remove(m.id);
       H.hand = keep[0]; H.slot = keep[1]; R.hud.toast = t0;
       return out;
     });
     console.log('     alloys: ' + JSON.stringify(al));
-    check(al.copper && al.iron && !al.gold && /two metals/.test(al.goldSaid) && al.ingot && al.ingot.grade === 'fine' && Math.abs(al.ingot.kg - 10) < 0.01 && al.ingot.mix.copper === 0.6 && al.quote === 115 && !al.silver && /don't make an alloy/.test(al.silverSaid) && /mixed ore refused/.test(al.beltPure) && al.beltAlloy === null && al.ring?.grade === 'fine' && al.ring.mat === 'millbrass',
-      `alloys: 6 kg copper + 4 kg iron pour a 10 kg fine millbrass ingot worth $${al.quote} at par (×1.25 the metals' $92 as ingots); a third metal and copper with silver are refused; a belt-fed smelter mixes only with an alloy set; the ring keeps its grade`);
+    check(al.copper && al.iron && !al.gold && /two metals/.test(al.goldSaid) && al.ingot && al.ingot.grade === 'fine' && Math.abs(al.ingot.kg - 10) < 0.01 && al.ingot.mix.copper === 0.6 && al.quote === 115 && !al.silver && /don't make an alloy/.test(al.silverSaid) && /mixed ore refused/.test(al.beltPure) && al.beltAlloy === null && al.ring?.grade === 'fine' && al.ring.mat === 'millbrass' && al.mix === 60,
+      `alloys: 6 kg copper + 4 kg iron pour a 10 kg fine millbrass ingot worth $${al.quote} at par (×1.25 the metals' $92 as ingots); a third metal and copper with silver are refused; a belt-fed smelter mixes only with an alloy set; the ring keeps its grade; a Mix Sensor read ${al.mix}% copper`);
   }
 
   if (all || flags.has('--belts')) {

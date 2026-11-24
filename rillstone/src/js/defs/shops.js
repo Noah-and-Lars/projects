@@ -10,7 +10,7 @@ const LOGIC_DESC = {
   valve: 'Closes the nearest intake or junction while 0.', beltgate: 'Stops the nearest belt while 0.', pourer: 'Pours the nearest kiln or smelter on a rising input.', lamp: 'Lights green/yellow/red/blue for 1/2/3/4.', siren: 'Wails while above 0.',
   charge: 'Blasts a 2 m hole on a rising input.', ejector: 'Pushes one item out of the nearest bin on a rising input.', display: 'Shows the number on its input.',
   mul: 'A × B.', div: 'A ÷ B.', toggle: 'Flips between 0 and 1 each time its input rises.', pass: 'Passes its input on when it is 1 or more.',
-  gauge: 'Water pressure (%) at the nearest machine or junction.', switch: 'Turns the nearest machine on and off.', magnet: 'Pulls loose finds within 2.5 m while its input is above 0.',
+  gauge: 'Water pressure (%) at the nearest machine or junction.', mixsensor: "The nearest furnace's share (%) of its alloy's main metal: compare it with the alloy's mix to keep pours fine.", switch: 'Turns the nearest machine on and off.', magnet: 'Pulls loose finds within 2.5 m while its input is above 0.',
 };
 export const SHOPS = {
   store: {

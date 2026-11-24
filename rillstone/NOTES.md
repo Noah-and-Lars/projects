@@ -1482,7 +1482,8 @@ What I checked instead:
 - **Furnace code:** I bundled the real `game/machines.js` with esbuild and
   ran it in Node with stub dependencies. That covered alloy pours, grades,
   refusals, saves from before alloys, the smelter's alloy setting, the
-  smelter's new auto-pour and skipping unknown machines on load.
+  smelter's new auto-pour, skipping unknown machines on load and the Mix
+  Sensor's signal.
 - **Existing tests:** I read them, so the changes don't contradict what
   they check (photo mode, Pumphouse items, contract ids).
 
@@ -1525,7 +1526,10 @@ neighbours, but it has never run, so if anything fails, look there first.
     by default. That keeps old belt lines behaving as before: mixed ore
     still waits on the belt.
   - Pick an alloy and the smelter takes both of its metals from the belt.
-    Logic (scale plates, counters, sorters) can then keep the ratio fine.
+  - **Mix Sensor** (new logic part, any shop counter, $30): it outputs the
+    nearest furnace's share of its alloy's main metal, in %. Wire it to a
+    Compare gate (say > 60 for millbrass) and Belt Gates on the two feed
+    belts, and the smelter keeps its pours fine on its own.
 - **What carries through:**
   - The ingot keeps its mix and grade through sawing, reheating and the
     workbench, so a fine electrum blade is ×1.25 × 1.35.
@@ -1669,7 +1673,6 @@ before fixing it.
 
 - **A quartz refinery** (glass or lenses from spare quartz), giving a use
   for the one unsellable find.
-- **Alloy-aware logic:** a "mix sensor" that reads a furnace's share of its
-  main metal as a signal, so a line can keep its pours fine automatically.
-  Today you'd balance with scale plates.
+- **A demo alloy line** in the guide: a picture of a smelter, two feed
+  belts, a Mix Sensor, a Compare gate and two Belt Gates.
 - **More alloys**, or a third tier made from two alloys.
