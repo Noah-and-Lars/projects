@@ -34,7 +34,7 @@ window.GAMES = [
     path: 'mile-zero/index.html',
     thumb: 'mile-zero/thumb.jpg',
     added: '2026-11-23T08:55:00+11:00',
-    updated: '2026-11-24T12:30:00+11:00',
+    updated: '2026-11-24T13:20:00+11:00',
     // 1.3: separate solo and convoy bests (the game's Furthest driven board reads this line; a convoy's code groups its crew)
     stat() {
       const s = readSave('milezero.save.v1', true); if (!s) return null;
@@ -423,6 +423,8 @@ window.COMING_SOON = [
 ];
 
 window.NEWS = [
+  { date: '2026-11-24', game: 'mile-zero', imgs: ['mile-zero/news/1.3.1-custom-shirt.jpg', 'mile-zero/news/1.3.1-convoy-shirt.jpg'], headline: 'Mile Zero Beta 1.3.1: put your own picture on your shirt', text: "Mile Zero Beta 1.3.1: custom shirts. In Character, press Add a picture and choose any image (JPEG, PNG, WebP, GIF and more). It's printed in the middle of a black tee, stretched wider or shorter to fit the shirt, and your convoy sees it too. Settings has Other players' shirt pictures (Show or Hide).",
+    post: "👕 Mile Zero Beta 1.3.1: CUSTOM SHIRTS!\n\n🖼️ Character > Add a picture: any image (JPEG, PNG, WebP, GIF...)\n⬛ It goes on the middle of a black tee, stretched to fit\n🚗 Your convoy sees it too\n⚙️ Don't want to see other people's? Settings > Other players' shirt pictures" },
   { date: '2026-11-24', game: 'mile-zero', imgs: ['mile-zero/news/1.3-character.jpg', 'mile-zero/news/1.3-fists.jpg', 'mile-zero/news/1.3-menu.jpg'], headline: 'Mile Zero Beta 1.3: runs smoother, make your own character', text: "Mile Zero Beta 1.3: the game runs a lot smoother (far-off plants and rocks aren't drawn three times a frame any more) and Graphics now go Potato, Lowest, Very low, Low, Balanced, Medium and High, with everyone starting on Medium. New Character screen: 20 hairstyles, hair colours, faces, moustaches and beards, shirts and skin tones, and your convoy sees it. Fixed the car flipping or sinking into the ground when other players got in, and the car moves smoothly for passengers. Furthest driven has Solo and Convoy boards (a convoy shows as one group, Ann + Bob + Cat). Punch with empty hands, slower squatters, hold U to rub dust out of your eyes, the window washer scrubs off spray paint, no wrench needed to put parts on, L for headlights, a Go right sign at home, and a tidier menu (Convoy and More).",
     post: "🚗 Mile Zero Beta 1.3 is out!\n\n⚡ Runs MUCH smoother, same graphics\n🥔 New graphics settings: Potato, Lowest, Very low, Low, Balanced, Medium, High\n🧔 Character screen: 20 hairstyles, faces, moustaches, shirts and more, and your convoy sees you\n🛠️ Fixed the car flipping / sinking when friends get in\n🏆 Solo + Convoy leaderboards\n👊 Punching, slower squatters, rub your eyes (hold U)\n🧽 The window washer scrubs off spray paint" },
   { date: '2026-11-23', href: 'app/', headline: 'The Arcade apps 1.0.2: they open the new link', text: "Every Arcade app now opens The Arcade's new link, playthearcade.github.io: Mac and Windows 1.0.2 (the update pops up by itself when you open the app), Android 1.0.2, Android TV 1.0.2a, Chromebook 1.0.2, Windows 7/8 and older Macs 1.0.2, and the Samsung TV app 1.0.2. Get the new Android, TV, Chromebook and Samsung versions from the app page and install them over the old one. Log in with your online Arcade account once and all your progress is there.",
