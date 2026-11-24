@@ -665,6 +665,27 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     check(mo.logic.mul === 18 && mo.logic.div === 2 && mo.logic.pass === 18 && mo.logic.toggle.join(',') === '0,1,0' && mo.logic.gauge >= 90 && mo.logic.switchedOff && mo.logic.target, `logic: 6×3=${mo.logic.mul}, 6÷3=${mo.logic.div}, pass ${mo.logic.pass}, toggle ${mo.logic.toggle.join('→')}, gauge ${mo.logic.gauge}%, machine switch turned the hopper off`);
     check(mo.magnet.to < mo.magnet.from - 0.8, `magnet pulled a nugget from ${mo.magnet.from} m to ${mo.magnet.to} m`);
     check(mo.rod.to < mo.rod.from - 1, `magnet rod pulled a find from ${mo.rod.from} m to ${mo.rod.to} m`);
+    // Placement on a slope: the grid follows the terrain, the ghost sits on
+    // the ground at the snapped cell, and port arrows show on nearby machines.
+    const gr = await p.evaluate(async () => {
+      const R = __rill, Mc = R.machines, H = R.hands, I = R.items, T = R.places.TOWN;
+      let best = null;
+      for (let dx = -80; dx <= 80; dx += 4) for (let dz = -80; dz <= 80; dz += 4) { const x = T.x + dx, z = T.z + dz, s = Math.abs(R.height(x + 1, z) - R.height(x - 1, z)) + Math.abs(R.height(x, z + 1) - R.height(x, z - 1)); if (Math.hypot(dx, dz) > 45 && s > 0.5 && s < 0.9 && Math.abs(x - R.riverX(z)) > 20 && (!best || Math.abs(s - 0.7) < Math.abs(best.s - 0.7))) best = { x, z, s }; }
+      const { x, z } = best;
+      const sl = Mc.place('sluice1', [x + 3, R.height(x + 3, z - 2), z - 2], 0);
+      const keep = H.hand, crate = I.spawn('crate', [0, 0, 0], { data: { def: 'orebin', family: 'extraction' }, loc: 'held' }); H.hand = crate.id;
+      await R.teleport(x, R.height(x, z + 5) + 1, z + 5, 0);
+      for (let k = 0; k < 3; k++) { R.aimAt(x + 0.13, R.height(x, z), z + 0.11); await R.refreshAim(); await R.frames(6); }
+      const g = H.ghostState, ports = Mc.portCount();
+      // The highest ground under the 1 m footprint.
+      let top = -1e9; for (const [dx, dz] of [[-0.45, -0.45], [0.45, -0.45], [-0.45, 0.45], [0.45, 0.45], [0, 0]]) top = Math.max(top, Mc.groundY(g.pos[0] + dx, g.pos[2] + dz, g.pos[1]));
+      const out = { slope: +best.s.toFixed(2), snapped: Math.abs(g.pos[0] * 2 - Math.round(g.pos[0] * 2)) < 1e-6 && Math.abs(g.pos[2] * 2 - Math.round(g.pos[2] * 2)) < 1e-6, dy: +(g.pos[1] - top).toFixed(3), ports };
+      I.remove(crate.id); H.hand = keep; await R.frames(3);
+      out.hidden = Object.values(Mc.portCount()).every(v => v === 0);
+      Mc.remove(sl.id);
+      return out;
+    });
+    check(gr.snapped && Math.abs(gr.dy) < 0.02 && gr.ports.in >= 2 && gr.ports.out >= 2 && gr.ports.water >= 1 && gr.hidden, `placing on a slope (${gr.slope} m rise per 2 m): the ghost snaps to the 0.5 m grid and sits on the ground under it (${gr.dy} m off); arrows show ${gr.ports.in} inputs, ${gr.ports.out} outputs and ${gr.ports.water} water port(s), and hide when you put the crate away`);
   }
 
   if (all || flags.has('--belts')) {

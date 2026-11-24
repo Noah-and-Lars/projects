@@ -214,7 +214,13 @@ Buy machines at the **Millwright** and **Foundry Yard**. They arrive as
 crates.
 
 - **Placing.** Hold a crate to see a placement ghost (green fits, magenta
-  doesn't). R rotates and LMB places. A placed machine is unlocked: E picks
+  doesn't). R rotates and LMB places. A 0.5 m grid lies over the ground
+  around the ghost and bends with the terrain, with the machine's footprint
+  outlined; the machine sits on the ground at the snapped cell.
+- **Port arrows.** While you hold a crate or a pipe coil, or look at a
+  machine, arrows show its ports: green arrows point into item inputs,
+  orange ones out of item outputs, teal rings mark water ports and violet
+  arrows mark signal terminals. A placed machine is unlocked: E picks
   it back up, and the **Mallet** locks it (LMB) or unlocks it (RMB).
 - **Machine panel.** RMB opens it: status, water, speed, wear, settings.
 - **Water.** A **River Intake** (mouth in the river) supplies water. Lay

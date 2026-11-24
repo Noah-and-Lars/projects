@@ -152,6 +152,16 @@ export function riverDepth(x, z) {
   if (Math.abs(x - riverX(z)) > RIVER_HALF_WIDTH(z) + 1.5) return 0;
   return Math.max(0, waterY(z) - height(x, z));
 }
+// Height of the drawn terrain at (x, z): the same 2 m triangles the terrain
+// mesh is built from (render/terrain.js), which differ a little from the
+// smooth height() between samples. The placement grid lies on this.
+export function meshHeight(x, z) {
+  const fi = (x + HALF) / GRID, fj = (z + HALF) / GRID, i = Math.floor(fi), j = Math.floor(fj), u = fi - i, v = fj - j;
+  const X = (k) => -HALF + k * GRID, Z = X;
+  const h00 = height(X(i), Z(j)), h10 = height(X(i + 1), Z(j)), h01 = height(X(i), Z(j + 1)), h11 = height(X(i + 1), Z(j + 1));
+  if (Math.abs(h00 - h11) < Math.abs(h10 - h01)) return v >= u ? h00 + (h11 - h01) * u + (h01 - h00) * v : h00 + (h10 - h00) * u + (h11 - h10) * v;
+  return u + v <= 1 ? h00 + (h10 - h00) * u + (h01 - h00) * v : h11 + (h01 - h11) * (1 - u) + (h10 - h11) * (1 - v);
+}
 export function height(x, z) {
   let h = baseHeight(x, z);
   h = flatDisc(h, x, z, TOWN.x, TOWN.z, TOWN.r, TOWN.y);

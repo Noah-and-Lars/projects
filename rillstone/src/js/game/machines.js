@@ -12,11 +12,11 @@ PIPE_TIERS.cable = { name: 'Signal', cap: 0, hex: 0x8a6ad8, r: 0.022, cable: tru
 import { solveFlow, speedFrom, wearRate, PIPE_LOSS, pressureFactor } from '../sim/flow.js';
 import { rollLoot } from '../sim/loot.js';
 import { MATERIALS, itemName, CRAFT_MULT, GEM_CRAFTS } from '../defs/materials.js';
-import { bandAtDepth, BEDROCK } from '../world/claims.js';
-import { riverSilt } from '../world/valley.js';
+import { bandAtDepth, BEDROCK, surfaceY } from '../world/claims.js';
+import { riverSilt, meshHeight } from '../world/valley.js';
 import { EXTRA_MESH, EXTRA_BOX, EXTRA_CARD, EXTRA_MASS } from './items.js';
 import * as M from '../defs/models.js';
-import { paint } from '../render/geom.js';
+import { paint, merge } from '../render/geom.js';
 import { h } from '../ui/dom.js';
 
 const GRID = 0.5;
@@ -580,6 +580,10 @@ export function createMachines({ scene, physics, materials, items, claims, water
     if (!aim) { ghost.visible = false; return null; }
     ghost.visible = true;
     let pos = [Math.round(aim.p[0] / GRID) * GRID, aim.p[1], Math.round(aim.p[2] / GRID) * GRID];
+    // The grid follows the terrain: the machine sits on the ground at the
+    // snapped cell (the highest point under its footprint, so it doesn't sink
+    // into a slope), not at the unsnapped point the crosshair hit.
+    if (!aim.machine) pos[1] = footprintY(defId, pos, placeRot.r, aim.p[1]);
     // Face snapping: aiming at the side of a machine places flush against it.
     if (aim.machine && Math.abs(aim.n[1]) < 0.5) { pos[0] = Math.round((aim.p[0] + aim.n[0] * 0.5) / GRID) * GRID; pos[2] = Math.round((aim.p[2] + aim.n[2] * 0.5) / GRID) * GRID; pos[1] = list.get(aim.machine)?.pos[1] ?? pos[1]; }
     pos = snapToSocket(defId, pos, placeRot.r);
@@ -599,6 +603,104 @@ export function createMachines({ scene, physics, materials, items, claims, water
     return true;
   };
   api.setGhostOk = (ok) => { if (ghost) ghost.material = ok ? ghostMats.ok : ghostMats.bad; };
+
+  // ---- Terrain-following placement grid ----
+  // Ground height at (x, z): a claim's dug surface where there is one,
+  // otherwise the valley terrain. hint: a height near the surface (tunnels
+  // have a rock ceiling, so the search starts just above it).
+  function groundY(x, z, hint) {
+    const vol = claims.volumeAt(x, z, hint);
+    const s = vol ? surfaceY(vol, x, z, hint + 1.5) : null;
+    return s ?? meshHeight(x, z);
+  }
+  api.groundY = groundY;
+  function footprintY(defId, pos, rot, hint) {
+    const c = MACHINES[defId].cell || [2, 2], swap = rot % 2 === 1;
+    const hw = (swap ? c[1] : c[0]) * GRID / 2 - 0.05, hd = (swap ? c[0] : c[1]) * GRID / 2 - 0.05;
+    const mid = groundY(pos[0], pos[2], hint);
+    let top = mid;
+    for (const [dx, dz] of [[-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd], [0, -hd], [0, hd], [-hw, 0], [hw, 0]]) top = Math.max(top, groundY(pos[0] + dx, pos[2] + dz, hint));
+    // On a steep slope don't float more than 0.6 m: the footprint check
+    // turns the ghost magenta instead.
+    return Math.min(top, mid + 0.6);
+  }
+  const GRID_R = 3;                 // the grid shows 3 m around the ghost
+  const gridMat = new THREE.LineBasicMaterial({ color: 0xfff2d0, transparent: true, opacity: 0.55, depthWrite: false, vertexColors: true });
+  const footMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false });
+  let gridLines = null, footLines = null, gridKey = '';
+  function drape(points, hint) { return points.map(([x, z]) => [x, groundY(x, z, hint) + 0.03, z]); }
+  function buildGrid(defId, pos, rot, hint) {
+    const key = `${defId}|${pos.map(v => v.toFixed(2)).join(',')}|${rot}`;
+    if (key === gridKey) return; gridKey = key;
+    const v = [], col = [], cx = pos[0], cz = pos[2], n = Math.round(GRID_R / GRID);
+    const fade = (x, z) => Math.max(0, 1 - Math.hypot(x - cx, z - cz) / GRID_R);
+    // Lines along x and along z, each cut every 0.25 m so they bend with the ground.
+    for (let k = -n; k <= n; k++) for (const along of ['x', 'z']) {
+      let prev = null;
+      for (let t = -n * 2; t <= n * 2; t++) {
+        const a = k * GRID, b = t * GRID / 2, x = along === 'x' ? cx + b : cx + a, z = along === 'x' ? cz + a : cz + b;
+        const p = [x, groundY(x, z, hint) + 0.03, z], f = fade(x, z);
+        if (prev && (f > 0 || prev.f > 0)) { v.push(...prev.p, ...p); col.push(1, 1, 1, prev.f, 1, 1, 1, f); }
+        prev = { p, f };
+      }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+    if (!gridLines) { gridLines = new THREE.LineSegments(g, gridMat); gridLines.renderOrder = 4; gridLines.frustumCulled = false; scene.add(gridLines); } else { gridLines.geometry.dispose(); gridLines.geometry = g; }
+    // The footprint outline, draped too.
+    const c = MACHINES[defId].cell || [2, 2], swap = rot % 2 === 1, hw = (swap ? c[1] : c[0]) * GRID / 2, hd = (swap ? c[0] : c[1]) * GRID / 2;
+    const ring = [];
+    const edge = (x0, z0, x1, z1) => { const steps = Math.max(1, Math.round(Math.hypot(x1 - x0, z1 - z0) / 0.25)); for (let i = 0; i < steps; i++) ring.push([[x0 + (x1 - x0) * i / steps, z0 + (z1 - z0) * i / steps], [x0 + (x1 - x0) * (i + 1) / steps, z0 + (z1 - z0) * (i + 1) / steps]]); };
+    edge(cx - hw, cz - hd, cx + hw, cz - hd); edge(cx + hw, cz - hd, cx + hw, cz + hd); edge(cx + hw, cz + hd, cx - hw, cz + hd); edge(cx - hw, cz + hd, cx - hw, cz - hd);
+    const fv = []; for (const [a, b] of ring) { const [pa, pb] = drape([a, b], hint); fv.push(...pa, ...pb); }
+    const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(fv, 3));
+    if (!footLines) { footLines = new THREE.LineSegments(fg, footMat); footLines.renderOrder = 4; footLines.frustumCulled = false; scene.add(footLines); } else { footLines.geometry.dispose(); footLines.geometry = fg; }
+  }
+  api.showGrid = (g, defId, hint) => {
+    const on = !!(g && defId);
+    if (on) buildGrid(defId, g.pos, g.rot, hint ?? g.pos[1]);
+    if (gridLines) gridLines.visible = on; if (footLines) footLines.visible = on;
+    if (!on) gridKey = '';
+  };
+
+  // ---- Port arrows: where things go in and come out ----
+  // Green arrows point into item inputs, orange ones out of item outputs,
+  // teal rings mark water ports and violet arrows signal terminals. Shown
+  // on the placement ghost, on machines near it, and on the machine you aim at.
+  const ARROW_KINDS = { in: 0x3dff7a, out: 0xffa030, water: 0x3ad0d0, 'sig-in': 0xb08aff, 'sig-out': 0xb08aff };
+  const arrowGeo = (() => { const s = new THREE.CylinderGeometry(0.025, 0.025, 0.18, 8).translate(0, 0.09, 0), h = new THREE.ConeGeometry(0.07, 0.14, 10).translate(0, 0.25, 0); return merge([s.toNonIndexed(), h.toNonIndexed()]); })();
+  const ringGeo = new THREE.TorusGeometry(0.13, 0.022, 6, 18).rotateX(Math.PI / 2);
+  const portSets = {};
+  for (const [k, hex] of Object.entries(ARROW_KINDS)) {
+    const mat = new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.92, depthTest: false, depthWrite: false });
+    const im = new THREE.InstancedMesh(k === 'water' ? ringGeo : arrowGeo, mat, 256); im.count = 0; im.renderOrder = 7; im.frustumCulled = false; scene.add(im);
+    portSets[k] = im;
+  }
+  const _up = new THREE.Vector3(0, 1, 0), _d = new THREE.Vector3(), _p = new THREE.Vector3(), _mm = new THREE.Matrix4(), _one = new THREE.Vector3(1.4, 1.4, 1.4), _qa = new THREE.Quaternion();
+  function addPorts(m, counts) {
+    for (const s of MACHINES[m.def].sockets || []) {
+      const im = portSets[s.kind]; if (!im || counts[s.kind] >= 256) continue;
+      const p = toWorld(m, s.p), d = dirWorld(m, s.d);
+      _d.fromArray(d).normalize();
+      // Inputs: the arrow sits outside the port pointing in; outputs point out.
+      if (s.kind === 'in' || s.kind === 'sig-in') { _p.fromArray(p).addScaledVector(_d, 0.55); _qa.setFromUnitVectors(_up, _d.clone().negate()); }
+      else if (s.kind === 'water') { _p.fromArray(p).addScaledVector(_d, 0.06); _qa.setFromUnitVectors(_up, _d); }
+      else { _p.fromArray(p).addScaledVector(_d, 0.06); _qa.setFromUnitVectors(_up, _d); }
+      im.setMatrixAt(counts[s.kind]++, _mm.compose(_p, _qa, _one));
+    }
+  }
+  // opts: { ghost: { def, pos, rot } | null, near: [x,y,z] | null, hover: id | null }
+  api.showPorts = (opts) => {
+    const counts = {}; for (const k in portSets) counts[k] = 0;
+    if (opts) {
+      if (opts.ghost) addPorts({ def: opts.ghost.def, pos: opts.ghost.pos, rot: opts.ghost.rot }, counts);
+      const shown = new Set();
+      if (opts.near) for (const m of list.values()) { if (m.run || Math.hypot(m.pos[0] - opts.near[0], m.pos[2] - opts.near[2]) > 8) continue; addPorts(m, counts); shown.add(m.id); }
+      const hm = opts.hover != null && list.get(opts.hover);
+      if (hm && !hm.run && !shown.has(hm.id)) addPorts(hm, counts);
+    }
+    for (const k in portSets) { const im = portSets[k]; if (im.count !== counts[k] || counts[k]) { im.count = counts[k]; im.instanceMatrix.needsUpdate = true; } im.visible = counts[k] > 0; }
+  };
+  api.portCount = () => Object.fromEntries(Object.entries(portSets).map(([k, im]) => [k, im.visible ? im.count : 0]));
 
   // ---- Pipe run in progress (holding a coil) ----
   // The first click of a run is kept on the coil itself, so co-op players

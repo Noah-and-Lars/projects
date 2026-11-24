@@ -1267,3 +1267,31 @@ so far:
   - `--more` (also run by `--machines`) checks each new part;
   - the unit tests check pressure loss, the tank reset and stacking
     boosters.
+
+### Terrain-following grid and port arrows
+
+- **Grid:** while you hold a crate, a 0.5 m grid is drawn 3 m around the
+  ghost (`machines.showGrid`). It is draped on the ground (every line is
+  cut every 0.25 m) and fades out at the edge, and the footprint is
+  outlined in white.
+- **Ground height:** `groundY` is a claim's dug surface (`surfaceY`) or
+  `meshHeight()`. That is a new function in world/valley.js that follows
+  the same 2 m triangles as the terrain mesh, so the lines sit exactly on
+  what you see; `height()` is the smooth curve between samples.
+- **Machine height:** the ghost's y is the highest ground under its
+  footprint (centre, corners and edge midpoints), at most 0.6 m above the
+  centre. Before, it was the unsnapped point the crosshair hit, so on a
+  slope a snapped machine could float or sink. Aiming at a machine still
+  stacks or butts against it as before.
+- **Port arrows** (`machines.showPorts`): instanced meshes drawn on top
+  (no depth test).
+  - In: green, outside the port pointing in.
+  - Out: orange, pointing out.
+  - Water: teal ring.
+  - Signal: violet.
+  - Where: on the ghost and on machines within 8 m of it while you hold a
+    crate, near your aim while you hold a coil, and on the machine you look
+    at (within 6 m) otherwise.
+- **Test:** `--more` places a crate ghost on a slope (about 0.7 m of rise over 2 m) and checks that
+  it snaps to the grid, that it sits on the ground under it, that arrows
+  show and that they hide when the crate is put away.

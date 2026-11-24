@@ -494,7 +494,16 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
         H.ghostState = g;
         if (g && (H._gq = (H._gq || 0) - dt) < 0) { H._gq = 0.12; const key = g.pos.join(',') + g.rot; H.machines.checkFree(e.data.def, g.pos, g.rot).then(ok => { H.ghostFree = ok; H.machines.setGhostOk(ok && !H.machines._ghostWhy); }); void key; }
         if (g) H.machines.setGhostOk(H.ghostFree && !g.why);
-      } else { H.machines.ghost(null); H.ghostState = null; }
+        { H.machines.showGrid(g, e.data.def, H.aim?.p[1]); H.machines.showPorts({ ghost: g ? { def: e.data.def, pos: g.pos, rot: g.rot } : null, near: g ? g.pos : (H.aim ? H.aim.p : null), hover: info.kind === 'machine' ? info.id : null }); }
+      } else {
+        H.machines.ghost(null); H.ghostState = null;
+        {
+          H.machines.showGrid(null);
+          // A coil shows the ports near where you aim; otherwise only the machine you look at.
+          const coil = e && e.type === 'coil';
+          H.machines.showPorts(coil || (info.kind === 'machine' && info.dist < 6) ? { near: coil && H.aim ? H.aim.p : null, hover: info.kind === 'machine' && info.dist < 6 ? info.id : null } : null);
+        }
+      }
       H.machines.previewRun(e && e.type === 'coil' ? e : null, H.aim ? H.aim.p : [0, 0, 0]);
     }
     // Drop ring and validity check (a box overlap at the landing spot).
