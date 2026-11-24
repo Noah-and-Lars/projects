@@ -58,7 +58,7 @@ function run(w: World, n: number, inp: Partial<ToolInput> = {}, tool?: Tool): vo
     w.events.push(...w.sim.drainEvents());
   }
 }
-const click = (w: World, tool?: Tool) => { run(w, 1, { primary: true, primaryPressed: true }, tool); run(w, tool instanceof Sledge ? 16 : 1, {}, tool); };
+const click = (w: World, tool?: Tool) => { run(w, 1, { primary: true, primaryPressed: true }, tool); run(w, tool instanceof Sledge ? 22 : 1, {}, tool); };
 const custom = (w: World, name: string) => w.events.filter((e) => e.type === 'custom' && e.name === name);
 const solid = (b: VoxelBody) => b.grid.count;
 

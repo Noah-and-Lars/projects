@@ -213,13 +213,25 @@ export class Renderer {
 
   setCamera(eye: V3, yaw: number, pitch: number, roll = 0): void {
     this.camera.position.set(eye.x, eye.y, eye.z);
-    this.camera.rotation.set(pitch, yaw, roll, 'YXZ');
+    this.camera.rotation.set(pitch + this.punch, yaw, roll + this.punch * 0.25, 'YXZ');
+    this.camera.position.y += this.punch * 0.35;
     if (this.shake > 0.001) {
       const s = this.shake * 0.05;
       this.camera.rotation.x += (Math.random() - 0.5) * s;
       this.camera.rotation.y += (Math.random() - 0.5) * s;
       this.camera.rotation.z += (Math.random() - 0.5) * s;
     }
+  }
+
+  /** camera punch: a damped spring on the view pitch (radians). Kicked by heavy impacts. */
+  punch = 0;
+  private punchVel = 0;
+  kick(v: number): void { this.punchVel += v; }
+  private stepPunch(dt: number): void {
+    const k = 170, c = 15;
+    const n = Math.max(1, Math.ceil(dt / 0.008));
+    const h = dt / n;
+    for (let i = 0; i < n; i++) { this.punchVel += (-k * this.punch - c * this.punchVel) * h; this.punch += this.punchVel * h; }
   }
 
   /** react to sim events with particles etc. */
@@ -230,6 +242,9 @@ export class Renderer {
         for (const s of e.samples) this.chips.burst(s.p, s.pal, per, e.cause === 'explosion' ? 9 : 3.2, e.pos);
       } else if (e.type === 'custom' && e.name === 'tool:impact') {
         this.shake = Math.max(this.shake, e.data.power ?? 0.3);
+        this.kick(-(e.data.kick ?? 1.2));
+      } else if (e.type === 'custom' && e.name === 'tool:swing' && e.data.tool === 'sledge') {
+        this.kick(0.35);
       } else if (e.type === 'crumb') {
         this.chips.burst(e.pos, e.pal, Math.min(10, e.count + 2), 2);
       } else if (e.type === 'explosion') {
@@ -250,6 +265,7 @@ export class Renderer {
     this.chips.update(dt, sim, this.frame);
     this.lamps.update(this.camera.position, this.frame);
     this.shake *= Math.exp(-dt * 6);
+    this.stepPunch(Math.min(dt, 0.05));
     this.placeSun();
     this.sky.uniforms.uTime.value = this.time;
     if (this.adoptForeignMaterials && (this.frame % 20 === 1 || fullSync)) this.adoptScene();

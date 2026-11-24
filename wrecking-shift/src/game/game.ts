@@ -68,6 +68,8 @@ export class Game {
   fov = 80;
   /** additive first-person camera sway (head-bob, set by the UI module); ignored while cameraOverride is set */
   viewBob = { y: 0, roll: 0 };
+  /** seconds of hit-stop left (sim frozen, rendering continues) */
+  hitStop = 0;
   private toolInput: ToolInput = emptyToolInput();
   private prevButtons = 0;
   private fpsAcc = 0;
@@ -246,6 +248,7 @@ export class Game {
     this.sim.step();
     const events = this.sim.drainEvents();
     this.renderer.handleEvents(events, p.eye);
+    for (const e of events) if (e.type === 'custom' && e.name === 'tool:impact') this.hitStop = Math.max(this.hitStop, e.data.broke ? 0.055 : 0.075);
     for (const m of this.modules) m.onEvents?.(this, events);
     this.perf.sim = performance.now() - t0;
   }
@@ -292,7 +295,8 @@ export class Game {
       return;
     }
     this.gatherInput();
-    if (!this.paused) {
+    if (this.hitStop > 0) this.hitStop -= dt; // heavy impacts freeze the world for a few frames
+    else if (!this.paused) {
       this.acc += dt;
       let n = 0;
       while (this.acc >= DT && n < 3) { this.fixedStep(); this.acc -= DT; n++; }

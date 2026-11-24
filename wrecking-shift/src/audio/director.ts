@@ -130,7 +130,10 @@ export class AudioDirector {
     const e = this.engine;
     switch (name) {
       case 'tool:swing': this.play(d.hit ? 'tool.swing.hit' : 'tool.swing', { gain: 0.8 }); break;
-      case 'tool:impact': this.play('tool.swing.hit', { pos: d.pos, refDist: 6, gain: d.broke ? 1 : 0.7 }); break;
+      case 'tool:impact':
+        this.play('tool.swing.hit', { pos: d.pos, refDist: 6, gain: 1 });
+        this.play(matSoundName('masonry', 'hit', 2), { pos: d.pos, refDist: 6, gain: 0.9, pitch: 0.6 });
+        break;
       case 'tool:clang': this.play('tool.clang', { pos: d.pos, refDist: 8, gain: 0.9 }); break;
       case 'tool:shot': {
         const t = ['shotgun', 'pistol', 'rifle', 'rocket'].includes(d.tool) ? d.tool : 'pistol';

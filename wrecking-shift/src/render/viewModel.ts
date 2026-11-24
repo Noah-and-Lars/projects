@@ -267,17 +267,18 @@ export class ViewModels {
     let ox = 0, oy = 0, oz = 0, rx = 0;
     const id = s.toolId;
     if (id === 'sledge') {
-      // heavy swing driven by the sim's swing clock (anim = 1 - t/36, impact at t = 10):
-      // slow wind-up over the shoulder, fast strike, a beat of hit-stop, slow recovery
+      // heavy swing driven by the sim's swing clock (anim = 1 - t/48, impact at t = 15):
+      // haul it back over the shoulder, hang for a beat, whip it down, stick on impact, drag it back up
       if (a > 0) {
-        const t = (1 - a) * 36;
+        const t = (1 - a) * 48;
         const ease = (u: number) => u * u * (3 - 2 * u);
-        let ang: number, fwd: number, drop: number;
-        if (t < 7) { const u = ease(t / 7); ang = 0.75 * u; fwd = 0.05 * u; drop = -0.05 * u; }            // raise
-        else if (t < 10) { const u = (t - 7) / 3; ang = 0.75 - 1.85 * u * u; fwd = 0.05 - 0.2 * u; drop = -0.05 - 0.01 * u; } // strike
-        else if (t < 15) { const j = Math.sin(t * 9) * 0.02 * (15 - t) / 5; ang = -1.1 + j; fwd = -0.15; drop = -0.06; } // hit-stop
-        else { const u = ease((t - 15) / 21); ang = -1.1 * (1 - u); fwd = -0.15 * (1 - u); drop = -0.06 * (1 - u); }  // recover
-        rx = ang; oz = fwd; oy = -drop;
+        let ang: number, fwd: number, lift: number, side = 0;
+        if (t < 9) { const u = ease(t / 9); ang = 1.05 * u; fwd = 0.07 * u; lift = 0.07 * u; side = 0.03 * u; }        // haul back
+        else if (t < 12) { ang = 1.05 + (t - 9) * 0.015; fwd = 0.07; lift = 0.07; side = 0.03; }                    // hang
+        else if (t < 15) { const u = (t - 12) / 3; const q = u * u * u; ang = 1.1 - 2.3 * q; fwd = 0.07 - 0.27 * q; lift = 0.07 - 0.02 * q; side = 0.03 * (1 - q); } // whip
+        else if (t < 23) { const j = Math.sin(t * 11) * 0.035 * (23 - t) / 8; ang = -1.2 + j; fwd = -0.2; lift = 0.05 + j * 0.3; }  // stick + judder
+        else { const u = ease((t - 23) / 25); ang = -1.2 * (1 - u); fwd = -0.2 * (1 - u); lift = 0.05 * (1 - u) - Math.sin(u * Math.PI) * 0.03; } // drag back
+        rx = ang; oz = fwd; oy = lift; ox = side;
       }
     } else if (GUNS.has(id)) {
       const k = a * a;
