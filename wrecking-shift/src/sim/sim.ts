@@ -89,6 +89,8 @@ export interface BodyOptions {
   anchorBottom?: boolean;
   name?: string;
   tags?: string[];
+  /** force a body id (snapshot restore) */
+  id?: number;
 }
 
 export class Sim {
@@ -145,6 +147,9 @@ export class Sim {
     this.rng = new Rng(seed);
   }
 
+  peekNextId(): number { return this.nextId; }
+  setNextId(n: number): void { this.nextId = Math.max(this.nextId, n); }
+
   // ------------------------------------------------------------------ bodies
 
   addBody(grid: VoxelGrid, pos: V3, opts: BodyOptions = {}): VoxelBody {
@@ -160,7 +165,9 @@ export class Sim {
     const rb = this.world.createRigidBody(desc);
     const kind: BodyKind = opts.kind ?? (dynamic ? 'prop' : 'world');
     const col = this.world.createCollider(this.colliderDesc(grid, kind, dynamic), rb);
-    const body = new VoxelBody(this.nextId++, grid, rb, col, dynamic, kind);
+    const id = opts.id ?? this.nextId++;
+    if (id >= this.nextId) this.nextId = id + 1;
+    const body = new VoxelBody(id, grid, rb, col, dynamic, kind);
     body.identityRot = !dynamic && rot.x === 0 && rot.y === 0 && rot.z === 0;
     body.anchorBottom = opts.anchorBottom ?? true;
     body.createdTick = this.tick;
