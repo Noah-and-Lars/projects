@@ -108,4 +108,28 @@ describe('Gullwick Harbour playthroughs', () => {
     r.clockOut();
     finish(r);
   }, T);
+  it('depot-clearance: bombs on the pump house while planning, pistol into the full tank, run to the van', () => {
+    const r = new Run('depot-clearance');
+    r.select('bomb');
+    // pump house: x 39..44, z -22..-18, door on the west side
+    for (const [x, z, nx, nz] of [[39, -21.5, -1, 0], [39, -18.5, -1, 0], [41.5, -18, 0, 1], [43.9, -19, 1, 0], [43.9, -21, 1, 0], [41.5, -22, 0, -1]]) {
+      r.tp(v3(x + nx * 1.4, 1.5, z + nz * 1.4));
+      r.aim(v3(x, 2.0, z));
+      r.click();
+      r.tp(v3(x + nx * 7, 1.5, z + nz * 7));
+      r.wait(2.5);
+    }
+    expect(r.phase).toBe('planning');
+    expect(r.mission.objectives()[1].done).toBe(true);
+    // the tank sensor starts the clock: two rounds through the shell into the fuel
+    r.select('pistol');
+    r.tp(v3(40, 1.5, -28.5));
+    for (let i = 0; i < 3 && r.planning; i++) { r.aim(v3(31, 3.2, -27)); r.click(); }
+    for (let i = 0; i < 3; i++) { r.aim(v3(31, 3.2, -27)); r.click(); r.wait(0.2); }
+    expect(r.phase).toBe('alarm');
+    r.walk([v3(37.5, 1.5, -24), v3(37.5, 1.5, -15.5), v3(42, 1.5, -12.5), v3(30, 1.5, -11), v3(4, 1.5, -11), v3(2, 1.5, -25), v3(0, 2, -50), r.mission.escapePos()], { r: 2.5 });
+    r.clockOut();
+    finish(r);
+  }, T);
 });
+

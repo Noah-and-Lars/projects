@@ -241,7 +241,10 @@ export class Run {
         const pos = p.pos;
         const d = hdist(pos, wp);
         if (d < r) break;
-        if (this.mission.ended) return;
+        if (this.mission.ended) {
+          if (this.mission.phase === 'failed') throw new Error(`${this.def.id}: failed (${this.mission.failReason}) while walking to ${JSON.stringify(wp)} at ${JSON.stringify(roundV(pos))}`);
+          return;
+        }
         if (i > max) throw new Error(`${this.def.id}: stuck walking to ${JSON.stringify(wp)} at ${JSON.stringify(roundV(pos))} (t=${this.t.toFixed(1)})`);
         const want = Math.atan2(-(wp.x - pos.x), -(wp.z - pos.z));
         if (o.turnRate) p.yaw += Math.max(-o.turnRate, Math.min(o.turnRate, wrap(want - p.yaw)));

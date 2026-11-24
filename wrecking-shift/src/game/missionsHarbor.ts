@@ -118,15 +118,16 @@ export const depotClearance: MissionDef = {
   brief:
     'The harbour company owes me for nine skips. They say the fuel depot "is not scrap". Everything is scrap ' +
     'if you believe in it.\n\n' +
-    'Flatten the depot: both tanks and the pump house, at least half of each gone. Harbour Watch has a sensor ' +
+    'Flatten the depot: half of the tanks gone, and a proper hole in the pump house. Harbour Watch has a sensor ' +
     'on the big tank — the second it is damaged the clock starts, so set everything up before you light anything.\n\n' +
     'And contractor: the big one is full.',
   objectives: [
     { kind: 'destroy', id: 'tanks', title: 'Destroy half of the fuel tanks', percent: 50 },
-    { kind: 'destroy', id: 'pump', title: 'Destroy 40% of the pump house', percent: 40 },
+    // 40% was out of reach: the pump house is concrete (6 bombs + 6 pipe bombs remove ~10% of it, measured)
+    { kind: 'destroy', id: 'pump', title: 'Blast a hole in the pump house (6%)', percent: 6 },
     { kind: 'destroy', id: 'boxes', title: 'Wreck the container stack (30%)', percent: 30, required: false },
   ],
-  alarmSeconds: 50,
+  alarmSeconds: 30,
   reward: { cash: 1300 },
   unlockAfter: ['lights-out', 'dead-weight'],
   setup(sim) {
