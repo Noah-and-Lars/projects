@@ -1,4 +1,5 @@
 import { createAudioModule } from './audioModule';
+import { fireModule } from './fireModule';
 import type { GameModule } from './game';
 import { createWaterModule } from './waterModule';
 import { createWeatherModule } from './weatherModule';
@@ -11,6 +12,7 @@ export function createModules(): GameModule[] {
   return [
     createWaterModule(),
     createWeatherModule(),
+    fireModule(),
     createAudioModule(),
   ];
 }
