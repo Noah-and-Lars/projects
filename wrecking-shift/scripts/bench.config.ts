@@ -1,3 +1,3 @@
 import { defineConfig } from 'vite';
-// separate vitest config for scripts/bench-level.test.ts (kept out of the unit suite)
-export default defineConfig({ test: { include: ['scripts/bench-level.test.ts'], testTimeout: 600000 } } as any);
+// separate vitest config for the level bench / probe scripts (kept out of the unit suite)
+export default defineConfig({ test: { include: ['scripts/bench-level.test.ts', 'scripts/dbg-level.test.ts'], testTimeout: 600000 } } as any);

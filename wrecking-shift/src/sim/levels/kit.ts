@@ -277,7 +277,7 @@ export function tank(sim: Sim, x: number, y: number, z: number, r = 14, h = 40, 
   cylinderY(g, c, c, r, 12, 12 + h, shaded(fuel ? MAT.paintedmetal : MAT.sheetmetal, 6, 3), 1);
   cylinderY(g, c, c, r, 12, 13, shaded(MAT.sheetmetal, 6, 3));
   cylinderY(g, c, c, r, 11 + h, 12 + h, shaded(MAT.sheetmetal, 6, 3));
-  if (fuel) cylinderY(g, c, c, r - 3, 14, 12 + h - 6, pal(MAT.explosive, 2), 2);
+  if (fuel) cylinderY(g, c, c, r - 3, 13, 12 + h - 6, pal(MAT.explosive, 2), 2); // starts on the bottom plate (was floating from y 14)
   g.recount();
   const b = sim.addBody(g, { x: x - c * 0.1, y: y - 0.2, z: z - c * 0.1 }, { name: fuel ? 'fuel tank' : 'tank' });
   return b;

@@ -6,6 +6,7 @@ import type { VoxelBody } from '../../src/sim/body';
 import type { LevelDef, LevelInfo } from '../../src/sim/levels/types';
 import type { V3 } from '../../src/sim/vec';
 import { ridge } from '../../src/sim/levels/ridge';
+import { works } from '../../src/sim/levels/works';
 
 beforeAll(async () => { await initPhysics(); });
 
@@ -185,5 +186,35 @@ describe('Kestrel Ridge', () => {
     expect(tower.removed ? 0 : tower.grid.count).toBeLessThan(n0 * 0.3);
     expect(debrisAbove(sim, c.y)).toBeGreaterThan(20000);
     void info;
+  });
+});
+
+describe('Brackwater Works', () => {
+  const get = commonChecks(works, [
+    { name: 'spawn -> office door -> lobby', from: 'escape', pts: [[-54.4, 0], [-54.4, -2.4], [-54.4, -5]] },
+    { name: 'office stairs -> top floor -> roof', from: 'office_lobby', pts: [[-50.5, -5.5], [-46.0, -5.5], [-46.0, -12.6], [-47.55, -12.6], [-47.55, -6.5], [-46.0, -6.5], [-46.0, -12.6], [-47.55, -12.6], [-47.55, -6.5], [-49.5, -5.5]], minY: 11.5 },
+    { name: 'spawn -> factory door A -> hall -> east hall', from: 'escape', pts: [[-40, 2], [-29, -10], [-29, -18], [-29, -22], [-18, -31.5], [-5, -31.5]] },
+    { name: 'road -> road bridge -> dock ramp -> dock', from: 'parking', pts: [[-27, 6], [-27, 17], [-27, 26], [-16, 32.5], [-13, 32.5], [-6, 32.5], [0, 32.5]], minY: 2.5 },
+    { name: 'footbridge -> container yard', from: 'pipe_rack', pts: [[39.3, 2], [39.3, 9], [39.3, 17], [39.3, 25.5], [30, 38], [28, 38]] },
+    { name: 'silo stair tower -> catwalk', from: 'pipe_rack', pts: [[32.35, -42.5], [32.35, -49.5], [30.85, -49.5], [30.85, -44.6], [32.35, -44.6], [32.35, -49.5], [30.85, -49.5], [30.85, -44.6], [32.35, -44.6], [32.35, -49.5], [30.85, -49.5], [30.85, -44.6], [32.6, -44.6], [32.6, -47], [36, -47], [44, -47]], minY: 15 },
+    { name: 'yard -> chimney door -> inside', from: 'factory_yard', pts: [[10, -22], [10, -24.5], [10, -26.6]] },
+    { name: 'tank farm gap', from: 'pipe_rack', pts: [[10, -9], [34, -9], [38, -9], [38, -12], [49, -12], [49, -21]] },
+  ]);
+  it('works: light damage keeps the chimney up; a ring blast at its base fells it', () => {
+    const { sim } = get();
+    const ch = [...sim.bodies.values()].find((b) => b.name === 'chimney')!;
+    const c = { x: 10, y: 1.6, z: -27 };
+    const keep = lightDamage(sim, ch, [{ x: c.x + 1.55, y: c.y + 4, z: c.z }, { x: c.x - 1.5, y: c.y + 6, z: c.z + 0.3 }]);
+    expect(keep).toBeGreaterThan(0.97);
+    expect([...sim.bodies.values()].filter((b) => b.kind === 'debris' && b.grid.count > 500).length).toBe(0);
+    const n0 = ch.grid.count;
+    ringBlast(sim, c, 1.4, c.y + 3.6, 10, 1.6);
+    for (let i = 0; i < 180; i++) sim.step();
+    // the square plinth (3 m) stays, the shaft above it is gone
+    let shaft = 0;
+    if (!ch.removed) for (let z = 0; z < ch.grid.sz; z++) for (let y = 60; y < ch.grid.sy; y++) for (let x = 0; x < ch.grid.sx; x++) if (ch.grid.get(x, y, z)) shaft++;
+    expect(shaft).toBe(0);
+    expect(ch.removed ? 0 : ch.grid.count).toBeLessThan(n0 * 0.5);
+    expect(debrisAbove(sim, c.y)).toBeGreaterThan(20000);
   });
 });

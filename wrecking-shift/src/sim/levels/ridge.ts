@@ -598,7 +598,7 @@ export const ridge: LevelDef = {
     rocks.forEach(([x, z, r], i) => rock(sim, x, gy(x, z), z, r, i + 2));
 
     // --- markers
-    const spawn = { x: 46.5, y: SHORE, z: 21.5 };
+    const spawn = { x: 46.5, y: SHORE + 0.1, z: 21.5 }; // +0.1: a player created exactly on a voxel surface can start stuck
     m.escape = { x: 46.5, y: SHORE, z: 24.8 };
     m.shore_road = { x: -36, y: SHORE, z: 22 };
     m.hairpin = { x: -15, y: T1, z: 3 };
