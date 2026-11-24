@@ -12,6 +12,7 @@ export interface LevelInfo {
   /** sun direction (pointing from the sun toward the scene), time-of-day look */
   sunDir: V3;
   sky?: 'day' | 'sunset' | 'night' | 'overcast';
+  weather?: 'rain' | 'snow' | null;
   /** free-form extras a level exposes to missions (named positions, bodies...) */
   markers: Record<string, V3>;
 }
