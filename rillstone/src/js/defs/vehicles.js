@@ -26,7 +26,7 @@ export const VEHICLES = {
   },
   // The Survey Buggy: the Trail Buggy with a vein scanner on a mast.
   survey: {
-    name: 'Survey Buggy', price: 3000, standing: 6,
+    name: 'Survey Buggy', price: 3000,
     hx: 0.75, hy: 0.3, hz: 1.35, bodyY: 0.62, ballastY: 0.1, mass: 720,
     wheels: [[0.86, 0.38, 1.0], [-0.86, 0.38, 1.0], [0.86, 0.38, -1.0], [-0.86, 0.38, -1.0]],
     wheelR: 0.42, suspRest: 0.4, travel: 0.34, stiffness: 20, compression: 2.4, relaxation: 1.8,
@@ -46,7 +46,7 @@ export const VEHICLES = {
   // Tracks (skid steer) and a bucket arm that cuts world-grid cells into a
   // 10-load hopper (BUILD_BRIEF 3.7).
   excavator: {
-    name: 'Excavator', price: 6500, standing: 10,
+    name: 'Excavator', price: 6500,
     hx: 1.15, hy: 0.4, hz: 1.6, bodyY: 0.75, ballastY: 0.15, mass: 4200,
     wheels: [[1.05, 0.36, 1.1], [-1.05, 0.36, 1.1], [1.05, 0.36, 0], [-1.05, 0.36, 0], [1.05, 0.36, -1.1], [-1.05, 0.36, -1.1]],
     wheelR: 0.36, suspRest: 0.3, travel: 0.2, stiffness: 40, compression: 4.5, relaxation: 3.5,

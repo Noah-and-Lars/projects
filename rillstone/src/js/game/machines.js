@@ -390,7 +390,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
     // Nothing is deleted: if the out port refuses the ingot, the metal stays molten.
     if (output(m, { item: it }) === false) { m.state.molten = kg; m.state.material = mat; if (!quiet) { hud.toast('The way out is blocked: clear the belt or bin first', 'err'); audio.play('error'); } return null; }
     audio.play('pour'); hud.toast(`Poured a ${kg.toFixed(1)} kg ${MATERIALS[it.material].name.toLowerCase()} ingot`, 'gold');
-    for (const k of economy.smelted?.(it.material, kg) || []) { audio.play('contract'); hud.toast(`Contract done: ${k.text} · § ${k.reward} · ★ +${k.standing}`, 'gold'); }
+    for (const k of economy.smelted?.(it.material, kg) || []) { audio.play('contract'); hud.toast(`Contract done: ${k.text} · § ${k.reward}`, 'gold'); }
     return it;
   };
 

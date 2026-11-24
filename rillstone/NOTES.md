@@ -1162,3 +1162,19 @@ so far:
 - **Test:** `--town` checks the Assay Office's quotes for gems and crafts,
   and that a Standing-0 player can buy the Drill Mk IV blueprint and the
   Excavator.
+
+### No stars; one shop sells everything; claims cost money only
+
+- **Stars:** Guild Standing (★) is gone from the game. Nothing needs it:
+  claims, blueprints and vehicles cost Scrip only. Nothing shows it: not
+  the money display, contracts, the Guild board, the Machine Shop, the
+  Pumphouse, the end screen or the Saves cards. The economy still keeps a
+  hidden counter of finished contracts, `standing`, which sets how big new
+  contracts are. Old saves load unchanged.
+- **One shop:** every shop counter in Millbrook (General Store, Millwright,
+  Foundry Yard, Signal House, Wagon Shed) opens the same full catalogue,
+  in sections: tools and gear, water, belts and machines, furnaces and
+  crafting, logic and signals, vehicles and fuel, then your vehicles.
+  Purchases go on the pad of the counter you're at, and vehicles wait in
+  the yard. Co-op guests can buy anything at any counter too.
+- **Claims:** the Guild Hall sells every claim for its price alone.

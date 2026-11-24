@@ -542,7 +542,7 @@ async function boot() {
     guide.update(dt, state.mode === 'play');
     fx.update(dt);
     hud.clock(state.time, state.day);
-    hud.wallet(economy.state.scrip, economy.state.standing);
+    hud.wallet(economy.state.scrip);
     const t2 = performance.now();
     if (!state.noRender && !document.hidden) view.render();
     timings.render = performance.now() - t2;

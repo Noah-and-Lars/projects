@@ -1,5 +1,5 @@
 // The economy, held by the host (BUILD_BRIEF 3.6): an abstract ledger in
-// Scrip (§), Guild Standing, market buyers that saturate during the day,
+// Scrip (§), market buyers that saturate during the day,
 // guild contracts and claim deeds. Plain data, so it saves and syncs.
 import { MATERIALS, itemValue, itemName } from '../defs/materials.js';
 import { CLAIMS } from '../world/valley.js';
@@ -19,7 +19,8 @@ const CRAFT_NAMES = { toolhead: 'tool head', ring: 'ring', chain: 'chain', chali
 export const wantLabel = (w) => (w.stage === 'crafted' ? (w.material ? `${MATERIALS[w.material].name} ${CRAFT_NAMES[w.craft] || 'piece'}` : 'Crafted goods') : w.kind === 'gem' ? (w.stage === 'cut' ? 'Cut gems' : 'Uncut gems') : `${MATERIALS[w.material].name} ${w.stage === 'ore' ? 'ore' : w.stage + 's'}`);
 const matches = (w, it) => it.stage === w.stage && (w.kind ? MATERIALS[it.material]?.kind === w.kind : !w.material || it.material === w.material) && (!w.craft || it.craft === w.craft);
 
-// Contract templates, scaled by standing. kind: 'kg' (deliver kg of a
+// Contract templates, scaled by how many contracts you've finished (a
+// hidden counter, `standing`; it's never shown or required for anything). kind: 'kg' (deliver kg of a
 // material/stage), 'count' (items matching), 'big' (one piece over X kg), 'day' (sell § in a day).
 const CRAFT_MIN_KG = 1;
 function makeContract(rng, standing, id) {
@@ -52,7 +53,7 @@ export function createEconomy(rng) {
   };
   const api = { state: S };
   function rollMarket() {
-    // Once the guild trusts you (★ 4), Millbrook's stalls mix in refined wants.
+    // After a few contracts, Millbrook's stalls mix in refined wants.
     const pool = S.standing >= 4 ? RAW_WANTS.concat(REFINED_WANTS.slice(0, 4)) : RAW_WANTS.slice();
     const refined = REFINED_WANTS.slice();
     const mk = (i, w) => ({ stall: i, want: w, mult: Math.round((1.05 + rng() * 0.25) * 100) / 100, sold: 0 });
@@ -132,7 +133,6 @@ export function createEconomy(rng) {
   api.owns = (claimId) => S.owned.includes(claimId);
   api.buyClaim = (claimId) => {
     const c = CLAIMS.find(x => x.id === claimId); if (!c || api.owns(claimId)) return 'owned';
-    if (S.standing < (c.standing || 0)) return 'standing';
     if (!api.spend(c.price)) return 'poor';
     S.owned.push(claimId); return 'ok';
   };

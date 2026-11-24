@@ -53,16 +53,16 @@ function plot(id, name, price, w, d, depth, cx, cz, extra = {}) {
 export const ADIT = { x: snap(TOWN.x + 70), z: snap(TOWN.z - 30), y: 0, len: 46, w: 4.2, h: 3.6, dir: 1 };
 ADIT.y = floorY(ADIT.z) + 3.2;
 
-// Deeds also need Guild Standing (BUILD_BRIEF 3.6: standing unlocks deeds).
+// Deeds cost Scrip only (the player asked for areas to be bought with money).
 export const CLAIMS = [
-  plot('gravel', 'Gravel Bar', 0, 24, 24, 6, riverX(76) - 23, 76, { band: 1, standing: 0, blurb: 'River-edge starter' }),
-  plot('willow', 'Willow Bend', 900, 32, 32, 22, riverX(150) + 30, 150, { standing: 0, blurb: 'Gentle bank, good river access' }),
-  plot('oldcut', 'Old Cut', 1500, 40, 32, 22, riverX(-40) - 70, -40, { standing: 2, blurb: 'Half-dug old pit. Something was left behind' }),
-  plot('slate', 'Slate Shelf', 6000, 48, 40, 22, riverX(220) - 110, 220, { standing: 6, blurb: 'Terraced cliff: bring lifts and belts' }),
-  plot('glimmer', 'Glimmer Hollow', 8500, 40, 40, 22, riverX(-90) + 85, -90, { standing: 10, blurb: 'A sure Glimmerite vein at mid-depth' }),
+  plot('gravel', 'Gravel Bar', 0, 24, 24, 6, riverX(76) - 23, 76, { band: 1, blurb: 'River-edge starter' }),
+  plot('willow', 'Willow Bend', 900, 32, 32, 22, riverX(150) + 30, 150, { blurb: 'Gentle bank, good river access' }),
+  plot('oldcut', 'Old Cut', 1500, 40, 32, 22, riverX(-40) - 70, -40, { blurb: 'Half-dug old pit. Something was left behind' }),
+  plot('slate', 'Slate Shelf', 6000, 48, 40, 22, riverX(220) - 110, 220, { blurb: 'Terraced cliff: bring lifts and belts' }),
+  plot('glimmer', 'Glimmer Hollow', 8500, 40, 40, 22, riverX(-90) + 85, -90, { blurb: 'A sure Glimmerite vein at mid-depth' }),
   // Ember Seam runs horizontally into the mountain from the end of the adit:
   // its bands deepen with distance from the door, down to basalt (band 4).
-  plot('ember', 'Ember Seam', 12000, 48, 32, 28, ADIT.x + ADIT.len - 2 + 24, ADIT.z, { standing: 16, tunnel: true, blurb: 'A tunnel into the mountain, down to basalt' }),
+  plot('ember', 'Ember Seam', 12000, 48, 32, 28, ADIT.x + ADIT.len - 2 + 24, ADIT.z, { tunnel: true, blurb: 'A tunnel into the mountain, down to basalt' }),
 ];
 for (const c of CLAIMS) c.top = Math.max(floorY(c.cz) + 0.6, 0) + (c.id === 'slate' ? 14 : c.id === 'oldcut' ? 3 : c.id === 'glimmer' ? 4 : 0);
 { // Tunnel claim: x0 sits just inside the adit's end; floor level with the adit.

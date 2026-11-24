@@ -196,7 +196,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     c.clerk.busy = 1.2;
     if (r.total > 0) { audio.play('coins'); hud.toast(`${p.name}: ${r.sold.length} item${r.sold.length > 1 ? 's' : ''} weighed and stamped · § ${r.total.toLocaleString('en-GB')}`, 'gold'); }
     if (r.refused.length) hud.toast(`${r.refused.length} left on the counter · ${r.refused[0].why}`, 'err');
-    for (const k of r.completed) { audio.play('contract'); hud.toast(`Contract done: ${k.text} · § ${k.reward} · ★ +${k.standing}`, 'gold'); }
+    for (const k of r.completed) { audio.play('contract'); hud.toast(`Contract done: ${k.text} · § ${k.reward}`, 'gold'); }
     if (c.venue !== 'assay') redrawBoards();
     return r;
   }
@@ -216,20 +216,32 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     else if (entry.spawn === 'coil') items.spawn('coil', pos, { data: { ...entry.data } });
     else items.spawn(entry.spawn, pos, { data: { loads: [], contents: [], ...(entry.data || {}), ...(entry.data ? { name: entry.name } : {}) } });
   }
+  // One catalogue (every shop's stock) at every counter: buy anything
+  // anywhere; it's delivered to the pad of the shop you're standing at.
+  const CATEGORY = { store: 'Tools and gear', millwright: 'Water, belts and machines', foundry: 'Furnaces and crafting', signal: 'Logic and signals', wagons: 'Vehicles and fuel' };
+  const findEntry = (itemId) => { for (const S of Object.values(SHOPS)) { const e = S.items.find(i => i.id === itemId); if (e) return e; } return null; };
   function buy(shopId, itemId) {
-    const entry = SHOPS[shopId].items.find(i => i.id === itemId);
-    if (entry.standing && economy.state.standing < entry.standing) { audio.play('error'); hud.toast(`${entry.name} needs ★ ${entry.standing} Guild Standing`, 'err'); return false; }
+    const entry = findEntry(itemId); if (!entry || !pads[shopId]) return false;
     if (!economy.spend(entry.price)) { audio.play('error'); hud.toast(`Not enough Scrip for ${entry.name}`, 'err'); return false; }
     deliver(shopId, entry); audio.play('coins');
-    hud.toast(`${entry.name} · delivered to the pad`, 'gold');
+    hud.toast(`${entry.name} · ${entry.spawn === 'vehicle' ? 'waiting in the yard' : 'delivered to the pad'}`, 'gold');
     return true;
   }
   function openShop(shopId) {
     const S = SHOPS[shopId];
     const render = () => {
-      const body = h('div', {}, h('p', { class: 'small' }, S.blurb + ' · deliveries go to the pad beside the counter'),
-        ...S.items.map(it => h('div', { class: 'entry' }, h('b', {}, it.name), it.standing && economy.state.standing < it.standing ? h('span', { class: 'pill' }, `Needs ★ ${it.standing}`) : h('button', { class: 'btn primary', disabled: economy.state.scrip < it.price, onclick: () => { api.buy(shopId, it.id); render(); } }, `§ ${it.price.toLocaleString('en-GB')}`), h('span', { class: 'desc' }, it.desc))),
-        ...(S.callVehicle ? [h('h3', {}, 'Your vehicles'), ...[...vehicles.list.values()].filter(v => !v.def.kinematic).map(v => h('div', { class: 'entry' }, h('b', {}, v.def.name),
+      const seen = new Set(), sections = [];
+      for (const [key, shop] of Object.entries(SHOPS)) {
+        const list = shop.items.filter(it => !seen.has(it.id) && seen.add(it.id));
+        if (!list.length) continue;
+        sections.push(h('h3', {}, CATEGORY[key] || shop.name), ...list.map(it => h('div', { class: 'entry' }, h('b', {}, it.name),
+          h('button', { class: 'btn primary', disabled: economy.state.scrip < it.price, onclick: () => { api.buy(shopId, it.id); render(); } }, `§ ${it.price.toLocaleString('en-GB')}`),
+          h('span', { class: 'desc' }, it.desc))));
+      }
+      const own = [...vehicles.list.values()].filter(v => !v.def.kinematic);
+      const body = h('div', {}, h('p', { class: 'small' }, 'Everything in Millbrook is sold here. Things you buy go on the pad beside this counter; vehicles wait in the yard.'),
+        ...sections,
+        ...(own.length ? [h('h3', {}, 'Your vehicles'), ...own.map(v => h('div', { class: 'entry' }, h('b', {}, v.def.name),
           h('span', { class: 'row' }, h('button', { class: 'btn', onclick: () => { api.callVehicle(v.id); panels.close(); } }, 'Call'), ' ', h('button', { class: 'btn', onclick: async () => { await api.sellVehicle(v.id); render(); } }, `Sell § ${vehicles.refund(v)}`)),
           h('span', { class: 'desc' }, `Fuel ${v.def.fuelMax ? Math.round(v.fuel / v.def.fuelMax * 100) + '%' : '—'}${v.cargo.length ? ` · ${v.cargo.length} in the bed` : ''} · Call brings it to the yard.`)))] : []));
       panels.show('shop:' + shopId, S.name, body, { badge: `§ ${economy.state.scrip.toLocaleString('en-GB')}` });
@@ -256,12 +268,12 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     const render = () => {
       const body = h('div', {},
         h('h3', {}, 'Contracts'),
-        ...E.contracts.map(c => h('div', { class: 'entry' + (c.done ? ' done' : '') }, h('b', {}, c.text), h('span', { class: 'pill' }, `§ ${c.reward} · ★ ${c.standing}`), h('span', { class: 'bar' }, h('i', { style: { width: Math.min(100, c.progress / c.target * 100) + '%' } })))),
+        ...E.contracts.map(c => h('div', { class: 'entry' + (c.done ? ' done' : '') }, h('b', {}, c.text), h('span', { class: 'pill' }, `§ ${c.reward}`), h('span', { class: 'bar' }, h('i', { style: { width: Math.min(100, c.progress / c.target * 100) + '%' } })))),
         h('p', { class: 'small' }, 'Contracts fill as you sell matching goods anywhere in town. New ones arrive as you finish them.'),
         h('h3', {}, 'Claim deeds'),
-        ...CLAIMS.filter(c => c.voxel).map(c => h('div', { class: 'entry' }, h('b', {}, c.name), economy.owns(c.id) ? h('span', { class: 'pill' }, 'Owned') : (E.standing < (c.standing || 0) ? h('span', { class: 'pill' }, `Needs ★ ${c.standing}`) : h('button', { class: 'btn primary', disabled: E.scrip < c.price, onclick: () => { const r = economy.buyClaim(c.id); if (r === 'ok') { audio.play('coins'); hud.toast(`${c.name} is yours${c.tunnel ? ' — the adit door is open' : ''}`, 'gold'); } render(); } }, `§ ${c.price.toLocaleString('en-GB')}`)), h('span', { class: 'desc' }, `${c.blurb || ''} · ${c.w} × ${c.d} m · ${c.depth} m deep${c.standing ? ` · ★ ${c.standing}` : ''}`))),
+        ...CLAIMS.filter(c => c.voxel).map(c => h('div', { class: 'entry' }, h('b', {}, c.name), economy.owns(c.id) ? h('span', { class: 'pill' }, 'Owned') : (h('button', { class: 'btn primary', disabled: E.scrip < c.price, onclick: () => { const r = economy.buyClaim(c.id); if (r === 'ok') { audio.play('coins'); hud.toast(`${c.name} is yours${c.tunnel ? ' — the adit door is open' : ''}`, 'gold'); } render(); } }, `§ ${c.price.toLocaleString('en-GB')}`)), h('span', { class: 'desc' }, `${c.blurb || ''} · ${c.w} × ${c.d} m · ${c.depth} m deep`))),
       );
-      panels.show('guild', 'Guild Hall', body, { badge: `§ ${E.scrip.toLocaleString('en-GB')} · ★ ${E.standing}` });
+      panels.show('guild', 'Guild Hall', body, { badge: `§ ${E.scrip.toLocaleString('en-GB')}` });
     };
     render();
   }

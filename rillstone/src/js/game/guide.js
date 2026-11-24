@@ -22,7 +22,7 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
     { title: 'Sell at the Assay Office', text: 'Cross the bridge to Millbrook. Click the Assay Office counter with the pan to tip your finds out, then ring the bell (E).', done: sold, pay: 20 },
     { title: 'Load the truck', text: 'Your old hauler is parked by the claim. Click its bed with the pan to tip your finds in (or drop things on it with G), then F to drive to town.', done: () => [...vehicles.list.values()].some(v => v.cargo.length > 0) || G().drove, pay: 20 },
     { title: 'A better shovel', text: 'Buy the Sturdy Shovel at the General Store: it holds 2 loads.', done: () => has(e => e.type === 'shovel' && (e.data?.cap || 1) >= 2), pay: 20 },
-    { title: 'Your first contract', text: 'Read the board by the Guild Hall and finish a contract. Contracts pay Scrip and Guild Standing.', done: () => E.standing > 0, pay: 40 },
+    { title: 'Your first contract', text: 'Read the board by the Guild Hall and finish a contract. Contracts pay Scrip.', done: () => E.standing > 0, pay: 40 },
     { title: 'The starter kit', text: 'Save up § 1,000. At the Millwright buy a Sluice Box, a Drill, a River Intake and copper pipe.', done: () => has(e => e.type === 'crate' && e.data.def === 'drill1') || !!machine(m => m.def === 'drill1'), pay: 50 },
     { title: 'Set up a line', text: 'Place the drill in your claim with its spout over the sluice hopper, and lock both with the mallet.', done: () => !!machine(m => m.def.startsWith('drill') && machines.linkOf(m.id)), pay: 60 },
     { title: 'Bring the water', text: 'Put the intake in the river and lay copper pipe from it to the drill and the sluice. Watch it run.', done: () => !!machine(m => m.def.startsWith('drill') && m.status === 'running'), pay: 80 },
@@ -93,7 +93,7 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
           ['Depth bands', 'Topsoil and clay (0–6 m) dig with any tool; the gravel bed (6–14 m) needs steel, slate (14–22 m) glimmer, basalt (Ember Seam) ember. Deeper finds weigh more.'],
           ['Water', `Intakes give flow (Mk I ${MACHINES.intake1.flow} L/s); each pipe carries its tier's limit. Machines slow down, but never stop, when the flow can't keep up. Settling tanks take silt out, which saves wear.`],
           ['Selling', 'The Assay Office buys everything at base price: ore, ingots, gems and crafted goods. Market stalls pay more for their want of the day, less as you sell.'],
-          ['Claims and standing', 'Guild contracts raise your Standing, which unlocks claim deeds and Machine Shop blueprints.'],
+          ['Claims', 'Buy new claims at the Guild Hall with Scrip. Everything else is sold at any shop counter in Millbrook.'],
           ['The Pumphouse', 'The old pumphouse below Millbrook can be restored in five stages: that is the big goal.'],
         ].map(([k, v]) => h('div', { class: 'entry' }, h('b', {}, k), h('span', { class: 'desc' }, v))),
         h('div', { class: 'entry' }, h('b', {}, 'Guide card'), h('button', { class: 'btn', onclick: () => { g.hidden = !g.hidden; api.open(); } }, g.hidden ? 'Show' : 'Hide'), h('span', { class: 'desc' }, 'The card in the top-left corner.')));

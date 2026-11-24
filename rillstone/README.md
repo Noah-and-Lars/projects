@@ -141,13 +141,14 @@ Millbrook sits across the bridge from the Gravel Bar.
   weighs them and the ledger pays base price in Scrip (§).
 - **Market stalls.** The three stalls each want one thing a day, shown on
   their chalkboards. They pay up to 130% of base, falling as you sell to them.
-- **Shops.** The **General Store** sells tools and shovel upgrades, the
-  **Millwright** sells the starter automation kit as crates, and the **Wagon
-  Shed** sells charcoal and can call your truck to its yard. E on any claim post calls your vehicle to that claim. Purchases
-  appear on the delivery pad by each shop.
-- **Guild board.** It has three contracts, which pay Scrip and Guild
-  Standing, and claim deeds (see Claims below). From ★ 4, contracts also ask
-  for ingots, cut gems and crafted goods.
+- **Shops.** Every shop counter in Millbrook (General Store, Millwright,
+  Foundry Yard, Signal House, Wagon Shed) sells everything: tools, machines,
+  logic parts, fuel and vehicles. What you buy appears on the pad by that
+  counter, and vehicles wait in the yard. Any counter can call or sell your
+  vehicles, and E on any claim post calls your vehicle to that claim.
+- **Guild board.** It has three contracts, which pay Scrip, and claim deeds
+  for Scrip (see Claims below). After a few contracts they also ask for
+  ingots, cut gems and crafted goods.
 - **The Old Hauler.** F gets in and out, WASD drives, Space brakes and H
   (hold) unflips. Drop items onto the bed with G to carry them to town; E takes
   them out again. It burns charcoal: LMB with a sack on the truck refuels it.
@@ -170,7 +171,7 @@ Millbrook sits across the bridge from the Gravel Bar.
   - **New game:** name the claim and pick one of 6 slots. A used slot says
     what it would replace.
   - **Saves page:** a card per slot, showing a picture, the name, day,
-    Scrip, Standing, claims, play time and when it was saved. Each card has
+    Scrip, claims, play time and when it was saved. Each card has
     Load, Save here, Rename, Export (to a `.rillsave` file), Import and
     Delete (which asks first).
   - **Backups:** with "Show backups" ticked, each slot's save-before-last
@@ -239,20 +240,20 @@ crates.
 
 ## Claims, progression and the Pumphouse
 
-**Claims.** Six claims, each its own voxel volume. Deeds are on the Guild board; most also need Guild Standing (★).
+**Claims.** Six claims, each its own voxel volume. Deeds are on the Guild board and cost Scrip only.
 
 | Claim | Deed | Character |
 | --- | --- | --- |
 | Gravel Bar | yours | 6 m deep starter by the river |
 | Willow Bend | § 900 | 22 m deep, good river access |
-| Old Cut | § 1,500 · ★ 2 | A half-dug pit. Dig its floor to find the relic the old diggers left |
-| Slate Shelf | § 6,000 · ★ 6 | Three terraces stepping down to the hillside: lifts and belts country |
-| Glimmer Hollow | § 8,500 · ★ 10 | A sure Glimmerite vein about 11 m down |
-| Ember Seam | § 12,000 · ★ 16 | Behind the door at the end of the adit; it gets deeper the further in you dig, down to basalt (band 4) |
+| Old Cut | § 1,500 | A half-dug pit. Dig its floor to find the relic the old diggers left |
+| Slate Shelf | § 6,000 | Three terraces stepping down to the hillside: lifts and belts country |
+| Glimmer Hollow | § 8,500 | A sure Glimmerite vein about 11 m down |
+| Ember Seam | § 12,000 | Behind the door at the end of the adit; it gets deeper the further in you dig, down to basalt (band 4) |
 
 **Veins.** Every claim has one hidden ore vein. A third of the loads washed from inside it give its metal. The **Prospector's Lamp** (General Store, § 400) is worn: E on it, and a meter by your Scrip glows violet and ticks faster as you near a vein. The **Survey Buggy** shows veins on a scanner while you drive.
 
-**Machine Shop** (Millbrook, by the Wagon Shed). Buy a blueprint once, then put ingots on its counter and build. Leftover metal comes back as a smaller ingot; machines arrive as crates on its pad. Every blueprint can be bought at any Guild Standing: you only need the Scrip, then the ingots.
+**Machine Shop** (Millbrook, by the Wagon Shed). Buy a blueprint once, then put ingots on its counter and build. Leftover metal comes back as a smaller ingot; machines arrive as crates on its pad. A blueprint only needs the Scrip, then the ingots.
 
 | Tier | Machines and tools |
 | --- | --- |
@@ -280,7 +281,7 @@ crates.
 4. Glimmerite ingots.
 5. Emberite ingots and three chalices.
 
-Each stage pays Scrip and Standing, and the building comes back piece by piece. The fifth stage shows the end screen and puts a gold-plated water wheel on the Millwright's pad.
+Each stage pays Scrip, and the building comes back piece by piece. The fifth stage shows the end screen and puts a gold-plated water wheel on the Millwright's pad.
 
 **Sound.** Machines play spatial loops by type. Machines of one type within 6 m share a voice, at most 8 play at once, and worn ones grind. The river sounds louder as you near it, and the engine follows your speed. Captions can show every cue.
 
@@ -290,7 +291,7 @@ Up to 4 players share one world. Open **Co-op** from the pause menu.
 
 - **Hosting.** Press Host to get a 5-letter room code to share. Your browser runs the world, and your save keeps it.
 - **Joining.** Type a friend's code and press Join. Their world loads in a moment; your own world is set aside until you leave.
-- **Sharing.** Scrip, Guild Standing and claims are shared. Everyone can dig, build and drive anywhere the group owns.
+- **Sharing.** Scrip and claims are shared. Everyone can dig, build and drive anywhere the group owns.
 - **Accounts.** Online play goes through the arcade's realtime server and needs an Arcade account.
 - **If the host leaves,** the session ends for everyone else with a "host left" message.
 

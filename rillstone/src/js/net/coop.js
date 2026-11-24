@@ -192,8 +192,8 @@ export function createCoop(ctx) {
   function uiAction(g, a) {
     const H = g.hands, E = economy.state;
     switch (a.op) {
-      case 'buy': if (SHOPS[a.shop]?.items.some(i => i.id === a.item)) town.buy(a.shop, a.item); break;
-      case 'claim': { const r = economy.buyClaim(a.id); if (r === 'ok') hud.toast(`Claim bought: ${a.id}`, 'gold'); else H.hud.toast(r === 'poor' ? 'Not enough Scrip' : r === 'standing' ? 'Not enough Guild Standing' : 'Already owned', 'err'); break; }
+      case 'buy': if (SHOPS[a.shop] && Object.values(SHOPS).some(S => S.items.some(i => i.id === a.item))) town.buy(a.shop, a.item); break; // one catalogue at every counter
+      case 'claim': { const r = economy.buyClaim(a.id); if (r === 'ok') hud.toast(`Claim bought: ${a.id}`, 'gold'); else H.hud.toast(r === 'poor' ? 'Not enough Scrip' : 'Already owned', 'err'); break; }
       case 'bp': { const bp = BLUEPRINTS.find(b => b.id === a.id); if (bp) workshop.buyBlueprint(bp); break; }
       case 'build': { const bp = BLUEPRINTS.find(b => b.id === a.id); if (bp) workshop.build(bp); break; }
       case 'scrap': workshop.scrap(); break;

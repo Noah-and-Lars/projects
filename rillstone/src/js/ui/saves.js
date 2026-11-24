@@ -1,7 +1,7 @@
 // The Saves page and the New game page (full screens, not panels).
 //
 // Saves: one card per slot with a picture, the save's name, day, Scrip,
-// Standing, claims, play time and when it was saved. Cards have Load,
+// claims, play time and when it was saved. Cards have Load,
 // Save here (in a game), Rename, Export, Import and Delete (which asks
 // first). "Show backups" reveals each slot's older copy (the other half of
 // its A/B pair), which can be loaded too.
@@ -62,7 +62,6 @@ export function createSavesPage(root, o) {
     return h('div', { class: 'slot-stats' },
       h('span', { title: 'Day' }, h('b', {}, `Day ${m.day ?? 1}`)),
       h('span', { title: 'Scrip' }, `§ ${fmt(m.scrip)}`),
-      h('span', { title: 'Guild Standing' }, `★ ${m.standing ?? 0}`),
       m.claims ? h('span', { title: 'Claims owned' }, `${m.claims} claim${m.claims > 1 ? 's' : ''}`) : null,
       h('span', { title: 'Time played' }, playTime(m.playTime)));
   }
