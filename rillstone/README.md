@@ -280,6 +280,29 @@ crates.
   hold a cut gem in your swap slot to set it into a ring, pendant or
   chalice. The **Grinding Wheel**
   cuts gems (3 clicks).
+- **Alloys.** Melt two metals together in one kiln, crucible or smelter and
+  the pour is an alloy:
+
+  | Alloy | Mix |
+  | --- | --- |
+  | Millbrass | 60% copper, 40% iron |
+  | Rose gold | 75% gold, 25% copper |
+  | Electrum | 50% gold, 50% silver |
+  | Moonsilver | 70% silver, 30% glimmerite |
+  | Cindersteel | 70% iron, 30% emberite |
+
+  - **Grade:** within 5 points of the mix the ingot is *fine* and pays 1.25×
+    what its metals would as ingots; within 15 it's *good* (1.12×); anything
+    else is *rough* (1×, never less). The furnace panel shows your mix as
+    you fill it.
+  - **Feeding:** kilns and crucibles mix when you feed them by hand. A
+    smelter refuses mixed ore from a belt until you pick an alloy on its
+    panel; then it takes both of that alloy's metals.
+  - **After the pour:** an alloy ingot keeps its mix and grade when sawn,
+    reheated or worked at the workbench (a fine electrum ring). Each alloy
+    has its own price on the board and its own glyph (◐ ◑ ◒ ◓ ◉), and the
+    Guild board asks experienced players for alloy orders (good grade or
+    better).
 - **Sorting Hopper** (5 L/s). Pour finds in the top, by hand or from a
   belt. Those matching the sample set on its panel (a material, and a form
   or any form) drop out of the side chute; the rest go out of the front.
