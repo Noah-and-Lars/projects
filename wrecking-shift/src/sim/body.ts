@@ -33,6 +33,11 @@ export class VoxelBody {
   user: Record<string, any> = {};
   /** chunks needing remesh (render side clears) */
   dirty = new Set<number>();
+  /**
+   * static bodies: voxel AABBs edited since the renderer last consumed them (occupancy-volume updates).
+   * Flat list of inclusive boxes [x0,y0,z0,x1,y1,z1]*; nearby edits grow the last box. Bounded (<= 32 boxes).
+   */
+  editBoxes: number[] = [];
   /** bump whenever the whole body should be remeshed */
   allDirty = true;
   /** solid voxels adjacent to removed ones -> connectivity search pending */
@@ -89,6 +94,15 @@ export class VoxelBody {
   }
 
   markDirtyVoxel(x: number, y: number, z: number): void {
+    if (!this.dynamic) {
+      const e = this.editBoxes, n = e.length;
+      const near = n > 0 && x >= e[n - 6] - 8 && x <= e[n - 3] + 8 && y >= e[n - 5] - 8 && y <= e[n - 2] + 8 && z >= e[n - 4] - 8 && z <= e[n - 1] + 8;
+      if (near || n >= 192) {
+        if (x < e[n - 6]) e[n - 6] = x; if (x > e[n - 3]) e[n - 3] = x;
+        if (y < e[n - 5]) e[n - 5] = y; if (y > e[n - 2]) e[n - 2] = y;
+        if (z < e[n - 4]) e[n - 4] = z; if (z > e[n - 1]) e[n - 1] = z;
+      } else e.push(x, y, z, x, y, z);
+    }
     const cx = x >> 5, cy = y >> 5, cz = z >> 5;
     this.dirty.add(chunkKey(cx, cy, cz));
     const lx = x & 31, ly = y & 31, lz = z & 31;

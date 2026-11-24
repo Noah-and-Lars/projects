@@ -10,8 +10,23 @@ export interface ChunkMesh {
   normals: Int8Array;
   /** x = emissive (0..255), y = glass flag */
   aux: Uint8Array;
+  /** triangles of the opaque quads */
   indices: Uint32Array;
+  /** triangles of glass quads (same vertex buffers; draw with a translucent material) */
+  glassIndices: Uint32Array;
+  /** total quads (opaque + glass) */
   quads: number;
+  glassQuads: number;
+}
+
+export interface MeshOptions {
+  /**
+   * true (default): per-vertex AO is baked into colour alpha and faces only merge when their AO is uniform.
+   * false: AO comes from elsewhere (occupancy volume) -> merge on palette index only (about 2x fewer quads), alpha = 255.
+   */
+  bakeAO?: boolean;
+  /** grow every quad in-plane by this many voxels (0.01 hides T-junction cracks of greedy meshes) */
+  inflate?: number;
 }
 
 const P = CHUNK + 2;
@@ -24,26 +39,35 @@ let oPos = new Float32Array(cap * 12);
 let oCol = new Uint8Array(cap * 16);
 let oNor = new Int8Array(cap * 12);
 let oAux = new Uint8Array(cap * 8);
-let oIdx = new Uint32Array(cap * 6);
+let oOIdx = new Uint32Array(cap * 6);
+let oGIdx = new Uint32Array(cap * 6);
 function grow() {
   cap *= 2;
   const p = new Float32Array(cap * 12); p.set(oPos); oPos = p;
   const c = new Uint8Array(cap * 16); c.set(oCol); oCol = c;
   const n = new Int8Array(cap * 12); n.set(oNor); oNor = n;
   const a = new Uint8Array(cap * 8); a.set(oAux); oAux = a;
-  const i = new Uint32Array(cap * 6); i.set(oIdx); oIdx = i;
+  const i = new Uint32Array(cap * 6); i.set(oOIdx); oOIdx = i;
+  const gi = new Uint32Array(cap * 6); gi.set(oGIdx); oGIdx = gi;
 }
 
 const base = [0, 0, 0], du = [0, 0, 0], dv = [0, 0, 0];
 const AO_LEVELS = [255, 190, 135, 90];
+/** neighbour lets an opaque face show: empty or glass */
+const SEE = new Uint8Array(256);
+/** occludes for baked AO: solid and not glass */
+const OCC = new Uint8Array(256);
+for (let p = 0; p < 256; p++) { SEE[p] = p === 0 || PAL_GLASS[p] ? 1 : 0; OCC[p] = p !== 0 && !PAL_GLASS[p] ? 1 : 0; }
 
 /**
- * Greedy mesher with per-vertex ambient occlusion.
- * Faces merge when palette index matches and their AO is uniform; faces with an AO gradient
- * are emitted as single quads so the gradient stays correct.
+ * Greedy mesher with optional per-vertex ambient occlusion.
+ * Faces merge when the palette index matches and (with `bakeAO`) their AO is uniform; faces with an AO
+ * gradient are emitted as single quads so the gradient stays correct. Glass quads get their own index list.
  */
-export function meshChunk(grid: VoxelGrid, cx: number, cy: number, cz: number): ChunkMesh | null {
+export function meshChunk(grid: VoxelGrid, cx: number, cy: number, cz: number, opts?: MeshOptions): ChunkMesh | null {
   const { sx, sy, sz, data } = grid;
+  const bakeAO = opts?.bakeAO ?? true;
+  const inflate = opts?.inflate ?? 0;
   const bx = cx * CHUNK, by = cy * CHUNK, bz = cz * CHUNK;
   // copy chunk with 1-voxel border into pad
   let any = false;
@@ -64,7 +88,7 @@ export function meshChunk(grid: VoxelGrid, cx: number, cy: number, cz: number): 
   }
   if (!any) return null;
 
-  let q = 0;
+  let q = 0, qo = 0, qg = 0;
   const strides = [1, P, P * P];
   for (let d = 0; d < 3; d++) {
     const u = (d + 1) % 3, v = (d + 2) % 3;
@@ -79,15 +103,19 @@ export function meshChunk(grid: VoxelGrid, cx: number, cy: number, cz: number): 
             const idx = (s + 1) * sd + (i + 1) * su + (j + 1) * sv;
             const p = pad[idx];
             let key = 0;
-            if (p && !pad[idx + nOff]) {
-              const a = idx + nOff;
-              const e0 = pad[a - su] ? 1 : 0, e1 = pad[a + su] ? 1 : 0, e2 = pad[a - sv] ? 1 : 0, e3 = pad[a + sv] ? 1 : 0;
-              const c00 = pad[a - su - sv] ? 1 : 0, c10 = pad[a + su - sv] ? 1 : 0, c01 = pad[a - su + sv] ? 1 : 0, c11 = pad[a + su + sv] ? 1 : 0;
-              const a00 = e0 && e2 ? 3 : e0 + e2 + c00;
-              const a10 = e1 && e2 ? 3 : e1 + e2 + c10;
-              const a01 = e0 && e3 ? 3 : e0 + e3 + c01;
-              const a11 = e1 && e3 ? 3 : e1 + e3 + c11;
-              key = p | (a00 << 8) | (a10 << 10) | (a01 << 12) | (a11 << 14);
+            // opaque faces show next to air or glass; glass faces only next to air
+            if (p && (PAL_GLASS[p] ? !pad[idx + nOff] : SEE[pad[idx + nOff]])) {
+              key = p;
+              if (bakeAO) {
+                const a = idx + nOff;
+                const e0 = OCC[pad[a - su]], e1 = OCC[pad[a + su]], e2 = OCC[pad[a - sv]], e3 = OCC[pad[a + sv]];
+                const c00 = OCC[pad[a - su - sv]], c10 = OCC[pad[a + su - sv]], c01 = OCC[pad[a - su + sv]], c11 = OCC[pad[a + su + sv]];
+                const a00 = e0 && e2 ? 3 : e0 + e2 + c00;
+                const a10 = e1 && e2 ? 3 : e1 + e2 + c10;
+                const a01 = e0 && e3 ? 3 : e0 + e3 + c01;
+                const a11 = e1 && e3 ? 3 : e1 + e3 + c11;
+                key = p | (a00 << 8) | (a10 << 10) | (a01 << 12) | (a11 << 14);
+              }
               nonEmpty = true;
             }
             mask[j * CHUNK + i] = key;
@@ -129,6 +157,10 @@ export function meshChunk(grid: VoxelGrid, cx: number, cy: number, cz: number): 
               oPos[o + c * 3] = (ox + base[0] + du[0] * fu + dv[0] * fv) * VOXEL;
               oPos[o + c * 3 + 1] = (oy + base[1] + du[1] * fu + dv[1] * fv) * VOXEL;
               oPos[o + c * 3 + 2] = (oz + base[2] + du[2] * fu + dv[2] * fv) * VOXEL;
+              if (inflate) {
+                oPos[o + c * 3 + u] += (fu ? inflate : -inflate) * VOXEL;
+                oPos[o + c * 3 + v] += (fv ? inflate : -inflate) * VOXEL;
+              }
               oNor[o + c * 3] = 0; oNor[o + c * 3 + 1] = 0; oNor[o + c * 3 + 2] = 0;
               oNor[o + c * 3 + d] = dir * 127;
               const a = c === 0 ? a00 : c === 1 ? a10 : c === 2 ? a01 : a11;
@@ -137,7 +169,9 @@ export function meshChunk(grid: VoxelGrid, cx: number, cy: number, cz: number): 
               oAux[q * 8 + c * 2] = em; oAux[q * 8 + c * 2 + 1] = gl;
             }
             // triangulate; flip diagonal for AO anisotropy; winding by direction
-            const vi = q * 4, ii = q * 6;
+            const vi = q * 4;
+            const oIdx = gl ? oGIdx : oOIdx;
+            const ii = gl ? qg++ * 6 : qo++ * 6;
             const flip = a00 + a11 > a10 + a01;
             if (!flip) {
               if (dir > 0) { oIdx[ii] = vi; oIdx[ii + 1] = vi + 1; oIdx[ii + 2] = vi + 3; oIdx[ii + 3] = vi; oIdx[ii + 4] = vi + 3; oIdx[ii + 5] = vi + 2; }
@@ -159,8 +193,10 @@ export function meshChunk(grid: VoxelGrid, cx: number, cy: number, cz: number): 
     colors: oCol.slice(0, q * 16),
     normals: oNor.slice(0, q * 12),
     aux: oAux.slice(0, q * 8),
-    indices: oIdx.slice(0, q * 6),
+    indices: oOIdx.slice(0, qo * 6),
+    glassIndices: oGIdx.slice(0, qg * 6),
     quads: q,
+    glassQuads: qg,
   };
 }
 
