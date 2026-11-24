@@ -121,6 +121,8 @@ export class Sim {
   onSplit: ((parent: VoxelBody, child: VoxelBody, off: [number, number, number]) => void)[] = [];
   /** explosion listeners (fire ignition, player damage, AI hearing ...) */
   onExplosion: ((pos: V3, size: number) => void)[] = [];
+  /** named subsystems created before the level is built (e.g. `drones`), so level generators can use them */
+  readonly ext: Record<string, any> = {};
   /** water surface height (set by the level through WaterSystem) or null */
   waterLevel: number | null = null;
   /** the player character, if any (set by Player) */

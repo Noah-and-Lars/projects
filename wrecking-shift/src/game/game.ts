@@ -1,4 +1,5 @@
 import { Renderer } from '../render/renderer';
+import { DroneSystem } from '../sim/drones';
 import { FireSystem } from '../sim/fire';
 import type { LevelDef, LevelInfo } from '../sim/levels/types';
 import { Player } from '../sim/player';
@@ -38,6 +39,7 @@ export class Game {
   level!: LevelInfo;
   levelId = '';
   fire!: FireSystem;
+  drones!: DroneSystem;
   belt!: ToolBelt;
   readonly renderer: Renderer;
   readonly input: Input;
@@ -87,6 +89,9 @@ export class Game {
     this.sim = new Sim(seed);
     this.fire = new FireSystem(this.sim);
     this.sim.systems.push(this.fire);
+    this.drones = new DroneSystem(this.sim);
+    this.sim.ext.drones = this.drones;
+    this.sim.systems.push(this.drones);
     this.level = def.build(this.sim);
     if (this.level.waterLevel != null) {
       this.sim.waterLevel = this.level.waterLevel;
