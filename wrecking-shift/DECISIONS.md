@@ -305,3 +305,13 @@ Scripted, deterministic playthroughs of all 11 big-map missions live in `tests/u
   (0x7a5e42, audio group dirt), and the cone AO density boost is 1.6 instead of 2.5 (a 3 m wide, 1.4 m deep pit sees
   about half the sky; the cones reported ~15 %). Interiors stay dark (look test: inside floor luma 74 vs 134 outside).
   Not done: a deeper diggable soil layer (≈ +6 M voxels on the big maps).
+- **TAA** (medium + high tiers, replaces FXAA and the high tier's 4x MSAA; `renderer.setTAA(false)` / `?taa=0` restores
+  them): Halton(2,3) 8-sample sub-pixel jitter, history reprojected with the *unjittered* matrices from the depth
+  buffer, clamped to the current 3x3 YCoCg neighbourhood in a Reinhard-compressed space. A still camera must stay
+  still (the user's complaint), so: the history stores each pixel's distance; pixels that moved on screen or whose
+  history saw another surface (distance outside the neighbourhood's range) blend fast (10 %) and are clamped; trusted
+  pixels of a camera that has not moved accumulate progressively (blend down to 1/64) and are clamped only when the
+  history is far outside the neighbourhood (smoke / fire / water / lights still update). Measured on harbor at
+  640x360 after warm-up: ~40-90 of 230 k pixels change by up to ~20/765 per frame (0 with TAA off). Moving bodies get
+  no motion vectors (the clamp handles them). Test frames (`render()` = full sync) reset the history and are not
+  jittered, so screenshots stay comparable. Guess: blend 0.1 / 1/64 and the 2 % + 5 cm distance tolerance.

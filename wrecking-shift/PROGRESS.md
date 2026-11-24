@@ -41,8 +41,12 @@ over-darkened them).
 **What to try:** stand still on Kestrel Ridge or Gullwick Harbour and watch the distant ground (should be perfectly
 still); hammer a wooden wall up close (chips, hole rim, the chunk on the floor); bomb a brick wall (soot gradient).
 
-**Still differs from the reference / known issues:** no TAA (terrace edges and thin distant props still crawl while
-moving; the reference resolves them with TAA); no per-shape grime/rust detail textures; the bevel exists only on
+**Anti-aliasing:** medium and high now use TAA like the reference (smooth terrace edges and distant detail while
+moving; `?taa=0` or `renderer.setTAA(false)` switches back to FXAA / MSAA). A still camera converges to a still,
+supersampled image.
+
+**Still differs from the reference / known issues:** TAA without motion vectors (fast debris can smear slightly at
+its edges; the image is a little softer than with FXAA); no per-shape grime/rust detail textures; the bevel exists only on
 static (volume-lit) bodies; terraced hills at sunset show many tiny (now dark green, not black) step shadows; glass
 window frames can show a dotted crack line against the glass. Real-GPU behaviour of the fix is reasoned, not seen:
 the container renders with SwiftShader.

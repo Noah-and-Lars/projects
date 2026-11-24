@@ -2,6 +2,8 @@
  * Small post-processing chain (own full-screen passes, no three/examples dependency):
  *   scene -> HalfFloat target (optionally MSAA, optionally at reduced resolution)
  *   bloom : soft-threshold prefilter at 1/2 res, dual-filter down/up pyramid
+ *   TAA (optional): sub-pixel jittered camera, history reprojected from depth, clamped to the current 3x3
+ *         neighbourhood (YCoCg min / max box) so moving things do not ghost; replaces MSAA / FXAA
  *   composite : + bloom, exposure, filmic tone map (AgX), grade, vignette, sRGB, dither -> RGBA8
  *   FXAA -> canvas
  * Other people's scene objects (view models, particles, lights) need nothing special: they are drawn by the
@@ -73,6 +75,63 @@ void main() {
   gl_FragColor = vec4(c, dot(c, vec3(0.299, 0.587, 0.114)));
 }`;
 
+
+const TAA = /* glsl */ `
+varying vec2 vUv; uniform sampler2D tCur; uniform sampler2D tHist; uniform sampler2D tDepth;
+uniform mat4 uInvVP; uniform mat4 uPrevVP; uniform vec2 uTexel; uniform float uBlend; uniform float uBlendStill; uniform vec3 uCamPos; uniform vec3 uPrevCamPos;
+// work in a Reinhard-compressed space so bright pixels do not dominate the blend / clamp
+vec3 cmp(vec3 c) { return c / (1.0 + max(c.r, max(c.g, c.b))); }
+vec3 unc(vec3 c) { return c / max(1.0 - max(c.r, max(c.g, c.b)), 1e-3); }
+vec3 toY(vec3 c) { return vec3(dot(c, vec3(0.25, 0.5, 0.25)), dot(c, vec3(0.5, 0.0, -0.5)), dot(c, vec3(-0.25, 0.5, -0.25))); }
+vec3 fromY(vec3 y) { return vec3(y.x + y.y - y.z, y.x + y.z, y.x - y.y - y.z); }
+void main() {
+  vec3 cur = toY(cmp(texture2D(tCur, vUv).rgb));
+  vec3 mn = vec3(1e9), mx = vec3(-1e9);
+  float dmn = 1e9, dmx = 0.0; // distance range of the neighbourhood (from the current camera)
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    vec2 o = vUv + uTexel * vec2(float(i), float(j));
+    vec3 s = toY(cmp(texture2D(tCur, o).rgb));
+    mn = min(mn, s); mx = max(mx, s);
+    vec4 q = uInvVP * vec4(o * 2.0 - 1.0, texture2D(tDepth, o).r * 2.0 - 1.0, 1.0);
+    float dq = length(q.xyz / q.w - uCamPos);
+    dmn = min(dmn, dq); dmx = max(dmx, dq);
+  }
+
+  float d = texture2D(tDepth, vUv).r;
+  vec4 wp = uInvVP * vec4(vUv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0);
+  wp /= wp.w;
+  vec4 pc = uPrevVP * wp;
+  vec2 puv = pc.xy / pc.w * 0.5 + 0.5;
+  float dist = length(wp.xyz - uCamPos);
+  if (uBlend >= 1.0 || pc.w <= 0.0 || any(lessThan(puv, vec2(0.0))) || any(greaterThan(puv, vec2(1.0)))) {
+    gl_FragColor = vec4(fromY(cur), dist); return;
+  }
+  vec4 hs = texture2D(tHist, puv);
+  vec3 h = toY(hs.rgb);
+  // Pixels whose history may be wrong (moved on screen, or the history saw another surface: its distance from the
+  // previous camera disagrees, e.g. a moving body or a disocclusion) keep the fast blend; trusted pixels of a still
+  // camera accumulate progressively, so sub-pixel detail converges instead of flickering with the jitter.
+  float expect = length(wp.xyz - uPrevCamPos);
+  float moved = clamp(length((puv - vUv) / uTexel) * 2.0, 0.0, 1.0); // pixels of on-screen motion
+  // the history's surface is accepted if its distance lies within the neighbourhood's distance range (+2 % + 5 cm):
+  // the jitter moves the sample by up to a pixel, so at silhouettes and on grazing ground it legitimately flips
+  // between neighbouring surfaces (a camera move shifts the range by expect - dist)
+  float shift = expect - dist, tol = 0.02 * expect + 0.05;
+  float changed = 1.0 - step(dmn + shift - tol, hs.a) * step(hs.a, dmx + shift + tol);
+  float suspect = max(moved, changed);
+  // trusted pixels are clamped only when the history is far outside the neighbourhood (a real change: smoke, fire,
+  // water, a light switching), not for the small differences the jitter causes on sub-pixel detail
+  vec3 hc = clamp(h, mn, mx);
+  h = mix(h, hc, max(suspect, step(0.06, length(h - hc))));
+  // a camera that has not moved for a while accumulates progressively (blend down to 1/64): the image converges to
+  // a still, supersampled average instead of following each jittered frame
+  gl_FragColor = vec4(fromY(mix(h, cur, mix(uBlendStill, uBlend, suspect))), dist);
+}`;
+// history is kept in the compressed space; this expands it again for the composite
+const TAA_OUT = /* glsl */ `
+varying vec2 vUv; uniform sampler2D tSrc;
+void main() { vec3 c = texture2D(tSrc, vUv).rgb; gl_FragColor = vec4(c / max(1.0 - max(c.r, max(c.g, c.b)), 1e-3), 1.0); }`;
+
 // compact FXAA (luma in alpha), after Timothy Lottes' FXAA 3 "console" variant
 const FXAA = /* glsl */ `
 varying vec2 vUv; uniform sampler2D tSrc; uniform vec2 uTexel;
@@ -102,6 +161,15 @@ export interface PostOptions {
   fxaa: boolean;
   /** scene resolution scale 0.5..1 */
   scale: number;
+  /** temporal anti-aliasing (forces samples = 0) */
+  taa: boolean;
+}
+
+// Halton(2, 3) sub-pixel offsets in [-0.5, 0.5)
+const JITTER: [number, number][] = [];
+for (let i = 1; i <= 8; i++) {
+  const h = (b: number) => { let f = 1, r = 0, n = i; while (n > 0) { f /= b; r += f * (n % b); n = Math.floor(n / b); } return r; };
+  JITTER.push([h(2) - 0.5, h(3) - 0.5]);
 }
 
 const BLOOM_LEVELS = 5;
@@ -109,7 +177,7 @@ const BLOOM_LEVELS = 5;
 export class PostFX {
   /** false if the GPU cannot render to half-float targets (then the renderer draws straight to the canvas) */
   readonly supported: boolean;
-  readonly options: PostOptions = { samples: 0, bloom: true, fxaa: true, scale: 1 };
+  readonly options: PostOptions = { samples: 0, bloom: true, fxaa: true, scale: 1, taa: false };
   bloomStrength = 0.4;
   bloomThreshold = 1.1;
   vignette = 0.28;
@@ -124,6 +192,20 @@ export class PostFX {
   private quad: THREE.Mesh;
   private mPre: THREE.ShaderMaterial; private mDown: THREE.ShaderMaterial; private mUp: THREE.ShaderMaterial;
   private mComp: THREE.ShaderMaterial; private mFxaa: THREE.ShaderMaterial;
+  private mTaa: THREE.ShaderMaterial; private mTaaOut: THREE.ShaderMaterial;
+  private hist: THREE.WebGLRenderTarget[] = [];
+  private histValid = false;
+  private jitterIndex = 0;
+  private prevVP = new THREE.Matrix4();
+  private vp = new THREE.Matrix4();
+  private savedProj = new THREE.Matrix4();
+  private prevCam = new THREE.Vector3();
+  /** frames the (unjittered) camera has not moved */
+  private stillFrames = 0;
+  /** fraction of the current frame mixed into the history (lower = smoother, slower to react) */
+  taaBlend = 0.1;
+  /** jitter amplitude in pixels (1 = full Halton pattern; 0 = no jitter, debugging) */
+  jitterScale = 1;
 
   constructor(private three: THREE.WebGLRenderer) {
     const gl = three.getContext();
@@ -142,6 +224,8 @@ export class PostFX {
       toneMappingExposure: { value: 1 },
     });
     this.mFxaa = mk(FXAA, { tSrc: tex(), uTexel: { value: new THREE.Vector2() } });
+    this.mTaa = mk(TAA, { tCur: tex(), tHist: tex(), tDepth: tex(), uInvVP: { value: new THREE.Matrix4() }, uPrevVP: { value: new THREE.Matrix4() }, uCamPos: { value: new THREE.Vector3() }, uPrevCamPos: { value: new THREE.Vector3() }, uTexel: { value: new THREE.Vector2() }, uBlend: { value: 1 }, uBlendStill: { value: 1 } });
+    this.mTaaOut = mk(TAA_OUT, { tSrc: tex() });
     this.quad = new THREE.Mesh(geo, this.mPre);
     this.quad.frustumCulled = false;
   }
@@ -156,14 +240,16 @@ export class PostFX {
     const p = this.options;
     const next = { ...p, ...o };
     next.scale = Math.max(0.25, Math.min(1, next.scale));
-    if (next.samples !== p.samples || next.scale !== p.scale || next.bloom !== p.bloom) this.dirty = true;
+    if (next.samples !== p.samples || next.scale !== p.scale || next.bloom !== p.bloom || next.taa !== p.taa) this.dirty = true;
     Object.assign(p, next);
   }
 
   private disposeTargets(): void {
+    this.scene?.depthTexture?.dispose();
     this.scene?.dispose(); this.ldr?.dispose();
     for (const t of this.chain) t.dispose();
-    this.scene = this.ldr = null; this.chain = [];
+    for (const t of this.hist) t.dispose();
+    this.scene = this.ldr = null; this.chain = []; this.hist = []; this.histValid = false;
   }
 
   private allocate(): void {
@@ -173,8 +259,14 @@ export class PostFX {
     const maxSamples = this.three.capabilities.maxSamples ?? 0;
     this.scene = new THREE.WebGLRenderTarget(sw, sh, {
       type: THREE.HalfFloatType, format: THREE.RGBAFormat, depthBuffer: true, stencilBuffer: false,
-      samples: Math.min(o.samples, maxSamples), minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false,
+      samples: o.taa ? 0 : Math.min(o.samples, maxSamples), minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false,
     });
+    if (o.taa) {
+      this.scene.depthTexture = new THREE.DepthTexture(sw, sh, THREE.UnsignedIntType);
+      for (let i = 0; i < 3; i++) this.hist.push(new THREE.WebGLRenderTarget(sw, sh, {
+        type: THREE.HalfFloatType, format: THREE.RGBAFormat, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false,
+      }));
+    }
     this.ldr = new THREE.WebGLRenderTarget(this.w, this.h, {
       type: THREE.UnsignedByteType, format: THREE.RGBAFormat, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false,
     });
@@ -199,22 +291,65 @@ export class PostFX {
     this.three.render(this.quad, this.cam);
   }
 
-  render(scene: THREE.Scene, camera: THREE.Camera, exposure: number): void {
+  /** forget the TAA history (cuts, teleports, level loads, test frames) */
+  resetHistory(): void { this.histValid = false; }
+
+  /**
+   * `reset` = draw this frame without jitter or history (tests / big camera cuts).
+   */
+  render(scene: THREE.Scene, camera: THREE.PerspectiveCamera, exposure: number, reset = false): void {
     const three = this.three;
     if (this.dirty || !this.scene) this.allocate();
     const sceneRT = this.scene!, ldr = this.ldr!;
+    const taa = this.options.taa && this.hist.length === 3;
+    if (reset) this.histValid = false;
+    if (taa && this.histValid) {
+      // sub-pixel jitter of the projection (restored after the scene pass)
+      const [jx, jy] = JITTER[this.jitterIndex = (this.jitterIndex + 1) % JITTER.length];
+      this.savedProj.copy(camera.projectionMatrix);
+      const e = camera.projectionMatrix.elements;
+      e[8] += (2 * jx * this.jitterScale) / sceneRT.width; e[9] += (2 * jy * this.jitterScale) / sceneRT.height;
+    }
+    camera.updateMatrixWorld();
     const prevAuto = three.autoClear;
     three.autoClear = true;
     three.setRenderTarget(sceneRT);
     three.render(scene, camera);
+    let sceneTex: THREE.Texture = sceneRT.texture;
 
     // the full-screen passes must not re-render shadow maps or clear anything
     const prevShadowAuto = three.shadowMap.autoUpdate;
     three.shadowMap.autoUpdate = false;
     three.autoClear = false;
+    if (taa) {
+      // reproject pixel centres: current clip -> world -> previous clip, both unjittered (the history lives in
+      // unjittered screen space; reconstructing with the jittered matrix made a still view wobble with the jitter)
+      if (this.histValid) camera.projectionMatrix.copy(this.savedProj);
+      this.vp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      const t = this.mTaa.uniforms;
+      t.uInvVP.value.copy(this.vp).invert();
+      t.uPrevVP.value.copy(this.prevVP);
+      t.uPrevCamPos.value.copy(this.prevCam);
+      t.uCamPos.value.setFromMatrixPosition(camera.matrixWorld);
+      t.tCur.value = sceneRT.texture; t.tDepth.value = sceneRT.depthTexture; t.tHist.value = this.hist[0].texture;
+      t.uTexel.value.set(1 / sceneRT.width, 1 / sceneRT.height);
+      let same = this.histValid;
+      for (let i = 0; i < 16 && same; i++) same = Math.abs(this.vp.elements[i] - this.prevVP.elements[i]) < 1e-6;
+      this.stillFrames = same ? this.stillFrames + 1 : 0;
+      t.uBlend.value = this.histValid ? this.taaBlend : 1;
+      t.uBlendStill.value = this.histValid ? (same ? 1 / Math.min(1 / this.taaBlend + this.stillFrames, 64) : this.taaBlend) : 1;
+      this.pass(this.mTaa, this.hist[1]);
+      this.mTaaOut.uniforms.tSrc.value = this.hist[1].texture;
+      this.pass(this.mTaaOut, this.hist[2]);
+      sceneTex = this.hist[2].texture;
+      [this.hist[0], this.hist[1]] = [this.hist[1], this.hist[0]];
+      this.prevVP.copy(this.vp);
+      this.prevCam.copy(t.uCamPos.value);
+      this.histValid = true;
+    }
     const chain = this.chain;
     if (chain.length) {
-      this.mPre.uniforms.tSrc.value = sceneRT.texture;
+      this.mPre.uniforms.tSrc.value = sceneTex;
       this.mPre.uniforms.uTexel.value.set(1 / sceneRT.width, 1 / sceneRT.height);
       this.mPre.uniforms.uThreshold.value = this.bloomThreshold;
       this.pass(this.mPre, chain[0]);
@@ -229,9 +364,9 @@ export class PostFX {
         this.pass(this.mUp, chain[i - 1]);
       }
     }
-    const fxaa = this.options.fxaa;
+    const fxaa = this.options.fxaa && !taa;
     const u = this.mComp.uniforms;
-    u.tScene.value = sceneRT.texture; u.tBloom.value = chain.length ? chain[0].texture : null;
+    u.tScene.value = sceneTex; u.tBloom.value = chain.length ? chain[0].texture : null;
     u.uBloom.value = this.bloomStrength / Math.max(1, chain.length); u.uVignette.value = this.vignette;
     u.uContrast.value = this.contrast; u.uSaturationOut.value = this.saturation;
     u.toneMappingExposure.value = exposure;
@@ -250,7 +385,7 @@ export class PostFX {
 
   dispose(): void {
     this.disposeTargets();
-    for (const m of [this.mPre, this.mDown, this.mUp, this.mComp, this.mFxaa]) m.dispose();
+    for (const m of [this.mPre, this.mDown, this.mUp, this.mComp, this.mFxaa, this.mTaa, this.mTaaOut]) m.dispose();
     this.quad.geometry.dispose();
   }
 }

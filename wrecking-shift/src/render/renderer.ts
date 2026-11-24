@@ -22,18 +22,21 @@ interface Tier {
   /** shadow map: size, half extent (m) */
   shadowSize: number; shadowExtent: number;
   bloom: boolean; msaa: number; fxaa: boolean;
+  /** temporal anti-aliasing (replaces msaa / fxaa when on) */
+  taa: boolean;
   lamps: number;
 }
 
 /**
  * low    : classic shadow map for everything + baked vertex AO (no volumes, no bloom)
  * medium : traced hard sun + face AO + short cone AO + traced lamp shadows, small shadow map for dynamic things, bloom, FXAA
- * high   : 4-tap soft sun, long cones, bigger dynamic shadow map, MSAA + FXAA
+ * high   : 4-tap soft sun, long cones, bigger dynamic shadow map
+ * medium and high use TAA (MSAA / FXAA only when TAA is switched off: `renderer.taa = false`)
  */
 const TIERS: Record<Quality, Tier> = {
-  low: { volumes: false, sunTaps: 1, sunSteps: 0, coneMax: 0, coneSteps: 0, pointShadows: false, shadowSize: 2048, shadowExtent: 34, bloom: false, msaa: 0, fxaa: true, lamps: 3 },
-  medium: { volumes: true, sunTaps: 1, sunSteps: 192, coneMax: 32, coneSteps: 5, pointShadows: true, shadowSize: 1024, shadowExtent: 14, bloom: true, msaa: 0, fxaa: true, lamps: 6 },
-  high: { volumes: true, sunTaps: 4, sunSteps: 320, coneMax: 96, coneSteps: 8, pointShadows: true, shadowSize: 2048, shadowExtent: 18, bloom: true, msaa: 4, fxaa: true, lamps: 8 },
+  low: { volumes: false, sunTaps: 1, sunSteps: 0, coneMax: 0, coneSteps: 0, pointShadows: false, shadowSize: 2048, shadowExtent: 34, bloom: false, msaa: 0, fxaa: true, taa: false, lamps: 3 },
+  medium: { volumes: true, sunTaps: 1, sunSteps: 192, coneMax: 32, coneSteps: 5, pointShadows: true, shadowSize: 1024, shadowExtent: 14, bloom: true, msaa: 0, fxaa: true, taa: true, lamps: 6 },
+  high: { volumes: true, sunTaps: 4, sunSteps: 320, coneMax: 96, coneSteps: 8, pointShadows: true, shadowSize: 2048, shadowExtent: 18, bloom: true, msaa: 4, fxaa: true, taa: true, lamps: 8 },
 };
 
 const _v = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3();
@@ -56,6 +59,8 @@ export class Renderer {
   shake = 0;
   /** memory budget for the bit volume (bytes); bigger levels are cropped around the spawn point */
   maxVolumeBytes = 96 * 1024 * 1024;
+  /** temporal anti-aliasing on the tiers that have it (false = MSAA / FXAA as before) */
+  taa = true;
   /** automatically give other lit materials in the scene (props, particles, view models) the traced lighting */
   adoptForeignMaterials = true;
 
@@ -124,6 +129,9 @@ export class Renderer {
   }
 
   /** scene resolution relative to the canvas (0.5 .. 1); traced lighting cost is linear in pixels */
+  /** switch temporal anti-aliasing on / off (medium and high tiers) */
+  setTAA(on: boolean): void { this.taa = on; this.applyLook(); }
+
   setResolutionScale(s: number): void {
     this.resScale = Math.max(0.5, Math.min(1, s || 1));
     if (this.post.supported) this.post.configure({ scale: this.resScale });
@@ -269,7 +277,7 @@ export class Renderer {
     this.placeSun();
     this.sky.uniforms.uTime.value = this.time;
     if (this.adoptForeignMaterials && (this.frame % 20 === 1 || fullSync)) this.adoptScene();
-    if (this.post.supported) this.post.render(this.scene, this.camera, this.preset.exposure);
+    if (this.post.supported) this.post.render(this.scene, this.camera, this.preset.exposure, fullSync);
     else { this.three.setRenderTarget(null); this.three.render(this.scene, this.camera); }
   }
 
@@ -300,6 +308,7 @@ export class Renderer {
       } else { this.volumesFailed = true; this.effective = 'low'; }
     }
     this.lamps.build(sim, TIERS[this.effective].lamps);
+    this.post.resetHistory();
     this.applyLook();
   }
 
@@ -326,7 +335,7 @@ export class Renderer {
     s.bias = -0.0004; s.normalBias = cfg.volumes ? 0.02 : 0.035;
     s.radius = cfg.volumes ? 2 : 2.5;
     this.lamps.resize(tier.lamps);
-    this.post.configure({ samples: tier.msaa, bloom: tier.bloom, fxaa: tier.fxaa, scale: this.resScale });
+    this.post.configure({ samples: tier.msaa, bloom: tier.bloom, fxaa: tier.fxaa, scale: this.resScale, taa: tier.taa && this.taa });
   }
 
   private applyTimeOfDay(): void {

@@ -3,7 +3,7 @@ import type { Quality, TimeOfDay } from './renderer';
 
 /**
  * Applies graphics settings to the renderer.
- *  - URL parameters (handy for testing): ?quality=low|medium|high  &tod=day|sunset|overcast|night  &res=0.5..1
+ *  - URL parameters (handy for testing): ?quality=low|medium|high  &tod=day|sunset|overcast|night  &res=0.5..1  &taa=0|1
  *  - `game.ext.settings` if a settings/UI module publishes one: fields `quality`, `resolutionScale`, and an
  *    optional `onChange(cb)` subscription (cb is called after any change).
  */
@@ -12,6 +12,7 @@ export function createLookModule(): GameModule {
   const urlQuality = params.get('quality') as Quality | null;
   const urlTod = params.get('tod') as TimeOfDay | null;
   const urlRes = params.get('res');
+  const urlTaa = params.get('taa');
   let subscribed = false;
   const apply = (game: Game) => {
     const s = game.ext.settings;
@@ -19,6 +20,8 @@ export function createLookModule(): GameModule {
     if (q && q !== game.renderer.quality) game.renderer.setQuality(q);
     const r = Number(urlRes ?? s?.resolutionScale);
     if (r > 0 && r !== game.renderer.resolutionScale) game.renderer.setResolutionScale(r);
+    const taa = urlTaa !== null ? urlTaa !== '0' : s?.taa;
+    if (typeof taa === 'boolean' && taa !== game.renderer.taa) game.renderer.setTAA(taa);
     if (s && !subscribed && typeof s.onChange === 'function') { subscribed = true; s.onChange(() => apply(game)); }
   };
   return {

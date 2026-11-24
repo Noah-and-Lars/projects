@@ -53,7 +53,7 @@ is ~19 px at 5 m, ~5 px at 20 m, ~1 px at 100 m: individual cubes read clearly w
 | Loose pieces keep voxels | yes | yes | — | same |
 | Connectivity | 6-neighbour, no load | 6-neighbour + our crush check (thin supports fail) | — | kept (own design, documented in DECISIONS) |
 | Hammer chunk knock-out | not in the reference (only disconnection) | 2–3-voxel chunks knocked out of the hole | — | kept (own feel), fewer floaters now |
-| Anti-aliasing | TAA | FXAA (medium), MSAA 4× + FXAA (high) | terrace edges crawl when moving | **not changed** (see §4) |
+| Anti-aliasing | TAA | FXAA (medium), MSAA 4× + FXAA (high) | terrace edges crawl when moving | **TAA added** (medium + high), still-camera safe |
 | Dig floor | deep diggable earth | 0.5 m of dirt over a near-black unbreakable layer | craters look like holes into the void | layer recoloured as earth, pit AO less dark (diggable depth unchanged) |
 | Detail textures (grime/rust) | per-shape tiles | none | big surfaces a bit clean | not done |
 
@@ -66,8 +66,7 @@ See PROGRESS.md and DECISIONS.md for the fix and tests.
 
 ## 4. What still differs (deliberately or not yet)
 
-- **No TAA.** Sub-pixel geometry (terrace edges, distant thin props) still aliases and crawls while moving; the
-  reference hides this with TAA. A reprojection TAA would need motion vectors for moving voxel bodies — a larger job.
+- **TAA without motion vectors.** Moving bodies rely on the neighbourhood clamp; fast debris can leave a faint smear.
 - **No per-shape detail textures** (grime, rust, dust tiles). The shader grain is uniform per material.
 - **Bevel only on static, volume-lit bodies** (it needs the occupancy volume to know which edges are convex); debris
   and props get the per-voxel tilt but no bevel.
