@@ -1,3 +1,4 @@
+import { fireModule } from './fireModule';
 import type { GameModule } from './game';
 
 /**
@@ -5,5 +6,7 @@ import type { GameModule } from './game';
  * Order matters only for frameUpdate/fixedUpdate ordering (earlier first).
  */
 export function createModules(): GameModule[] {
-  return [];
+  return [
+    fireModule(),
+  ];
 }

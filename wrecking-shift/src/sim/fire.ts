@@ -89,8 +89,13 @@ const FACES = [[0, 1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1], [0, -1, 
 export class FireSystem implements FireApi, SimSystem {
   /** gameplay cap of simultaneous fires */
   maxFires = 1200;
-  /** max new ignitions by spreading per tick (direct ignite()/igniteNear()/heat() calls are not limited) */
+  /**
+   * max new ignitions by spreading per tick: maxNewPerTick + count * spreadPerFire (a bigger fire has a longer front).
+   * Direct ignite()/igniteNear()/heat() calls are not limited.
+   */
   maxNewPerTick = 4;
+  spreadPerFire = 0.003;
+  private budget = 4;
   /** water surface height (set by the game from LevelInfo); fires below it go out */
   waterLevel: number | null = null;
   /** probability that a fire update sends a gap-jumping probe, and the probe budget per tick */
@@ -394,6 +399,7 @@ export class FireSystem implements FireApi, SimSystem {
       return;
     }
     this.burning = true;
+    this.budget = this.maxNewPerTick + Math.floor(this.n * this.spreadPerFire);
     const phase = tick % UPDATE_EVERY;
     for (let s = phase; s < this.hw; s += UPDATE_EVERY) {
       if (this.alive[s]) this.updateFire(s, tick);
@@ -466,7 +472,7 @@ export class FireSystem implements FireApi, SimSystem {
   }
 
   private trySpread(b: VoxelBody, x: number, y: number, z: number, idx: number, key: number, h: number): void {
-    if (this.newThisTick >= this.maxNewPerTick || this.n >= this.maxFires) return;
+    if (this.newThisTick >= this.budget || this.n >= this.maxFires) return;
     if (h < IGNITE_HEAT * INTERIOR_FACTOR && !this.exposed(b.grid, x, y, z)) return;
     if (this.start(b, x, y, z, idx) >= 0) this.newThisTick++;
   }
@@ -519,7 +525,8 @@ export class FireSystem implements FireApi, SimSystem {
       this.chars.push({ body: b, idx: b.grid.idx(x, y, z), at: sim.tick + 240 + rng.int(420) });
     } else {
       sim.removeVoxel(b, x, y, z);
-      if (rng.next() < 0.15) sim.out.push({ type: 'crumb', pos: { x: this.wpos[o], y: this.wpos[o + 1], z: this.wpos[o + 2] }, pal: palOf(MAT.char, 1), count: 1 });
+      // a few glowing bits drop off burning solids (foliage / fabric just turn to ash)
+      if (m !== MAT.leaves && m !== MAT.fabric && rng.next() < 0.06) sim.out.push({ type: 'crumb', pos: { x: this.wpos[o], y: this.wpos[o + 1], z: this.wpos[o + 2] }, pal: palOf(MAT.char, 1), count: 1 });
     }
     // scorch the neighbours
     const g = b.grid;
@@ -542,7 +549,7 @@ export class FireSystem implements FireApi, SimSystem {
     const x = c.idx % g.sx, y = ((c.idx / g.sx) | 0) % g.sy, z = (c.idx / (g.sx * g.sy)) | 0;
     this.sim.removeVoxel(b, x, y, z);
     this.stats.crumbled++;
-    if (this.sim.rng.next() < 0.3) this.sim.out.push({ type: 'crumb', pos: b.toWorld({ x: x + 0.5, y: y + 0.5, z: z + 0.5 }), pal: p, count: 2 });
+    if (this.sim.rng.next() < 0.12) this.sim.out.push({ type: 'crumb', pos: b.toWorld({ x: x + 0.5, y: y + 0.5, z: z + 0.5 }), pal: p, count: 2 });
   }
 
   private crumbleChars(tick: number): void {
