@@ -57,6 +57,15 @@ export interface CarveOptions {
   fracture?: number;
   /** crack cell size in voxels (default from radius) */
   cell?: number;
+  /**
+   * Break part of the removed material off as small loose voxel chunks (rigid bodies) instead of
+   * deleting it: max number of chunks for this carve (0 = none).
+   */
+  debris?: number;
+  /** chunks fly roughly this way (unit vector, e.g. the hammer's swing direction) */
+  pushDir?: V3;
+  /** chunk launch speed in m/s (default 3) */
+  debrisSpeed?: number;
 }
 
 export interface CarveResult {
@@ -331,6 +340,7 @@ export class Sim {
     const samples: { p: V3; pal: number }[] = [];
     const cand = this.bodiesNear(center, rMax + sc);
     const seedBase = this.tick * 7919;
+    let debrisLeft = opts.debris ?? 0;
     for (const body of cand) {
       if (body === opts.ignore || body.indestructible || (opts.filter && !opts.filter(body))) continue;
       const g = body.grid;
@@ -348,6 +358,8 @@ export class Sim {
       const inner2 = (1 - fr) * (1 - fr), outer2 = (1 + fr) * (1 + fr);
       const cell = opts.cell ?? Math.max(3, Math.min(7, Math.round((rMax / VOXEL) * 0.35)));
       const cseed = body.id * 31 + this.tick;
+      const chunkCells: Map<number, number[]> | null = (opts.debris ?? 0) > 0 && body.kind !== 'vehicle' ? new Map() : null;
+      const chunkCell = 2 + ((this.tick + body.id) % 2);
       for (let z = z0; z <= z1; z++) {
         const dz = z + 0.5 - lc.z;
         for (let y = y0; y <= y1; y++) {
@@ -360,8 +372,17 @@ export class Sim {
             let d2 = dx * dx + dy * dy + dz * dz;
             const h = PAL_HARDNESS[p];
             const rr = r2[h];
-            if (rough > 0 && rr > 0) d2 *= 1 + rough * (hash3(x, y, z, seedBase) - 0.5);
+            // ragged edge: coarse lumps (2-voxel blocks) plus per-voxel grain
+            if (rough > 0 && rr > 0) d2 *= 1 + rough * (0.65 * hash3(x >> 1, y >> 1, z >> 1, seedBase) + 0.35 * hash3(x, y, z, seedBase) - 0.5) * 1.6;
             if (d2 < rr * inner2 || (fr > 0 && d2 < rr * outer2 && isCrack(x, y, z, cell, cseed))) {
+              if (chunkCells && d2 > rr * 0.2 && PAL_HARDNESS[p] < 3) {
+                const ck = cellId(x, y, z, chunkCell, cseed + 7);
+                if (hash3(ck & 1023, (ck >> 10) & 1023, ck >> 20, cseed) < 0.55) {
+                  let list = chunkCells.get(ck);
+                  if (!list) chunkCells.set(ck, (list = []));
+                  list.push(x, y, z, p);
+                }
+              }
               this.removeVoxel(body, x, y, z);
               byMat[p >> 3]++;
               removedHere++;
@@ -379,12 +400,52 @@ export class Sim {
         }
       }
       if (removedHere) { res.removed += removedHere; res.bodies.push(body); }
+      if (chunkCells && chunkCells.size) debrisLeft = this.spawnChunks(body, chunkCells, center, opts, debrisLeft);
     }
     if (res.removed) this.wakeNear(center, rMax + 1.5);
     if (res.removed && !opts.silent) {
       this.out.push({ type: 'carve', pos: center, removed: res.removed, byMat, samples, cause: opts.cause ?? '' });
     }
     return res;
+  }
+
+  /** turn groups of just-removed voxels into small loose chunk bodies flying away from the hit */
+  private spawnChunks(body: VoxelBody, cells: Map<number, number[]>, center: V3, opts: CarveOptions, left: number): number {
+    const speed = opts.debrisSpeed ?? 3;
+    const push = opts.pushDir;
+    const rot = body.rb.rotation();
+    const base = body.dynamic ? body.rb.linvel() : { x: 0, y: 0, z: 0 };
+    for (const list of cells.values()) {
+      if (left <= 0 || this.splitBudget <= 0) break;
+      const n = list.length / 4;
+      if (n < 3) continue;
+      let x0 = 1e9, y0 = 1e9, z0 = 1e9, x1 = -1, y1 = -1, z1 = -1;
+      for (let i = 0; i < list.length; i += 4) {
+        const x = list[i], y = list[i + 1], z = list[i + 2];
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z;
+      }
+      const g = new VoxelGrid(x1 - x0 + 1, y1 - y0 + 1, z1 - z0 + 1);
+      for (let i = 0; i < list.length; i += 4) g.data[g.idx(list[i] - x0, list[i + 1] - y0, list[i + 2] - z0)] = list[i + 3];
+      g.count = n;
+      const wpos = body.toWorld({ x: x0, y: y0, z: z0 });
+      const c = body.toWorld({ x: (x0 + x1 + 1) / 2, y: (y0 + y1 + 1) / 2, z: (z0 + z1 + 1) / 2 });
+      let dx = c.x - center.x, dy = c.y - center.y, dz = c.z - center.z;
+      const dl = Math.hypot(dx, dy, dz) || 1;
+      dx /= dl; dy /= dl; dz /= dl;
+      if (push) { dx = dx * 0.45 + push.x; dy = dy * 0.45 + push.y; dz = dz * 0.45 + push.z; }
+      const sp = speed * (0.5 + this.rng.next());
+      const r = this.rng;
+      const nb = this.addBody(g, wpos, {
+        dynamic: true, kind: 'debris', rot,
+        linvel: { x: base.x + dx * sp + (r.next() - 0.5), y: base.y + dy * sp + 0.8 + r.next(), z: base.z + dz * sp + (r.next() - 0.5) },
+        angvel: { x: (r.next() - 0.5) * 9, y: (r.next() - 0.5) * 9, z: (r.next() - 0.5) * 9 },
+      });
+      nb.user.chip = true;
+      nb.user.fromBody = body.id;
+      this.splitBudget--;
+      left--;
+    }
+    return left;
   }
 
   /** remove voxels inside an oriented box given in body-local voxel coords (blowtorch lines, cutters...) */
@@ -696,6 +757,15 @@ export class Sim {
     for (const b of this.bodies.values()) {
       if (!b.dynamic) continue;
       if (b.rb.translation().y < -60) { this.removeBody(b); continue; }
+      // small hit chunks settle, then crumble away after a while
+      if (b.user.chip) {
+        const age = this.tick - b.createdTick;
+        if ((age > 900 && b.rb.isSleeping()) || age > 2400) {
+          this.out.push({ type: 'crumb', pos: b.rb.worldCom(), pal: firstPal(b.grid), count: Math.min(b.grid.count, 6) });
+          this.removeBody(b);
+          continue;
+        }
+      }
       if (b.kind === 'debris') (debris ??= []).push(b);
     }
     if (debris && debris.length > this.maxDebris) {

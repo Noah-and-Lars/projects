@@ -228,6 +228,8 @@ export class Renderer {
       if (e.type === 'carve') {
         const per = Math.max(1, Math.min(4, Math.round(60 / Math.max(1, e.samples.length))));
         for (const s of e.samples) this.chips.burst(s.p, s.pal, per, e.cause === 'explosion' ? 9 : 3.2, e.pos);
+      } else if (e.type === 'custom' && e.name === 'tool:impact') {
+        this.shake = Math.max(this.shake, e.data.power ?? 0.3);
       } else if (e.type === 'crumb') {
         this.chips.burst(e.pos, e.pal, Math.min(10, e.count + 2), 2);
       } else if (e.type === 'explosion') {

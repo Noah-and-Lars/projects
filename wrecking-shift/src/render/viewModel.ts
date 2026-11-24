@@ -267,11 +267,18 @@ export class ViewModels {
     let ox = 0, oy = 0, oz = 0, rx = 0;
     const id = s.toolId;
     if (id === 'sledge') {
-      // wind up then slam forward/down
-      const k = a > 0.75 ? (1 - a) / 0.25 : a / 0.75;
-      rx = -Math.sin(k * Math.PI * 0.5) * 1.25 * (a > 0 ? 1 : 0);
-      oz = -k * 0.08 * (a > 0 ? 1 : 0);
-      oy = k * 0.02;
+      // heavy swing driven by the sim's swing clock (anim = 1 - t/36, impact at t = 10):
+      // slow wind-up over the shoulder, fast strike, a beat of hit-stop, slow recovery
+      if (a > 0) {
+        const t = (1 - a) * 36;
+        const ease = (u: number) => u * u * (3 - 2 * u);
+        let ang: number, fwd: number, drop: number;
+        if (t < 7) { const u = ease(t / 7); ang = 0.75 * u; fwd = 0.05 * u; drop = -0.05 * u; }            // raise
+        else if (t < 10) { const u = (t - 7) / 3; ang = 0.75 - 1.85 * u * u; fwd = 0.05 - 0.2 * u; drop = -0.05 - 0.01 * u; } // strike
+        else if (t < 15) { const j = Math.sin(t * 9) * 0.02 * (15 - t) / 5; ang = -1.1 + j; fwd = -0.15; drop = -0.06; } // hit-stop
+        else { const u = ease((t - 15) / 21); ang = -1.1 * (1 - u); fwd = -0.15 * (1 - u); drop = -0.06 * (1 - u); }  // recover
+        rx = ang; oz = fwd; oy = -drop;
+      }
     } else if (GUNS.has(id)) {
       const k = a * a;
       const big = id === 'pistol' ? 1 : id === 'shotgun' || id === 'rifle' ? 1.6 : 1.3;

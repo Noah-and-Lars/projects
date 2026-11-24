@@ -10,26 +10,43 @@ export class Sledge extends Tool {
   readonly name = 'Sledgehammer';
   override hint = 'LMB swing';
   reach = 2.6;
-  /** ticks between swings */
-  rate = 24;
+  /** full swing length in ticks; the head lands at `impactTick` */
+  rate = 36;
+  impactTick = 10;
+  /** ticks since the current swing started (-1 = idle) */
+  swingT = -1;
 
-  update(ctx: ToolContext, input: ToolInput): void {
-    if (!input.primary || this.cooldown > 0) return;
+  update(_ctx: ToolContext, input: ToolInput): void {
+    if (!input.primary || this.swingT >= 0) return;
+    this.swingT = 0;
     this.cooldown = this.rate;
-    this.anim = 1;
+    emit(_ctx.sim, 'tool:swing', { tool: this.id, hit: false });
+  }
+
+  /** the swing plays out even if the button is released: wind-up, heavy blow, slow recovery */
+  override tick(ctx: ToolContext): void {
+    if (this.swingT < 0) return;
+    const t = this.swingT++;
+    this.anim = Math.max(0.001, 1 - t / this.rate);
+    if (t === this.impactTick) this.strike(ctx);
+    if (this.swingT >= this.rate) { this.swingT = -1; this.anim = 0; }
+  }
+
+  private strike(ctx: ToolContext): void {
     const { sim, player } = ctx;
     const eye = player.eye, dir = player.forward;
     const hit = sim.raycast(eye, dir, this.reach);
-    emit(sim, 'tool:swing', { tool: this.id, hit: !!hit });
     if (!hit) return;
-    const c = { x: hit.point.x + dir.x * 0.12, y: hit.point.y + dir.y * 0.12, z: hit.point.z + dir.z * 0.12 };
-    // soft only: medium / hard radius 0 (sledge never breaks brick, metal, concrete)
-    const res = sim.carve(c, 0.42, 0, 0, { cause: 'sledge', fracture: 0.25 });
+    const c = { x: hit.point.x + dir.x * 0.15, y: hit.point.y + dir.y * 0.15, z: hit.point.z + dir.z * 0.15 };
+    // soft only: medium / hard radius 0 (sledge never breaks brick, metal, concrete).
+    // A ragged bite; a good part of it comes away as loose chunks knocked through to the far side.
+    const res = sim.carve(c, 0.5, 0, 0, { cause: 'sledge', rough: 0.55, debris: 7, pushDir: dir, debrisSpeed: 3.5 });
     if (res.removed === 0) emit(sim, 'tool:clang', { pos: hit.point, pal: hit.palette });
+    emit(sim, 'tool:impact', { tool: this.id, pos: hit.point, power: res.removed > 0 ? 0.45 : 0.3, broke: res.removed > 0 });
     // shove dynamic bodies (light debris flies, heavy props barely move)
     if (hit.body.dynamic && !hit.body.removed) {
       const m = hit.body.rb.mass();
-      const j = Math.min(180, m * 4);
+      const j = Math.min(320, m * 6);
       hit.body.rb.applyImpulseAtPoint({ x: dir.x * j, y: dir.y * j + j * 0.15, z: dir.z * j }, hit.point, true);
     }
   }
