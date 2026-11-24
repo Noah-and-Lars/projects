@@ -1,3 +1,5 @@
+import type { FireApi } from '../fire';
+import { Grabber } from '../grab';
 import type { Player } from '../player';
 import type { Sim } from '../sim';
 
@@ -23,6 +25,8 @@ export interface ToolContext {
   player: Player;
   /** sandbox: never consume ammo */
   infiniteAmmo: boolean;
+  /** fire system (blowtorch ignites, extinguisher puts out). Optional: tools work without it. */
+  fire?: FireApi;
 }
 
 /**
@@ -42,8 +46,12 @@ export abstract class Tool {
   cooldown = 0;
   /** 0..1 use animation phase for the view model (1 right after use, decays) */
   anim = 0;
+  /** continuous tools (spray, foam, torch): true while working this tick */
+  active = false;
   /** short HUD hint, e.g. "LMB swing" */
   hint = '';
+  /** ammo shown by the HUD ('' = unlimited). Blowtorch overrides (seconds of fuel). */
+  get ammoLabel(): string { return this.ammo === Infinity ? '' : String(Math.max(0, Math.ceil(this.ammo))); }
 
   /** called every tick while selected */
   abstract update(ctx: ToolContext, input: ToolInput): void;
@@ -60,11 +68,25 @@ export abstract class Tool {
     this.ammo -= n;
     return true;
   }
+  /** has ammo (does not consume) */
+  protected hasAmmo(ctx: ToolContext, n = 1): boolean {
+    return this.ammo === Infinity || ctx.infiniteAmmo || this.ammo >= n;
+  }
+  /** emit tool:empty (rate limited by cooldown) */
+  protected empty(ctx: ToolContext): void {
+    if (this.cooldown > 0) return;
+    this.cooldown = 20;
+    ctx.sim.out.push({ type: 'custom', name: 'tool:empty', data: { tool: this.id } });
+  }
 }
+
+const IDLE: ToolInput = Object.freeze(emptyToolInput());
 
 export class ToolBelt {
   tools: Tool[] = [];
   index = 0;
+  /** RMB grab / carry / throw (works with every tool) */
+  readonly grab = new Grabber();
   constructor(tools: Tool[]) { this.tools = tools; }
   get current(): Tool { return this.tools[this.index]; }
   byId(id: string): Tool | undefined { return this.tools.find((t) => t.id === id); }
@@ -72,8 +94,10 @@ export class ToolBelt {
   select(ctx: ToolContext, i: number): void {
     if (i < 0 || i >= this.tools.length || i === this.index || !this.tools[i].unlocked) return;
     this.current.onDeselect(ctx);
+    this.current.active = false;
     this.index = i;
     this.current.onSelect(ctx);
+    ctx.sim.out.push({ type: 'custom', name: 'tool:select', data: { tool: this.current.id } });
   }
   cycle(ctx: ToolContext, dir: number): void {
     const n = this.tools.length;
@@ -88,7 +112,23 @@ export class ToolBelt {
       if (t.anim > 0) t.anim = Math.max(0, t.anim - 1 / 18);
       t.tick(ctx);
     }
-    if (active) this.current.update(ctx, input);
+    if (!active) {
+      this.grab.release();
+      // let continuous tools (torch, spray) see "button up" so they stop cleanly
+      if (this.current.active) this.current.update(ctx, IDLE);
+      return;
+    }
+    // grabbing swallows LMB (throw) so the selected tool does not fire at the same time
+    const swallowed = this.grab.update(ctx, input);
+    if (swallowed) {
+      const t = this.current;
+      const pass = { ...input, primary: false, primaryPressed: false, primaryReleased: input.primaryReleased, scroll: 0 };
+      t.update(ctx, pass);
+      return;
+    }
+    // mouse wheel cycles tools when not holding anything
+    if (input.scroll && !this.grab.holding) this.cycle(ctx, input.scroll > 0 ? 1 : -1);
+    this.current.update(ctx, input);
   }
   refillAll(): void { for (const t of this.tools) t.refill(); }
 }

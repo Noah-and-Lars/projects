@@ -80,7 +80,7 @@ export class Game {
   }
 
   get toolCtx(): ToolContext {
-    return { sim: this.sim, player: this.player, infiniteAmmo: this.infiniteAmmo };
+    return { sim: this.sim, player: this.player, infiniteAmmo: this.infiniteAmmo, fire: this.fire };
   }
 
   loadLevel(id: string, seed = 1234): void {

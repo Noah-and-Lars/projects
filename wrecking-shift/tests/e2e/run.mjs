@@ -34,6 +34,9 @@ await test('boot + spawn + screenshot', async () => {
 });
 
 await (await import('./audio.mjs')).default({ url, test });
+// player tools (tests/e2e/tools.mjs)
+const { runToolTests } = await import('./tools.mjs');
+await runToolTests(url, test);
 
 srv.close();
 if (failed) { console.log(failed + ' e2e test(s) failed'); process.exit(1); }

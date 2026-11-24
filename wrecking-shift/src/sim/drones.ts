@@ -210,7 +210,7 @@ export class DroneSystem implements SimSystem {
           const dir = vnorm({ x: aim.x + (sim.rng.next() - 0.5) * s * vlen(aim), y: aim.y - 0.3 + (sim.rng.next() - 0.5) * s * vlen(aim), z: aim.z + (sim.rng.next() - 0.5) * s * vlen(aim) });
           const dist = vlen(aim);
           const hit = sim.raycast(p, dir, 60, d.body);
-          sim.out.push({ type: 'custom', name: 'tool:shot', data: { tool: 'pistol', pos: p, dir } });
+          sim.out.push({ type: 'custom', name: 'tool:shot', data: { tool: 'pistol', pos: p, dir, source: 'drone' } });
           if (hit && hit.dist < dist - 0.4) sim.carve(hit.point, 0.14, 0.09, 0, { cause: 'gun' });
           else {
             // passes the player: closest approach decides
