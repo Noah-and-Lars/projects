@@ -36,8 +36,10 @@ export async function runToolTests(url, test) {
     assert(ids.length >= 12, 'tool count ' + ids.length);
     for (const id of ids) {
       const ok = await ev((id) => { window.__game.selectTool(id); window.__game.step(1); window.__game.render();
+        window.__game.setView(0, 0.05, 6, 0, 0); window.__game.step(30); window.__game.render();
         const m = window.__game.game.ext.tools.vm; return window.__game.game.belt.current.id === id && m.root.visible && m.root.children.some((c) => c.visible); }, id);
       assert(ok, 'view model for ' + id);
+      await shot(page, 't-vm-' + id);
     }
   });
 

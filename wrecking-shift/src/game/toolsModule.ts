@@ -73,7 +73,7 @@ export class ToolsModule implements GameModule {
           break;
         case 'tool:shot': {
           const m = this.muzzleWorld();
-          const big = d.tool === 'shotgun' ? 1.6 : d.tool === 'rocket' ? 2 : 1;
+          const big = d.tool === 'shotgun' || d.tool === 'rifle' ? 1.6 : d.tool === 'rocket' ? 2 : 1;
           this.muzzle.flash(m, 6 * big);
           this.flashUntil = game.sim.time + (d.tool === 'rocket' ? 0.08 : 0.04);
           this.flashMesh.scale.setScalar(0.05 * big);
@@ -93,6 +93,14 @@ export class ToolsModule implements GameModule {
           for (let i = 0; i < 10; i++) {
             const s = 5 + Math.random() * 3;
             this.puffs.spawn(m, { x: d.dir.x * s + rnd(1.2), y: d.dir.y * s + rnd(1.2), z: d.dir.z * s + rnd(1.2) }, 0xf4f6f8, 0.04, 0.6 + Math.random() * 0.5, 0.35, 3, 2.2);
+          }
+          break;
+        }
+        case 'tool:blow': {
+          const m = this.muzzleWorld();
+          for (let i = 0; i < 5; i++) {
+            const sp = 7 + Math.random() * 4;
+            this.puffs.spawn(m, { x: d.dir.x * sp + rnd(1.5), y: d.dir.y * sp + rnd(1.5), z: d.dir.z * sp + rnd(1.5) }, 0xc8bfa8, 0.02, 0.35, 0.3, 0, 3);
           }
           break;
         }

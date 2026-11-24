@@ -130,6 +130,22 @@ const MODELS: Record<string, () => THREE.Group> = {
     [0.06, 0.03, 0.06, 0, 0.05, -0.03, STEEL],
     [0.02, 0.012, 0.02, 0.02, 0.07, -0.05, 0xff3020, { glow: true, name: 'light' }],
   ]), 0, -0.03, 0),
+  rifle: () => wrap(build([
+    [0.03, 0.03, 0.56, 0, 0.03, -0.3, STEEL],
+    [0.045, 0.05, 0.2, 0, 0.01, -0.04, STEEL],
+    [0.034, 0.034, 0.16, 0, 0.085, -0.06, BLACK],
+    [0.044, 0.044, 0.03, 0, 0.085, -0.15, BLACK],
+    [0.05, 0.06, 0.42, 0, -0.02, -0.06, WOOD, { rx: 0.03 }],
+    [0.05, 0.08, 0.16, 0, -0.04, 0.16, WOOD, { rx: 0.12 }],
+    [0.01, 0.01, 0.01, 0, 0.03, -0.58, BLACK, { name: 'muzzle' }],
+  ]), 0, -0.01, 0.05),
+  leafblower: () => wrap(build([
+    [0.12, 0.12, 0.16, 0, -0.02, 0.04, ORANGE],
+    [0.1, 0.03, 0.1, 0, 0.055, 0.04, BLACK],
+    [0.05, 0.05, 0.36, 0.0, -0.03, -0.2, 0x8a8f96],
+    [0.07, 0.03, 0.05, 0.0, -0.03, -0.39, 0x8a8f96],
+    [0.01, 0.01, 0.01, 0, -0.03, -0.42, BLACK, { name: 'muzzle' }],
+  ]), 0, -0.04, 0),
   nitro: () => wrap(build([
     [0.07, 0.13, 0.07, 0, 0, -0.02, RED],
     [0.072, 0.03, 0.072, 0, 0.0, -0.02, WHITE],
@@ -166,7 +182,7 @@ export interface ViewModelState {
 }
 
 const THROWN = new Set(['pipebomb', 'bomb', 'nitro', 'plank']);
-const GUNS = new Set(['pistol', 'shotgun', 'rocket']);
+const GUNS = new Set(['pistol', 'shotgun', 'rocket', 'rifle']);
 
 export class ViewModels {
   /** child of the camera */
@@ -258,7 +274,7 @@ export class ViewModels {
       oy = k * 0.02;
     } else if (GUNS.has(id)) {
       const k = a * a;
-      const big = id === 'pistol' ? 1 : id === 'shotgun' ? 1.6 : 1.3;
+      const big = id === 'pistol' ? 1 : id === 'shotgun' || id === 'rifle' ? 1.6 : 1.3;
       oz = k * 0.05 * big;
       rx = k * 0.3 * big;
       const wh = m.getObjectByName('warhead');

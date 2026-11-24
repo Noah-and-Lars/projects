@@ -5,7 +5,7 @@ import { FireSystem } from '../../src/sim/fire';
 import { MAT, SHADE_PAINT, pal } from '../../src/sim/materials';
 import { Player } from '../../src/sim/player';
 import { Sim, initPhysics, type SimEvent } from '../../src/sim/sim';
-import { Blowtorch, Bomb, Cable, Extinguisher, Nitro, PipeBomb, Pistol, Plank, RocketLauncher, Shotgun, Sledge, Spray, createBelt } from '../../src/sim/tools';
+import { Blowtorch, Bomb, Cable, Extinguisher, LeafBlower, Nitro, PipeBomb, Pistol, Plank, Rifle, RocketLauncher, Shotgun, Sledge, Spray, createBelt } from '../../src/sim/tools';
 import { emptyToolInput, type Tool, type ToolBelt, type ToolContext, type ToolInput } from '../../src/sim/tools/tool';
 import type { V3 } from '../../src/sim/vec';
 import { VoxelGrid } from '../../src/sim/voxels';
@@ -74,6 +74,8 @@ describe('tool hardness rules', () => {
     ['shotgun breaks brick', () => new Shotgun(), MAT.brick, true],
     ['shotgun cannot break steel (hard)', () => new Shotgun(), MAT.steel, false],
     ['pistol cannot break bedrock', () => new Pistol(), MAT.bedrock, false],
+    ['rifle breaks brick', () => new Rifle(), MAT.brick, true],
+    ['rifle cannot break concrete', () => new Rifle(), MAT.concrete, false],
   ];
   for (const [name, make, mat, breaks] of cases) {
     it(name, () => {
@@ -208,6 +210,33 @@ describe('utility tools', () => {
       run(w, 2, {}, b);
       expect((custom(w, 'tool:torch').at(-1) as any).data.on).toBe(false);
     }
+  });
+});
+
+describe('optional tools', () => {
+  it('rifle punches through two thin walls', () => {
+    const w = world();
+    const a = wall(w.sim, MAT.wood, -1.5, -2, 30, 30, 2);
+    const b = wall(w.sim, MAT.brick, -1.5, -4, 30, 30, 2);
+    settle(w);
+    aimAt(w, { x: 0, y: 1.4, z: -2 });
+    const ca = solid(a), cb = solid(b);
+    click(w, new Rifle());
+    expect(solid(a)).toBeLessThan(ca);
+    expect(solid(b)).toBeLessThan(cb);
+  });
+  it('leaf blower pushes light debris but not heavy blocks', () => {
+    const w = world();
+    const light = crateBody(w.sim, { x: -0.15, y: 0.01, z: -2.0 }, 3, MAT.wood);
+    const heavy = crateBody(w.sim, { x: 1.0, y: 0.01, z: -2.0 }, 8, MAT.concrete);
+    settle(w);
+    run(w, 30);
+    const l0 = light.rb.worldCom(), h0 = heavy.rb.worldCom();
+    aimAt(w, l0);
+    run(w, 30, { primary: true }, new LeafBlower());
+    const l1 = light.rb.worldCom(), h1 = heavy.rb.worldCom();
+    expect(Math.hypot(l1.x - l0.x, l1.z - l0.z)).toBeGreaterThan(0.3);
+    expect(Math.hypot(h1.x - h0.x, h1.z - h0.z)).toBeLessThan(0.05);
   });
 });
 
@@ -491,7 +520,7 @@ describe('belt', () => {
   it('selecting emits tool:select and every tool has id / name / hint', () => {
     const w = world();
     const ids = w.belt.tools.map((t) => t.id);
-    expect(ids).toEqual(['sledge', 'spray', 'extinguisher', 'blowtorch', 'pistol', 'shotgun', 'plank', 'cable', 'pipebomb', 'bomb', 'rocket', 'nitro']);
+    expect(ids).toEqual(['sledge', 'spray', 'extinguisher', 'blowtorch', 'pistol', 'shotgun', 'plank', 'cable', 'pipebomb', 'bomb', 'rocket', 'nitro', 'rifle', 'leafblower']);
     for (const t of w.belt.tools) { expect(t.name.length).toBeGreaterThan(2); expect(t.hint.length).toBeGreaterThan(2); }
     w.belt.select(w.ctx, 4);
     expect((custom({ ...w, events: w.sim.drainEvents() }, 'tool:select')[0] as any).data.tool).toBe('pistol');
