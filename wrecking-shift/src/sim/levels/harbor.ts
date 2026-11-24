@@ -94,13 +94,13 @@ export const harbor: LevelDef = {
     const hm = new Heightmap((x, z) => {
       const n = fbm2(x * 0.02 + 7, z * 0.02 + 3, seed);
       const land = G + 0.3 + n * 1.6 + smoothstep(-20, -62, z) * (3 + 5 * fbm2(x * 0.015, z * 0.015, seed + 3));
-      const shore = 31 + 5 * (fbm2(x * 0.03, 0.5, seed + 5) - 0.5) + smoothstep(-30, -62, x) * 9;
+      const shore = 32 + 5 * (fbm2(x * 0.03, 0.5, seed + 5) - 0.5) + smoothstep(-30, -62, x) * 9;
       const sea = -3.2 - 1.2 * n;
       return land + (sea - land) * smoothstep(shore - 1.5, shore + 7, z);
     });
     // road from the north edge down to the quay, a cross street, the quay apron, plots
     hm.addPad(-3.5, -64, 3.5, 9, G, 2.5, MAT.asphalt);
-    hm.addPad(-46, 7, 46, 30.4, G, 1.0, MAT.concrete);
+    hm.addPad(-46, 7, 46, 33, G, 0.8, MAT.concrete);
     hm.addPad(3.5, -14, 44, -9, G, 2.5, MAT.asphalt);
     hm.addPad(8, -9, 26, 3, G, 2, MAT.grass);          // office plot
     hm.addPad(26, -32, 46, -14, G, 2, MAT.concrete);   // fuel depot
