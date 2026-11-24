@@ -141,7 +141,10 @@ export interface SaveData {
   upgrades: Record<string, number>;
   settings: SettingsData;
   lastMission?: string;
+  /** challenge best scores by `<mode>@<levelId>` (optional: older saves have none) */
+  challenges?: Record<string, ChallengeRecord>;
 }
+export interface ChallengeRecord { best: number; stars: number; plays: number }
 export interface StorageLike { getItem(k: string): string | null; setItem(k: string, v: string): void }
 
 function emptySave(): SaveData { return { v: 1, missions: {}, cash: 0, upgrades: {}, settings: { ...DEFAULT_SETTINGS } }; }
@@ -164,6 +167,16 @@ function sanitizeSave(raw: any): SaveData {
   }
   s.settings = sanitizeSettings(raw.settings);
   if (typeof raw.lastMission === 'string') s.lastMission = raw.lastMission;
+  if (raw.challenges && typeof raw.challenges === 'object') {
+    s.challenges = {};
+    for (const [id, r] of Object.entries<any>(raw.challenges)) {
+      if (!r || typeof r !== 'object') continue;
+      s.challenges[id] = {
+        best: Math.max(0, Math.floor(Number(r.best) || 0)), stars: Math.max(0, Math.min(3, Math.floor(Number(r.stars) || 0))),
+        plays: Math.max(0, Math.floor(Number(r.plays) || 0)),
+      };
+    }
+  }
   return s;
 }
 
@@ -275,6 +288,23 @@ export class Progress {
       newTools: this.unlockedTools(scoreAfter).filter((t) => !toolsBefore.has(t)),
       newBest, previousBest, cashEarned: r.success ? Math.floor(r.cash) : 0,
     };
+  }
+
+  // ---------------------------------------------------------------- challenges (best score per mode + map)
+
+  challengeRecord(key: string): ChallengeRecord | undefined { return this.data.challenges?.[key]; }
+  /** store a challenge run; returns whether it beat the previous best */
+  recordChallenge(key: string, score: number, stars: number): { newBest: boolean; previousBest: number } {
+    const all = (this.data.challenges ??= {});
+    const rec = all[key] ?? { best: 0, stars: 0, plays: 0 };
+    const previousBest = rec.best;
+    rec.plays++;
+    const newBest = score > rec.best;
+    if (newBest) rec.best = Math.floor(score);
+    rec.stars = Math.max(rec.stars, Math.max(0, Math.min(3, stars)));
+    all[key] = rec;
+    this.save();
+    return { newBest, previousBest };
   }
 
   // ---------------------------------------------------------------- upgrades
