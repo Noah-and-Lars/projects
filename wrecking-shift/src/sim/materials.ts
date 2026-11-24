@@ -38,6 +38,8 @@ export interface MaterialDef {
   /** explodes when broken */
   explosive?: number;
   friction?: number;
+  /** compressive strength in MPa for the structural crush check (default by hardness) */
+  strength?: number;
 }
 
 const defs: Omit<MaterialDef, 'id'>[] = [
@@ -46,16 +48,16 @@ const defs: Omit<MaterialDef, 'id'>[] = [
   /* 2 */ { name: 'dirt', hardness: Hardness.Medium, density: 1300, flammability: 0, burnTime: 0, audio: 'dirt', color: 0x7a5a3c, variance: 0.1 },
   /* 3 */ { name: 'wood', hardness: Hardness.Soft, density: 550, flammability: 0.6, burnTime: 90, audio: 'wood', color: 0xa9783f, variance: 0.12 },
   /* 4 */ { name: 'plaster', hardness: Hardness.Soft, density: 700, flammability: 0.05, burnTime: 60, audio: 'masonry', color: 0xe6dfd0, variance: 0.05 },
-  /* 5 */ { name: 'glass', hardness: Hardness.Soft, density: 500, flammability: 0, burnTime: 0, audio: 'glass', color: 0x9fd4e0, variance: 0.04, glass: true },
+  /* 5 */ { name: 'glass', hardness: Hardness.Soft, density: 500, flammability: 0, burnTime: 0, audio: 'glass', color: 0x9fd4e0, variance: 0.04, glass: true, strength: 0.25 },
   /* 6 */ { name: 'plastic', hardness: Hardness.Soft, density: 350, flammability: 0.45, burnTime: 50, audio: 'plastic', color: 0xd8483a, variance: 0.05 },
   /* 7 */ { name: 'brick', hardness: Hardness.Medium, density: 1500, flammability: 0, burnTime: 0, audio: 'masonry', color: 0xa9503a, variance: 0.13 },
   /* 8 */ { name: 'concrete', hardness: Hardness.Hard, density: 2000, flammability: 0, burnTime: 0, audio: 'masonry', color: 0x9a9a96, variance: 0.06 },
   /* 9 */ { name: 'sheetmetal', hardness: Hardness.Medium, density: 1100, flammability: 0, burnTime: 0, audio: 'metal', color: 0x8d99a3, variance: 0.06 },
-  /* 10 */ { name: 'steel', hardness: Hardness.Hard, density: 3000, flammability: 0, burnTime: 0, audio: 'metal', color: 0x4d555e, variance: 0.05 },
+  /* 10 */ { name: 'steel', hardness: Hardness.Hard, density: 3000, flammability: 0, burnTime: 0, audio: 'metal', color: 0x4d555e, variance: 0.05, strength: 30 },
   /* 11 */ { name: 'rock', hardness: Hardness.Hard, density: 2300, flammability: 0, burnTime: 0, audio: 'masonry', color: 0x77736c, variance: 0.12 },
   /* 12 */ { name: 'bedrock', hardness: Hardness.Unbreakable, density: 3000, flammability: 0, burnTime: 0, audio: 'masonry', color: 0x4a4744, variance: 0.08 },
   /* 13 */ { name: 'asphalt', hardness: Hardness.Hard, density: 2000, flammability: 0, burnTime: 0, audio: 'masonry', color: 0x3c3d41, variance: 0.06 },
-  /* 14 */ { name: 'leaves', hardness: Hardness.Soft, density: 150, flammability: 0.8, burnTime: 25, audio: 'foliage', color: 0x3f7d3a, variance: 0.2 },
+  /* 14 */ { name: 'leaves', hardness: Hardness.Soft, density: 150, flammability: 0.8, burnTime: 25, audio: 'foliage', color: 0x3f7d3a, variance: 0.2, strength: 0.05 },
   /* 15 */ { name: 'fabric', hardness: Hardness.Soft, density: 200, flammability: 0.8, burnTime: 35, audio: 'foliage', color: 0x3d6fb0, variance: 0.06 },
   /* 16 */ { name: 'gold', hardness: Hardness.Medium, density: 2500, flammability: 0, burnTime: 0, audio: 'metal', color: 0xf2c230, variance: 0.08, emissive: 0.15 },
   /* 17 */ { name: 'explosive', hardness: Hardness.Soft, density: 600, flammability: 1, burnTime: 6, audio: 'metal', color: 0xd22a1e, variance: 0.03, explosive: 1.6 },
@@ -103,6 +105,8 @@ export const PAL_EMISSIVE = new Float32Array(256);
 export const PAL_GLASS = new Uint8Array(256);
 /** explosion size when a voxel of this palette index is broken (0 = inert) */
 export const PAL_EXPLOSIVE = new Float32Array(256);
+/** load (newtons) one voxel of this palette index can carry before it is crushed */
+export const PAL_STRENGTH = new Float64Array(256);
 
 export let SPRAY_COLOR = 0xf2e530;
 
@@ -116,6 +120,8 @@ function buildPalette() {
     PAL_EMISSIVE[p] = s >= SHADE_SCORCH ? 0 : m.emissive ?? 0;
     PAL_GLASS[p] = m.glass ? 1 : 0;
     PAL_EXPLOSIVE[p] = m.explosive ?? 0;
+    const mpa = m.strength ?? [1.2, 4, 12, 1e9][m.hardness];
+    PAL_STRENGTH[p] = mpa * 1e6 * 0.01;
     let r = ((m.color >> 16) & 255) / 255;
     let g = ((m.color >> 8) & 255) / 255;
     let b = (m.color & 255) / 255;

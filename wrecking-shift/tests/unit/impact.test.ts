@@ -42,3 +42,39 @@ describe('impact damage', () => {
     expect(totalVoxels(sim)).toBe(3200);
   });
 });
+
+describe('structural crush', () => {
+  // heavy concrete block (4x3x4 m = 96 t) on a brick pillar
+  function tower(sim: Sim, pillar: number) {
+    const g = new VoxelGrid(40, 60, 40);
+    const o = (40 - pillar) >> 1;
+    g.fill(o, 0, o, o + pillar, 30, o + pillar, pal(MAT.brick));
+    g.fill(0, 30, 0, 40, 60, 40, pal(MAT.concrete));
+    return sim.addBody(g, { x: -2, y: 0, z: -2 });
+  }
+  it('a thick pillar holds, even after being nicked', () => {
+    const sim = new Sim(1);
+    floor(sim);
+    const b = tower(sim, 20);
+    sim.carve({ x: -1, y: 1.5, z: 0 }, 0.3, 0.3, 0, { rough: 0 });
+    for (let i = 0; i < 60; i++) sim.step();
+    expect([...sim.bodies.values()].filter((x) => x.dynamic && x.grid.count > 1000).length).toBe(0);
+    expect(b.grid.get(20, 45, 20)).not.toBe(0);
+  });
+  it('a pillar cut down to a sliver is crushed and the block comes down', () => {
+    const sim = new Sim(1);
+    floor(sim);
+    const b = tower(sim, 20);
+    // cut most of the pillar at 1.5 m leaving a 3x3 voxel core (0.09 m^2 for 96 t => ~10 MPa > brick 4 MPa)
+    for (let x = 10; x < 30; x++) for (let z = 10; z < 30; z++) for (let y = 14; y < 17; y++)
+      if (!(x >= 19 && x < 22 && z >= 19 && z < 22)) sim.removeVoxel(b, x, y, z);
+    sim.step();
+    const big = [...sim.bodies.values()].filter((x) => x.dynamic && x.grid.count > 10000);
+    expect(big.length).toBe(1);
+    const y0 = big[0].rb.worldCom().y;
+    for (let i = 0; i < 120; i++) sim.step();
+    const stillBig = [...sim.bodies.values()].filter((x) => x.dynamic).reduce((m, x) => Math.max(m, x.grid.count), 0);
+    expect(stillBig).toBeGreaterThan(1000);
+    expect(y0).toBeGreaterThan(4);
+  });
+});

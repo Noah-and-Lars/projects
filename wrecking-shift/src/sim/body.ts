@@ -40,6 +40,12 @@ export class VoxelBody {
   /** solid voxels adjacent to removed ones -> connectivity search pending */
   pendingSeeds: number[] = [];
   massDirty = false;
+  /** structural data per y layer of static bodies (built lazily): carrying capacity (N) and mass (kg) */
+  layerCap: Float64Array | null = null;
+  layerMass: Float64Array | null = null;
+  /** y range touched by edits since the last structural check (inclusive), -1 = none */
+  editY0 = -1;
+  editY1 = -1;
   createdTick = 0;
   removed = false;
   /** original voxel count (for "destroy N%" objectives) */

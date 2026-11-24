@@ -1,7 +1,7 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { VoxelBody, type BodyKind } from './body';
 import { findIslands, type Island } from './connectivity';
-import { MATERIALS, PAL_EXPLOSIVE, PAL_HARDNESS, VOXEL, matOf, scorch as scorchPal } from './materials';
+import { MATERIALS, PAL_DENSITY, PAL_EXPLOSIVE, PAL_HARDNESS, PAL_STRENGTH, VOXEL, matOf, scorch as scorchPal } from './materials';
 import { Rng, hash3 } from './rng';
 import { QID, qrot, vadd, vcross, vlen, vscale, vsub, type Quat, type V3 } from './vec';
 import { VoxelGrid, computeMassProps } from './voxels';
@@ -123,6 +123,10 @@ export class Sim {
   onExplosion: ((pos: V3, size: number) => void)[] = [];
   /** the player character, if any (set by Player) */
   player: { eye: V3; damage(amount: number, cause?: string): void; vel: V3 } | null = null;
+  /** structural crush check on static bodies (see crushCheck) */
+  structural = true;
+  /** load / capacity ratio above which a layer fails */
+  crushFactor = 1.0;
   /** collisions damage voxels (falling debris breaks, heavy things crush) */
   impactDamage = true;
   /** minimum velocity change (m/s) in one step for a collision to do damage */
@@ -231,6 +235,11 @@ export class Sim {
     if (z < sz - 1 && d[i + sxy]) s.push(i + sxy);
     this.editQueue.add(body);
     if (body.dynamic) body.massDirty = true;
+    else {
+      if (body.editY0 < 0 || y < body.editY0) body.editY0 = y;
+      if (y > body.editY1) body.editY1 = y;
+      if (body.layerCap) { body.layerCap[y] -= PAL_STRENGTH[p]; body.layerMass![y] -= PAL_DENSITY[p] * 0.001; }
+    }
     if (PAL_EXPLOSIVE[p] > 0) this.queueChain(body, x, y, z, PAL_EXPLOSIVE[p]);
     if (notify) for (const f of this.onRemoved) f(body, x, y, z, p);
     return p;
@@ -269,6 +278,10 @@ export class Sim {
     const old = g.data[i];
     if (old === p) return;
     g.data[i] = p;
+    if (body.layerCap) {
+      body.layerCap[y] += PAL_STRENGTH[p] - (old ? PAL_STRENGTH[old] : 0);
+      body.layerMass![y] += (PAL_DENSITY[p] - (old ? PAL_DENSITY[old] : 0)) * 0.001;
+    }
     if (!old) {
       g.count++;
       body.col.setVoxel(x, y, z, true);
@@ -372,7 +385,10 @@ export class Sim {
 
   /** Run pending connectivity searches and split islands off. Called automatically each step. */
   processEdits(): void {
-    if (this.editQueue.size === 0) return;
+    for (let pass = 0; pass < 3 && this.editQueue.size > 0; pass++) this.processEditsOnce();
+  }
+
+  private processEditsOnce(): void {
     const queue = [...this.editQueue];
     this.editQueue.clear();
     for (const body of queue) {
@@ -384,9 +400,69 @@ export class Sim {
         const islands = findIslands(body.grid, seeds, body.dynamic ? -1 : 0, body.dynamic ? body.keepIndex : -1);
         if (islands.length) this.splitIslands(body, islands);
       }
+      if (!body.removed && !body.dynamic && body.anchorBottom && body.editY0 >= 0 && this.structural) this.crushCheck(body);
+      body.editY0 = body.editY1 = -1;
       if (body.removed) continue;
       if (body.grid.count === 0) { this.removeBody(body); continue; }
       if (body.dynamic && body.massDirty) { this.applyMass(body); body.rb.wakeUp(); }
+    }
+  }
+
+  /**
+   * Structural crush check (our improvement over pure connectivity): for the y layers touched by
+   * an edit, compare the weight resting above the layer with what the layer's remaining voxels
+   * can carry. An overloaded layer is pulverised (a band around it), so a building can no longer
+   * stand on a couple of voxels — it drops, and impact damage breaks it up.
+   */
+  private crushCheck(body: VoxelBody): void {
+    const g = body.grid;
+    const { sx, sy, sz } = g;
+    if (!body.layerCap) {
+      const cap = (body.layerCap = new Float64Array(sy));
+      const mass = (body.layerMass = new Float64Array(sy));
+      const d = g.data;
+      let i = 0;
+      for (let z = 0; z < sz; z++)
+        for (let y = 0; y < sy; y++)
+          for (let x = 0; x < sx; x++, i++) {
+            const p = d[i];
+            if (p) { cap[y] += PAL_STRENGTH[p]; mass[y] += PAL_DENSITY[p] * 0.001; }
+          }
+    }
+    const cap = body.layerCap!, mass = body.layerMass!;
+    const y0 = Math.max(1, body.editY0 - 1), y1 = Math.min(sy - 2, body.editY1 + 1);
+    if (y0 > y1) return;
+    let above = 0;
+    for (let y = sy - 1; y > y1; y--) above += mass[y];
+    let worst = -1, worstRatio = this.crushFactor;
+    for (let y = y1; y >= y0; y--) {
+      if (cap[y] > 0 && above > 50) {
+        const ratio = (above * 9.81) / cap[y];
+        if (ratio > worstRatio) { worstRatio = ratio; worst = y; }
+      }
+      above += mass[y];
+    }
+    if (worst < 0) return;
+    // pulverise a band around the failed layer
+    const b0 = Math.max(1, worst - 2), b1 = Math.min(sy - 1, worst + 3);
+    let n = 0, cx = 0, cz = 0;
+    const byMat = new Uint32Array(MATERIALS.length);
+    const samples: { p: V3; pal: number }[] = [];
+    for (let z = 0; z < sz; z++)
+      for (let y = b0; y <= b1; y++) {
+        let i = g.idx(0, y, z);
+        for (let x = 0; x < sx; x++, i++) {
+          const p = g.data[i];
+          if (!p || PAL_HARDNESS[p] === 3) continue;
+          this.removeVoxel(body, x, y, z);
+          byMat[p >> 3]++; n++; cx += x; cz += z;
+          if (samples.length < 40 && n % 5 === 0) samples.push({ p: body.toWorld({ x: x + 0.5, y: y + 0.5, z: z + 0.5 }), pal: p });
+        }
+      }
+    if (n) {
+      const pos = body.toWorld({ x: cx / n, y: worst, z: cz / n });
+      this.out.push({ type: 'carve', pos, removed: n, byMat, samples, cause: 'crush' });
+      // the removals queued this body again; islands split on the next processEdits pass
     }
   }
 
@@ -442,6 +518,7 @@ export class Sim {
       for (const f of this.onSplit) f(parent, nb, [x0, y0, z0]);
       this.out.push({ type: 'split', parent, child: nb });
     }
+    parent.layerCap = parent.layerMass = null;
     if (g.count === 0) { this.removeBody(parent); return; }
     if (bulk) this.rebuildCollider(parent);
     if (parent.dynamic) parent.massDirty = true;
