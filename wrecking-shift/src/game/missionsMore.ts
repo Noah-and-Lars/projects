@@ -206,7 +206,7 @@ export const bundFire: MissionDef = {
     { kind: 'destroy', id: 'halls', title: 'Destroy 50% of the factory halls', percent: 50, required: false },
     { kind: 'deliver', id: 'wagon', target: 'spool', count: 1, title: 'Roll a cable spool into the canal', zone: { water: true }, required: false },
   ],
-  alarmSeconds: 45,
+  alarmSeconds: 35,
   reward: { cash: 2600 },
   unlockAfter: ['long-drop', 'payday'],
   setup(sim, lv) {

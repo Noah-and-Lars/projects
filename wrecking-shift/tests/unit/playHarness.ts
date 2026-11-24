@@ -370,7 +370,7 @@ export class Run {
    * Drive through waypoints with a simple pursuit driver: steer toward the next point, throttle with
    * a speed cap that drops before sharp turns, brake when too fast. Returns stats.
    */
-  drive(points: V3[], o: { cap?: number; r?: number; max?: number; reverseOnStuck?: boolean } = {}): DriveStats {
+  drive(points: V3[], o: { cap?: number; r?: number; max?: number; reverse?: boolean; log?: boolean } = {}): DriveStats {
     const v = this.car;
     if (!v) throw new Error('not in a vehicle');
     return driveRoute(v, points, () => this.tick(), () => this.mission.ended, o);
@@ -401,6 +401,9 @@ export class Run {
 
   /** finish: E at the escape point (on foot) */
   clockOut(): void {
+    // the escape point follows the van, which may have rolled a little since the route was planned
+    const e = this.mission.escapePos();
+    if (!this.player.seated && hdist(this.player.pos, e) > 2.2) this.walk([v3(e.x, e.y, e.z)], { r: 2.0 });
     for (let i = 0; i < 3 && !this.mission.ended; i++) { this.player.pitch = 0.6; this.pressE(); }
   }
 

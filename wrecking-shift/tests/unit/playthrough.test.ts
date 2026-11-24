@@ -344,5 +344,23 @@ describe('Brackwater Works playthroughs', () => {
     r.clockOut();
     finish(r);
   }, T);
+  it('bund-fire: pistol into the four fuel tanks from behind the bund wall, sprint to the van at the gate', () => {
+    const r = new Run('bund-fire');
+    const tanksObj = () => r.mission.objectives()[0];
+    r.select('pistol');
+    r.tp(v3(49, 1.7, -7));
+    for (const [tx, tz] of [[43, -16], [55, -16], [43, -26], [55, -26]]) {
+      const aimAt = v3(tx + (49 - tx) * 0.1, 4.6, tz + 1.6);
+      for (let k = 0; k < 3; k++) { r.aim(aimAt); r.click(); r.step(12); }
+      r.step(40);
+      r.log('tank', tx, tz, tanksObj().detail, 'hp', r.player.health.toFixed(2));
+      if (tanksObj().done) break;
+    }
+    expect(r.phase).toBe('alarm');
+    expect(tanksObj().done).toBe(true);
+    r.walk([v3(40, 1.7, -4), v3(20, 1.7, 1.5), v3(-30, 1.7, 1.5), v3(-55, 1.7, 1.5), r.mission.escapePos()], { r: 2.5 });
+    r.clockOut();
+    finish(r);
+  }, T);
 });
 

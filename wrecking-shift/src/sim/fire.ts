@@ -746,7 +746,10 @@ export class FireSystem implements FireApi, SimSystem {
   /** refresh the cached world centre of a slot if its body moved this tick */
   private refreshPos(s: number): void {
     const b = this.sb[s]!;
-    if (!b.dynamic) return; // static bodies never move (cache computed at ignition)
+    // static bodies never move (cache computed at ignition). A removed body's fires die on its next fire update,
+    // but presentation may visit them before that: reading a removed rigid body's transform aborts Rapier (wasm
+    // "unreachable"), which crashed the game when the Brackwater fuel tanks blew up (tests/e2e/playthrough.mjs).
+    if (!b.dynamic || b.removed) return;
     const a = this.xf(b);
     this.rotate(a, (this.sx[s] + 0.5) * VOXEL, (this.sy[s] + 0.5) * VOXEL, (this.sz[s] + 0.5) * VOXEL, false);
     const o = s * 3;
@@ -759,7 +762,7 @@ export class FireSystem implements FireApi, SimSystem {
     if (!a) { a = new Float64Array(9); a[7] = -1; this.tf.set(b.id, a); }
     const t = this.sim.tick;
     // bodies only move in world.step(), which is followed by tick++: a per-tick cache is exact
-    if (a[7] !== t) {
+    if (a[7] !== t && !b.removed) {
       const p = b.rb.translation(), q = b.rb.rotation();
       a[0] = p.x; a[1] = p.y; a[2] = p.z; a[3] = q.x; a[4] = q.y; a[5] = q.z; a[6] = q.w; a[7] = t;
       a[8] = !b.dynamic && b.identityRot ? 1 : 0;
