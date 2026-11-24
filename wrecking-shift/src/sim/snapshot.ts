@@ -12,6 +12,7 @@ export interface BodySnap {
   dynamic: boolean; kind: BodyKind; name: string; tags: string[];
   flags: number; keepIndex: number; initialCount: number; createdTick: number;
   user: Record<string, any>;
+  massScale?: number;
 }
 export interface SimSnap {
   tick: number; rng: number; nextId: number; bodies: BodySnap[];
@@ -58,7 +59,7 @@ export function snapshotSim(sim: Sim): SimSnap {
       lin: b.dynamic ? { ...b.rb.linvel() } : { x: 0, y: 0, z: 0 }, ang: b.dynamic ? { ...b.rb.angvel() } : { x: 0, y: 0, z: 0 },
       dynamic: b.dynamic, kind: b.kind, name: b.name, tags: [...b.tags],
       flags: (b.anchorBottom ? 1 : 0) | (b.noSplit ? 2 : 0) | (b.indestructible ? 4 : 0) | (b.impactProof ? 8 : 0) | (b.noFracture ? 16 : 0),
-      keepIndex: b.keepIndex, initialCount: b.initialCount, createdTick: b.createdTick, user: plainUser(b.user),
+      keepIndex: b.keepIndex, initialCount: b.initialCount, createdTick: b.createdTick, user: plainUser(b.user), massScale: b.massScale,
     });
   }
   return { tick: sim.tick, rng: sim.rng.state, nextId: sim.peekNextId(), bodies };
@@ -68,7 +69,7 @@ export function snapshotSim(sim: Sim): SimSnap {
 export function restoreSim(snap: SimSnap, sim: Sim): void {
   for (const s of snap.bodies) {
     const grid = new VoxelGrid(s.sx, s.sy, s.sz, rleDecode(s.rle, s.sx * s.sy * s.sz));
-    const b = sim.addBody(grid, s.pos, { dynamic: s.dynamic, kind: s.kind, rot: s.rot, linvel: s.lin, angvel: s.ang, name: s.name, tags: s.tags, id: s.id });
+    const b = sim.addBody(grid, s.pos, { dynamic: s.dynamic, kind: s.kind, rot: s.rot, linvel: s.lin, angvel: s.ang, name: s.name, tags: s.tags, id: s.id, massScale: s.massScale ?? 1 });
     b.anchorBottom = !!(s.flags & 1); b.noSplit = !!(s.flags & 2); b.indestructible = !!(s.flags & 4); b.impactProof = !!(s.flags & 8); b.noFracture = !!(s.flags & 16);
     b.keepIndex = s.keepIndex; b.initialCount = s.initialCount; b.createdTick = s.createdTick;
     Object.assign(b.user, s.user);

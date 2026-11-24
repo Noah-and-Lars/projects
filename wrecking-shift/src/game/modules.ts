@@ -7,6 +7,7 @@ import { createWaterModule } from './waterModule';
 import { createWeatherModule } from './weatherModule';
 import { MissionModule } from './missionModule';
 import { UiModule } from './uiModule';
+import { vehicleModule } from './vehicleModule';
 
 /**
  * Module registry. Each feature adds ONE import and ONE entry here.
@@ -19,6 +20,7 @@ export function createModules(): GameModule[] {
     new ToolsModule(),
     fireModule(),
     createAudioModule(),
+    vehicleModule(),
     new MissionModule(),
     createQuicksaveModule(),
     // keep the UI last: it reads state the other modules produced this frame (camera overrides, prompts)

@@ -1,4 +1,5 @@
 import { assert, openGame, serve, shot } from './harness.mjs';
+import { vehicleTests } from './vehicle.mjs';
 
 const { srv, url } = await serve();
 let failed = 0;
@@ -39,6 +40,7 @@ const { runToolTests } = await import('./tools.mjs');
 await runToolTests(url, test);
 // heist framework / HUD / menus (tests/e2e/mission.mjs)
 failed += await (await import('./mission.mjs')).default(url);
+await vehicleTests(url, test);
 
 srv.close();
 if (failed) { console.log(failed + ' e2e test(s) failed'); process.exit(1); }

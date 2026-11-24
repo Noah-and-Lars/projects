@@ -1,5 +1,6 @@
 import { bricks, box, clear, cylinderY, flat, gableRoofX, planks, shaded, shell, sphere, windowX, windowZ } from '../build';
 import { MAT, pal } from '../materials';
+import { hatchback, van } from '../prefabs/vehicles';
 import type { Sim } from '../sim';
 import { VoxelGrid } from '../voxels';
 import type { LevelDef, LevelInfo } from './types';
@@ -109,6 +110,9 @@ export const testYard: LevelDef = {
     crate(sim, 0.4, 0.9, -4);
     barrel(sim, 10, 0.25, 0);
     barrel(sim, 3, 0.05, 2);
+    // vehicles: the escape van faces the back of the house, the hatchback parked by the tree
+    van(sim, -2.4, 0, 9, 0);
+    hatchback(sim, -15, 0, 6, 0.4);
     return {
       name: 'Test Yard',
       spawn: { x: 0, y: 0.05, z: 4 },
