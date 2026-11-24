@@ -41,6 +41,8 @@ export interface CarveOptions {
   scorch?: number;
   /** bodies to ignore */
   ignore?: VoxelBody | null;
+  /** only carve bodies passing this test */
+  filter?: (b: VoxelBody) => boolean;
   /** roughness of the hole edge 0..1 (default 0.25) */
   rough?: number;
   /** tool / cause label carried on the event */
@@ -121,6 +123,10 @@ export class Sim {
   onExplosion: ((pos: V3, size: number) => void)[] = [];
   /** the player character, if any (set by Player) */
   player: { eye: V3; damage(amount: number, cause?: string): void; vel: V3 } | null = null;
+  /** collisions damage voxels (falling debris breaks, heavy things crush) */
+  impactDamage = true;
+  /** minimum velocity change (m/s) in one step for a collision to do damage */
+  impactMinDv = 2.2;
   /** contact force threshold reporting */
   impactThreshold = 4000;
 
@@ -298,7 +304,7 @@ export class Sim {
     const cand = this.bodiesNear(center, rMax + sc);
     const seedBase = this.tick * 7919;
     for (const body of cand) {
-      if (body === opts.ignore || body.indestructible) continue;
+      if (body === opts.ignore || body.indestructible || (opts.filter && !opts.filter(body))) continue;
       const g = body.grid;
       const lc = body.toLocal(center);
       const rv = (rMax + sc) / VOXEL + 1;
@@ -498,7 +504,7 @@ export class Sim {
       if (fall <= 0) continue;
       const dirn = dist > 1e-3 ? vscale(d, 1 / dist) : { x: 0, y: 1, z: 0 };
       // impulse: capped delta-v so small debris flies and heavy things get shoved
-      const m = b.rb.mass();
+      const m = b.mass;
       const dv = Math.min(22, (size * 900 * fall) / Math.max(m, 8)) * (0.5 + 0.5 * fall) + 3 * fall;
       const up = 0.35;
       b.rb.wakeUp();
@@ -546,18 +552,51 @@ export class Sim {
     this.flushChain();
     this.processEdits();
     this.world.step(this.events);
+    let impacts: { pos: V3; J: number; dv: number }[] | null = null;
     this.events.drainContactForceEvents((ev) => {
       const a = this.byCollider.get(ev.collider1()) ?? null;
       const b = this.byCollider.get(ev.collider2()) ?? null;
       const f = ev.maxForceMagnitude();
       const src = a?.dynamic ? a : b;
       if (!src) return;
-      this.out.push({ type: 'impact', pos: src.rb.worldCom(), force: f, a, b });
+      let pos: V3 = src.rb.worldCom();
+      if (a && b && this.impactDamage && a.kind !== 'vehicle' && b.kind !== 'vehicle') {
+        const ma = a.dynamic ? a.mass : Infinity, mb = b.dynamic ? b.mass : Infinity;
+        const J = f * DT;
+        const dv = J / Math.max(Math.min(ma, mb), 1);
+        if (dv > this.impactMinDv) {
+          // contact point estimate: from the lighter body's centre of mass along the force direction onto the other body
+          const light = ma <= mb ? a : b, other = light === a ? b : a;
+          const d = ev.maxForceDirection();
+          const o = light.rb.worldCom();
+          const only = (x: VoxelBody) => x === other;
+          const h1 = this.raycast(o, d, light.radius * 2 + 0.5, null, only);
+          const h2 = this.raycast(o, { x: -d.x, y: -d.y, z: -d.z }, light.radius * 2 + 0.5, null, only);
+          const h = h1 && h2 ? (h1.dist < h2.dist ? h1 : h2) : h1 ?? h2;
+          if (h) { pos = h.point; (impacts ??= []).push({ pos, J, dv }); }
+        }
+      }
+      this.out.push({ type: 'impact', pos, force: f, a, b });
     });
+    if (impacts) this.applyImpacts(impacts);
     this.events.drainCollisionEvents(() => {});
     this.tick++;
     this.time = this.tick * DT;
     if (this.tick % 30 === 0) this.housekeeping();
+  }
+
+  /** hard landings / collisions chip and crack what they hit */
+  private applyImpacts(impacts: { pos: V3; J: number; dv: number }[]): void {
+    impacts.sort((p, q) => q.J * q.dv - p.J * p.dv);
+    const n = Math.min(impacts.length, 5);
+    for (let i = 0; i < n; i++) {
+      const im = impacts[i];
+      const E = 0.5 * im.J * im.dv; // joules-ish
+      const rSoft = Math.min(0.7, Math.max(0.08, 0.1 * Math.cbrt(E / 500)));
+      const rMed = E > 3000 ? rSoft * 0.55 : 0;
+      const rHard = E > 60000 ? rSoft * 0.25 : 0;
+      this.carve(im.pos, rSoft, rMed, rHard, { cause: 'impact', fracture: 0.3, filter: notImpactProof });
+    }
   }
 
   private housekeeping(): void {
@@ -605,6 +644,8 @@ export function isCrack(x: number, y: number, z: number, c: number, s: number): 
   const id = cellId(x, y, z, c, s);
   return id !== cellId(x + 1, y, z, c, s) || id !== cellId(x, y + 1, z, c, s) || id !== cellId(x, y, z + 1, c, s);
 }
+
+const notImpactProof = (b: VoxelBody) => !b.impactProof;
 
 function firstPal(g: VoxelGrid): number {
   for (let i = 0; i < g.data.length; i++) if (g.data[i]) return g.data[i];

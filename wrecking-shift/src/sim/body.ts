@@ -24,6 +24,8 @@ export class VoxelBody {
   keepIndex = -1;
   /** cannot be carved at all */
   indestructible = false;
+  /** not damaged by collisions (terrain, mission items) */
+  impactProof = false;
   /** carve plain holes only (terrain) */
   noFracture = false;
   /** free-form tags, e.g. 'target', 'valuable', 'alarm' */

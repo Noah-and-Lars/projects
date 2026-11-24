@@ -12,6 +12,7 @@ export function groundTile(sim: Sim, wx: number, wz: number, nx = 256, nz = 256,
   g.fill(0, 7, 0, nx, 8, nz, shaded(top, 2, 3));
   const b = sim.addBody(g, { x: wx, y: -0.8, z: wz }, { name: 'ground' });
   b.noFracture = true;
+  b.impactProof = true;
   return b;
 }
 
