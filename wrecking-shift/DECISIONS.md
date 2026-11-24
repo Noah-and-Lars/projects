@@ -44,3 +44,5 @@
   reach the rest.
 - View-model tool-switch animation and the muzzle flash run on sim time, not frame time, so the rarely rendered headless
   test frames show the settled pose.
+- **Optional tools**: rifle (6 rounds, range 120 m, carve 0.17/0.12/0, passes through up to 4 soft/medium surfaces, hard
+  material stops it) and leaf blower (unlimited, 6 m cone, push 30 m/s² scaled by min(1, 25 kg / mass), mostly horizontal).
