@@ -30,12 +30,23 @@ window.GAMES = [
     tagline: 'Build an old car from parts, then drive an endless desert road. Scavenge, survive, convoy with friends. Beta.',
     description: 'A road-trip survival game. Build an old car from parts in a junk garage, then drive an endless desert road, scavenging places and fighting off squatters, raiders and coyotes. Play solo or convoy online with up to 4 friends in one car.',
     controls: 'Keyboard and mouse, gamepad or steering wheel',
-    keys: [['W A S D', 'Walk · drive'], ['Mouse', 'Look'], ['E', 'Use · hold for tools · drag doors'], ['F', 'Get in / out'], ['Hold I', 'Start the engine'], ['Space', 'Handbrake'], ['L / K / R', 'Lights / wipers / radio'], ['Hold R', 'Take a part off · weld'], ['Tab', 'Pockets'], ['B', 'Craft'], ['Z', 'Sleep in the car'], ['Esc', 'Pause']],
+    keys: [['W A S D', 'Walk · drive'], ['Mouse', 'Look'], ['E', 'Use · hold for tools · drag doors'], ['F', 'Get in / out'], ['Hold I', 'Start the engine'], ['Space', 'Handbrake'], ['L / K / R', 'Headlights / wipers / radio'], ['Click (empty hands)', 'Punch'], ['Hold U', 'Rub your eyes'], ['Hold R', 'Take a part off · weld'], ['Tab', 'Pockets'], ['B', 'Craft'], ['Z', 'Sleep in the car'], ['Esc', 'Pause']],
     path: 'mile-zero/index.html',
     thumb: 'mile-zero/thumb.jpg',
     added: '2026-11-23T08:55:00+11:00',
-    updated: '2026-11-23T13:09:33+11:00',
-    stat() { const s = readSave('milezero.save.v1', true); if (!s || !s.best || !(s.best.km > 0)) return null; return 'Best ' + s.best.km + ' km' + (s.runs > 1 ? ' · ' + s.runs + ' runs' : ''); },
+    updated: '2026-11-24T12:30:00+11:00',
+    // 1.3: separate solo and convoy bests (the game's Furthest driven board reads this line; a convoy's code groups its crew)
+    stat() {
+      const s = readSave('milezero.save.v1', true); if (!s) return null;
+      let solo = s.bestSolo, cv = s.bestConvoy;
+      if (!solo && !cv && s.best) { if (s.best.crew && s.best.crew.length > 1) cv = s.best; else solo = s.best; }
+      const parts = [];
+      if (solo && solo.km > 0) parts.push('Solo ' + solo.km + ' km');
+      if (cv && cv.km > 0) parts.push('Convoy ' + cv.km + ' km' + (cv.code && /^[A-Z0-9]{3,8}$/i.test(cv.code) ? ' #' + String(cv.code).toUpperCase() : ''));
+      if (!parts.length) return null;
+      const line = parts.join(' · ');
+      return s.runs > 1 && line.length < 48 ? line + ' · ' + s.runs + ' runs' : line;
+    },
   },
   {
     id: 'closing-time',
@@ -412,6 +423,8 @@ window.COMING_SOON = [
 ];
 
 window.NEWS = [
+  { date: '2026-11-24', game: 'mile-zero', imgs: ['mile-zero/news/1.3-character.jpg', 'mile-zero/news/1.3-fists.jpg', 'mile-zero/news/1.3-menu.jpg'], headline: 'Mile Zero Beta 1.3: runs smoother, make your own character', text: "Mile Zero Beta 1.3: the game runs a lot smoother (far-off plants and rocks aren't drawn three times a frame any more) and Graphics now go Potato, Lowest, Very low, Low, Balanced, Medium and High, with everyone starting on Medium. New Character screen: 20 hairstyles, hair colours, faces, moustaches and beards, shirts and skin tones, and your convoy sees it. Fixed the car flipping or sinking into the ground when other players got in, and the car moves smoothly for passengers. Furthest driven has Solo and Convoy boards (a convoy shows as one group, Ann + Bob + Cat). Punch with empty hands, slower squatters, hold U to rub dust out of your eyes, the window washer scrubs off spray paint, no wrench needed to put parts on, L for headlights, a Go right sign at home, and a tidier menu (Convoy and More).",
+    post: "🚗 Mile Zero Beta 1.3 is out!\n\n⚡ Runs MUCH smoother, same graphics\n🥔 New graphics settings: Potato, Lowest, Very low, Low, Balanced, Medium, High\n🧔 Character screen: 20 hairstyles, faces, moustaches, shirts and more, and your convoy sees you\n🛠️ Fixed the car flipping / sinking when friends get in\n🏆 Solo + Convoy leaderboards\n👊 Punching, slower squatters, rub your eyes (hold U)\n🧽 The window washer scrubs off spray paint" },
   { date: '2026-11-23', href: 'app/', headline: 'The Arcade apps 1.0.2: they open the new link', text: "Every Arcade app now opens The Arcade's new link, playthearcade.github.io: Mac and Windows 1.0.2 (the update pops up by itself when you open the app), Android 1.0.2, Android TV 1.0.2a, Chromebook 1.0.2, Windows 7/8 and older Macs 1.0.2, and the Samsung TV app 1.0.2. Get the new Android, TV, Chromebook and Samsung versions from the app page and install them over the old one. Log in with your online Arcade account once and all your progress is there.",
     post: "\ud83d\udcf2 All The Arcade apps are now 1.0.2!\n\n\ud83c\udf10 They open the new link: playthearcade.github.io\n\ud83d\udcbb Mac + Windows: the update pops up by itself\n\ud83e\udd16 Android, Android TV, Chromebook, Samsung TV, Windows 7/8 and older Macs: download the new version from the app page\n\u2601\ufe0f Log in with your online account and all your progress is there" },
   { date: '2026-11-23', headline: 'The Arcade has a new link: playthearcade.github.io', repost: 1, text: "The Arcade is moving to a new link, playthearcade.github.io, because the old address has the owners' real names in it. Your account and data are safe: nothing has been leaked or stolen. Everything is the same there: every game, your account, friends, chat and Social. Please move over as soon as possible. Online accounts come with you, just log in on the new site. Local accounts: turn yours into an online account before Wednesday 25 November, or its progress will be deleted and won't be transferred to the new site.",
