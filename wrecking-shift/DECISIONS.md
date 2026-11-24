@@ -185,3 +185,40 @@
   - `pine`: the trunk now reaches the top tier. The upper tiers were joined only through the trunk and floated.
   - `tree`, `pine` and `rock` now drop noise islands that are not connected to the bottom layer (`dropFloating` in kit2.ts).
   - Fuel `tank`: the explosive core now starts on the bottom plate. It used to float 1 voxel above it.
+
+## Challenges, photo mode, time/weather presets, map edges
+- **Mode names / rules are original**: "Rubble Rush" (timed wrecking score) and "Snatch Sprint" (grab and clock out).
+  Rules live in `src/sim/challenge.ts` as a small state machine of their own, not as generated `MissionDef`s. The mission
+  clock only starts on an alarm and mission scoring is objective-based, so generated missions would need special cases.
+- **Rubble Rush stars** `[4000, 10000, 20000]` (big maps), `[2500, 6000, 12000]` (testyard). This is a guess based on a Node
+  experiment (12 explosions per size against buildings next to markers). Counted voxels per blast: about 300 (pipe bomb,
+  size 1.0), 750 (rocket, 1.3) and 600-730 (bomb, 1.6) on harbor/works; 650-2100 on the denser testyard. A 90 s run fits
+  roughly 20-30 charges, so 3 stars needs a busy, well-aimed run.
+- **Rubble ammo** = 3x the base max ammo (upgrades ignored, all tools unlocked, finite ammo). Snatch gets 2x.
+  The score counts every `sim.onRemoved` on `world` / `prop` bodies, including the 500 warm-up voxels and voxels that
+  burn away. Pieces of a collapse that turn into debris only count when they are broken directly (the spec says no debris).
+- **Snatch Sprint scoring** (my design): 100 per crate + 5 per whole second left when you clock out. You clock out with E
+  at the escape marker, or automatically when no crates are left and you stand there. If the clock runs out you get half
+  the crate points and no time bonus. Dying = 0. Stars `[300, 700, 1200]`.
+- **Crate spots**: candidates sit on rings of 0/4/8/12 m around every marker except `escape`/`heli_start`. Each one is
+  dropped to the floor from 1.6 m above the marker height and kept only if it lands on the same storey (within 1.2 m of
+  the marker height), the start point is not inside solid, there is 1 m of head room, no drop-off within 0.3 m, and it is
+  above water. A 6 m grid at spawn height is the fallback (testyard has no usable markers). Spots are picked greedily from a
+  seeded shuffle with 8 m horizontal spacing. Spacing drops to 5.3 / 3.2 m only when there are not enough candidates.
+  Spots stay 6 m away from the escape point. Crates are small dynamic props, so they can be knocked around or blown into
+  the water, which just makes them harder to get.
+- **Quicksave is disabled during challenges** (score attack; a restore would also drop the challenge state).
+- **Mission time of day was never applied**: MissionModule wrote `level.sky` after `renderer.setLevel` had already read
+  it. `applyLook()` now calls `renderer.setTimeOfDay` and `game.ext.weather.set` for `MissionDef.timeOfDay` / `weather`.
+- **Time/weather choice** is kept in memory only (not saved) and defaults to the map's own look ("Map"). Sunset and
+  overcast are labelled "Dusk" and "Grey" so the segmented buttons stay short at 640 px.
+- **Flashlight**: SpotLight on the camera, intensity 22, range 26 m, decay 1.6, no shadow map. It is created on the
+  first toggle and then stays in the scene at intensity 0 when off, because changing the number of lights recompiles
+  every material (three.js light-count defines). It gets no traced shadows, so it lights the far side of thin walls a bit.
+- **Photo mode** raises the quality tier from medium to high (never low to high, which rebuilds the occupancy volumes) and
+  sets the resolution scale to 1; both are restored on exit. Losing pointer lock in photo mode exits it, and the UI then
+  shows the pause menu as usual. Without pointer lock you look around by dragging with a mouse button or with the arrow keys.
+- **Map edge**: fog far = min(preset far, 2 x half-extent + 130 m). The backdrop ring reaches 235 m beyond the bounds, so
+  its rim is always fogged out. Edge heights come from downward rays on `terrain`-tagged bodies (any static body when a
+  level has no terrain). The soft boundary holds the player 1 m inside the bounds (teleport that keeps vertical speed) and
+  shows "Turn back" within 4 m. A vehicle being driven loses its outward velocity and gets a 1.5 m/s push back.

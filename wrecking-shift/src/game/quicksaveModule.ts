@@ -4,12 +4,12 @@ import type { Game, GameModule } from './game';
 export function createQuicksaveModule(): GameModule {
   const allowed = (game: Game) => {
     const m = game.ext.mission?.current;
-    return !game.player.dead && (!m || m.canQuicksave());
+    return !game.player.dead && (!m || m.canQuicksave()) && !game.ext.challenge?.active;
   };
   return {
     init(game) {
       game.ext.quicksave = {
-        has: () => game.hasQuicksave(),
+        has: () => !game.ext.challenge?.active && game.hasQuicksave(),
         canSave: () => allowed(game),
         save: () => {
           if (!allowed(game)) { game.ext.hud?.toast?.('Quicksave locked — alarm is running', 'warn'); return false; }
@@ -18,6 +18,7 @@ export function createQuicksaveModule(): GameModule {
           return ok;
         },
         load: () => {
+          if (game.ext.challenge?.active) { game.ext.hud?.toast?.('No quickload during a challenge', 'warn'); return false; }
           const ok = game.quickload();
           game.ext.hud?.toast?.(ok ? 'Quickloaded' : 'No quicksave yet', ok ? 'info' : 'warn');
           return ok;

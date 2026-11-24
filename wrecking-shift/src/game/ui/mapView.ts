@@ -83,6 +83,11 @@ export class MapView {
       mk(m.escapePos(), `<i class="esc${m.escapeOpen ? '' : ' closed'}"></i>`, m.escapeOpen ? 'Escape — open' : 'Escape');
       if (m.heli) mk(m.heli.pos, '<i class="heli"></i>', 'Security', `transform:translate(-50%,-50%) rotate(${(-m.heli.yaw).toFixed(3)}rad)`);
     }
+    const ch = game.ext.challenge?.current;
+    if (ch) {
+      for (const k of ch.openCrates()) mk(k.pos, '<i class="req"></i>');
+      if (ch.mode === 'snatch') mk(ch.escapePos(), `<i class="esc${ch.running && ch.cratesTaken > 0 ? '' : ' closed'}"></i>`, 'Clock out');
+    }
     const p = game.player;
     const s = proj(p.pos);
     html += `<div class="ws-mk" style="left:${s.x.toFixed(1)}px;top:${s.y.toFixed(1)}px;transform:translate(-50%,-50%) rotate(${(-p.yaw).toFixed(3)}rad)"><i class="me"></i></div>`;
