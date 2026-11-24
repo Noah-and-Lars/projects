@@ -232,3 +232,6 @@
   .ws-split, .ws-grid2 { grid-template-columns: 1fr; }
   .ws-keys { grid-template-columns: 1fr; }
 }
+
+/* the vehicle module draws its own speed/health readout */
+.ws-speedo { display: none !important; }

@@ -101,6 +101,7 @@ export function createPhotoModule(): GameModule {
   }
 
   function canToggle(): boolean {
+    if (game.loading) return false;
     const st = game.ext.ui?.state?.();
     if (!st) return true;
     if (st.session !== 'play') return false;
@@ -136,7 +137,7 @@ export function createPhotoModule(): GameModule {
       // losing the lock (browser Esc) leaves photo mode first; the UI then shows the pause menu as usual
       document.addEventListener('pointerlockchange', () => { if (active && !document.pointerLockElement && game.input.locked === false && !game.testMode) exit(); });
     },
-    onLevelLoaded() { if (active) { active = false; saved = null; document.body.classList.remove('ws-photo-on'); showHint(); } },
+    onLevelLoaded() { if (active) exit(); },
     frameUpdate(g, dt) {
       if (!active) return;
       const inp = g.input;

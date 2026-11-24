@@ -162,6 +162,14 @@ export class Sim {
     this.rng = new Rng(seed);
   }
 
+  /** free the WASM physics world (call once nothing will touch this sim again) */
+  disposed = false;
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    try { this.events.free(); this.world.free(); } catch { /* already gone */ }
+  }
+
   peekNextId(): number { return this.nextId; }
   setNextId(n: number): void { this.nextId = Math.max(this.nextId, n); }
 

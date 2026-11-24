@@ -17,7 +17,9 @@ export class Input {
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
       this.keys.add(e.code); this.pressed.add(e.code);
-      if (this.locked && ['Tab', 'Space', 'KeyQ', 'KeyE', 'F5', 'F9'].includes(e.code)) e.preventDefault();
+      if (this.locked && ['Tab', 'Space', 'KeyQ', 'KeyE'].includes(e.code)) e.preventDefault();
+      // F5 would reload the page and lose the run (it is quicksave); never let the browser have it or F9
+      if (e.code === 'F5' || e.code === 'F9') e.preventDefault();
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => { this.keys.clear(); this.buttons = 0; });

@@ -11,8 +11,9 @@ export function createWaterModule(): GameModule {
   return {
     init() {
       tint = document.createElement('div');
-      tint.style.cssText = 'position:fixed;inset:0;pointer-events:none;background:rgba(18,70,96,.55);backdrop-filter:blur(2px);display:none;z-index:1';
-      document.body.appendChild(tint);
+      tint.style.cssText = 'position:fixed;inset:0;pointer-events:none;background:rgba(18,70,96,.55);backdrop-filter:blur(2px);display:none';
+      const ui = document.getElementById('ui');
+      if (ui) document.body.insertBefore(tint, ui); else document.body.appendChild(tint);
     },
     onLevelLoaded(game: Game) {
       if (water) { game.renderer.scene.remove(water.mesh); water.dispose(); water = null; }

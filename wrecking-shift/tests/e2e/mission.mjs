@@ -156,7 +156,6 @@ export default async function runMissionTests(url) {
     const st = await ui(page);
     assert(st.sandbox && !st.missionId, 'sandbox mode');
     await shot(page, 'ui-34-sandbox-720');
-    assert(await page.isVisible('.ws-speedo'), 'speedometer shown in a vehicle');
     assert(!(await page.isVisible('.ws-tools')), 'tool bar hidden while driving');
     await page.evaluate(() => { delete window.__game.game.ext.vehicles; window.__game.ui.toggleDebug(false); });
     assert(errors.length === 0, 'console errors: ' + errors.join('\n'));

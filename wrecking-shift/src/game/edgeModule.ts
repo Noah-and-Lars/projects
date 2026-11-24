@@ -69,7 +69,7 @@ export function createEdgeModule(): GameModule {
       // fog: keep the preset's look but never let the far fog line sit beyond the backdrop rim
       const fog = game.renderer.scene.fog as THREE.Fog | null;
       const preset = SKY_PRESETS[game.renderer.timeOfDay];
-      if (fog && preset) {
+      if (fog && preset && !game.ext.ui?.state?.().mapOpen) {
         const f = fogForBounds(game.level.bounds, preset);
         if (fog.far !== f.far || fog.near !== f.near) { fog.far = f.far; fog.near = f.near; }
       }

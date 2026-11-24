@@ -37,6 +37,7 @@ export function createAudioModule(): GameModule {
     init(game) {
       game.ext.audio = api;
       engine.installGestureHooks(window);
+      document.addEventListener('visibilitychange', () => { if (document.hidden) engine.suspend(); else engine.resume(); });
       syncSettings(game);
     },
     onLevelLoaded(game) {

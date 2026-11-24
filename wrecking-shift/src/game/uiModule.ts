@@ -141,7 +141,8 @@ export class UiModule implements GameModule, MenuHost {
   private applyMenuState(open: boolean): void {
     const g = this.game, inp = g.input;
     g.paused = open;
-    g.controlsEnabled = !open;
+    const ended = !!(g.ext.challenge?.current?.ended || g.ext.mission?.current?.ended);
+    g.controlsEnabled = !open && !ended;
     inp.allowLock = !open;
     if (open) inp.exitLock();
     else if (!g.testMode) inp.requestLock();
@@ -198,6 +199,7 @@ export class UiModule implements GameModule, MenuHost {
     this.prevStride = 0;
     this.hud.reset();
     game.viewBob.y = 0; game.viewBob.roll = 0;
+    if (!this.menus.name) game.controlsEnabled = true; // e.g. quickload during the end-of-mission delay
   }
 
   fixedUpdate(_game: Game): void {

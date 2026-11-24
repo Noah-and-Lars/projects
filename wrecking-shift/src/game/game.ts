@@ -141,6 +141,8 @@ export class Game {
 
   /** create a fresh Sim + systems + player; `fill` builds the level or restores a snapshot */
   private setupWorld(fill: (sim: Sim) => void, after?: () => void): void {
+    const oldSim: Sim | undefined = this.sim;
+    this.pendingKeys.clear(); this.pendingInteract = false; this.pendingScroll = 0; this.hitStop = 0; this.deadTicks = 0;
     this.sim = new Sim(this.seed);
     this.fire = new FireSystem(this.sim);
     this.sim.systems.push(this.fire);
@@ -169,7 +171,10 @@ export class Game {
     this.sim.step();
     this.sim.drainEvents();
     this.renderer.render(this.sim, 0, !this.deferMesh);
+    // the previous level's physics world lives in WASM memory and is not garbage collected
+    if (oldSim && oldSim !== this.sim) oldSim.dispose();
   }
+  private deadTicks = 0;
 
   /** single-slot quicksave (in memory). Returns false when nothing was saved. */
   private slot: any = null;
@@ -243,6 +248,15 @@ export class Game {
     }
     this.belt.update(ctx, ti, ctl && this.toolsEnabled && !p.seated);
 
+    // outside missions and challenges death is not the end: get back up at the spawn
+    if (p.dead && !this.ext.mission?.current && !this.ext.challenge?.current) {
+      if (++this.deadTicks === 1) this.ext.hud?.toast?.('Knocked out — back on your feet in a moment', 'warn');
+      if (this.deadTicks > 150) {
+        this.deadTicks = 0;
+        if (p.seated) this.ext.vehicles?.exit?.();
+        p.revive(); p.teleport(this.level.spawn); p.yaw = this.level.spawnYaw;
+      }
+    } else this.deadTicks = 0;
     for (const m of this.modules) m.fixedUpdate?.(this);
     this.pendingKeys.clear();
     this.sim.step();
@@ -295,6 +309,7 @@ export class Game {
       return;
     }
     this.gatherInput();
+    if (this.paused) { this.pendingKeys.clear(); this.pendingInteract = false; this.pendingScroll = 0; }
     if (this.hitStop > 0) this.hitStop -= dt; // heavy impacts freeze the world for a few frames
     else if (!this.paused) {
       this.acc += dt;

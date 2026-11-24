@@ -12,7 +12,11 @@ export function createQuicksaveModule(): GameModule {
         has: () => !game.ext.challenge?.active && game.hasQuicksave(),
         canSave: () => allowed(game),
         save: () => {
-          if (!allowed(game)) { game.ext.hud?.toast?.('Quicksave locked — alarm is running', 'warn'); return false; }
+          if (!allowed(game)) {
+            const why = game.player.dead ? 'you are down' : game.ext.challenge?.current ? 'not available in challenges' : 'alarm is running';
+            game.ext.hud?.toast?.('Quicksave locked — ' + why, 'warn');
+            return false;
+          }
           const ok = game.quicksave();
           if (ok) game.ext.hud?.toast?.('Quicksaved', 'info');
           return ok;

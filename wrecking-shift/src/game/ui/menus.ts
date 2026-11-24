@@ -222,7 +222,7 @@ export class Menus {
     const { api, game } = this.host;
     const m = api.current;
     const qs = game.ext.quicksave;
-    const canSave = !!qs?.save && !!m && m.canQuicksave();
+    const canSave = !!qs?.save && (typeof qs.canSave === 'function' ? !!qs.canSave() : !!m && m.canQuicksave());
     const canLoad = !!qs?.load && (typeof qs.has === 'function' ? !!qs.has() : true) && (!m || m.canQuicksave() || m.ended || m.phase === 'alarm');
     const ch = game.ext.challenge?.current;
     const title = m ? esc(m.def.title) : ch ? esc(ch.def.title) : api.sandbox ? 'Sandbox' : 'Paused';

@@ -302,7 +302,7 @@ export class VehicleModule implements GameModule {
     if (typeof document === 'undefined') return;
     if (!v) { if (this.hud) this.hud.style.display = 'none'; return; }
     if (!this.hud) {
-      const ui = document.getElementById('ui') ?? document.body;
+      const ui: HTMLElement = this.game.ext.hud?.root ?? document.getElementById('ui') ?? document.body;
       const el = document.createElement('div');
       el.id = 'vehicle-hud';
       el.style.cssText = 'position:absolute;right:18px;bottom:16px;font:600 13px/1.35 system-ui,sans-serif;color:#fff;' +

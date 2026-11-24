@@ -116,6 +116,10 @@ export class AudioEngine {
     }
   }
 
+  /** silence everything while the tab is hidden (loops would otherwise keep sounding) */
+  suspend(): void {
+    try { if (this.ctx && this.ctx.state === 'running') void this.ctx.suspend().catch(() => {}); } catch { /* ignore */ }
+  }
   resume(): void {
     try { if (this.ctx && this.ctx.state === 'suspended') void this.ctx.resume().catch(() => {}); } catch { /* ignore */ }
   }
