@@ -4,8 +4,9 @@ import type { MissionApi } from '../missionModule';
 import { RANKS, TOOL_NAMES, UPGRADES, type Progress, type SettingsData } from '../progress';
 import { isRequired, maxScore, pointsOf, type MissionDef } from '../../sim/mission';
 import { el, esc, money } from './dom';
+import { atmosControls, chResultHtml, challengesHtml, handleExtraClick } from './challengeUi';
 
-export type MenuName = 'main' | 'missions' | 'briefing' | 'sandbox' | 'shop' | 'settings' | 'controls' | 'pause' | 'success' | 'fail';
+export type MenuName = 'main' | 'missions' | 'briefing' | 'sandbox' | 'shop' | 'settings' | 'controls' | 'pause' | 'success' | 'fail' | 'challenges' | 'chresult';
 
 /** what the menus need from the UI module */
 export interface MenuHost {
@@ -25,7 +26,7 @@ export interface MenuHost {
 const CONTROLS: [string, string][] = [
   ['W A S D', 'Move'], ['Mouse', 'Look'], ['Space', 'Jump'], ['Shift', 'Sprint'], ['Ctrl / C', 'Crouch'],
   ['LMB', 'Use tool'], ['RMB', 'Grab / alt fire'], ['1 – 0 / Q / wheel', 'Select tool'], ['E', 'Take / interact / enter'],
-  ['Tab', 'Site map'], ['Esc', 'Pause'], ['F3', 'Debug info'],
+  ['Tab', 'Site map'], ['Esc', 'Pause'], ['F', 'Flashlight'], ['P', 'Photo mode'], ['F3', 'Debug info'],
 ];
 
 /** Full-screen menus (title, job board, briefing, shop, settings, pause, end screens). Plain DOM. */
@@ -65,6 +66,8 @@ export class Menus {
       case 'pause': return this.pauseHtml();
       case 'success': return this.successHtml();
       case 'fail': return this.failHtml();
+      case 'challenges': return challengesHtml(this.host);
+      case 'chresult': return chResultHtml(this.host);
     }
   }
 
@@ -92,6 +95,7 @@ export class Menus {
       `<div class="ws-tagline">Freelance demolition · odd jobs · no questions · Gullmouth Harbour</div>` +
       `<nav class="ws-nav">` +
       `<button class="ws-btn pri" data-act="play">${cont ? 'Continue' : 'Play'} — job board</button>` +
+      `<button class="ws-btn" data-act="open" data-id="challenges">Challenges</button>` +
       `<button class="ws-btn" data-act="open" data-id="sandbox">Sandbox</button>` +
       `<button class="ws-btn" data-act="open" data-id="shop">Tools &amp; upgrades</button>` +
       `<button class="ws-btn" data-act="open" data-id="settings">Settings</button>` +
@@ -155,7 +159,7 @@ export class Menus {
 
   private sandboxHtml(): string {
     const cards = Object.values(LEVELS).map((l) => `<button class="ws-card" data-act="sbx" data-id="${esc(l.id)}"><div class="t"><span>${esc(l.title)}</span></div><div class="s">All tools · infinite ammo · no alarms</div></button>`).join('');
-    return this.win('Sandbox', `<p class="ws-note">Free demolition. Upgrades you bought apply here too.</p><div class="ws-list">${cards}</div>`,
+    return this.win('Sandbox', `<p class="ws-note">Free demolition. Upgrades you bought apply here too.</p>${atmosControls(this.host.game)}<div class="ws-list">${cards}</div>`,
       '<button class="ws-btn" data-act="back">Back</button>', { cls: 'mid', tag: 'Free shift' });
   }
 
@@ -220,17 +224,20 @@ export class Menus {
     const qs = game.ext.quicksave;
     const canSave = !!qs?.save && !!m && m.canQuicksave();
     const canLoad = !!qs?.load && (typeof qs.has === 'function' ? !!qs.has() : true) && (!m || m.canQuicksave() || m.ended || m.phase === 'alarm');
-    const title = m ? esc(m.def.title) : api.sandbox ? 'Sandbox' : 'Paused';
+    const ch = game.ext.challenge?.current;
+    const title = m ? esc(m.def.title) : ch ? esc(ch.def.title) : api.sandbox ? 'Sandbox' : 'Paused';
     const note = !m ? '' : !qs ? 'Quicksave is not available in this build.' : m.canQuicksave() ? 'Planning phase: quicksave available.' : 'Alarm tripped: quicksave locked until you restart.';
     return this.win(title, `<nav class="ws-nav" style="width:100%">` +
       `<button class="ws-btn pri" data-act="resume">Resume</button>` +
-      `<button class="ws-btn" data-act="restart">${m ? 'Restart job' : 'Restart'}</button>` +
+      `<button class="ws-btn" data-act="restart">${m ? 'Restart job' : ch ? 'Restart run' : 'Restart'}</button>` +
       `<button class="ws-btn" data-act="qsave"${canSave ? '' : ' disabled'}>Quicksave</button>` +
       `<button class="ws-btn" data-act="qload"${canLoad && qs ? '' : ' disabled'}>Quickload</button>` +
+      `<button class="ws-btn" data-act="photo">Photo mode (P)</button>` +
       `<button class="ws-btn" data-act="open" data-id="settings">Settings</button>` +
       `<button class="ws-btn" data-act="open" data-id="controls">Controls</button>` +
       `<button class="ws-btn" data-act="quit">Quit to title</button></nav>` +
-      (note ? `<p class="ws-note" style="margin:.6em 0 0">${note}</p>` : ''),
+      (note ? `<p class="ws-note" style="margin:.6em 0 0">${note}</p>` : '') +
+      (api.sandbox || ch ? atmosControls(game) : ''),
       '', { cls: 'narrow', tag: 'Paused', menuCls: 'light' });
   }
 
@@ -297,6 +304,7 @@ export class Menus {
       case 'buy': if (h.progress.buyUpgrade(id)) this.refresh(); break;
       case 'resume': h.close(); break;
       case 'restart': case 'retry': {
+        if (act === 'restart' && h.game.ext.challenge?.active) { h.game.ext.challenge.restart(); h.close(); break; }
         const id = h.api.def?.id ?? (act === 'retry' ? h.api.lastResult?.missionId : undefined);
         if (id) h.startMission(id);
         else { h.api.restart(); h.close(); }
@@ -307,6 +315,7 @@ export class Menus {
       case 'quit': case 'menu': h.quitToMenu(); break;
       case 'reset-settings': h.progress.settings.reset(); this.refresh(); break;
       case 'seg': h.progress.settings.set(t.dataset.key as any, t.dataset.val as any); this.refresh(); break;
+      default: handleExtraClick(h, act, t, () => this.refresh());
     }
   }
 

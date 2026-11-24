@@ -1,0 +1,53 @@
+/* Challenges, photo mode, time/weather pickers, edge warning. Builds on ui.css variables (.ws root). */
+
+/* ---------------------------------------------------------------- photo mode */
+body.ws-photo-on .ws-hud, body.ws-photo-on #crosshair, body.ws-photo-on .ws-map { display: none !important; }
+.ws-photo-hint { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); max-width: calc(100vw - 16px); width: max-content; text-align: center;
+  font-size: .68em; color: rgba(255,255,255,.72); background: rgba(0,0,0,.35); padding: .15em .7em; border-radius: 2px; line-height: 1.35; }
+.ws-photo-hint b { color: var(--hz); letter-spacing: .12em; margin-right: .4em; }
+
+/* ---------------------------------------------------------------- challenge HUD */
+.ws-chal { position: absolute; left: 10px; top: 10px; width: min(34vw, 260px); }
+.ws-chal h4 { margin: 0 0 .2em; font-size: .78em; color: var(--hz); text-transform: uppercase; letter-spacing: .12em; font-weight: 800; }
+.ws-chal .big { font-size: 2em; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.ws-chal .big small { font-size: .4em; color: var(--muted); letter-spacing: .1em; margin-left: .3em; font-weight: 700; }
+.ws-chal .row { display: flex; justify-content: space-between; gap: .6em; font-size: .78em; color: var(--muted); margin-top: .2em; }
+.ws-chal .row b { color: var(--text); }
+.ws-chal .stars { color: var(--hz); letter-spacing: .1em; }
+.ws-chal .stars .off { color: rgba(255,255,255,.22); }
+.ws-chal .go { margin-top: .3em; font-size: .8em; color: var(--green); font-weight: 700; }
+.ws-chal .warm { margin-top: .3em; font-size: .8em; color: var(--hz); }
+.ws-chclock { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); text-align: center; }
+.ws-chclock .clock { display: inline-flex; flex-direction: column; align-items: center; background: var(--panel); border: 2px solid var(--hz); padding: .1em .9em .2em; border-radius: 3px; }
+.ws-chclock .clock small { font-size: .7em; letter-spacing: .18em; font-weight: 700; color: var(--muted); }
+.ws-chclock .clock span { font-size: 2.2em; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+.ws-chclock.urgent .clock { border-color: var(--red); background: rgba(120, 10, 4, .88); }
+.ws-chclock .chip { display: inline-block; font-size: .75em; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); background: var(--panel); padding: .25em .7em; border-radius: 2px; }
+.ws-chclock .chip b { color: var(--hz); }
+
+/* ---------------------------------------------------------------- edge-of-map warning */
+.ws-edge { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); background: rgba(110, 12, 6, .85); border: 2px solid var(--red); color: #fff;
+  padding: .3em 1em; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; font-size: .95em; border-radius: 2px; white-space: nowrap; }
+
+/* ---------------------------------------------------------------- challenge menu */
+.ws-chgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .8em; }
+.ws-chgrid .ws-list { gap: .3em; }
+.ws-card .best { float: right; color: var(--hz); font-size: .85em; }
+.ws-rules { margin: .2em 0 .5em; padding-left: 1.1em; font-size: .85em; color: #d6dade; }
+.ws-rules li { margin: .12em 0; }
+.ws-stars { color: var(--hz); letter-spacing: .08em; }
+.ws-stars .off { color: rgba(255,255,255,.22); }
+.ws-atmos { display: grid; grid-template-columns: auto 1fr; gap: .35em .7em; align-items: center; font-size: .85em; margin: .3em 0; }
+.ws-atmos label { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: .85em; }
+.ws-atmos .ws-seg { flex-wrap: wrap; }
+.ws-atmos .ws-seg button { padding: .2em .55em; }
+.ws-bigscore { font-size: 2.6em; font-weight: 900; color: var(--hz); line-height: 1; font-variant-numeric: tabular-nums; }
+.ws-bigscore + .ws-stars { font-size: 1.6em; }
+
+@media (max-width: 560px) {
+  .ws-chgrid { grid-template-columns: 1fr; }
+}
+@media (max-height: 420px) {
+  .ws-chclock .clock span { font-size: 1.8em; }
+  .ws-chal .big { font-size: 1.6em; }
+}

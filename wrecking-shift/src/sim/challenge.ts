@@ -359,6 +359,14 @@ export class Challenge {
     return (p.x - c.x) ** 2 + (p.z - c.z) ** 2 <= ESCAPE_RADIUS * ESCAPE_RADIUS && Math.abs(p.y - c.y) < ESCAPE_RADIUS + 2;
   }
 
+  /** test / debug hook: let the clock run out on the next tick (starts it if needed) */
+  expireClock(): void {
+    if (this.ended) return;
+    this.clockStarted = true;
+    this.phase = 'running';
+    this.clockTicks = 1;
+  }
+
   /** give up (quit / restart from the pause menu): ends without a result being worth recording */
   abort(): void { if (!this.ended) this.finish('quit', 'Walked off the job.'); }
 

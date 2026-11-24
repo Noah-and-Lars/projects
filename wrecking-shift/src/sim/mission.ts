@@ -121,6 +121,8 @@ export interface MissionDef {
   tools?: { allow?: string[]; ammo?: Record<string, number> };
   /** presentation hint for the renderer (written to LevelInfo.sky) */
   timeOfDay?: 'day' | 'sunset' | 'night' | 'overcast';
+  /** presentation hint: falling rain / snow (written to LevelInfo.weather) */
+  weather?: 'rain' | 'snow';
   /** flat payment on success (added to valuables) and extra score */
   reward?: { cash?: number; score?: number };
   /** escape point override (default: body tagged 'escape' or marker 'escape', radius 3) */

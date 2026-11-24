@@ -131,7 +131,7 @@ export class MissionModule implements GameModule {
     if (data?.mission) {
       this.restore(data.mission);
       game.infiniteAmmo = false;
-      if (this.def?.timeOfDay) game.level.sky = this.def.timeOfDay;
+      this.applyLook(game);
     } else if (data?.sandbox) { this.sandbox = true; this.sandboxLevel = data.sandboxLevel; game.infiniteAmmo = true; }
   }
 
@@ -146,8 +146,8 @@ export class MissionModule implements GameModule {
     if (p?.mission) {
       const def = p.mission;
       def.setup?.(game.sim, game.level);
-      if (def.timeOfDay) game.level.sky = def.timeOfDay;
       this.def = def;
+      this.applyLook(game);
       this.mission = new Mission(def, { sim: game.sim, level: game.level, player: game.player, fireCount: () => game.fire.count() });
       game.infiniteAmmo = false;
       this.progress.applyToBelt(game.belt, this.baseAmmo, { mission: def });
@@ -159,6 +159,14 @@ export class MissionModule implements GameModule {
     }
     // free play (?level= / tests): belt left as the game built it
     game.ext.hud?.setPrompt(null, 0, 'mission');
+  }
+
+  /** mission look: time of day + weather (the renderer read level.sky before this module ran, so apply it directly) */
+  private applyLook(game: Game): void {
+    const def = this.def;
+    if (!def) return;
+    if (def.timeOfDay) { game.level.sky = def.timeOfDay; game.renderer.setTimeOfDay(def.timeOfDay); }
+    if (def.weather) { game.level.weather = def.weather; game.ext.weather?.set(def.weather); }
   }
 
   onEvents(_game: Game, events: { type: string; name?: string }[]): void {

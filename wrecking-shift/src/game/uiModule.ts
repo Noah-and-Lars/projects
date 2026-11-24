@@ -72,6 +72,8 @@ export class UiModule implements GameModule, MenuHost {
       setPrompt: (text: string | null, priority = 0, source = 'default') => hud.setPrompt(text, priority, source),
       toast: (html: string, kind?: any) => hud.toast(html, kind),
       get prompt() { return hud.currentPrompt(); },
+      /** HUD root element: other modules may add panels that hide with the HUD */
+      root: hud.root,
     };
     game.ext.ui = this.uiApi();
     this.api?.onEnd((r) => {
@@ -118,7 +120,7 @@ export class UiModule implements GameModule, MenuHost {
   open(name: MenuName, arg = ''): void {
     if (this.map.open) this.map.setOpen(this.game, false);
     if (name === 'main') { this.stack = []; this.session = 'menu'; }
-    if (name === 'success' || name === 'fail') this.stack = [];
+    if (name === 'success' || name === 'fail' || name === 'chresult') this.stack = [];
     this.stack.push({ name, arg });
     this.menus.render(name, arg);
     this.applyMenuState(true);
@@ -182,7 +184,7 @@ export class UiModule implements GameModule, MenuHost {
     if (e.code === 'Escape') {
       if (performance.now() - this.lockPauseAt < 250) return;
       const n = this.menus.name;
-      if (n) { if (n !== 'main' && n !== 'success' && n !== 'fail') this.back(); }
+      if (n) { if (n !== 'main' && n !== 'success' && n !== 'fail' && n !== 'chresult') this.back(); }
       else if (this.map.open) this.map.setOpen(this.game, false);
       else if (this.session === 'play' && this.endTimer < 0) this.open('pause');
     }
