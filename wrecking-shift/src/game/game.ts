@@ -8,6 +8,7 @@ import { restoreSim, snapshotSim } from '../sim/snapshot';
 import { ToolBelt, createBelt, emptyToolInput, type ToolContext, type ToolInput } from '../sim/tools';
 import { WaterSystem } from '../sim/water';
 import { Input } from './input';
+import { LoadingScreen } from './ui/loading';
 import { LEVELS } from './levels';
 
 /**
@@ -120,22 +121,12 @@ export class Game {
   loading: { title: string; phase: 'build' | 'mesh'; total: number } | null = null;
   private loadToken = 0;
   private deferMesh = false;
-  private loadEl: HTMLDivElement | null = null;
+  private readonly loadScreen = new LoadingScreen();
   private showLoading(frac: number): void {
-    if (!this.loadEl) {
-      const el = (this.loadEl = document.createElement('div'));
-      el.id = 'loading';
-      el.style.cssText = 'position:fixed;inset:0;z-index:50;background:#101418;color:#f2f2ee;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font:600 15px system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase';
-      el.innerHTML = '<div id="loading-title"></div><div style="width:min(60vw,420px);height:8px;background:#2a3038;border-radius:4px;overflow:hidden"><div id="loading-bar" style="height:100%;width:0;background:#f5c518;transition:width .15s"></div></div><div id="loading-note" style="font-weight:400;font-size:12px;opacity:.7;text-transform:none;letter-spacing:.02em"></div>';
-      document.body.appendChild(el);
-    }
     const l = this.loading;
-    this.loadEl.style.display = 'flex';
-    (this.loadEl.querySelector('#loading-title') as HTMLElement).textContent = l ? l.title : 'Loading';
-    (this.loadEl.querySelector('#loading-bar') as HTMLElement).style.width = Math.round(frac * 100) + '%';
-    (this.loadEl.querySelector('#loading-note') as HTMLElement).textContent = l?.phase === 'mesh' ? 'Laying bricks…' : 'Surveying the site…';
+    this.loadScreen.show(l ? l.title : 'Loading', frac, l?.phase === 'mesh' ? 'Laying bricks…' : 'Surveying the site…');
   }
-  private hideLoading(): void { if (this.loadEl) this.loadEl.style.display = 'none'; }
+  private hideLoading(): void { this.loadScreen.hide(); }
 
   private seed = 1234;
 

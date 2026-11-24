@@ -1,8 +1,9 @@
-import { bricks, box, clear, cylinderY, flat, gableRoofX, planks, shaded, shell, sphere, windowX, windowZ } from '../build';
+import { bricks, box, clear, flat, gableRoofX, planks, shaded, shell, windowX, windowZ } from '../build';
 import { MAT, pal } from '../materials';
 import { hatchback, van } from '../prefabs/vehicles';
 import type { Sim } from '../sim';
 import { VoxelGrid } from '../voxels';
+import { barrel, crate, tree } from './kit';
 import type { LevelDef, LevelInfo } from './types';
 
 /** ground tile with grass / dirt / bedrock layers; top surface at world y = 0 */
@@ -70,32 +71,6 @@ export function shed(sim: Sim, wx: number, wz: number) {
   return sim.addBody(g, { x: wx, y: 0, z: wz }, { name: 'shed' });
 }
 
-export function tree(sim: Sim, wx: number, wz: number, seed = 0) {
-  const g = new VoxelGrid(44, 70, 44);
-  cylinderY(g, 22, 22, 2.6, 0, 40, shaded(MAT.wood, 2, seed));
-  sphere(g, 22, 48, 22, 19, shaded(MAT.leaves, 2, seed), 0.45, seed);
-  cylinderY(g, 22, 22, 2.2, 30, 46, shaded(MAT.wood, 2, seed));
-  return sim.addBody(g, { x: wx - 2.2, y: 0, z: wz - 2.2 }, { name: 'tree' });
-}
-
-export function crate(sim: Sim, x: number, y: number, z: number, n = 8) {
-  const g = new VoxelGrid(n, n, n);
-  box(g, 0, 0, 0, n, n, n, planks(MAT.crate, 2, n));
-  shell(g, 0, 0, 0, n, n, n, 1, pal(MAT.wood, 0));
-  clear(g, 1, 1, 0, n - 1, n - 1, 1); box(g, 1, 1, 0, n - 1, n - 1, 1, planks(MAT.crate, 2, 3));
-  return sim.addBody(g, { x, y, z }, { dynamic: true, kind: 'prop', name: 'crate' });
-}
-
-export function barrel(sim: Sim, x: number, y: number, z: number) {
-  const g = new VoxelGrid(6, 9, 6);
-  cylinderY(g, 3, 3, 3, 0, 9, pal(MAT.explosive, 2));
-  box(g, 0, 2, 0, 6, 3, 6, (xx, yy, zz) => (g.get(xx, yy, zz) ? pal(MAT.explosive, 0) : 0));
-  box(g, 0, 6, 0, 6, 7, 6, (xx, yy, zz) => (g.get(xx, yy, zz) ? pal(MAT.explosive, 0) : 0));
-  const b = sim.addBody(g, { x, y, z }, { dynamic: true, kind: 'prop', name: 'barrel' });
-  b.tags.add('explosive');
-  return b;
-}
-
 export const testYard: LevelDef = {
   id: 'testyard',
   title: 'Test Yard',
@@ -103,8 +78,8 @@ export const testYard: LevelDef = {
     for (let i = -1; i <= 0; i++) for (let j = -1; j <= 0; j++) groundTile(sim, i * 25.6, j * 25.6);
     brickHouse(sim, -4, -14);
     shed(sim, 8, -2);
-    tree(sim, -9, 2, 4);
-    tree(sim, 3, 9, 7);
+    tree(sim, -9, 0, 2, 4);
+    tree(sim, 3, 0, 9, 7);
     crate(sim, 0, 0.05, -4);
     crate(sim, 0.9, 0.05, -4);
     crate(sim, 0.4, 0.9, -4);

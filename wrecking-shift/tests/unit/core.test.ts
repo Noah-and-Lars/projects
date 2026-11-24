@@ -95,7 +95,7 @@ describe('sim', () => {
   });
 
   it('explosive barrel chain-reacts when shot', async () => {
-    const { barrel } = await import('../../src/sim/levels/testyard');
+    const { barrel } = await import('../../src/sim/levels/kit');
     const sim = new Sim(3);
     slab(sim);
     const b1 = barrel(sim, 0, 0.05, 0);

@@ -2,11 +2,15 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { VoxelBody, type BodyKind } from './body';
 import { findIslands, type Island } from './connectivity';
 import { MATERIALS, PAL_DENSITY, PAL_EXPLOSIVE, PAL_HARDNESS, PAL_STRENGTH, VOXEL, scorch as scorchPal } from './materials';
+import { cellId, isCrack } from './fracture';
+import { rayGrid, type RayHit } from './raycast';
 import { Rng, hash3 } from './rng';
 import { QID, vadd, vcross, vlen, vscale, vsub, type Quat, type V3 } from './vec';
 import { VoxelGrid, computeMassProps } from './voxels';
 
 export { RAPIER };
+export type { RayHit };
+export { isCrack } from './fracture';
 
 let rapierReady: Promise<void> | null = null;
 export function initPhysics(): Promise<void> {
@@ -24,17 +28,6 @@ export const GROUP_VEHICLE = 0x0008;
 export const GROUP_PROP = 0x0010;
 export const GROUP_ALL = 0xffff;
 export const groups = (member: number, filter: number) => ((member & 0xffff) << 16) | (filter & 0xffff);
-
-export interface RayHit {
-  body: VoxelBody;
-  /** voxel coords in body grid */
-  vx: number; vy: number; vz: number;
-  /** world-space hit point and normal */
-  point: V3;
-  normal: V3;
-  dist: number;
-  palette: number;
-}
 
 export interface CarveOptions {
   /** extra shell (metres) beyond the carve radius that gets scorched */
@@ -808,79 +801,9 @@ export class Sim {
   }
 }
 
-function cellId(x: number, y: number, z: number, c: number, s: number): number {
-  const jx = (hash3((y / c) | 0, (z / c) | 0, 0, s) * c) | 0;
-  const cx = ((x + jx) / c) | 0;
-  const jy = (hash3(cx, (z / c) | 0, 1, s) * c) | 0;
-  const cy = ((y + jy) / c) | 0;
-  const jz = (hash3(cx, cy, 2, s) * c) | 0;
-  return cx + 1024 * cy + 1048576 * (((z + jz) / c) | 0);
-}
-/** staggered-block crack pattern: true on the 1-voxel seams between pseudo-random blocks */
-export function isCrack(x: number, y: number, z: number, c: number, s: number): boolean {
-  const id = cellId(x, y, z, c, s);
-  return id !== cellId(x + 1, y, z, c, s) || id !== cellId(x, y + 1, z, c, s) || id !== cellId(x, y, z + 1, c, s);
-}
-
 const notImpactProof = (b: VoxelBody) => !b.impactProof;
 
 function firstPal(g: VoxelGrid): number {
   for (let i = 0; i < g.data.length; i++) if (g.data[i]) return g.data[i];
   return 0;
 }
-
-/** Amanatides–Woo traversal of one body's grid. */
-function rayGrid(body: VoxelBody, origin: V3, dir: V3, maxDist: number): RayHit | null {
-  const g = body.grid;
-  const o = body.toLocal(origin);
-  const d = body.dirToLocal(dir);
-  // clip against grid box (voxel units); t in voxel units
-  let t0 = 0, t1 = maxDist / VOXEL;
-  const size = [g.sx, g.sy, g.sz];
-  const oo = [o.x, o.y, o.z], dd = [d.x, d.y, d.z];
-  let enterAxis = -1;
-  for (let a = 0; a < 3; a++) {
-    if (Math.abs(dd[a]) < 1e-12) {
-      if (oo[a] < 0 || oo[a] >= size[a]) return null;
-    } else {
-      let ta = (0 - oo[a]) / dd[a], tb = (size[a] - oo[a]) / dd[a];
-      if (ta > tb) { const s = ta; ta = tb; tb = s; }
-      if (ta > t0) { t0 = ta; enterAxis = a; }
-      if (tb < t1) t1 = tb;
-      if (t0 > t1) return null;
-    }
-  }
-  const eps = 1e-5;
-  let px = oo[0] + dd[0] * (t0 + eps), py = oo[1] + dd[1] * (t0 + eps), pz = oo[2] + dd[2] * (t0 + eps);
-  let x = Math.min(g.sx - 1, Math.max(0, Math.floor(px)));
-  let y = Math.min(g.sy - 1, Math.max(0, Math.floor(py)));
-  let z = Math.min(g.sz - 1, Math.max(0, Math.floor(pz)));
-  const stx = dd[0] > 0 ? 1 : -1, sty = dd[1] > 0 ? 1 : -1, stz = dd[2] > 0 ? 1 : -1;
-  const idx = Math.abs(1 / (dd[0] || 1e-12)), idy = Math.abs(1 / (dd[1] || 1e-12)), idz = Math.abs(1 / (dd[2] || 1e-12));
-  let tmx = t0 + (dd[0] > 0 ? x + 1 - px : px - x) * idx;
-  let tmy = t0 + (dd[1] > 0 ? y + 1 - py : py - y) * idy;
-  let tmz = t0 + (dd[2] > 0 ? z + 1 - pz : pz - z) * idz;
-  let axis = enterAxis;
-  let t = t0;
-  const data = g.data, sx = g.sx, sy = g.sy;
-  for (;;) {
-    const p = data[x + sx * (y + sy * z)];
-    if (p) {
-      const n = { x: 0, y: 0, z: 0 };
-      if (axis === 0) n.x = -stx; else if (axis === 1) n.y = -sty; else if (axis === 2) n.z = -stz;
-      else { n.x = -dd[0]; n.y = -dd[1]; n.z = -dd[2]; }
-      const dist = t * VOXEL;
-      return {
-        body, vx: x, vy: y, vz: z,
-        point: { x: origin.x + dir.x * dist, y: origin.y + dir.y * dist, z: origin.z + dir.z * dist },
-        normal: body.dirToWorld(n),
-        dist, palette: p,
-      };
-    }
-    if (tmx < tmy && tmx < tmz) { x += stx; t = tmx; tmx += idx; axis = 0; if (x < 0 || x >= g.sx) return null; }
-    else if (tmy < tmz) { y += sty; t = tmy; tmy += idy; axis = 1; if (y < 0 || y >= g.sy) return null; }
-    else { z += stz; t = tmz; tmz += idz; axis = 2; if (z < 0 || z >= g.sz) return null; }
-    if (t > t1) return null;
-  }
-}
-
