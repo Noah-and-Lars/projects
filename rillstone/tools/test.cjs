@@ -686,6 +686,39 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return out;
     });
     check(gr.snapped && Math.abs(gr.dy) < 0.02 && gr.ports.in >= 2 && gr.ports.out >= 2 && gr.ports.water >= 1 && gr.hidden, `placing on a slope (${gr.slope} m rise per 2 m): the ghost snaps to the 0.5 m grid and sits on the ground under it (${gr.dy} m off); arrows show ${gr.ports.in} inputs, ${gr.ports.out} outputs and ${gr.ports.water} water port(s), and hide when you put the crate away`);
+    // Pipes mounted to the floor: start at a port, click the ground three
+    // times, finish at the other port. Water flows, the length is the routed
+    // length, RMB takes back a mount, and a save keeps the route.
+    const pm = await p.evaluate(async () => {
+      const R = __rill, Mc = R.machines, I = R.items, T = R.places.TOWN, D = Mc._int.MACHINES;
+      const x = T.x + 30, z = T.z + 60, at = (dx, dz) => [x + dx, Mc.groundY(x + dx, z + dz, R.height(x + dx, z + dz)), z + dz];
+      const tank = Mc.place('headtank', at(-4, -3), 0, { level: 2000 }), sh = Mc.place('sorthopper', at(4, -2), 0);
+      const port = (m, i) => Mc._int.toWorld(m, D[m.def].sockets[i].p);
+      const coil = I.spawn('coil', [0, 0, 0], { data: { tier: 'copper', m: 30 }, loc: 'held' });
+      Mc.coilClick(coil, port(tank, 0), 'machine');
+      const mounts = [at(-4, 0), at(0, 1), at(2, -2)].map(p => Mc.coilClick(coil, p, 'ground'));
+      const air = Mc.coilClick(coil, [x, 50, z], 'none');
+      const laid = Mc.coilClick(coil, port(sh, 0), 'machine');
+      const run = [...Mc.list.values()].find(m => m.run && m.via);
+      const straight = Math.hypot(...[0, 1, 2].map(k => port(tank, 0)[k] - port(sh, 0)[k]));
+      for (let i = 0; i < 20; i++) { tank.state.level = 2000; Mc.tick(0.05); }
+      const sat = sh.flow?.satisfaction ?? null, parts = run._g?.children.length;
+      // Brackets sit on the ground at each mount.
+      const onGround = run.via.every(v => Math.abs(v[1] - (Mc.groundY(v[0], v[2], v[1]) + 0.17)) < 0.02);
+      const ser = Mc.serialize(); Mc.restore(ser);
+      const back = [...Mc.list.values()].find(m => m.run && m.via);
+      // Undo: one mount taken back, then the run cancelled.
+      const c2 = I.spawn('coil', [0, 0, 0], { data: { tier: 'steel', m: 10 }, loc: 'held' });
+      const t2 = [...Mc.list.values()].find(m => m.def === 'headtank');
+      Mc.coilClick(c2, port(t2, 1), 'machine'); Mc.coilClick(c2, at(-6, -6), 'ground');
+      const u1 = Mc.undoRun(c2), u2 = Mc.undoRun(c2);
+      const out = { mounts, air, laid, via: run?.via.length, len: +run.len.toFixed(2), straight: +straight.toFixed(2), coil: coil.data.m, sat, onGround, kept: back?.via?.length, keptLen: +(back?.len || 0).toFixed(2), undo: [u1, u2, !!c2.data.runFrom], parts };
+      for (const id of [...Mc.list.keys()]) Mc.remove(id); I.remove(coil.id); I.remove(c2.id);
+      return out;
+    });
+    console.log('     pipe mounts: ' + JSON.stringify(pm));
+    check(pm.mounts.every(Boolean) && pm.air === false && pm.laid === 'laid' && pm.via === 3 && pm.len > pm.straight && Math.abs(30 - pm.coil - pm.len) < 0.11 && pm.sat === 1 && pm.onGround && pm.kept === 3 && pm.keptLen === pm.len && pm.undo.join(',') === 'undone,cancelled,false' && pm.parts === 2,
+      `pipe on 3 floor mounts: ${pm.len} m routed (straight line ${pm.straight} m), taken from the coil (${pm.coil} m left), water flows (${pm.sat}), brackets on the ground, a save keeps the route; RMB took back a mount, then cancelled`);
   }
 
   if (all || flags.has('--belts')) {

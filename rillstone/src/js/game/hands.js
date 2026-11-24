@@ -255,7 +255,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     }
     if (e.type === 'coil' && H.machines) {
       if (!H.aim) return;
-      const r = H.machines.coilClick(e, H.aim.p);
+      const r = H.machines.coilClick(e, H.aim.p, info.kind);
       if (r === 'laid' && e.data.m < 0.3) { items.remove(e.id); H.hand = null; hud.toast('Coil used up'); }
       return true;
     }
@@ -433,7 +433,14 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (info.kind === 'item' && near) parts.push(`${k('E')} pick up`);
     if (e && e.type === 'crate') parts.unshift(`${k('LMB')} place · ${k('R')} rotate`);
     { const t = e && H.hintHook?.(e, info, H); if (t) parts.unshift(t.replace(/\{(\w+)\}/g, (_, a) => k(a))); }
-    if (e && e.type === 'coil') parts.unshift(H.machines?.runStart(e) ? `${k('LMB')} finish run · ${k('RMB')} cancel` : `${k('LMB')} start a pipe run at a port`);
+    if (e && e.type === 'coil') {
+      if (!H.machines?.runStart(e)) parts.unshift(`${k('LMB')} start a ${e.data.tier === 'cable' ? 'cable' : 'pipe'} run at a port`);
+      else {
+        const aimP = H.aim && H.aim.t < 8 ? H.aim.p : null, need = H.machines.runNeed(e, aimP), mounts = e.data.via?.length || 0;
+        const port = aimP && H.machines.freePortNear(aimP, 1.0, e.data.tier === 'cable');
+        parts.unshift(`${k('LMB')} ${port ? 'finish at this port' : 'mount to the floor'} · ${need.toFixed(1)} / ${e.data.m.toFixed(1)} m · ${k('RMB')} ${mounts ? 'undo mount' : 'cancel'}`);
+      }
+    }
     if (info.kind === 'machine' && info.dist < REACH + 0.5 && !info.m.run) {
       if (e && e.type === 'mallet') parts.unshift(`${k('LMB')} lock · ${k('RMB')} unlock`);
       else if (e && (e.type === 'wrench' || e.type === 'repairkit')) parts.unshift(`${k('LMB')} repair`);
@@ -474,7 +481,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
       if (input.pressed('pickup')) pickup();
       if (input.pressed('secondary') && H.machines) {
         const held = heldEnt();
-        if (held && held.type === 'coil' && H.machines.runStart(held)) { H.machines.cancelRun(held); say('Run cancelled'); }
+        if (held && held.type === 'coil' && H.machines.runStart(held)) { const r = H.machines.undoRun(held); say(r === 'undone' ? `Took back the last floor mount (${held.data.via?.length || 0} left)` : 'Run cancelled'); }
         else if (H.secHook?.(info, H)) { /* a bedroll: sleep */ }
         else if (held && held.type === 'shovel' && info.kind === 'claim' && shovelRmb(info)) { /* fill or flatten */ }
         else if (info.kind === 'machine' && info.dist < REACH + 0.5 && !info.m.run) {
@@ -504,7 +511,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
           H.machines.showPorts(coil || (info.kind === 'machine' && info.dist < 6) ? { near: coil && H.aim ? H.aim.p : null, hover: info.kind === 'machine' && info.dist < 6 ? info.id : null } : null);
         }
       }
-      H.machines.previewRun(e && e.type === 'coil' ? e : null, H.aim ? H.aim.p : [0, 0, 0]);
+      H.machines.previewRun(e && e.type === 'coil' ? e : null, H.aim && H.aim.t < 8 ? H.aim.p : null, info.kind);
     }
     // Drop ring and validity check (a box overlap at the landing spot).
     if (e && H.aim && H.aim.t < H.reach && (info.kind === 'claim' || info.kind === 'ground' || info.kind === 'item' || (info.kind === 'vehicle' && info.bed))) {

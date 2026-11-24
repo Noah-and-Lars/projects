@@ -162,7 +162,7 @@ export function createCoop(ctx) {
       else if (a.k === 'drop') { if (a.ring) { if (vec(a.ring)) H.dropAt(a.ring, num(a.yaw) ? a.yaw : 0, a.rot); } else { if (a.reach) H.reach = Math.max(1.5, Math.min(6, +a.reach || 3.5)); H.drop(); } }
       else if (a.k === 'swap') H.swap();
       else if (a.k === 'rmb') { const i = H.aimInfo(); H.secHook?.(i, H) || H.shovelRmb?.(i); }
-      else if (a.k === 'sec') { const c = H.hand ? items.get(H.hand) : null; if (c?.type === 'coil') machines.cancelRun(c); }
+      else if (a.k === 'sec') { const c = H.hand ? items.get(H.hand) : null; if (c?.type === 'coil') machines.undoRun(c); }
       else if (a.k === 'unlock') { const m = machines.get(a.id); if (m) { m.locked = false; g.hands.hud.toast(`${machines.name(m.def)} unlocked`); } }
       else if (a.k === 'place') {
         const e = H.hand ? items.get(H.hand) : null;
@@ -256,7 +256,7 @@ export function createCoop(ctx) {
     const rs = JSON.stringify(heavy.serialize());
     if (rs !== railSig) { railSig = rs; push(['r', JSON.parse(rs)]); }
   }
-  const machineWire = (m) => (m.run ? { id: m.id, run: true, tier: m.tier, a: m.a, b: m.b } : { id: m.id, def: m.def, pos: m.pos, rot: m.rot, locked: m.locked, wear: m.wear, on: m.on, state: m.state });
+  const machineWire = (m) => (m.run ? { id: m.id, run: true, tier: m.tier, a: m.a, b: m.b, via: m.via } : { id: m.id, def: m.def, pos: m.pos, rot: m.rot, locked: m.locked, wear: m.wear, on: m.on, state: m.state });
   function machineStatus() {
     const out = [];
     for (const m of machines.list.values()) {
@@ -319,7 +319,7 @@ export function createCoop(ctx) {
       case 'x': items.remove(op[1]); break;
       case 's': { const vol = claims.volumes.get(op[1]); if (vol) brush(vol, op[2], op[3], op[4], op[5]); break; }
       case 'b': { const vol = claims.volumes.get(op[1]); if (vol) boxBrush(vol, op[2], op[3], op[4]); break; }
-      case 'mp': { const d = op[1]; if (machines.get(d.id)) machines.remove(d.id); if (d.run) machines.layRun(d.tier, d.a, d.b, { id: d.id }); else machines.place(d.def, d.pos, d.rot, d.state, { id: d.id, locked: d.locked, wear: d.wear, on: d.on }); break; }
+      case 'mp': { const d = op[1]; if (machines.get(d.id)) machines.remove(d.id); if (d.run) machines.layRun(d.tier, d.a, d.b, { id: d.id, via: d.via }); else machines.place(d.def, d.pos, d.rot, d.state, { id: d.id, locked: d.locked, wear: d.wear, on: d.on }); break; }
       case 'mx': machines.remove(op[1]); break;
       case 'vs': vehicles.spawn(op[1].type, op[1].pos, 0, op[1]); break;
       case 'vx': origRemoveVehicle(op[1]); break;

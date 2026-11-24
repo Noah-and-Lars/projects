@@ -223,9 +223,19 @@ crates.
   arrows mark signal terminals. A placed machine is unlocked: E picks
   it back up, and the **Mallet** locks it (LMB) or unlocks it (RMB).
 - **Machine panel.** RMB opens it: status, water, speed, wear, settings.
-- **Water.** A **River Intake** (mouth in the river) supplies water. Lay
-  **pipe** by holding a coil and clicking one machine's brass port, then
-  another's. A **Pipe Junction** splits one supply between machines.
+- **Water.** A **River Intake** (mouth in the river) supplies water. A
+  **Pipe Junction** splits one supply between machines.
+- **Laying pipe.** Hold a coil and click one machine's brass port.
+  - **Mounting:** on the way, each click on the ground mounts the pipe to
+    the floor there. It drops from the port to the floor, hugs the ground
+    through every mount (held by brackets, with a joint collar every 2 m)
+    and rises again into the far port.
+  - **Finishing:** click the other port.
+  - **Undo:** RMB takes back the last mount (or cancels a run with none).
+  - **Preview:** shows the route and how much of the coil it needs.
+  - **Direct runs:** with no mounts, the pipe arcs straight across as
+    before.
+  - **Signal cable:** works the same way.
 - **Flow.** Each network shares its flow: machines run at
   `0.2 + 0.8 × min(1, supply / demand)` of full speed, so too little water
   slows them rather than stopping them.

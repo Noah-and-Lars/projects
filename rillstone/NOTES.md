@@ -1295,3 +1295,37 @@ so far:
 - **Test:** `--more` places a crate ghost on a slope (about 0.7 m of rise over 2 m) and checks that
   it snaps to the grid, that it sits on the ground under it, that arrows
   show and that they hide when the crate is put away.
+
+### Floor-mounted pipes
+
+- **Laying:** while laying a run, a coil click on the ground ('ground',
+  'claim' or the riverbed) adds a mount to `coil.data.via` (snapped to
+  0.25 m, at floor height + pipe radius + 0.1; cable 0.05 m). A click on a
+  free port finishes it, and RMB (`machines.undoRun`) pops the last mount,
+  then cancels.
+- **Up to 32 mounts.** Each click checks the coil has enough length for the
+  route so far.
+- **Route** (`runPath`):
+  - port, then a 0.3 m stub straight out of it;
+  - down to the floor;
+  - along the ground through each mount, sampled every 0.5 m on `groundY`
+    so it follows slopes and pits;
+  - up to the far port's stub, then the port.
+- **Elbows:** `elbowCurve` rounds every corner with a quadratic bend (0.22 m
+  radius for pipe, 0.06 m for cable) before the tube is built.
+- **Length:** a run's `len` (pipe used and pressure loss) is the routed
+  length + 0.3 m. Runs without mounts keep the old arc and the old length
+  rule.
+- **Look:**
+  - brass flanges at both ports, and a joint collar every 2 m;
+  - floor brackets (base plate, two posts, a strap over the pipe, two
+    bolts) at every mount and about every 1.5 m along the floor;
+  - the fittings merged into one mesh per run.
+- **Saves and co-op:** `via` is saved with the run and sent with co-op
+  machine updates.
+- **Test:** `--more` lays a run on 3 mounts and checks that:
+  - the routed length is longer than the straight line, and the coil loses
+    exactly that much;
+  - water flows, and the brackets sit on the ground;
+  - a save round-trip keeps the route;
+  - undo takes back a mount, then cancels.

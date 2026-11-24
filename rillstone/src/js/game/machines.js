@@ -22,6 +22,7 @@ import { h } from '../ui/dom.js';
 const GRID = 0.5;
 const SOCKET_SNAP = 1.0;   // how close the aim must be to a port to start/finish a pipe run
 const LINK_RANGE = 1.3;    // an 'out' port feeds an 'in' port within this distance
+const MAX_MOUNTS = 32;     // floor mounts in one pipe run
 const _v = new THREE.Vector3(), _q = new THREE.Quaternion(), _e = new THREE.Euler();
 
 // Pipe coils and crafted goods as carriable entities.
@@ -98,7 +99,12 @@ export function createMachines({ scene, physics, materials, items, claims, water
     if (m._g) { group.remove(m._g); m._g.traverse(o => o.geometry?.dispose()); m._g = null; }
   }
 
-  // ---- Pipe runs: a tube between two ports ----
+  // ---- Pipe runs ----
+  // A run joins two ports. Without floor mounts it arcs between them; with
+  // mounts (`via`: points clicked on the ground while laying it) it drops
+  // from the first port to the floor, hugs the ground through each mount and
+  // rises again to the second port, held down by brackets.
+  const floorOf = (tier) => (PIPE_TIERS[tier]?.cable ? 0.05 : PIPE_TIERS[tier]?.r + 0.1);
   function runCurve(a, b) {
     const pa = new THREE.Vector3(...a.p), pb = new THREE.Vector3(...b.p);
     const da = new THREE.Vector3(...a.d), db = new THREE.Vector3(...b.d);
@@ -108,16 +114,90 @@ export function createMachines({ scene, physics, materials, items, claims, water
     mid.y = Math.max(mid.y, pa.y, pb.y, (height ? height(mid.x, mid.z) + 0.25 : -1e9));
     return new THREE.CatmullRomCurve3([pa, pa.clone().addScaledVector(da, k), mid, pb.clone().addScaledVector(db, k), pb]);
   }
+  // The run's centre line as a polyline (and which stretches lie on the floor).
+  // b may be a bare point (the preview's loose end), with d = [0, 0, 0].
+  function runPath(tier, a, b, via) {
+    if (!via || !via.length) { const c = runCurve(a, b); return { pts: c.getPoints(16).map(v => v.toArray()), floor: [] }; }
+    const F = floorOf(tier), pts = [], floor = [];
+    const push = (p, onFloor = false) => { const q = pts[pts.length - 1]; if (q && Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) < 0.02) return; pts.push(p); floor.push(onFloor); };
+    const ground = (x, z, hint) => groundY(x, z, hint) + F;
+    // Out of a port: a short straight stub, then down to the floor.
+    const stub = (port) => { const d = port.d, k = Math.hypot(d[0], d[2]) > 0.1 ? 0.3 : 0; return [port.p[0] + d[0] * k, port.p[1] + d[1] * k, port.p[2] + d[2] * k]; };
+    const sa = stub(a);
+    push(a.p.slice()); push(sa); push([sa[0], ground(sa[0], sa[2], sa[1]), sa[2]], true);
+    // Along the floor through each mount, following the ground every 0.5 m.
+    const legs = [...via.map(v => v.slice())];
+    const end = b.d && (b.d[0] || b.d[2]) ? stub(b) : b.p.slice();
+    legs.push([end[0], ground(end[0], end[2], end[1]), end[2]]);
+    let prev = pts[pts.length - 1];
+    for (const q of legs) {
+      const n = Math.max(1, Math.ceil(Math.hypot(q[0] - prev[0], q[2] - prev[2]) / 0.5));
+      for (let i = 1; i <= n; i++) { const x = prev[0] + (q[0] - prev[0]) * i / n, z = prev[2] + (q[2] - prev[2]) * i / n; push([x, ground(x, z, prev[1] + (q[1] - prev[1]) * i / n), z], true); }
+      prev = pts[pts.length - 1];
+    }
+    // Up to the far port.
+    if (b.d && (b.d[0] || b.d[2])) { push(end); push(b.p.slice()); }
+    return { pts, floor };
+  }
+  const pathLen = (pts) => { let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1], pts[i][2] - pts[i - 1][2]); return L; };
+  // A polyline with rounded elbows at its corners (a pipe bends, it doesn't kink).
+  function elbowCurve(pts, r) {
+    const P = pts.map(p => new THREE.Vector3(...p)), path = new THREE.CurvePath();
+    if (P.length < 2) return null;
+    let from = P[0].clone();
+    for (let i = 1; i < P.length - 1; i++) {
+      const a = P[i - 1], c = P[i], d = P[i + 1];
+      const da = a.clone().sub(c), dd = d.clone().sub(c), la = da.length(), ld = dd.length();
+      const k = Math.min(r, la * 0.45, ld * 0.45);
+      const p0 = c.clone().addScaledVector(da.normalize(), k), p1 = c.clone().addScaledVector(dd.normalize(), k);
+      if (from.distanceTo(p0) > 1e-4) path.add(new THREE.LineCurve3(from, p0));
+      path.add(new THREE.QuadraticBezierCurve3(p0, c.clone(), p1));
+      from = p1;
+    }
+    path.add(new THREE.LineCurve3(from, P[P.length - 1]));
+    return path;
+  }
+  const JOINT = 0xc89a48, BRACKET = 0x3a3e44;
   function runVisual(m) {
     const t = PIPE_TIERS[m.tier];
     const a = portOf(m.a), b = portOf(m.b);
     if (!a || !b) return null;
-    const curve = runCurve(a, b);
-    const geo = paint(new THREE.TubeGeometry(curve, Math.max(8, Math.ceil(m.len * 4)), t.r, 8, false), t.hex, 0.05);
+    const { pts, floor } = runPath(m.tier, a, b, m.via);
+    const curve = elbowCurve(pts, t.cable ? 0.06 : 0.22); if (!curve) return null;
+    const L = curve.getLength();
+    const geo = paint(new THREE.TubeGeometry(curve, Math.max(10, Math.ceil(L * 8)), t.r, t.cable ? 6 : 10, false), t.hex, 0.05);
     const mesh = new THREE.Mesh(geo, runMat); mesh.castShadow = true; mesh.userData.machine = m.id;
     const g = new THREE.Group(); g.add(mesh);
-    // Brass collars every metre.
-    for (let s = 0.5; s < m.len; s += 1) { const p = curve.getPointAt(s / m.len); const c = new THREE.Mesh(paint(new THREE.CylinderGeometry(t.r * 1.3, t.r * 1.3, 0.05, 10), 0xc89a48, 0.04), runMat); c.position.copy(p); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), curve.getTangentAt(s / m.len)); g.add(c); }
+    const parts = [], up = new THREE.Vector3(0, 1, 0), _q2 = new THREE.Quaternion();
+    const along = (geo2, p, tan) => { geo2.applyQuaternion(_q2.setFromUnitVectors(up, tan)); geo2.translate(p.x, p.y, p.z); return geo2; };
+    if (!t.cable) {
+      // Flanges where it meets each port, and a joint collar every 2 m.
+      for (const [u, port] of [[0, a], [1, b]]) parts.push(paint(along(new THREE.CylinderGeometry(t.r * 1.55, t.r * 1.55, 0.06, 12).toNonIndexed(), curve.getPointAt(u === 0 ? Math.min(0.02 / L, 1) : Math.max(0, 1 - 0.02 / L)), curve.getTangentAt(u)), JOINT, 0.04, 2));
+      for (let s = 2; s < L - 0.5; s += 2) parts.push(paint(along(new THREE.CylinderGeometry(t.r * 1.3, t.r * 1.3, 0.07, 10).toNonIndexed(), curve.getPointAt(s / L), curve.getTangentAt(s / L)), JOINT, 0.04, 3));
+    }
+    // Floor brackets: at every mount and about every 1.5 m along the floor.
+    if (m.via?.length) {
+      const F = floorOf(m.tier), spots = [];
+      for (const v of m.via) spots.push(v);
+      let acc = 0;
+      for (let i = 1; i < pts.length; i++) { if (!(floor[i] && floor[i - 1])) { acc = 0; continue; } acc += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][2] - pts[i - 1][2]); if (acc >= 1.5) { acc = 0; spots.push(pts[i]); } }
+      const used = [];
+      for (const sp of spots) {
+        if (used.some(u => Math.hypot(u[0] - sp[0], u[2] - sp[2]) < 0.6)) continue; used.push(sp);
+        // Which way the pipe runs here (nearest stretch of the line).
+        let bi = 1, bd = Infinity; for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - sp[0], pts[i][2] - sp[2]); if (d < bd) { bd = d; bi = i; } }
+        const p0 = pts[Math.max(0, bi - 1)], p1 = pts[Math.min(pts.length - 1, bi)], yaw = Math.atan2(p1[0] - p0[0], p1[2] - p0[2]);
+        const gy = sp[1] - F, r = t.r;
+        const bracket = t.cable
+          ? [new THREE.BoxGeometry(0.08, 0.02, 0.05).translate(0, gy + 0.01, 0), new THREE.TorusGeometry(r + 0.01, 0.008, 4, 8, Math.PI).rotateY(Math.PI / 2).translate(0, sp[1], 0)]
+          : [new THREE.BoxGeometry(r * 4.2, 0.03, 0.12).translate(0, gy + 0.015, 0),
+             new THREE.BoxGeometry(0.025, F, 0.05).translate(-r * 1.25, gy + F / 2, 0), new THREE.BoxGeometry(0.025, F, 0.05).translate(r * 1.25, gy + F / 2, 0),
+             new THREE.TorusGeometry(r * 1.2, 0.016, 5, 12, Math.PI).translate(0, sp[1], 0),
+             new THREE.CylinderGeometry(0.018, 0.018, 0.02, 6).translate(-r * 1.8, gy + 0.035, 0), new THREE.CylinderGeometry(0.018, 0.018, 0.02, 6).translate(r * 1.8, gy + 0.035, 0)];
+        for (const bg of bracket) { const q = bg.index ? bg.toNonIndexed() : bg; q.rotateY(yaw + Math.PI / 2); q.translate(sp[0], 0, sp[2]); parts.push(paint(q, BRACKET, 0.05, 4)); }
+      }
+    }
+    if (parts.length) { const fm = new THREE.Mesh(merge(parts), runMat); fm.castShadow = true; fm.userData.machine = m.id; g.add(fm); }
     return g;
   }
   // World position/direction of a machine's socket: ref = { m: id, s: index }.
@@ -154,8 +234,10 @@ export function createMachines({ scene, physics, materials, items, claims, water
   };
   api.layRun = (tier, a, b, opts = {}) => {
     const pa = portOf(a), pb = portOf(b); if (!pa || !pb) return null;
-    const len = Math.hypot(pa.p[0] - pb.p[0], pa.p[1] - pb.p[1], pa.p[2] - pb.p[2]) * 1.1 + 0.3;
+    const via = Array.isArray(opts.via) && opts.via.length ? opts.via.slice(0, MAX_MOUNTS).map(v => v.slice(0, 3)) : null;
+    const len = via ? pathLen(runPath(tier, pa, pb, via).pts) + 0.3 : Math.hypot(pa.p[0] - pb.p[0], pa.p[1] - pb.p[1], pa.p[2] - pb.p[2]) * 1.1 + 0.3;
     const m = { id: opts.id || nextId++, run: true, tier, a: { ...a }, b: { ...b }, len, locked: true };
+    if (via) m.via = via;
     nextId = Math.max(nextId, m.id + 1);
     list.set(m.id, m); m._g = runVisual(m); if (m._g) group.add(m._g);
     dirty = true;
@@ -707,37 +789,92 @@ export function createMachines({ scene, physics, materials, items, claims, water
   // laying pipe at once don't pick up each other's start (and guests see it).
   let preview = null;
   api.runStart = (coil) => (coil && coil.data && coil.data.runFrom) || null;
-  api.cancelRun = (coil) => { if (coil?.data) delete coil.data.runFrom; if (preview) { scene.remove(preview); preview = null; } };
-  api.coilClick = (coil, aimP) => {
+  api.cancelRun = (coil) => { if (coil?.data) { delete coil.data.runFrom; delete coil.data.via; } clearPreview(); };
+  // RMB while laying: take back the last floor mount, or cancel the run.
+  api.undoRun = (coil) => {
+    if (coil?.data?.via?.length) { coil.data.via.pop(); previewKey = ''; return 'undone'; }
+    api.cancelRun(coil); return 'cancelled';
+  };
+  // Where a floor mount would go for an aim point (snapped to 0.25 m).
+  const mountAt = (tier, p) => { const x = Math.round(p[0] * 4) / 4, z = Math.round(p[2] * 4) / 4; return [x, groundY(x, z, p[1]) + floorOf(tier), z]; };
+  // Pipe needed for the run so far, out to a port or a loose end at aimP.
+  function runNeed(coil, aimP, port) {
+    const a = portOf(coil.data.runFrom); if (!a) return 0;
+    const tier = coil.data.tier, via = coil.data.via || [];
+    if (port) {
+      const b = portOf(port);
+      if (!via.length) return Math.hypot(a.p[0] - b.p[0], a.p[1] - b.p[1], a.p[2] - b.p[2]) * 1.1 + 0.3;
+      return pathLen(runPath(tier, a, b, via).pts) + 0.3;
+    }
+    // A loose end: the mounts so far, plus one at aimP if given.
+    const v2 = aimP ? [...via, mountAt(tier, aimP)] : via;
+    if (!v2.length) return 0;
+    return pathLen(runPath(tier, a, { p: v2[v2.length - 1], d: [0, 0, 0] }, v2).pts) + 0.3;
+  }
+  api.runNeed = (coil, aimP) => (!coil?.data?.runFrom ? 0 : aimP ? runNeed(coil, aimP, freePortNear(aimP, SOCKET_SNAP, coil.data.tier === 'cable')) : runNeed(coil, null, null));
+  api.coilClick = (coil, aimP, kind) => {
     const cable = coil.data.tier === 'cable';
     let runStart = coil.data.runFrom || null;
     // The start machine may have been picked up since the first click.
-    if (runStart && (!list.get(runStart.m) || !portOf(runStart))) { delete coil.data.runFrom; runStart = null; }
+    if (runStart && (!list.get(runStart.m) || !portOf(runStart))) { api.cancelRun(coil); runStart = null; }
     const port = freePortNear(aimP, SOCKET_SNAP, cable);
-    if (!port) { hud.toast(cable ? 'Aim at a free signal terminal (the brass studs on logic parts)' : 'Aim at a free water port (the brass flanges)', 'err'); return false; }
-    if (!runStart) { coil.data.runFrom = { ...port }; audio.play('pickup'); hud.toast('Run started — now click the other port'); return true; }
+    if (!port) {
+      // Mid-run, a click on the ground mounts the pipe to the floor there.
+      if (runStart && (kind === 'ground' || kind === 'claim' || kind === 'water')) {
+        const via = (coil.data.via ||= []);
+        if (via.length >= MAX_MOUNTS) { hud.toast(`At most ${MAX_MOUNTS} mounts in one run: finish it at a port`, 'err'); return false; }
+        const at = mountAt(coil.data.tier, aimP), last = via[via.length - 1];
+        if (last && Math.hypot(last[0] - at[0], last[2] - at[2]) < 0.2) return false;
+        via.push(at);
+        const need = runNeed(coil, null);
+        if (need > coil.data.m + 1e-6) { via.pop(); hud.toast(`That needs ${need.toFixed(1)} m; this coil has ${coil.data.m.toFixed(1)} m`, 'err'); return false; }
+        audio.play('clink'); previewKey = '';
+        hud.toast(`Mounted to the floor · ${need.toFixed(1)} of ${coil.data.m.toFixed(1)} m used · click more spots, then the other port (RMB takes the last one back)`);
+        return true;
+      }
+      hud.toast(runStart ? 'Click the ground to mount the pipe there, or a free port to finish' : cable ? 'Aim at a free signal terminal (the brass studs on logic parts)' : 'Aim at a free water port (the brass flanges)', 'err'); return false;
+    }
+    if (!runStart) { coil.data.runFrom = { ...port }; delete coil.data.via; audio.play('pickup'); hud.toast('Run started: click the ground to mount it to the floor along the way, then the other port'); return true; }
     if (runStart.m === port.m) { hud.toast('Pick a port on a different machine'); return false; }
     if (cable && runStart.kind === port.kind) { hud.toast('Join an output (right side) to an input (left side)'); return false; }
-    const pa = portOf(runStart), pb = portOf(port);
-    const need = Math.hypot(pa.p[0] - pb.p[0], pa.p[1] - pb.p[1], pa.p[2] - pb.p[2]) * 1.1 + 0.3;
+    const need = runNeed(coil, null, port);
     if (need > coil.data.m + 1e-6) { hud.toast(`Need ${need.toFixed(1)} m of pipe; this coil has ${coil.data.m.toFixed(1)} m`, 'err'); return false; }
-    // Cables always run from the output to the input.
-    const [ra, rb] = cable && runStart.kind === 'sig-in' ? [port, runStart] : [runStart, port];
-    api.layRun(coil.data.tier, { m: ra.m, s: ra.s }, { m: rb.m, s: rb.s });
-    coil.data.m = Math.round((coil.data.m - need) * 10) / 10;
+    // Cables always run from the output to the input (mounts reversed with them).
+    const flip = cable && runStart.kind === 'sig-in';
+    const [ra, rb] = flip ? [port, runStart] : [runStart, port];
+    const via = coil.data.via?.length ? (flip ? coil.data.via.slice().reverse() : coil.data.via.slice()) : undefined;
+    const m = api.layRun(coil.data.tier, { m: ra.m, s: ra.s }, { m: rb.m, s: rb.s }, { via });
+    const used = m ? m.len : need;
+    coil.data.m = Math.max(0, Math.round((coil.data.m - used) * 10) / 10);
     api.cancelRun(coil); audio.play('drop');
-    hud.toast(`Laid ${need.toFixed(1)} m of ${PIPE_TIERS[coil.data.tier].name.toLowerCase()} pipe`);
+    hud.toast(`Laid ${used.toFixed(1)} m of ${PIPE_TIERS[coil.data.tier].name.toLowerCase()} ${cable ? 'cable' : 'pipe'}${via ? ` on ${via.length} floor mount${via.length > 1 ? 's' : ''}` : ''}`);
     return 'laid';
   };
-  api.previewRun = (coil, aimP) => {
+  let previewKey = '';
+  function clearPreview() { if (preview) { scene.remove(preview); preview.traverse(o => o.geometry?.dispose()); preview = null; } previewKey = ''; }
+  api.previewRun = (coil, aimP, kind) => {
     const runStart = coil?.data?.runFrom || null;
-    if (!runStart) { if (preview) { scene.remove(preview); preview = null; } return; }
+    if (!runStart) { if (preview) clearPreview(); return; }
     const a = list.get(runStart.m) && portOf(runStart); if (!a) { api.cancelRun(coil); return; }
+    const via = coil.data.via || [];
+    // Nothing under the crosshair: show what's mounted so far, if anything.
+    if (!aimP) { if (!via.length) { clearPreview(); return; } aimP = via[via.length - 1]; kind = 'mounted'; }
     const near = freePortNear(aimP, SOCKET_SNAP, coil.data.tier === 'cable');
-    const b = near ? portOf(near) : { p: aimP, d: [0, 0, 0] };
-    const curve = runCurve(a, b);
-    if (preview) { scene.remove(preview); preview.geometry.dispose(); }
-    preview = new THREE.Mesh(new THREE.TubeGeometry(curve, 16, PIPE_TIERS[coil.data.tier].r, 6), near ? ghostMats.ok : ghostMats.bad);
+    const floorAim = !near && (kind === 'ground' || kind === 'claim' || kind === 'water');
+    const end = near ? portOf(near) : { p: floorAim ? mountAt(coil.data.tier, aimP) : aimP, d: [0, 0, 0] };
+    const key = `${via.length}|${end.p.map(v => v.toFixed(2)).join(',')}|${!!near}`;
+    if (key === previewKey) return; previewKey = key;
+    const need = runNeed(coil, aimP, near);
+    const ok = (near || floorAim || kind === 'mounted') && need <= coil.data.m + 1e-6;
+    const pts = near ? (via.length ? runPath(coil.data.tier, a, end, via).pts : runCurve(a, end).getPoints(16).map(v => v.toArray()))
+      : floorAim ? runPath(coil.data.tier, a, end, [...via, end.p]).pts
+        : via.length ? runPath(coil.data.tier, a, end, via).pts : runCurve(a, end).getPoints(16).map(v => v.toArray());
+    const curve = elbowCurve(pts, 0.2);
+    if (preview) { scene.remove(preview); preview.traverse(o => o.geometry?.dispose()); }
+    preview = new THREE.Group();
+    if (curve) preview.add(new THREE.Mesh(new THREE.TubeGeometry(curve, Math.max(8, Math.ceil(curve.getLength() * 6)), PIPE_TIERS[coil.data.tier].r, 6), ok ? ghostMats.ok : ghostMats.bad));
+    // Little markers where it's mounted so far.
+    for (const v of floorAim && !near ? [...via, end.p] : via) { const k = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.03, 10), ok ? ghostMats.ok : ghostMats.bad); k.position.set(v[0], v[1] - floorOf(coil.data.tier) + 0.015, v[2]); preview.add(k); }
     scene.add(preview);
   };
   api.freePortNear = freePortNear;
@@ -757,14 +894,14 @@ export function createMachines({ scene, physics, materials, items, claims, water
   };
 
   // ---- Saves ----
-  api.serialize = () => [...list.values()].map(m => m.run ? { id: m.id, run: true, tier: m.tier, a: m.a, b: m.b } : { id: m.id, def: m.def, pos: m.pos, rot: m.rot, locked: m.locked, wear: m.wear, on: m.on, state: m.state });
+  api.serialize = () => [...list.values()].map(m => m.run ? { id: m.id, run: true, tier: m.tier, a: m.a, b: m.b, ...(m.via ? { via: m.via } : {}) } : { id: m.id, def: m.def, pos: m.pos, rot: m.rot, locked: m.locked, wear: m.wear, on: m.on, state: m.state });
   api.restore = (arr) => {
     // Old belts' riders belong to the world being replaced: the ids may
     // now name the loaded world's items, so don't drop them.
     for (const m of list.values()) if (m.state?.lanes) m.state.lanes = m.state.lanes.map(() => []);
     for (const id of [...list.keys()]) api.remove(id);
     for (const d of arr || []) if (!d.run) api.place(d.def, d.pos, d.rot, d.state, { id: d.id, locked: d.locked, wear: d.wear, on: d.on });
-    for (const d of arr || []) if (d.run) api.layRun(d.tier, d.a, d.b, { id: d.id });
+    for (const d of arr || []) if (d.run) api.layRun(d.tier, d.a, d.b, { id: d.id, via: d.via });
   };
   api.name = (defId) => MACHINES[defId]?.name || defId;
   api.family = (defId) => MACHINES[defId]?.family;
