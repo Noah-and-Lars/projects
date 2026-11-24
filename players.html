@@ -41,13 +41,19 @@
 .pl-side, .pl-main { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border: 1px solid #ffffff14; border-radius: 18px; overflow: hidden; }
 .pl-side { padding: 12px; gap: 10px; }
 .pl-side .field { width: 100%; flex: none; }
-.seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; border-radius: 12px; background: #ffffff08; }
-.seg button { position: relative; padding: 7px 4px; border: 0; border-radius: 9px; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.pl-side .seg { display: grid; grid-template-columns: repeat(4, minmax(max-content, 1fr)); gap: 3px; padding: 4px; border: 0; border-radius: 12px; background: #ffffff08; }
+.pl-side .seg button { position: relative; display: flex; align-items: center; justify-content: center; width: auto; height: auto; min-width: 0; padding: 7px 4px; border: 0; border-radius: 9px; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 700; line-height: 1.2; white-space: nowrap; cursor: pointer; }
 .seg button:hover { color: var(--text); }
 .seg button.on { background: var(--accent); color: #fff; }
-.seg .n { margin-left: 4px; padding: 0 6px; border-radius: 999px; background: var(--accent-2); color: #04211b; font-size: 11px; }
+.seg .n { margin-left: 4px; line-height: 1.5; padding: 0 5px; border-radius: 999px; background: var(--accent-2); color: #04211b; font-size: 11px; }
 .seg .n[hidden] { display: none; }
 .pl-count { margin: 0 2px; color: var(--muted); font-size: 12px; }
+.pl-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; }
+.pl-bar .pl-count { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-bar .select { flex: none; }
+.pl-bar .select[hidden] { display: none; }
+.pl-bar .select select, .mob-phone .pl-bar .select select { width: auto; height: 30px; padding: 0 30px 0 12px; color: var(--text); font-size: 12px; font-weight: 600; }
+.pl-bar .select::after, .mob-phone .pl-bar .select::after { right: 12px; margin-right: 0; }
 .plist { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; min-height: 0; }
 .plist li { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 10px; cursor: pointer; }
 .plist li:hover, .plist li:focus-visible { background: #ffffff0d; outline: none; }
@@ -163,7 +169,16 @@
         <button type="button" data-v="req" role="tab">Requests<span class="n" id="nReq" hidden></span></button>
         <button type="button" data-v="dm" role="tab">Chats<span class="n" id="nUn" hidden></span></button>
       </div>
-      <p class="pl-count" id="plCount" role="status">Loading players…</p>
+      <div class="pl-bar">
+        <p class="pl-count" id="plCount" role="status">Loading players…</p>
+        <label class="select" id="sortWrap" title="Sort players">
+          <select id="sort" aria-label="Sort players">
+            <option value="seen">Last online</option>
+            <option value="new">Newest joined</option>
+            <option value="name">Name</option>
+          </select>
+        </label>
+      </div>
       <ul class="plist" id="list"></ul>
     </aside>
     <section class="pl-main" id="main" aria-live="polite">
@@ -172,7 +187,7 @@
   </div>
 </main>
 
-<script src="games.js?v=289"></script>
+<script src="games.js?v=290"></script>
 <script src="account.js?v=45"></script>
 <script src="assistant.js?v=7"></script>
 <script src="console.js?v=6"></script>
@@ -209,6 +224,9 @@ let online = {};           // lower-case name -> game id, from the arcade's pres
 const where = g => g === 'home' || g === 'players' || g === 'chat' ? (g === 'chat' ? 'In the Global chat' : 'Online') : 'Playing ' + ((GAMES.find(x => x.id === g) || {}).title || 'a game');
 let players = [];          // [[name, created, hasScores], ...]
 let soc = null;            // { f, c, b } for the signed-in player
+// Sort for the All list (2026-11-25): Last online until the player picks something else, then their pick is kept.
+const SORTS = ['seen', 'new', 'name'];
+let sortBy = (() => { try { const v = localStorage.getItem('arcade-players-sort'); return SORTS.includes(v) ? v : 'seen'; } catch (e) { return 'seen'; } })();
 let view = 'all', limit = 200, cur = null; // cur = { kind: 'p' | 'dm', k, n }
 const nameOf = k => { const p = players.find(x => lc(x[0]) === k); return p ? p[0] : (soc && ((soc.f[k] && soc.f[k].n) || (soc.c[k] && soc.c[k].n))) || k; };
 
@@ -245,9 +263,13 @@ function needAccount(what) {
 function renderList() {
   const q = lc($('q').value.trim()), out = [], ul = $('list');
   let rows = [];
+  $('sortWrap').hidden = view !== 'all';
   if (view === 'all') {
-    rows = players.filter(p => !q || lc(p[0]).includes(q)).sort((a, b) => (lc(a[0]) === lc(q)) * -1 + (lc(b[0]) === lc(q)) || lc(a[0]).localeCompare(lc(b[0])))
-      .sort((a, b) => !!online[lc(b[0])] - !!online[lc(a[0])]) // online players first
+    const exact = p => q && lc(p[0]) === q ? 1 : 0, byName = (a, b) => lc(a[0]).localeCompare(lc(b[0]));
+    const cmp = sortBy === 'name' ? byName
+      : sortBy === 'new' ? (a, b) => (b[1] || 0) - (a[1] || 0) || byName(a, b)
+      : (a, b) => !!online[lc(b[0])] - !!online[lc(a[0])] || (b[3] || 0) - (a[3] || 0) || byName(a, b); // online now first, then most recently online
+    rows = players.filter(p => !q || lc(p[0]).includes(q)).sort((a, b) => exact(b) - exact(a) || cmp(a, b))
       .map(p => ({ k: lc(p[0]), n: p[0], sub: (lc(p[0]) === lc(myName()) ? 'You · ' : '') + (lastOn(p[3]) || joined(p[1])), kind: 'p' }));
     const on = players.filter(p => online[lc(p[0])]).length;
     $('plCount').textContent = players.length ? (q ? rows.length + ' of ' : '') + players.length + (players.length === 1 ? ' player' : ' players') + ' · ' + on + ' online' : 'No players yet';
@@ -292,6 +314,8 @@ function setView(v) {
   renderList();
 }
 $('q').addEventListener('input', () => { limit = 200; renderList(); });
+$('sort').value = sortBy;
+$('sort').addEventListener('change', () => { sortBy = SORTS.includes($('sort').value) ? $('sort').value : 'seen'; try { localStorage.setItem('arcade-players-sort', sortBy); } catch (e) {} limit = 200; $('list').scrollTop = 0; renderList(); });
 
 // ---------- a player's profile ----------
 const quitTyping = () => { if (dm && dm.tx) dm.tx.stop(); };
