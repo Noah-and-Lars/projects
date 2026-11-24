@@ -2,6 +2,7 @@
 // rolling A/B pair. All four stores (meta, entities, chunks, economy) are
 // written in one transaction, so a save either lands whole or not at all,
 // and the other half of the pair is always a complete older save.
+import { cleanKeys } from './safe.js';
 import { deflateSync, inflateSync, strToU8, strFromU8 } from 'fflate';
 
 export const SAVE_VERSION = 2;
@@ -126,10 +127,15 @@ export function createSaves() {
     },
     async importFile(file) {
       const u8 = new Uint8Array(await file.arrayBuffer());
-      const doc = JSON.parse(strFromU8(inflateSync(u8)));
-      if (!doc.rillsave) throw new Error('Not a Rillstone save');
+      if (u8.length > 12e6) throw new Error('That file is too big to be a Rillstone save');
+      const raw = strFromU8(inflateSync(u8));
+      if (raw.length > 80e6) throw new Error('That save is too big');
+      const doc = cleanKeys(JSON.parse(raw));
+      if (!doc || typeof doc !== 'object' || !doc.rillsave) throw new Error('Not a Rillstone save');
+      if (doc.chunks != null && !Array.isArray(doc.chunks)) throw new Error('Damaged save');
       delete doc.rillsave;
-      doc.chunks = (doc.chunks || []).map(c => ({ claim: c.claim, key: c.key, dens: new Int8Array(unb64(c.dens).buffer), band: unb64(c.band) }));
+      // Dug terrain: only well-formed chunks (a claim id, an "i,j,k" key, base64 data).
+      doc.chunks = (doc.chunks || []).filter(c => c && typeof c.claim === 'string' && /^\d{1,3},\d{1,3},\d{1,3}$/.test(c.key) && typeof c.dens === 'string' && typeof c.band === 'string').map(c => ({ claim: c.claim, key: c.key, dens: new Int8Array(unb64(c.dens).buffer), band: unb64(c.band) }));
       return migrate(doc);
     },
   };

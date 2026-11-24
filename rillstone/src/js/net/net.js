@@ -135,7 +135,11 @@ export function createNet() {
   api.clearParts = () => parts.clear();
   // Feed chunk messages; returns the whole string when the last one lands.
   api.takeBig = (p) => {
+    // Chunks must be well-formed: at most 800 of them (12 MB), each a string.
+    if (typeof p.k !== 'string' || !Number.isInteger(p.n) || p.n < 1 || p.n > 800 || !Number.isInteger(p.i) || p.i < 0 || p.i >= p.n || typeof p.d !== 'string' || p.d.length > CHUNK) return null;
+    if (!parts.has(p.k) && parts.size >= 8) parts.delete(parts.keys().next().value);
     let e = parts.get(p.k);
+    if (e && e.n !== p.n) return null;
     if (!e) { e = { n: p.n, got: new Array(p.n), have: 0 }; parts.set(p.k, e); }
     if (e.got[p.i] == null) { e.got[p.i] = p.d; e.have++; }
     if (e.have < e.n) return null;

@@ -126,4 +126,31 @@ check(Math.abs(itemValue({ material: 'silver', stage: 'crafted', craft: 'ring', 
   let found = 0; const E2 = createEconomy(mulberry32(5)); E2.init(); E2.state.standing = 12; for (let d = 2; d < 300 && !found; d++) { E2.state.contracts = []; E2.newDay(d); found = E2.state.contracts.filter(c => c.want?.grade).length; }
   check(found > 0, 'experienced players get alloy orders on the Guild board');
 }
+// Server hardening (server/worker.mjs run locally).
+{
+  const { startMpServer } = await import('./mpserver.mjs');
+  const port = 8900 + Math.floor(Math.random() * 90), srv = startMpServer(port), U = `http://localhost:${port}`;
+  const post = async (p, b, raw) => { const r = await fetch(U + p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: raw ?? JSON.stringify(b) }); return { status: r.status, ...(await r.json().catch(() => ({}))) }; };
+  const A = { n: 'Alice', k: 'a'.repeat(20) }, M = { n: 'Mallory', k: 'm'.repeat(20) };
+  const c = await post('/mp/create', { ...A, name: '<img src=x onerror=alert(1)>', save: 'x', scrip: 5e9 });
+  check(c.meta && c.meta.name === 'img src=x onerror=alert(1)' && c.meta.scrip <= 100000, 'world names lose markup; a new world can\'t start with a huge balance');
+  const big = await post('/mp/save', { ...A, id: c.meta.id, save: 'y', scrip: 9e9, ores: 1 });
+  check(big.error === 'implausible', 'a save reporting an impossible jump in money is refused');
+  const steal = await post('/mp/get', { ...M, id: c.meta.id });
+  const del = await post('/mp/delete', { ...M, id: c.meta.id });
+  const badId = await post('/mp/get', { ...A, id: '__proto__' });
+  const noInvite = await post('/mp/join', { ...M, id: c.meta.id, invite: { $ne: 1 } });
+  check(steal.status === 403 && del.status === 403 && badId.status === 404 && noInvite.status === 403, 'outsiders can\'t read, delete or join without the invite; odd ids are refused');
+  const proto = await post('/lb/solo', null, '{"n":"Eve","k":"eeeeeeeeeeeeeeeeeeee","s":10,"__proto__":{"admin":true}}');
+  const bad = await post('/lb/solo', null, 'not json');
+  const huge = await post('/lb/solo', { n: 'Zed', k: 'z'.repeat(20), s: 5e8 });
+  check(proto.ok && bad.status === 400 && huge.error === 'implausible', 'solo rows: prototype keys are harmless, bad JSON is refused, and impossible totals are rejected');
+  const mine = await post('/lb/solo', { ...A, s: 1 });
+  const squat = await post('/lb/solo', { n: 'Alice', k: 'q'.repeat(20), s: 2 });
+  const plot = await post('/plot', { n: 'Alice', k: 'q'.repeat(20), kind: 's', img: 'data:image/jpeg;base64,AAAA' });
+  check(mine.ok && squat.error === 'name taken' && plot.error === 'name taken', 'someone else can\'t overwrite a player\'s board row or plot picture');
+  let limited = false; for (let i = 0; i < 130 && !limited; i++) limited = (await post('/mp/meta', { ...A, ids: [] })).status === 429;
+  const route = await fetch(U + '/admin'); check(limited && route.status === 404, 'the server rate-limits floods (429) and only answers its own routes');
+  srv.close();
+}
 if (fails) { console.log(fails + ' failed'); process.exit(1); }

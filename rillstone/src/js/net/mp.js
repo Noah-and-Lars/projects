@@ -13,8 +13,10 @@ export const MP_SERVER = '';
 export const MP_SLOTS = 6;
 const SLOTS_KEY = 'rill-mp-slots', KEY_KEY = 'rill-mp-key';
 
-export function createMp() {
-  const base = () => { try { return (window.RILL_MP_URL || localStorage.getItem('rill-mp-url') || MP_SERVER || '').replace(/\/$/, ''); } catch (_) { return MP_SERVER; } };
+export function createMp({ test = false } = {}) {
+  // With the test controls open (?test=1) only a local test server is used,
+  // never the real one.
+  const base = () => { try { const o = window.RILL_MP_URL || localStorage.getItem('rill-mp-url'); return (o || (test ? '' : MP_SERVER) || '').replace(/\/$/, ''); } catch (_) { return test ? '' : MP_SERVER; } };
   const key = () => {
     try { let k = localStorage.getItem(KEY_KEY); if (!k || k.length < 16) { const b = new Uint8Array(18); crypto.getRandomValues(b); k = [...b].map(x => x.toString(16).padStart(2, '0')).join(''); localStorage.setItem(KEY_KEY, k); } return k; } catch (_) { return null; }
   };

@@ -12,6 +12,12 @@
 //   plot:s:<name>     a picture of a solo player's plot (JPEG data URL)
 //   plot:m:<id>       a picture of a multiplayer world's plot
 const PART = 100000, MAX_SAVE = 6_000_000, MAX_PLOT = 120_000, MAX_MEMBERS = 4, MAX_WORLDS_PER_OWNER = 6;
+const MAX_WORLDS = 5000, MAX_SOLO = 20000;            // whole-server caps
+const RATE = { write: [120, 60_000], create: [6, 3_600_000] }; // per IP: [count, window ms]
+// Leaderboard numbers are reported by players' games, so the server only
+// accepts believable growth: a head start plus a generous rate per minute.
+const plausible = (old, now, t0) => { const mins = Math.max(0, (Date.now() - (t0 || 0)) / 60000); return now <= (old || 0) + 100_000 + 8_000 * mins; };
+const plausibleOres = (old, now, t0) => { const mins = Math.max(0, (Date.now() - (t0 || 0)) / 60000); return now <= (old || 0) + 500 + 400 * mins; };
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...CORS } });
 const cleanName = (n) => String(n || '').replace(/[^A-Za-z0-9_ .'-]/g, '').trim().slice(0, 16);
@@ -24,27 +30,38 @@ async function hash(k) {
 const newId = (n = 10) => { const a = 'abcdefghijkmnpqrstuvwxyz23456789', b = new Uint8Array(n); crypto.getRandomValues(b); return [...b].map(x => a[x % a.length]).join(''); };
 
 export class Hub {
-  constructor(state) { this.state = state; this.s = state.storage; }
+  constructor(state) { this.state = state; this.s = state.storage; this.hits = new Map(); }
+  // A simple per-IP limiter (kept in memory; the Durable Object is one instance).
+  limited(ip, kind) {
+    const [max, win] = RATE[kind], key = kind + ':' + ip, now = Date.now();
+    let e = this.hits.get(key); if (!e || now - e.t > win) { e = { t: now, n: 0 }; this.hits.set(key, e); }
+    if (this.hits.size > 50000) this.hits.clear();
+    return ++e.n > max;
+  }
   async fetch(req) {
-    const url = new URL(req.url);
+    const url = new URL(req.url), ip = req.headers.get('CF-Connecting-IP') || 'local';
     try {
       if (req.method === 'GET' && url.pathname === '/lb') return json(await this.boards());
       if (req.method === 'GET' && url.pathname === '/plot') { const img = await this.s.get(`plot:${url.searchParams.get('kind') === 'm' ? 'm' : 's'}:${String(url.searchParams.get('ref') || '').slice(0, 40)}`); return img ? json({ img }) : json({ error: 'none' }, 404); }
       if (req.method !== 'POST') return json({ error: 'method' }, 405);
-      const b = await req.json();
+      if (this.limited(ip, 'write')) return json({ error: 'slow down' }, 429);
+      const text = await req.text(); if (text.length > MAX_SAVE + 200_000) return json({ error: 'too big' }, 413);
+      let b; try { b = JSON.parse(text); } catch (_) { return json({ error: 'bad json' }, 400); }
+      if (!b || typeof b !== 'object' || Array.isArray(b)) return json({ error: 'bad' }, 400);
       const n = cleanName(b.n), kh = b.k && String(b.k).length >= 16 ? await hash(b.k) : null;
       if (!n || !kh) return json({ error: 'who' }, 401);
       const route = url.pathname;
       if (route === '/lb/solo') return json(await this.soloRow(n, kh, b));
       if (route === '/plot') return json(await this.putPlot(n, kh, b));
-      if (route === '/mp/create') return json(await this.create(n, kh, b));
+      if (route === '/mp/create') { if (this.limited(ip, 'create')) return json({ error: 'slow down' }, 429); return json(await this.create(n, kh, b)); }
       if (route === '/mp/meta') return json(await this.metas(kh, b.ids));
-      const id = String(b.id || '').slice(0, 16), w = await this.s.get(`w:${id}`);
+      const id = String(b.id || ''); if (!/^[a-z0-9]{10}$/.test(id)) return json({ error: 'gone' }, 404);
+      const w = await this.s.get(`w:${id}`);
       if (!w) return json({ error: 'gone' }, 404);
       const member = w.members.find(m => m.kh === kh), owner = w.ownerKh === kh;
       if (route === '/mp/join') {
         if (member) return json({ ok: true, meta: this.pub(w, kh) });
-        if (b.invite !== w.invite) return json({ error: 'invite' }, 403);
+        if (typeof b.invite !== 'string' || b.invite !== w.invite) return json({ error: 'invite' }, 403);
         if (w.members.length >= MAX_MEMBERS) return json({ error: 'full' }, 409);
         w.members.push({ n, kh }); await this.s.put(`w:${id}`, w); return json({ ok: true, meta: this.pub(w, kh) });
       }
@@ -73,15 +90,18 @@ export class Hub {
   }
   async create(n, kh, b) {
     const save = String(b.save || ''); if (!save || save.length > MAX_SAVE) return { error: 'save' };
-    const mine = await this.s.list({ prefix: 'w:' }); let owned = 0; for (const w of mine.values()) if (w.ownerKh === kh) owned++;
-    if (owned >= MAX_WORLDS_PER_OWNER) return { error: 'too many' };
-    const id = newId(10), w = { id, name: cleanTitle(b.name) || `${n}'s claim`, owner: n, ownerKh: kh, members: [{ n, kh }], invite: newId(12), rev: 1, savedAt: Date.now(), day: num(b.day, 1e6), scrip: num(b.scrip), ores: num(b.ores), kg: num(b.kg), parts: 0 };
+    const all = await this.s.list({ prefix: 'w:' }); let owned = 0; for (const w of all.values()) if (w.ownerKh === kh) owned++;
+    if (owned >= MAX_WORLDS_PER_OWNER || all.size >= MAX_WORLDS) return { error: 'too many' };
+    // A new world starts from scratch on the board.
+    const id = newId(10), w = { id, name: cleanTitle(b.name) || `${n}'s claim`, owner: n, ownerKh: kh, members: [{ n, kh }], invite: newId(12), rev: 1, savedAt: Date.now(), day: num(b.day, 1e6), scrip: Math.min(num(b.scrip), 100_000), ores: Math.min(num(b.ores), 500), kg: num(b.kg), parts: 0 };
     w.parts = await this.writeSave(id, save);
     await this.s.put(`w:${id}`, w);
     return { ok: true, meta: this.pub(w, kh) };
   }
   async save(w, kh, b) {
     const save = String(b.save || ''); if (!save || save.length > MAX_SAVE) return { error: 'save' };
+    // Believable progress only (a world's numbers come from its host's game).
+    if (!plausible(w.scrip, num(b.scrip), w.savedAt) || !plausibleOres(w.ores, num(b.ores), w.savedAt)) return { error: 'implausible' };
     w.parts = await this.writeSave(w.id, save, w.parts);
     Object.assign(w, { rev: w.rev + 1, savedAt: Date.now(), day: num(b.day, 1e6), scrip: num(b.scrip), ores: num(b.ores), kg: num(b.kg), savedBy: cleanName(b.n) });
     await this.s.put(`w:${w.id}`, w);
@@ -96,6 +116,8 @@ export class Hub {
   async soloRow(n, kh, b) {
     const old = await this.s.get(`s:${n}`);
     if (old && old.kh !== kh) return { error: 'name taken' };
+    if (!old && (await this.s.list({ prefix: 's:' })).size >= MAX_SOLO) return { error: 'full' };
+    if (old ? !plausible(old.s, num(b.s), old.t) || !plausibleOres(old.o, num(b.o), old.t) : num(b.s) > 100_000 || num(b.o) > 500) return { error: 'implausible' };
     await this.s.put(`s:${n}`, { n, kh, s: num(b.s), o: num(b.o), kg: num(b.kg), d: num(b.d, 1e6), t: Date.now() });
     return { ok: true };
   }
@@ -117,6 +139,8 @@ export class Hub {
 export default {
   async fetch(req, env) {
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
+    const path = new URL(req.url).pathname;
+    if (!/^\/(lb|plot|lb\/solo|mp\/(create|get|save|join|leave|delete|meta))$/.test(path)) return json({ error: 'route' }, 404);
     const len = +(req.headers.get('content-length') || 0); if (len > MAX_SAVE + 200_000) return json({ error: 'too big' }, 413);
     const hub = env.HUB.get(env.HUB.idFromName('rillstone'));
     return hub.fetch(req);

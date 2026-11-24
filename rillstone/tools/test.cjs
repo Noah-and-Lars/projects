@@ -1287,6 +1287,8 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     const placed = await G.pg.evaluate(async (g) => {
       const R = __rill, e = R.items.get(R.hands.hand); if (!e || e.type !== 'crate') return { err: 'no crate on the guest', hand: e?.type };
       const pos = [g.x0 - 8, R.height(g.x0 - 8, g.z0 + 2), g.z0 + 2];
+      // Walk over first: the host only lets a guest place within reach of where it sees them.
+      await R.teleport(pos[0] + 2, pos[1] + 1, pos[2] + 2); await new Promise(r => setTimeout(r, 1500));
       R.hands.remote({ k: 'place', def: 'junction', pos, rot: 0, ent: e.id });
       for (let i = 0; i < 20 && ![...R.machines.list.values()].some(m => m.def === 'junction'); i++) await new Promise(r => setTimeout(r, 150));
       return { guest: [...R.machines.list.values()].filter(m => m.def === 'junction').length };
@@ -1556,6 +1558,18 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return { ...v, trees0, back: R.flora.pine.count === trees0 && R.view.renderer.shadowMap.enabled };
     });
     check(vl.px === 0.6 && !vl.shadows && !vl.bloom && vl.far < 1000 && vl.trees < vl.trees0 * 0.5 && vl.back, `very low graphics: ${vl.px}x resolution, no shadows or bloom, view ${vl.far} m, ${vl.trees} of ${vl.trees0} trees; High restores it`);
+    // Injection: text from another player's world (names, item data) is shown
+    // as text, never run as HTML; bad data from a host can't break the loop.
+    const inj = await p.evaluate(async () => {
+      const R = __rill, evil = '<img src=x onerror="window.__pwned=1">';
+      // (Read straight away: the game redraws the hint and hotbar every frame.)
+      R.hud.tooltip({ name: evil, badge: evil, lines: [evil] }); R.hud.hint(`<kbd>E</kbd> pick up ${evil}`); R.hud.hotbar([{ name: evil, sub: evil, color: 'red;background-image:url(x)' }, null]);
+      const tip = document.getElementById('tooltip'), hint = document.getElementById('hint');
+      const out = { imgs: document.querySelectorAll('#tooltip img, #hint img, #hotbar img').length, kbd: hint.querySelectorAll('kbd').length, text: tip.textContent.includes('<img'), swatch: document.querySelector('#hotbar .slot i')?.getAttribute('style') };
+      await new Promise(r => setTimeout(r, 300)); out.pwned = !!window.__pwned;
+      R.hud.tooltip(null); R.hud.hint(''); return out;
+    });
+    check(!inj.pwned && inj.imgs === 0 && inj.kbd === 1 && inj.text && !/url/.test(inj.swatch || ''), 'markup in names and item text shows as plain text (no injected HTML runs); key caps still render');
     // Pause menu extras: Call nearest vehicle brings the truck in front of
     // you; Photo mode hides the menu and HUD until a key is pressed.
     const extra = await p.evaluate(async () => {

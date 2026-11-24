@@ -88,7 +88,7 @@ export function createBoard({ entry, picture, server }) {
   function onMessage(m) {
     const p = m && m.payload; if (!p || typeof p.f !== 'string') return;
     // Someone wants a picture of my plot (one answer every 5 s at most).
-    if (m.event === 'pic?' && p.to === myId) {
+    if (m.event === 'pic?' && p.to === myId && typeof p.f === 'string') {
       if (Date.now() - lastPic < 5000) return; lastPic = Date.now();
       picture().then((url) => {
         if (typeof url !== 'string') return;
@@ -96,8 +96,10 @@ export function createBoard({ entry, picture, server }) {
         for (let i = 0; i < n; i++) send('pic', { to: p.f, k, i, n, d: url.slice(i * CHUNK, (i + 1) * CHUNK) });
       }).catch(() => {});
     }
-    if (m.event === 'pic' && p.to === myId && typeof p.d === 'string' && p.n > 0 && p.n < 64) {
-      let e = parts.get(p.k); if (!e) { e = { got: new Array(p.n), have: 0 }; parts.set(p.k, e); }
+    // Picture chunks: only from a player we asked, and well-formed.
+    if (m.event === 'pic' && p.to === myId && waiting.has(p.f) && typeof p.d === 'string' && p.d.length <= CHUNK && typeof p.k === 'string' && Number.isInteger(p.n) && p.n > 0 && p.n < 64 && Number.isInteger(p.i) && p.i >= 0 && p.i < p.n) {
+      let e = parts.get(p.k); if (!e) { if (parts.size >= 4) parts.delete(parts.keys().next().value); e = { n: p.n, got: new Array(p.n), have: 0 }; parts.set(p.k, e); }
+      if (e.n !== p.n) return;
       if (e.got[p.i] == null) { e.got[p.i] = p.d; e.have++; }
       if (e.have === p.n) { parts.delete(p.k); const w = waiting.get(p.f); const url = e.got.join(''); if (w && /^data:image\/(jpeg|png);base64,/.test(url)) { waiting.delete(p.f); w(url); } }
     }

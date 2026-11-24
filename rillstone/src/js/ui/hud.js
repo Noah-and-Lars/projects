@@ -1,6 +1,10 @@
 // In-game HUD: crosshair, action hint, clock, balance, toasts, debug overlay.
 import { h } from './dom.js';
 
+// Text that ends up in innerHTML is escaped first.
+const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+export const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
+const safeColor = (c) => (/^#[0-9a-f]{3,8}$|^rgba?\([\d.,\s%]+\)$/i.test(String(c)) ? c : '#888');
 export function createHUD(root) {
   const cross = h('div', { id: 'crosshair' });
   const hint = h('div', { id: 'hint' });
@@ -17,7 +21,9 @@ export function createHUD(root) {
   return {
     el, debug,
     show(v) { el.classList.toggle('hidden', !v); },
-    hint(text) { if (text !== lastHint) { hint.innerHTML = text; lastHint = text; } },
+    // Hints are text with <kbd> key caps: everything else is escaped (names
+    // and numbers in them can come from another player's world).
+    hint(text) { if (text !== lastHint) { hint.innerHTML = esc(text).replace(/&lt;kbd&gt;(.*?)&lt;\/kbd&gt;/g, '<kbd>$1</kbd>'); lastHint = text; } },
     clock(dayFrac, day) {
       const mins = Math.floor(dayFrac * 24 * 60), hh = Math.floor(mins / 60), mm = mins % 60;
       const s = `Day ${day} · ${String(hh).padStart(2, '0')}:${String(mm - (mm % 5)).padStart(2, '0')}`;
@@ -39,12 +45,12 @@ export function createHUD(root) {
     tooltip(card) {
       if (!card) { tip.classList.add('hidden'); return; }
       tip.classList.remove('hidden');
-      const html = `<b>${card.name}</b>${card.badge ? `<span class="badge">${card.rivet ? '<i class="rivet"></i>' : ''}${card.badge}</span>` : ''}` + (card.lines || []).map(l => `<div>${l}</div>`).join('');
+      const html = `<b>${esc(card.name)}</b>${card.badge ? `<span class="badge">${card.rivet ? '<i class="rivet"></i>' : ''}${esc(card.badge)}</span>` : ''}` + (card.lines || []).map(l => `<div>${esc(l)}</div>`).join('');
       if (tip.innerHTML !== html) tip.innerHTML = html;
     },
     // Two inventory slots: the hand and the quick-swap slot.
     hotbar(slots) {
-      const html = slots.map((sl, i) => `<div class="slot${i === 0 ? ' active' : ''}${sl ? '' : ' empty'}"><span class="key">${i === 0 ? 'Hand' : 'Q'}</span>${sl ? `<i style="background:${sl.color}"></i><b>${sl.name}</b>${sl.sub ? `<small>${sl.sub}</small>` : ''}` : '<b>Empty</b>'}</div>`).join('');
+      const html = slots.map((sl, i) => `<div class="slot${i === 0 ? ' active' : ''}${sl ? '' : ' empty'}"><span class="key">${i === 0 ? 'Hand' : 'Q'}</span>${sl ? `<i style="background:${safeColor(sl.color)}"></i><b>${esc(sl.name)}</b>${sl.sub ? `<small>${esc(sl.sub)}</small>` : ''}` : '<b>Empty</b>'}</div>`).join('');
       if (hotbar.innerHTML !== html) hotbar.innerHTML = html;
     },
     toggleDebug() { debug.classList.toggle('hidden'); },

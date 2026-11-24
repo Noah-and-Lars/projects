@@ -1676,3 +1676,70 @@ before fixing it.
 - **A demo alloy line** in the guide: a picture of a smelter, two feed
   belts, a Mix Sensor, a Compare gate and two Belt Gates.
 - **More alloys**, or a third tier made from two alloys.
+
+### Security pass (patching injection and exploits)
+
+**Injection (other players' data running as code)**
+- **Escaping:** the tooltip, hotbar and key hints used to build HTML
+  strings, and some of their text comes from another player's world:
+  item data, names, rail counts. All text is now escaped (`esc()` in
+  ui/hud.js), and hints keep only their `<kbd>` key caps.
+- **Colours:** swatch colours must look like a colour.
+- **Boot error:** the error panel is plain text.
+- **Untrusted data** (`core/safe.js` `cleanKeys`): `__proto__`,
+  `constructor` and `prototype` keys are stripped from save files, world
+  packages, a host's snapshots and a guest's intents.
+- **Lookups:** tables are read with own keys only (`own()`), so a name like
+  "toString" can't reach built-ins.
+- **Imported saves:** they have size limits, and terrain chunks must be
+  well-formed.
+
+**Co-op (the host checks everything a guest sends)**
+- Intents must be arrays of action objects (at most 30 queued).
+- Bin "take" indexes must be whole numbers.
+- A guest can only place a machine within 14 m of where the host sees them.
+- Settings use own keys (the filter material and alloy names).
+- A guest's "send me the world" request is answered at most once every 4 s.
+- On guests, a bad update from the host is skipped instead of stopping the
+  update loop, and unknown machine types or pipe tiers are ignored.
+- The "two hosts opened the same multiplayer world" step-down only works in
+  the first 20 s after opening, and only once, so a spoofed host can't keep
+  forcing reloads.
+
+**Chunked messages**
+- `net.takeBig` caps the chunk count at 800 and the chunk size, checks
+  indexes, and keeps at most 8 transfers in progress, so a huge "n" can't
+  allocate gigabytes.
+- Leaderboard picture chunks are accepted only from a player you asked, are
+  well-formed, and at most 4 transfers run at once.
+
+**Server** (`server/worker.mjs`)
+- **Limits:** a per-IP rate limit (120 writes a minute, 6 new worlds an
+  hour), plus whole-server caps (5000 worlds, 20 000 solo rows).
+- **Requests:** the body size is checked after reading (not trusted from a
+  header); JSON must be an object; world ids must match `[a-z0-9]{10}`; the
+  invite must be a string; any other path gets 404.
+- **Believable numbers:** board numbers come from players' games, so saves
+  and solo rows that jump impossibly (more than $100,000 plus $8,000 a
+  minute, or 500 plus 400 ores a minute) are refused. New worlds can't start
+  with a huge balance, and names lose markup.
+- **Ownership:** a board name and its plot picture belong to the first key
+  that used it.
+
+**Test controls:** `?test=1` (which exposes `window.__rill`) keeps a game
+off the real leaderboards and the real server. Only the local test servers
+that tests point to are used.
+
+**Limits we can't remove**
+- A browser game runs on the player's machine, so someone can still change
+  their own copy with developer tools.
+- In co-op the host's browser is the authority for its world.
+- Arcade names can't be verified by our server (the arcade has no check
+  for it), so the first browser to use a name on the board keeps it.
+- The server's plausibility checks make faked leaderboard numbers much
+  harder, not impossible.
+
+**Tests:**
+- unit: server hardening (outsiders, odd ids, prototype keys, bad JSON,
+  impossible totals, name ownership, rate limit, unknown routes);
+- `--shots`: markup in names and item text is shown, never run.

@@ -233,11 +233,15 @@ async function boot() {
   // ---- Leaderboard (net/board.js, ui/leaderboard.js) ----
   // Your line: money and ores sold (not for sandbox games, co-op guests, or
   // if you switched it off in Settings).
-  const mp = createMp();
+  // ?test=1 opens the test controls (window.__rill), which can change
+  // anything; a game opened that way stays off the real leaderboards and
+  // server (tests point the game at local copies instead).
+  const onlineTrusted = () => !TEST || !!window.ARCADE_RT_URL;
+  const mp = createMp({ test: TEST });
   const board = createBoard({
     // Solo games: your line. Multiplayer worlds: the host's line stands for the
     // world (its shared cash, ores sold and how many players are in it).
-    entry: () => (!state.playing || economy.sandbox || coop.isGuest() || settings.leaderboard === false) ? null
+    entry: () => (!state.playing || !onlineTrusted() || economy.sandbox || coop.isGuest() || settings.leaderboard === false) ? null
       : { s: economy.state.scrip, o: economy.state.stats?.oresSold || 0, kg: economy.state.stats?.oreKg || 0, d: state.day, ...(state.mp ? { w: state.mp.id, wn: state.mp.name, pl: state.mp.members?.length || 1 } : {}) },
     picture: () => Promise.resolve(basePicture()),
     server: mp,
@@ -813,4 +817,4 @@ async function boot() {
   });
   window.__rill = api;
 }
-boot().catch((e) => { console.error(e); document.body.insertAdjacentHTML('beforeend', `<pre style="position:fixed;left:10px;top:10px;color:#a00;background:#fff;padding:8px">${String(e && e.stack || e)}</pre>`); });
+boot().catch((e) => { console.error(e); const pre = document.createElement('pre'); pre.style.cssText = 'position:fixed;left:10px;top:10px;color:#a00;background:#fff;padding:8px'; pre.textContent = String(e && e.stack || e); document.body.append(pre); });

@@ -19,7 +19,8 @@ import { editLog, brush, boxBrush, createClaimVolume, readChunk, writeChunk } fr
 import { clerk, textPlane } from '../render/buildings.js';
 import { BLUEPRINTS } from '../defs/progression.js';
 import { SHOPS } from '../defs/shops.js';
-import { MACHINES } from '../defs/machines.js';
+import { MACHINES, PIPE_TIERS } from '../defs/machines.js';
+import { cleanKeys, own } from '../core/safe.js';
 import { MATERIALS, CRAFT_MULT } from '../defs/materials.js';
 
 const SNAP_HZ = 12, IN_HZ = 20, SCAN_HZ = 5, STATUS_HZ = 2;
@@ -41,8 +42,8 @@ function cleanSetting(k, v, materials) {
     case 'pulseOnly': return typeof v === 'boolean' ? v : undefined;
     case 'cutKg': return num(v) ? clamp(v, 0.25, 10) : undefined;
     // null clears a sample; the Sorting Hopper also takes 'any' form.
-    case 'filter': return v === null ? null : v && typeof v === 'object' && materials[v.material] && (STAGES.includes(v.stage) || v.stage === 'any') ? { material: v.material, stage: v.stage } : undefined;
-    case 'alloy': return v === null || materials[v]?.kind === 'alloy' ? v : undefined;
+    case 'filter': return v === null ? null : v && typeof v === 'object' && typeof v.material === 'string' && Object.hasOwn(materials, v.material) && (STAGES.includes(v.stage) || v.stage === 'any') ? { material: v.material, stage: v.stage } : undefined;
+    case 'alloy': return v === null || (typeof v === 'string' && Object.hasOwn(materials, v) && materials[v].kind === 'alloy') ? v : undefined;
   }
 }
 const r3 = (v) => Math.round(v * 1000) / 1000, r4 = (v) => Math.round(v * 10000) / 10000;
@@ -174,7 +175,9 @@ export function createCoop(ctx) {
       else if (a.k === 'unlock') { const m = machines.get(a.id); if (m) { m.locked = false; g.hands.hud.toast(`${machines.name(m.def)} unlocked`); } }
       else if (a.k === 'place') {
         const e = H.hand ? items.get(H.hand) : null;
-        if (e && e.id === a.ent && e.type === 'crate' && e.data.def === a.def && vec(a.pos) && num(a.rot)) {
+        // A guest places within reach of where the host sees them (with slack for lag).
+        const near = vec(a.pos) && Math.hypot(a.pos[0] - g.pose.p[0], a.pos[2] - g.pose.p[2]) < 14 && Math.abs(a.pos[1] - g.pose.p[1]) < 10;
+        if (e && e.id === a.ent && e.type === 'crate' && e.data.def === a.def && near && Number.isInteger(a.rot)) {
           const why = machines.requirement(a.def, a.pos, a.rot);
           if (why) H.hud.toast(why, 'err');
           else if (!(await machines.checkFree(a.def, a.pos, a.rot))) H.hud.toast('Something is in the way', 'err');
@@ -211,7 +214,7 @@ export function createCoop(ctx) {
       case 'interact': { const m = machines.get(a.id); if (m) auto.interact(m); break; }
       case 'take': {
         // The guest saw item i; if the bin shifted since (an ejector), take the one that matches.
-        const m = machines.get(a.id), c = m?.state?.contents; if (!c) break;
+        const m = machines.get(a.id), c = m?.state?.contents; if (!c || !Number.isInteger(a.i) || a.i < 0) break;
         const i = a.sig == null || (c[a.i] && takeSig(c[a.i]) === a.sig) ? a.i : c.findIndex(it => takeSig(it) === a.sig);
         if (i >= 0) auto.takeFrom(m, i, H); break;
       }
@@ -236,7 +239,7 @@ export function createCoop(ctx) {
       g.pose.yaw = num(p.yaw) ? p.yaw : 0; g.pose.pitch = num(p.pitch) ? p.pitch : 0;
     }
     if (g.drv != null && p.vi) { const d = vehicles.remoteDrivers.get(g.drv); if (d) d.input = { throttle: Math.max(-1, Math.min(1, +p.vi.throttle || 0)), steer: Math.max(-1, Math.min(1, +p.vi.steer || 0)), brake: !!p.vi.brake }; }
-    for (const a of p.a || []) if (g.queue.length < 30) g.queue.push(a);
+    if (Array.isArray(p.a)) for (const a of p.a.slice(0, 30)) if (a && typeof a === 'object' && typeof a.k === 'string' && g.queue.length < 30) g.queue.push(a);
     pump(g);
   }
   async function pump(g) {
@@ -327,7 +330,7 @@ export function createCoop(ctx) {
       case 'x': items.remove(op[1]); break;
       case 's': { const vol = claims.volumes.get(op[1]); if (vol) brush(vol, op[2], op[3], op[4], op[5]); break; }
       case 'b': { const vol = claims.volumes.get(op[1]); if (vol) boxBrush(vol, op[2], op[3], op[4]); break; }
-      case 'mp': { const d = op[1]; if (machines.get(d.id)) machines.remove(d.id); if (d.run) machines.layRun(d.tier, d.a, d.b, { id: d.id, via: d.via }); else machines.place(d.def, d.pos, d.rot, d.state, { id: d.id, locked: d.locked, wear: d.wear, on: d.on }); break; }
+      case 'mp': { const d = op[1]; if (!d || !num(d.id) || (d.run ? !own(PIPE_TIERS, d.tier) : !own(MACHINES, d.def))) break; if (machines.get(d.id)) machines.remove(d.id); if (d.run) machines.layRun(d.tier, d.a, d.b, { id: d.id, via: d.via }); else machines.place(d.def, d.pos, d.rot, d.state, { id: d.id, locked: d.locked, wear: d.wear, on: d.on }); break; }
       case 'mx': machines.remove(op[1]); break;
       case 'vs': vehicles.spawn(op[1].type, op[1].pos, 0, op[1]); break;
       case 'vx': origRemoveVehicle(op[1]); break;
@@ -339,7 +342,7 @@ export function createCoop(ctx) {
   }
   function applySnapshot(s) {
     state.time = s.t; state.day = s.d;
-    for (const o of s.ops || []) applyOp(o);
+    if (Array.isArray(s.ops)) for (const o of s.ops) { try { applyOp(o); } catch (e) { console.warn('Skipped a bad update from the host', e); } }
     for (let i = 0; i < s.b.length; i += 8) items.setPose(s.b[i], [s.b[i + 1], s.b[i + 2], s.b[i + 3]], [s.b[i + 4], s.b[i + 5], s.b[i + 6], s.b[i + 7]]);
     for (const [id, p, q, speed, wheels, fuel] of s.v) {
       const v = vehicles.list.get(id); if (!v) continue;
@@ -439,7 +442,9 @@ export function createCoop(ctx) {
       // Two members opened the same multiplayer world at once and both
       // hosted: the one who came second steps down and joins the first.
       const self = net.self?.(), other = self?.w && list.find(m => m.h && m.id !== net.id && m.w === self.w);
-      if (other && (other.t < self.t || (other.t === self.t && other.id < net.id))) { ctx.onHostClash?.(); return; }
+      // Only in the first 20 s after opening, and once: a later "host" in our
+      // room can't make us reload over and over.
+      if (other && num(other.t) && !C.clashed && Date.now() - self.t < 20000 && (other.t < self.t || (other.t === self.t && other.id < net.id))) { C.clashed = true; ctx.onHostClash?.(); return; }
       for (const m of list) if (m.id !== net.id && !C.guests.has(m.id)) { addGuest(m); hud.toast(`${m.n} joined`, 'gold'); }
       for (const id of [...C.guests.keys()]) if (!list.some(m => m.id === id)) removeGuest(id);
     } else if (C.role === 'guest') {
@@ -447,10 +452,12 @@ export function createCoop(ctx) {
     }
     ctx.onMembers?.(list);
   });
-  net.on_('hi', (p) => { if (C.role !== 'host') return; const m = net.members.find(x => x.id === p.f); const g = C.guests.get(p.f) || (m && addGuest(m)); if (g) sendPackage(g); });
+  // A guest asks for the world: at most one package every 4 s per guest (it's
+  // the most expensive thing the host does).
+  net.on_('hi', (p) => { if (C.role !== 'host') return; const m = net.members.find(x => x.id === p.f); const g = C.guests.get(p.f) || (m && addGuest(m)); if (!g) return; const now = performance.now(); if (g.pkAt && now - g.pkAt < 4000) return; g.pkAt = now; sendPackage(g); });
   net.on_('pk', (p) => { if (C.role !== 'guest' || p.to !== net.id || C.ready || C.loading || p.f !== net.host()?.id) return; if (!C.pkT0) C.pkT0 = performance.now(); C.pkLast = performance.now(); const s = net.takeBig(p); if (s) { C.stats.pkgBytes = s.length; C.stats.pkgMs = performance.now() - C.pkT0; loadPackage(s); } });
-  net.on_('in', (p) => { if (C.role === 'host') onIntent(p); });
-  net.on_('s', (s) => { if (C.role !== 'guest') return; const host = net.host(); if (host && s.f !== host.id) return; if (!C.ready) { buffered.push(s); if (buffered.length > 200) buffered.shift(); return; } applySnapshot(s); });
+  net.on_('in', (p) => { if (C.role === 'host' && p && typeof p === 'object') onIntent(cleanKeys(p)); });
+  net.on_('s', (s) => { if (C.role !== 'guest' || !s || typeof s !== 'object') return; cleanKeys(s); const host = net.host(); if (host && s.f !== host.id) return; if (!C.ready) { buffered.push(s); if (buffered.length > 200) buffered.shift(); return; } applySnapshot(s); });
   net.on_('to', (p) => {
     if (C.role !== 'guest' || p.to !== net.id || p.f !== net.host()?.id) return;
     if (p.toast) hud.toast(p.toast[0], p.toast[1]);
