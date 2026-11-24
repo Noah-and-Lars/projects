@@ -437,6 +437,14 @@ function watchtower(sim: Sim, cx: number, gy: number, cz: number, m: Marks): voi
   for (const s of sides.slice(-2)) { const [x0, x1, z0, z1] = s.lane; clear(g, x0, TOP - 3, z0, x1, TOP, z1); }
   const last = (side + 3) % 4; // corner reached before the final flight
   { const [lx, lz] = [[a, a], [b - lw, a], [b - lw, b - lw], [a, b - lw]][last]; clear(g, lx, TOP - 3, lz, lx + lw, TOP, lz + lw); }
+  // the stonework stops at head height (local y 23 = 2 m above the floor); the lookout above is an old timber frame.
+  // A tower of solid 0.4 m rock needed ~20 bombs to fell (tests/unit/levels.test.ts); with tools a player has when
+  // "Spoiling the View" unlocks (6 bombs, 6 pipe bombs) it could not be brought down to the 4 m the job asks for.
+  const timber = planks(MAT.wood, 2, 9);
+  for (let yy = 23; yy < g.sy; yy++) for (let zz = 0; zz < S; zz++) for (let xx = 0; xx < S; xx++) {
+    const p = g.get(xx, yy, zz);
+    if (p && p >> 3 === MAT.rock) g.set(xx, yy, zz, timber(xx, yy, zz));
+  }
   // brazier
   box(g, 22, TOP, 22, 28, TOP + 2, 28, flat(MAT.steel)); box(g, 23, TOP + 2, 23, 27, TOP + 3, 27, pal(MAT.lamp));
   const x0 = cx - S * 0.05, z0 = cz - S * 0.05;

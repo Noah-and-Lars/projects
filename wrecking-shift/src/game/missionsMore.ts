@@ -104,8 +104,9 @@ export const towerDown: MissionDef = {
   title: 'Spoiling the View',
   client: 'Cornelius Ash, Ash Coastal Developments',
   brief:
-    'Vane\'s stone watchtower stands exactly where my funicular needs to go, and he will not sell.\n\n' +
-    'Take it down to four metres. And since you are up there — his boathouse is on my side of the old survey line. ' +
+    'Vane\'s watchtower stands exactly where my funicular needs to go, and he will not sell.\n\n' +
+    'Take it down to four metres. Only the bottom storey is stone; the lookout on top is an old timber frame, which ' +
+    'should make it a short afternoon. And since you are up there — his boathouse is on my side of the old survey line. ' +
     'Sixty per cent of it gone would settle the boundary nicely. It is wood. I am told wood burns.',
   objectives: [
     { kind: 'demolish', id: 'tower', title: 'Demolish the watchtower (nothing above 4 m)', height: 0 },

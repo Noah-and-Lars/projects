@@ -70,6 +70,13 @@ describe('Gullwick Harbour playthroughs', () => {
       }
     }
     r.wait(4);
+    if (process.env.PLAY_LOG) {
+      const tw = r.tagged('destroy:tower')[0];
+      const out: string[] = [];
+      for (let y = 20; y < 45; y++) { let n = 0; for (let z = 0; z < tw.grid.sz; z++) for (let x = 0; x < tw.grid.sx; x++) if (tw.grid.get(x, y, z)) n++; out.push(`${y}:${n}`); }
+      console.log('tower layers', out.join(' '));
+      for (const ly of [26, 32]) { const rows: string[] = []; for (let z = 0; z < tw.grid.sz; z += 1) { let row = ''; for (let x = 0; x < tw.grid.sx; x++) row += tw.grid.get(x, ly, z) ? '#' : '.'; rows.push(row); } console.log('layer', ly + '\n' + rows.join('\n')); }
+    }
     expect(r.mission.objectives()[0].done).toBe(true);
     expect(r.player.dead).toBe(false);
     // no alarm on this job: walk back
@@ -212,5 +219,49 @@ describe('Kestrel Ridge playthroughs', () => {
     r.log('drive', st);
     r.step(30);
     finish(r);
+  }, T);
+  it('tower-down: bombs round the timber lookout of the watchtower, then back to the van', () => {
+    const r = new Run('tower-down');
+    const c = v3(-46, 20, -46);
+    const H = 23.0; // timber starts 2 m above the floor (22.1); the job wants nothing above 24
+    r.select('bomb');
+    // the four wall centres (the north one beside the arrow slit) and two corners, 1.4 m out, aimed at the wall
+    const spots: [number, number, number, number][] = [[-46, -43.5, 0, 1], [-45.2, -48.5, 0, -1], [-43.5, -46, 1, 0], [-48.5, -46, -1, 0], [-43.5, -43.5, 1, 1], [-48.5, -48.5, -1, -1]];
+    for (const [x, z, nx, nz] of spots) {
+      const d = nx && nz ? 1.1 : 1.4;
+      r.tp(v3(x + nx * d, 20.1, z + nz * d));
+      r.aim(v3(x - nx * 0.05, H, z - nz * 0.05));
+      r.click();
+      r.tp(v3(c.x + 9, 20.1, c.z + 9));
+      r.wait(4);
+      r.log('bomb', r.mission.objectives()[0].detail, 'hp', r.player.health.toFixed(2));
+    }
+    // sledge the two corners that are left (north-east, south-west)
+    r.select('sledge');
+    for (const [x, z, nx, nz] of [[-43.5, -48.5, 1, -1], [-48.5, -43.5, -1, 1]] as const) {
+      if (r.mission.objectives()[0].done) break;
+      r.tp(v3(x + nx * 0.9, 20.1, z + nz * 0.9));
+      for (const [ax, az] of [[0, 0], [-nx * 0.6, 0], [0, -nz * 0.6], [-nx * 1.1, 0], [0, -nz * 1.1]]) {
+        for (const h of [H - 0.15, H + 0.25]) {
+          r.aim(v3(x + ax, h, z + az));
+          r.hold(26);
+        }
+      }
+      r.log('sledge', r.mission.objectives()[0].detail);
+    }
+    r.wait(4);
+    if (process.env.PLAY_LOG) {
+      const tw = r.tagged('destroy:tower')[0];
+      const out: string[] = [];
+      for (let y = 20; y < 45; y++) { let n = 0; for (let z = 0; z < tw.grid.sz; z++) for (let x = 0; x < tw.grid.sx; x++) if (tw.grid.get(x, y, z)) n++; out.push(`${y}:${n}`); }
+      console.log('tower layers', out.join(' '));
+      for (const ly of [26, 32]) { const rows: string[] = []; for (let z = 0; z < tw.grid.sz; z += 1) { let row = ''; for (let x = 0; x < tw.grid.sx; x++) row += tw.grid.get(x, ly, z) ? '#' : '.'; rows.push(row); } console.log('layer', ly + '\n' + rows.join('\n')); }
+    }
+    expect(r.mission.objectives()[0].done).toBe(true);
+    expect(r.player.dead).toBe(false);
+    // no alarm on this job: back to the van
+    r.tp(v3(r.mission.escapePos().x - 1.8, 1.3, r.mission.escapePos().z - 1.6));
+    r.clockOut();
+    finish(r, null);
   }, T);
 });
