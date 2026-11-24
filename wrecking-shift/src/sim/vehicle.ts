@@ -473,7 +473,9 @@ export class Vehicle {
     const massF = Math.cbrt(m / 1500);
     const pushing = (throttle > 0.5 && this.speed > 0) || (throttle < -0.5 && this.speed < 0) ? this.spec.ramPush : 0;
     const self = body;
-    const filter = (b: VoxelBody) => b.kind !== 'vehicle' && (!b.dynamic || b.mass > m * 0.5);
+    // terrain is never rammed: its voxel steps on a slope look like walls to the forward probes and drained the
+    // vehicle's health on every climb (hard hits on terrain still count through the contact-force impacts)
+    const filter = (b: VoxelBody) => b.kind !== 'vehicle' && !b.tags.has('terrain') && (!b.dynamic || b.mass > m * 0.5);
     let removedMass = 0, removedCount = 0, worst = 0;
     let hitPos: V3 | null = null;
     let hitBody: VoxelBody | null = null;

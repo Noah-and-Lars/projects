@@ -145,14 +145,14 @@ export const nightWatch: MissionDef = {
   client: 'Marguerite Oyelaran, Gullwick Fishermen\'s Co-op',
   brief:
     'They have replaced the night guard with machines. Two Watchers float the quay — two seconds in their ' +
-    'light and the alarm is called in. A Gunner minds the warehouse door and is exactly as friendly as it sounds.\n\n' +
+    'light and the alarm is called in; Harbour Watch is then forty-five seconds out. A Gunner minds the warehouse door and is exactly as friendly as it sounds.\n\n' +
     'You cannot break them. Explosions only daze them. But they are heavy, stupid, and not waterproof.\n\n' +
     'Three sealed evidence cases are stacked around the quay. Bring them all home.',
   objectives: [
     { kind: 'collect', id: 'case', target: 'case', count: 3, title: 'Collect the three evidence cases' },
     { kind: 'collect', id: 'idol', title: 'Take the spare Idol from the lighthouse gallery', required: false },
   ],
-  alarmSeconds: 60,
+  alarmSeconds: 45,
   timeOfDay: 'night',
   reward: { cash: 1600 },
   unlockAfter: ['depot-clearance'],

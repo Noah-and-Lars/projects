@@ -404,45 +404,81 @@ export class Run {
 
 export interface DriveStats { ticks: number; topSpeed: number; minUp: number; stuck: boolean; reached: number }
 
-/** waypoint-following driver (shared by the mission harness and the road test) */
-export function driveRoute(v: Vehicle, points: V3[], tick: () => void, ended: () => boolean, o: { cap?: number; r?: number; max?: number; log?: boolean } = {}): DriveStats {
-  const cap = o.cap ?? v.spec.topSpeed;
+/**
+ * Pure-pursuit driver along a polyline (shared by the mission harness and the road test): steers toward a point
+ * a speed-dependent distance ahead on the path, targets the speed the path curvature ahead allows
+ * (v = sqrt(a_lat * R), with the vehicle's own minimum turning radius), brakes toward it, and reverses out
+ * when it has been stuck for 1.5 s.
+ */
+export function driveRoute(v: Vehicle, points: V3[], tick: () => void, ended: () => boolean, o: { cap?: number; r?: number; max?: number; log?: boolean; aLat?: number; reverse?: boolean } = {}): DriveStats {
+  const R = !!o.reverse;
+  const cap = o.cap ?? (R ? Math.min(3, v.spec.reverseSpeed) : v.spec.topSpeed);
   const st: DriveStats = { ticks: 0, topSpeed: 0, minUp: 1, stuck: false, reached: 0 };
-  let k = 0;
-  let slow = 0, reverse = 0;
   const max = o.max ?? 60 * 120;
-  while (k < points.length) {
+  const aLat = o.aLat ?? 3.5;
+  // path with the start position prepended, cumulative arc length
+  const P = [v3(v.com.x, 0, v.com.z), ...points];
+  const S = [0];
+  for (let i = 1; i < P.length; i++) S.push(S[i - 1] + hdist(P[i - 1], P[i]));
+  const total = S[S.length - 1];
+  const at = (s: number): V3 => {
+    s = Math.max(0, Math.min(total, s));
+    let i = 1;
+    while (i < P.length - 1 && S[i] < s) i++;
+    const t = (s - S[i - 1]) / Math.max(1e-6, S[i] - S[i - 1]);
+    return v3(P[i - 1].x + (P[i].x - P[i - 1].x) * t, 0, P[i - 1].z + (P[i].z - P[i - 1].z) * t);
+  };
+  const headingAt = (s: number) => { const a = at(s - 0.5), b = at(s + 0.5); return Math.atan2(-(b.x - a.x), -(b.z - a.z)); };
+  const ws = v.spec.wheels.map((w) => w.z);
+  const wheelbase = Math.max(...ws) - Math.min(...ws);
+  const rMin = wheelbase / Math.tan(v.spec.maxSteer * 0.85);
+  let seg = 1, prog = 0, slow = 0, reverse = 0, revSteer = 0;
+  while (true) {
     if (ended()) break;
     const c = v.com;
-    const wp = points[k];
-    const last = k === points.length - 1;
-    const d = hdist(c, wp);
-    if (d < (o.r ?? (last ? 2.5 : 4))) { k++; st.reached = k; continue; }
-    if (st.ticks++ > max) { st.stuck = true; break; }
-    // heading error to the waypoint (player yaw convention)
-    const want = Math.atan2(-(wp.x - c.x), -(wp.z - c.z));
-    const err = wrap(want - v.yaw);
-    // corner ahead: angle between this leg and the next one
-    let corner = 0;
-    if (!last) {
-      const n = points[k + 1];
-      const a1 = Math.atan2(-(wp.x - c.x), -(wp.z - c.z)), a2 = Math.atan2(-(n.x - wp.x), -(n.z - wp.z));
-      corner = Math.abs(wrap(a2 - a1)) * Math.max(0, 1 - d / 22);
+    // progress: project onto the current and the next two segments
+    let best = Infinity;
+    for (let i = seg; i < Math.min(P.length, seg + 3); i++) {
+      const a = P[i - 1], b = P[i];
+      const ex = b.x - a.x, ez = b.z - a.z, l2 = ex * ex + ez * ez || 1;
+      const t = Math.max(0, Math.min(1, ((c.x - a.x) * ex + (c.z - a.z) * ez) / l2));
+      const d = Math.hypot(c.x - a.x - ex * t, c.z - a.z - ez * t);
+      // a later segment only counts when we are actually on it (folded paths: hairpins, turnarounds)
+      if (d < best - 1e-6 && d < 3.5) { best = d; const sNew = S[i - 1] + t * (S[i] - S[i - 1]); if (sNew >= prog - 0.5) { prog = Math.max(prog, Math.min(sNew, prog + 3)); seg = i; } }
     }
-    const target = Math.min(cap, Math.max(3.5, cap * (1 - Math.min(0.75, corner / 1.6)) * (1 - Math.min(0.6, Math.abs(err) / 1.2))));
-    const sp = v.speed;
+    while (seg < P.length - 1 && S[seg] <= prog) seg++;
+    st.reached = Math.max(0, seg - 1);
+    if (total - prog < (o.r ?? 2.0) || hdist(c, P[P.length - 1]) < (o.r ?? 2.0)) { st.reached = points.length; break; }
+    if (st.ticks++ > max) { st.stuck = true; break; }
+    const sp = R ? -v.speed : v.speed;
+    const yaw = R ? wrap(v.yaw + Math.PI) : v.yaw;
+    const look = Math.max(3.5, Math.min(12, 1.6 + Math.abs(sp) * 0.75));
+    const tgtPt = at(prog + look);
+    const want = Math.atan2(-(tgtPt.x - c.x), -(tgtPt.z - c.z));
+    const err = wrap(want - yaw);
+    // speed limit from the tightest bend in the next ~25 m (heading change over 6 m windows)
+    let target = cap;
+    for (let s = prog; s < Math.min(total, prog + 25); s += 2) {
+      const dh = Math.abs(wrap(headingAt(s + 6) - headingAt(s)));
+      const R = Math.max(rMin, dh > 1e-3 ? 6 / dh : 1e9);
+      const vb = Math.max(2.2, Math.sqrt(aLat * (R - rMin * 0.8)));
+      // allowed now: braking at ~3 m/s^2 over the distance to that bend
+      target = Math.min(target, Math.sqrt(vb * vb + 2 * 3 * Math.max(0, s - prog)));
+    }
+    target = Math.min(target, Math.max(2.2, cap * (1 - Math.min(0.8, Math.abs(err) / 1.2))));
     if (reverse > 0) {
       reverse--;
-      v.input.throttle = -1;
-      v.input.steer = -Math.sign(err);
+      v.input.throttle = R ? 1 : -1;
+      v.input.steer = revSteer;
     } else {
-      v.input.steer = Math.max(-1, Math.min(1, -err * 2.2));
-      v.input.throttle = sp < target - 0.5 ? 1 : sp > target + 1.5 ? -0.6 : 0.25;
-      if (Math.abs(sp) < 0.5) slow++; else slow = Math.max(0, slow - 2);
-      if (slow > 90) { reverse = 70; slow = 0; }
+      v.input.steer = Math.max(-1, Math.min(1, -err * 2.5)) * (R ? -1 : 1);
+      v.input.throttle = (sp < target - 0.4 ? 1 : sp > target + 0.4 ? -Math.min(1, 0.3 + (sp - target) * 0.35) : 0.15) * (R ? -1 : 1);
+      if (Math.abs(sp) < 0.4 && v.input.throttle * (R ? -1 : 1) > 0) slow++; else slow = Math.max(0, slow - 2);
+      if (slow > 90) { reverse = 75; slow = 0; revSteer = err > 0 ? 1 : -1; }
     }
     v.input.handbrake = false;
     tick();
+    if (o.log && st.ticks % 30 === 0) console.log(`  drive t=${(st.ticks / 60).toFixed(1)} s=${prog.toFixed(1)}/${total.toFixed(0)} ${JSON.stringify(roundV(v.com))} v=${v.speed.toFixed(1)} tgt=${target.toFixed(1)} err=${err.toFixed(2)} thr=${v.input.throttle.toFixed(2)} st=${v.input.steer.toFixed(2)} up=${v.upright.toFixed(2)} gr=${v.grounded} hp=${v.health.toFixed(2)}`);
     st.topSpeed = Math.max(st.topSpeed, Math.abs(v.speed));
     st.minUp = Math.min(st.minUp, v.upright);
   }

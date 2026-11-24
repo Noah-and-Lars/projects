@@ -131,5 +131,20 @@ describe('Gullwick Harbour playthroughs', () => {
     r.clockOut();
     finish(r);
   }, T);
+  it('night-watch: case in the warehouse while planning, pier and quay cases under the watchers, van', () => {
+    const r = new Run('night-watch');
+    const cases = r.tagged('target:case').sort((a, b) => a.center().x - b.center().x);
+    const [w, pier, quay] = [cases[0], cases[1], cases[2]];
+    r.tp(v3(w.center().x, 1.5, w.center().z - 1.3));
+    r.take(w);
+    r.walk([v3(-25, 1.5, 19), v3(-20.5, 1.5, 19), v3(-10, 1.5, 29), v3(0, 1.5, 31), v3(0, 1.5, pier.center().z - 1.3)]);
+    r.take(pier);
+    r.walk([v3(0, 1.5, 31), v3(10, 1.5, 28.5), v3(quay.center().x - 1.3, 1.5, quay.center().z + 0.5)]);
+    r.take(quay);
+    r.log('hp', r.player.health.toFixed(2));
+    r.walk([v3(10, 1.5, 28), v3(4, 1.5, 9), v3(2, 1.5, -20), v3(0, 2, -50), r.mission.escapePos()], { r: 2.5 });
+    r.clockOut();
+    finish(r);
+  }, T);
 });
 

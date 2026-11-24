@@ -61,6 +61,10 @@ function wheels(r: number, width: number, hpY: number, xs: [number, number], axl
 
 // ---------------------------------------------------------------------------------------------- hatchback
 
+// Suspension damping (all prefabs): compression 4.4 > relaxation 2.3. With the old 3.0 / 4.0 the springs extended
+// slower than they compressed, so on a voxel-stepped grade (0.1 m steps every ~0.7 m at 15 %) every step pumped
+// the chassis lower until its floor scraped the steps at 8-9 m/s and the vehicle stopped dead (tests/unit/ridgeRoads).
+
 /** small fast car: 4.0 x 1.6 x 1.4 m, ~1150 kg, front-wheel drive */
 export function hatchbackBlueprint(opts: VehicleOpts = {}): VehicleBlueprint {
   const SX = 16, SY = 14, SZ = 40;
@@ -124,7 +128,7 @@ export function hatchbackBlueprint(opts: VehicleOpts = {}): VehicleBlueprint {
       { z: axles[0] * VOXEL + 0.05, steer: 0, drive: false, handbrake: true },
       { z: axles[1] * VOXEL + 0.05, steer: 1, drive: true, handbrake: false },
     ]),
-    restLength: susp + sag, stiffness: k, compression: 3.0, relaxation: 4.0, maxTravel: 0.18,
+    restLength: susp + sag, stiffness: k, compression: 4.4, relaxation: 2.3, maxTravel: 0.18,
     frictionSlip: 1.9, sideFriction: 1.0,
     engineForce: 6500, brake: 40, handbrake: 70,
     topSpeed: 30, reverseSpeed: 8, maxSteer: 0.6, steerFalloff: 11, antiRoll: 4.5,
@@ -200,7 +204,7 @@ export function vanBlueprint(opts: VehicleOpts = {}): VehicleBlueprint {
       { z: axles[0] * VOXEL + 0.05, steer: 0, drive: true, handbrake: true },
       { z: axles[1] * VOXEL + 0.05, steer: 1, drive: false, handbrake: false },
     ]),
-    restLength: susp + sag, stiffness: k, compression: 3.0, relaxation: 4.0, maxTravel: 0.2,
+    restLength: susp + sag, stiffness: k, compression: 4.4, relaxation: 2.3, maxTravel: 0.2,
     frictionSlip: 1.6, sideFriction: 1.0,
     engineForce: 9000, brake: 80, handbrake: 140,
     topSpeed: 21, reverseSpeed: 7, maxSteer: 0.55, steerFalloff: 9, antiRoll: 5,
@@ -246,12 +250,14 @@ export function loaderBlueprint(opts: VehicleOpts = {}): VehicleBlueprint {
   // front chassis + lift arms
   b.box(7, 6, 32, 17, 10, 45, paint);
   b.box(5, 6, 32, 7, 11, 50, steel); b.box(17, 6, 32, 19, 11, 50, steel);
-  // bucket (steel: only explosives dent it)
-  b.box(0, 1, 49, 24, 15, 51, steel); // back plate
-  b.box(0, 1, 51, 24, 3, 60, steel); // floor
-  for (const x of [0, 23]) for (let z = 51; z < 60; z++) b.box(x, 3, z, x + 1, 15 - (z - 51), z + 1, steel);
-  b.box(0, 1, 58, 24, 4, 60, flat(MAT.steel, 0)); // cutting edge
-  b.box(2, 14, 50, 6, 15, 51, flat(MAT.lamp)); b.box(18, 14, 50, 22, 15, 51, flat(MAT.lamp));
+  // bucket (steel: only explosives dent it), carried 0.2 m higher than it used to be: with its floor 0.25 m above
+  // the ground and 2.3 m ahead of the front axle it dug into every grade steeper than ~10 % and stopped the loader
+  const BY = 3;
+  b.box(0, BY, 49, 24, BY + 14, 51, steel); // back plate
+  b.box(0, BY, 51, 24, BY + 2, 60, steel); // floor
+  for (const x of [0, 23]) for (let z = 51; z < 60; z++) b.box(x, BY + 2, z, x + 1, BY + 14 - (z - 51), z + 1, steel);
+  b.box(0, BY, 58, 24, BY + 3, 60, flat(MAT.steel, 0)); // cutting edge
+  b.box(2, BY + 13, 50, 6, BY + 14, 51, flat(MAT.lamp)); b.box(18, BY + 13, 50, 22, BY + 14, 51, flat(MAT.lamp));
   const axles = [11, 37];
   const r = 0.6, clearance = 0.15, k = 45;
   const sag = 9.81 / (4 * k), susp = 0.15;
@@ -262,7 +268,7 @@ export function loaderBlueprint(opts: VehicleOpts = {}): VehicleBlueprint {
       { z: axles[0] * VOXEL + 0.05, steer: -0.35, drive: true, handbrake: true },
       { z: axles[1] * VOXEL + 0.05, steer: 1, drive: true, handbrake: false },
     ]),
-    restLength: susp + sag, stiffness: k, compression: 3.5, relaxation: 4.5, maxTravel: 0.2,
+    restLength: susp + sag, stiffness: k, compression: 4.4, relaxation: 2.3, maxTravel: 0.2,
     frictionSlip: 1.5, sideFriction: 1.0,
     engineForce: 21000, brake: 260, handbrake: 400,
     topSpeed: 8.5, reverseSpeed: 5, maxSteer: 0.5, steerFalloff: 8, antiRoll: 4,

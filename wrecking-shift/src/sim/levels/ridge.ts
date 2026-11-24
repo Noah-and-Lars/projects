@@ -484,7 +484,7 @@ function greenhouse(sim: Sim, wx: number, wz: number, gy: number, m: Marks): voi
     box(g, i, H, D - 1, i + 1, yy, D, glass); box(g, W - 1 - i, H, D - 1, W - i, yy, D, glass);
   }
   box(g, 44, H + 23, 0, 46, H + 26, D, steel);
-  clear(g, 0, 3, 72, 2, 25, 84); // door
+  clear(g, 0, 3, 82, 2, 25, 94); // door, in line with the footbridge deck (it used to sit 0.9 m south of it, behind the railing end)
   // planting benches
   for (const x0 of [10, 60]) {
     box(g, x0, 3, 10, x0 + 20, 10, D - 10, planks(MAT.wood, 3, 2));
@@ -493,8 +493,8 @@ function greenhouse(sim: Sim, wx: number, wz: number, gy: number, m: Marks): voi
   }
   addStatic(sim, g, wx, gy - 0.2, wz, 'greenhouse', ['greenhouse']);
   for (let i = 0; i < 4; i++) plant(sim, wx + 4.0, gy + 0.12, wz + 2 + i * 3.2, i);
-  m.greenhouse = { x: wx + 4.5, y: gy, z: wz + 7 };
-  m.greenhouse_door = { x: wx - 1, y: gy, z: wz + 7 };
+  m.greenhouse = { x: wx + 4.5, y: gy, z: wz + 8.8 };
+  m.greenhouse_door = { x: wx - 1, y: gy, z: wz + 8.8 };
 }
 
 /** wooden footbridge along x, posts anchored on both banks (ground at `gy`) */
@@ -546,7 +546,11 @@ export const ridge: LevelDef = {
     hm.addPad(40, 16, 51.2, 26.5, SHORE, 2, MAT.asphalt);            // spawn lot
     // roads: shore lane, switchback up to the forecourt, footpath to the hilltop
     hm.addRoad([{ x: 52, z: 22, y: SHORE }, { x: -46, z: 22, y: SHORE }], 2.8, 2);
-    hm.addRoad([{ x: 31, z: 21, y: SHORE }, { x: -10, z: 9, y: T1 }, { x: -15, z: 5, y: T1 }, { x: -16, z: -1, y: T1 }, { x: 24, z: -17, y: T2 }], 3, 3.5);
+    // switchback: flat for 6 m where it leaves the shore lane (climbing while still overlapping the lane made a
+    // bank across the carriageway), then 15 % up to T1, a hairpin of ~5.8 m radius (the old one, ~4 m, was tighter
+    // than a van can turn), and 16 % up to the forecourt. Driven by every vehicle in tests/unit/ridgeRoads.test.ts.
+    hm.addRoad([{ x: 31, z: 21, y: SHORE }, { x: 25, z: 19.2, y: SHORE }, { x: -10, z: 9, y: T1 }, { x: -15.5, z: 9, y: T1 }, { x: -19, z: 5.5, y: T1 },
+      { x: -19.5, z: 1.5, y: T1 }, { x: -17, z: -1.5, y: T1 }, { x: -12, z: -3, y: T1 }, { x: 24, z: -17, y: T2 }], 3, 3.5);
     hm.addRoad([{ x: -26, z: -24, y: T2 }, { x: -40, z: -41, y: HILL }], 1.5, 2.5, MAT.rock);
     const ter = buildTerrain(sim, { x0: -51.2, z0: -51.2, tilesX: 4, tilesZ: 4, heightmap: hm, waterLevel: LAKE, seed });
     const gy = (x: number, z: number) => ter.heightAt(x, z);
@@ -587,7 +591,7 @@ export const ridge: LevelDef = {
     m.vineyard = { x: 7, y: gy(7, 2), z: 2 };
     // --- lamps along the roads
     for (let lx = -44; lx <= 44; lx += 14) if (lx < -36 || lx > -18) streetLamp(sim, lx, gy(lx, 25.6), 25.6, true);
-    for (const [lx, lz] of [[19, 13.7], [3, 9.0], [-20, 4], [-4.7, -1.7], [9.3, -7.3], [-4, -18], [22, -18]]) streetLamp(sim, lx, gy(lx, lz), lz);
+    for (const [lx, lz] of [[19, 13.7], [3, 9.0], [-14, 3], [-4.7, -1.7], [9.3, -7.3], [-4, -18], [21, -12.3]]) streetLamp(sim, lx, gy(lx, lz), lz);
     streetLamp(sim, -23, SHORE + 0.2, 46.4);
 
     // --- nature: trees, rocks
@@ -602,7 +606,7 @@ export const ridge: LevelDef = {
     const spawn = { x: 46.5, y: SHORE + 0.1, z: 21.5 }; // +0.1: a player created exactly on a voxel surface can start stuck
     m.escape = { x: 46.5, y: SHORE, z: 24.8 };
     m.shore_road = { x: -36, y: SHORE, z: 22 };
-    m.hairpin = { x: -15, y: T1, z: 3 };
+    m.hairpin = { x: -19, y: T1, z: 3.5 };
     m.forecourt = { x: 10, y: T2, z: -22 };
     m.lake_dump = { x: -18, y: LAKE, z: 47 };
     m.lake_dump_east = { x: 30, y: LAKE, z: 44 };
