@@ -7,6 +7,7 @@
 // blended in on top. Nothing here is diggable: claims replace the terrain
 // inside their rectangles with voxel volumes (world/claims.js).
 import { fbm2, noise2 } from '../core/noise.js';
+import { cheap } from '../defs/prices.js';
 
 export const SIZE = 600;
 export const HALF = SIZE / 2;
@@ -46,7 +47,7 @@ PUMPHOUSE.y = floorY(PUMPHOUSE.z) + 1.3;
 const snap = (v) => Math.round(v / GRID) * GRID;
 function plot(id, name, price, w, d, depth, cx, cz, extra = {}) {
   const x0 = snap(cx - w / 2), z0 = snap(cz - d / 2);
-  return { id, name, price, w, d, depth, x0, z0, x1: x0 + w, z1: z0 + d, cx: x0 + w / 2, cz: z0 + d / 2, ...extra };
+  return { id, name, price: cheap(price), w, d, depth, x0, z0, x1: x0 + w, z1: z0 + d, cx: x0 + w / 2, cz: z0 + d / 2, ...extra };
 }
 // The old adit: a horizontal tunnel into a terrace cliff east of Millbrook.
 // It leads to the Ember Seam claim behind a timber door, and is the M1 "cave".

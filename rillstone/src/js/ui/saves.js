@@ -61,7 +61,7 @@ export function createSavesPage(root, o) {
   function stats(m) {
     return h('div', { class: 'slot-stats' },
       h('span', { title: 'Day' }, h('b', {}, `Day ${m.day ?? 1}`)),
-      h('span', { title: 'Scrip' }, `§ ${fmt(m.scrip)}`),
+      m.sandbox ? h('span', { class: 'sandbox-tag', title: 'Sandbox game' }, 'Sandbox') : h('span', { title: 'Scrip' }, `§ ${fmt(m.scrip)}`),
       m.claims ? h('span', { title: 'Claims owned' }, `${m.claims} claim${m.claims > 1 ? 's' : ''}`) : null,
       h('span', { title: 'Time played' }, playTime(m.playTime)));
   }
@@ -131,23 +131,28 @@ export function createSavesPage(root, o) {
   }
 
   // ---- New game: a name and a slot ----
-  let mode = 'saves', pick = null, nameVal = '';
+  let mode = 'saves', pick = null, nameVal = '', sandbox = false;
   async function renderNew() {
     const list = await o.saves.list();
     if (pick == null) pick = (list.find(m => m.empty) || list.slice().sort((a, b) => a.savedAt - b.savedAt)[0]).slot;
     if (!nameVal) nameVal = `Claim ${pick}`;
     const chosen = list.find(m => m.slot === pick);
     const inp = h('input', { class: 'name-input big', value: nameVal, maxlength: 40, placeholder: 'Name your claim', oninput: (e) => { nameVal = e.target.value; }, onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter') start(); } });
-    const start = () => o.onNew(pick, (nameVal || '').trim() || `Claim ${pick}`);
+    const start = () => o.onNew(pick, (nameVal || '').trim() || `Claim ${pick}`, sandbox);
+    const modeBtn = (on, title, sub) => h('button', { class: 'pick mode' + (sandbox === on ? ' on' : ''), 'data-mode': on ? 'sandbox' : 'normal', onclick: () => { sandbox = on; renderNew(); } }, h('b', {}, title), h('span', {}, sub));
     el.replaceChildren(h('div', { class: 'page-inner narrow' },
       head('New game', 'A fresh valley: a starter claim on the Gravel Bar, a pan, a shovel and an old hauler.'),
       h('div', { class: 'new-form' },
         h('label', { class: 'field' }, h('span', {}, 'Name'), inp),
+        h('div', { class: 'field' }, h('span', {}, 'Mode'),
+          h('div', { class: 'slot-pick modes' },
+            modeBtn(false, 'Normal', 'Earn your way up from a pan and a shovel'),
+            modeBtn(true, 'Sandbox', 'Unlimited Scrip, every claim and blueprint, free builds, no fuel, V to fly'))),
         h('div', { class: 'field' }, h('span', {}, 'Save slot'),
           h('div', { class: 'slot-pick' }, ...list.map(m => h('button', {
             class: 'pick' + (m.slot === pick ? ' on' : '') + (m.empty ? '' : ' used'),
             onclick: () => { if (nameVal === `Claim ${pick}`) nameVal = `Claim ${m.slot}`; pick = m.slot; renderNew(); },
-          }, h('b', {}, `Slot ${m.slot}`), h('span', {}, m.empty ? 'Free' : `${m.name || 'Claim'} · day ${m.day}`))))),
+          }, h('b', {}, `Slot ${m.slot}`), h('span', {}, m.empty ? 'Free' : `${m.name || 'Claim'} · day ${m.day}${m.sandbox ? ' · sandbox' : ''}`))))),
         chosen && !chosen.empty ? h('p', { class: 'warn' }, `Starting here replaces “${chosen.name || `Claim ${chosen.slot}`}” (day ${chosen.day}) once the game first saves. Its backup goes too.`) : null,
         h('button', { class: 'btn primary big', onclick: start }, 'Start')),
     ));
@@ -158,7 +163,7 @@ export function createSavesPage(root, o) {
     el,
     get open() { return !el.classList.contains('hidden'); },
     show(m = 'saves', slot = null, keepFrom = false) {
-      mode = m === 'new' ? 'new' : 'saves'; pick = slot; nameVal = ''; confirmDel = null; renaming = null; armLoad = null;
+      mode = m === 'new' ? 'new' : 'saves'; pick = slot; nameVal = ''; sandbox = false; confirmDel = null; renaming = null; armLoad = null;
       if (!keepFrom) newFromSaves = false;
       // Something to see at once: reading saves can take a moment.
       el.replaceChildren(h('div', { class: 'page-inner' + (mode === 'new' ? ' narrow' : '') }, head(mode === 'new' ? 'New game' : 'Saves', 'Reading your saves…')));

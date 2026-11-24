@@ -17,7 +17,7 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
   const E = economy.state;
   const s0 = town.statics.length; // colliders added below are sent at the end
   const F = () => (E.flags ||= {});
-  const owned = () => (F().blueprints ||= []);
+  const owned = () => { const o = (F().blueprints ||= []); if (F().sandbox && o.length < BLUEPRINTS.length) for (const b of BLUEPRINTS) if (!o.includes(b.id)) o.push(b.id); return o; };
   const pump = () => (F().pump ||= { stage: 0, got: {} });
 
   // Loose entities resting on a counter (ingots, gems, the relic...).
@@ -52,9 +52,9 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
   // metal is cut: the leftover goes back on the counter as a smaller ingot.
   function build(bp) {
     if (!owned().includes(bp.id)) return 'no blueprint';
-    const st = ingotStock();
-    for (const [mat, kg] of Object.entries(bp.ingots)) if ((st[mat] || 0) + 1e-6 < kg) { audio.play('error'); hud.toast(`Short of ${MATERIALS[mat].name.toLowerCase()}: ${(st[mat] || 0).toFixed(1)} / ${kg} kg of ingots on the counter`, 'err'); return 'short'; }
-    for (const [mat, kg] of Object.entries(bp.ingots)) {
+    const st = ingotStock(), free = !!F().sandbox; // sandbox builds need no ingots
+    if (!free) for (const [mat, kg] of Object.entries(bp.ingots)) if ((st[mat] || 0) + 1e-6 < kg) { audio.play('error'); hud.toast(`Short of ${MATERIALS[mat].name.toLowerCase()}: ${(st[mat] || 0).toFixed(1)} / ${kg} kg of ingots on the counter`, 'err'); return 'short'; }
+    if (!free) for (const [mat, kg] of Object.entries(bp.ingots)) {
       let need = kg;
       const list = onCounter(WS, e => e.item?.stage === 'ingot' && e.item.material === mat).sort((a, b) => a.item.kg - b.item.kg);
       for (const e of list) {
@@ -110,10 +110,10 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
         for (const bp of BLUEPRINTS.filter(b => b.tier === tier)) {
           const own = owned().includes(bp.id);
           const need = Object.entries(bp.ingots).map(([m, kg]) => `${kg} kg ${MATERIALS[m].name.toLowerCase()}`).join(' + ');
-          const ok = Object.entries(bp.ingots).every(([m, kg]) => (st[m] || 0) + 1e-6 >= kg);
+          const ok = !!F().sandbox || Object.entries(bp.ingots).every(([m, kg]) => (st[m] || 0) + 1e-6 >= kg);
           const btn = own ? h('button', { class: 'btn primary', disabled: !ok, onclick: () => { WS_API.build(bp); setTimeout(render, 400); } }, 'Build')
               : h('button', { class: 'btn', disabled: E.scrip < bp.bp, onclick: () => { WS_API.buyBlueprint(bp); setTimeout(render, 400); } }, `Blueprint § ${fmt(bp.bp)}`);
-          rows.push(h('div', { class: 'entry' }, h('b', {}, bp.name), btn, h("span", { class: "desc" }, `${bp.desc} Each build takes ingots: ${need}.`)));
+          rows.push(h('div', { class: 'entry' }, h('b', {}, bp.name), btn, h("span", { class: "desc" }, `${bp.desc} ${F().sandbox ? 'Sandbox: builds are free.' : `Each build takes ingots: ${need}.`}`)));
         }
       }
       const sl = scrapList(), sv = sl.reduce((a, e) => a + scrapValue(e), 0);
@@ -121,7 +121,7 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
         h('button', { class: 'btn', disabled: !sl.length, onclick: () => { WS_API.scrap(); setTimeout(render, 400); } }, sl.length ? `Scrap for ${(sv * SCRAP / MATERIALS.iron.refined).toFixed(1)} kg iron` : 'Scrap'),
         h('span', { class: 'desc' }, 'Machine crates and tools left on the counter come back as scrap iron worth 30% of what they cost.')));
       const body = h('div', {}, h('p', { class: 'small' }, `Buy a blueprint once, then put ingots on the counter and build. Leftover metal comes back as a smaller ingot. On the counter: ${have}.`), ...rows);
-      panels.show('shop:machineshop', 'Machine Shop', body, { badge: `§ ${fmt(E.scrip)}` });
+      panels.show('shop:machineshop', 'Machine Shop', body, { badge: F().sandbox ? '§ ∞' : `§ ${fmt(E.scrip)}` });
     };
     render();
   }

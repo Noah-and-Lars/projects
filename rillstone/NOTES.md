@@ -1193,3 +1193,39 @@ so far:
   about 3–4 ms on High to under 1 ms.
 - **Test:** `--shots` switches to Very low through the Settings menu,
   checks all of the above, and checks that High restores it.
+
+### Cheaper prices
+
+- **What changed:** every price is now a fifth of the brief's cost curve,
+  rounded to a tidy number (`defs/prices.js`, `cheap()`). This covers shop
+  items, vehicles, claim deeds and blueprints. Machine Shop builds take half
+  the ingots (`fewerIngots()`).
+- **Examples:** the starter kit costs § 204, Willow Bend § 180, the Excavator
+  § 1,300, and a Mk II sluice is § 180 plus 60 kg of iron a build.
+- **Unchanged:** selling prices and earnings are the same, so the pacing
+  tests still hold.
+- **No money loop:** scrap still pays 30% of the (new) price, and selling a
+  vehicle back still pays half.
+- **Guide:** its text now reads the kit cost and the Willow Bend price from
+  the data.
+
+### Sandbox mode
+
+- **Where:** the New game page has a Mode choice, Normal or Sandbox. It's
+  saved as `economy.state.flags.sandbox`, so it carries through saves, loads
+  and co-op snapshots.
+- **What it does:**
+  - `economy.sandboxTick()` runs every frame: it keeps Scrip at 9,999,999 and
+    owns every claim;
+  - `spend()` always succeeds;
+  - the workshop counts every blueprint as owned, and builds skip the
+    ingots;
+  - main.js keeps vehicle fuel full;
+  - V (a rebindable `fly` action) toggles flying.
+- **Display:** the HUD wallet reads "§ ∞ · Sandbox", and save cards show a
+  Sandbox badge (`meta.sandbox`).
+- **Tests:**
+  - `--town` checks the new prices; and checks that a sandbox game buys an
+    Excavator, builds a Mk IV sluice with no ingots, keeps Scrip and fuel
+    full, and owns every claim, and that loading a normal save turns it off;
+  - the unit tests cover `spend()` and claim ownership.

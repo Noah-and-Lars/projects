@@ -46,6 +46,7 @@ function makeContract(rng, standing, id) {
   return { id, ...c, progress: 0, reward, standing: tier, done: false };
 }
 
+export const SANDBOX_SCRIP = 9999999;
 export function createEconomy(rng) {
   const S = {
     scrip: 0, standing: 0, day: 1, soldToday: 0, totalEarned: 0, ledger: [],
@@ -129,7 +130,17 @@ export function createEconomy(rng) {
     for (const c of S.contracts) if (!c.done && c.kind === 'smelt' && c.want.material === material) c.progress += kg;
     return checkContracts();
   };
-  api.spend = (amount) => { if (S.scrip < amount) return false; S.scrip -= amount; return true; };
+  api.spend = (amount) => { if (api.sandbox) { S.scrip = SANDBOX_SCRIP; return true; } if (S.scrip < amount) return false; S.scrip -= amount; return true; };
+  // Sandbox games (picked on the New game page): money never runs out and
+  // every claim is owned. Blueprints, free builds, fuel and flying are handled
+  // where those live (workshop.js, main.js).
+  Object.defineProperty(api, 'sandbox', { get: () => !!S.flags?.sandbox });
+  api.makeSandbox = () => { (S.flags ||= {}).sandbox = true; api.sandboxTick(); };
+  api.sandboxTick = () => {
+    if (!api.sandbox) return;
+    S.scrip = SANDBOX_SCRIP;
+    for (const c of CLAIMS) if (!S.owned.includes(c.id)) S.owned.push(c.id);
+  };
   api.owns = (claimId) => S.owned.includes(claimId);
   api.buyClaim = (claimId) => {
     const c = CLAIMS.find(x => x.id === claimId); if (!c || api.owns(claimId)) return 'owned';

@@ -335,11 +335,13 @@ async function boot() {
     current: () => state.slot,
     onLoad: (slot, half) => loadSlot(slot, half),
     onSave: async (slot) => { await saveTo(slot); refreshTitle(); },
-    onNew: async (slot, name) => {
+    onNew: async (slot, name, sandbox) => {
       state.slot = slot; state.saveName = name; state.slotChosen = true;
+      if (sandbox) economy.makeSandbox();
       savesPage.hide(); play();
       await saveTo(slot, true); // claim the slot now (and a first picture)
       hud.toast(`${name}: saved to slot ${slot}. It autosaves every 3 minutes.`);
+      if (sandbox) hud.toast('Sandbox: unlimited Scrip, every claim and blueprint, free builds, no fuel. V to fly.', 'gold');
     },
     onExport: async (slot) => {
       const snap = await saves.load(slot); if (!snap) return;
@@ -453,6 +455,10 @@ async function boot() {
     if (controls() && input.pressed('vehicle')) toggleVehicle();
     if (controls() && input.pressed('guide') && !(hands.hover && !vehicles.driving && guide.lookup(hands.hover.card, hands.hover.ref))) guide.open();
     if (controls() && input.pressed('map')) map.open();
+    if (controls() && !vehicles.driving && input.pressed('fly')) {
+      if (economy.sandbox) { player.fly = !player.fly; hud.toast(player.fly ? 'Flying: Space to rise, C to sink, V to land' : 'Flying off'); }
+      else hud.toast('Flying is for sandbox games (New game → Sandbox)');
+    }
     if (input.pressed('pause') && state.mode === 'play' && !panels.open) { state.mode = 'pause'; menu.showPause(true); input.unlock(); }
 
     // Physics: steps owed at 60 Hz, one message in flight at a time.
@@ -546,7 +552,9 @@ async function boot() {
     guide.update(dt, state.mode === 'play');
     fx.update(dt);
     hud.clock(state.time, state.day);
-    hud.wallet(economy.state.scrip);
+    economy.sandboxTick();
+    if (economy.sandbox) for (const v of vehicles.list.values()) if (v.def.fuelMax) v.fuel = v.def.fuelMax; // sandbox: fuel never runs out
+    hud.wallet(economy.state.scrip, economy.sandbox);
     const t2 = performance.now();
     if (!state.noRender && !document.hidden) view.render();
     timings.render = performance.now() - t2;

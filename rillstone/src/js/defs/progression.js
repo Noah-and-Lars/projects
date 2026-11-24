@@ -5,6 +5,7 @@
 // then takes ingots placed on the Machine Shop counter. The brief's ingot
 // amounts (e.g. 600 kg iron + 80 kg glimmerite for a Mk II sluice) are scaled
 // to a fifth so the first Mk II arrives in the mid game; see NOTES.md.
+import { cheap, fewerIngots } from './prices.js';
 export const BLUEPRINTS = [
   // Mk II: the gravel bed.
   { id: 'steelpick', name: 'Steel Pick', tier: 2, bp: 300, ingots: { iron: 15 }, spawn: 'pick', data: { tier: 2, name: 'Steel Pick' }, desc: 'Breaks the gravel bed (band 2) fast.' },
@@ -23,6 +24,8 @@ export const BLUEPRINTS = [
   { id: 'drill4', name: 'Drill Mk IV', tier: 4, bp: 4000, ingots: { emberite: 60, glimmerite: 40 }, spawn: 'crate', data: { def: 'drill4', family: 'extraction' }, desc: 'Band ≤ 4, a load every 3 s, 60 L/s. Ember Seam only.' },
   { id: 'sluice4', name: 'Sluice Box Mk IV', tier: 4, bp: 4000, ingots: { emberite: 60 }, spawn: 'crate', data: { def: 'sluice4', family: 'water' }, desc: 'Washes basalt loads every 1.6 s, 55 L/s.' },
 ];
+
+for (const b of BLUEPRINTS) { b.bp = cheap(b.bp); for (const m in b.ingots) b.ingots[m] = fewerIngots(b.ingots[m]); }
 
 // Each stage takes its whole list (delivered over as many trips as you
 // like) at the Pumphouse counter. Needs: { kind: 'ingot'|'cut'|'crafted'|'relic', material?, kg?, n? }.

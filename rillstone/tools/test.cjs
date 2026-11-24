@@ -453,6 +453,23 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return { gem, cut, ring, bp: got, owns: E.state.flags.blueprints?.includes?.('drill4') ?? null, exc };
     });
     check(open.gem > 0 && open.cut > 0 && open.ring > 0 && open.exc !== false && open.bp !== 'standing', `the Assay Office buys gems (§ ${open.gem?.toFixed(0)} uncut, § ${open.cut?.toFixed(0)} cut) and crafts (§ ${open.ring?.toFixed(0)}); at ★ 0 the Drill Mk IV blueprint (${open.bp}) and the Excavator (${open.exc}) can be bought`);
+
+    // Everything is about a fifth of the brief's prices; builds take half the ingots.
+    // Sandbox: unlimited Scrip, every claim and blueprint, free builds, no fuel use.
+    const sb = await p.evaluate(async () => {
+      const R = __rill, E = R.economy, snap = R.snapshot(), price = (id) => { for (const S of Object.values(R.town.shops)) { const e = S.items.find(i => i.id === id); if (e) return e.price; } };
+      const bp = R.workshop.blueprints.find(b => b.id === 'sluice2');
+      const prices = { sluice1: price('sluice1'), excavator: price('excavator'), willow: R.places.CLAIMS.find(c => c.id === 'willow').price, bp: bp.bp, iron: bp.ingots.iron };
+      E.makeSandbox(); await R.frames(2);
+      const exc = R.town.buy('wagons', 'excavator'), built = R.workshop.build(R.workshop.blueprints.find(b => b.id === 'sluice4'));
+      const v = [...R.vehicles.list.values()].find(v => v.def.fuelMax); v.fuel = 1; await R.frames(2);
+      const out = { prices, exc, built, scrip: E.state.scrip, claims: E.state.owned.length, of: R.places.CLAIMS.length, fuel: v.fuel === v.def.fuelMax, wallet: document.getElementById('wallet').textContent };
+      await R.restore(snap); await R.tick(2);
+      out.after = E.sandbox; out.scripAfter = E.state.scrip;
+      return out;
+    });
+    check(sb.prices.sluice1 === 60 && sb.prices.excavator === 1300 && sb.prices.willow === 180 && sb.prices.bp === 180 && sb.prices.iron === 60, `prices are a fifth: Sluice Mk I § ${sb.prices.sluice1}, Excavator § ${sb.prices.excavator}, Willow Bend § ${sb.prices.willow}, Mk II sluice blueprint § ${sb.prices.bp} + ${sb.prices.iron} kg iron a build`);
+    check(sb.exc !== false && sb.built === 'ok' && sb.scrip === 9999999 && sb.claims === sb.of && sb.fuel && /∞/.test(sb.wallet) && sb.after === false, `sandbox: bought an Excavator and built a Mk IV sluice with no ingots, Scrip stays full ("${sb.wallet}"), all ${sb.of} claims owned, fuel stays full; loading a normal save turns it off (§ ${sb.scripAfter})`);
   }
 
   if (all || flags.has('--machines')) {
@@ -728,6 +745,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       await R.physics.step(10); I.update();
       out.crates = [...I.ents.values()].filter(e => e.type === 'crate' && e.data.def === 'drill2').length - 0;
       out.leftover = W.ingotStock();
+      out.need = { ...W.blueprints.find(b => b.id === 'drill2').ingots };
       void before;
       // The Mk II drill reaches band 2 in Willow Bend.
       const wv = R.places.CLAIMS.find(k => k.id === 'willow');
@@ -831,7 +849,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     check(!pr.door0 && pr.buy === 'ok' && pr.door1, 'the Ember Seam door opens once you own its deed');
     check(pr.lampOn > 0.85 && pr.lampFar < 0.05, `Prospector's Lamp signal ${pr.lampOn} on the Glimmer vein, ${pr.lampFar} far away`);
     check(Math.abs(pr.veinShare - (1 / 3 + 2 / 3 * 0.024)) < 0.06, `vein rolls give glimmerite ${(pr.veinShare * 100).toFixed(1)}% of the time (want ≈ 35%)`);
-    check(pr.build === 'ok' && pr.crates === 1 && Math.abs((pr.leftover.iron || 0) - 10) < 0.01 && Math.abs((pr.leftover.glimmerite || 0) - 2) < 0.01, `Machine Shop built a Drill Mk II and gave back ${pr.leftover.iron} kg iron + ${pr.leftover.glimmerite} kg glimmerite`);
+    check(pr.build === 'ok' && pr.crates === 1 && Math.abs((pr.leftover.iron || 0) - (160 - pr.need.iron)) < 0.01 && Math.abs((pr.leftover.glimmerite || 0) - (12 - pr.need.glimmerite)) < 0.01, `Machine Shop built a Drill Mk II (${pr.need.iron} kg iron + ${pr.need.glimmerite} kg glimmerite) and gave back ${pr.leftover.iron} kg iron + ${pr.leftover.glimmerite} kg glimmerite`);
     check(pr.drill2.band === 2 && pr.drill2.made > 0, `Drill Mk II reaches band ${pr.drill2.band} (${pr.drill2.status}, ${pr.drill2.made} loads)`);
     check(pr.cut === 1 && pr.cutFee > 0, `Upper Falls gem cutter cut the garnet for § ${pr.cutFee}`);
     check(pr.pump === '1,2,3,4,5' && pr.finale && pr.goldwheel, `Pumphouse stages ${pr.pump}, end screen shown, gold-plated wheel delivered`);

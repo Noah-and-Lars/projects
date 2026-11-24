@@ -5,12 +5,12 @@ export const DEFAULT_BINDS = {
   jump: ['Space'], sprint: ['ShiftLeft', 'ShiftRight'], crouch: ['KeyC'],
   pickup: ['KeyE'], drop: ['KeyG'], use: ['Mouse0'], secondary: ['Mouse2'],
   rotX: ['KeyR'], rotY: ['KeyT'], rotZ: ['KeyY'], swap: ['KeyQ'], vehicle: ['KeyF'], unflip: ['KeyH'],
-  guide: ['KeyB'], map: ['KeyM'], lantern: ['KeyL'], debug: ['F3'],
+  guide: ['KeyB'], map: ['KeyM'], lantern: ['KeyL'], fly: ['KeyV'], debug: ['F3'],
 };
 export const ACTION_LABELS = {
   forward: 'Move forward', back: 'Move back', left: 'Strafe left', right: 'Strafe right', jump: 'Jump', sprint: 'Sprint', crouch: 'Crouch',
   pickup: 'Pick up', drop: 'Drop / place', use: 'Use tool', secondary: 'Secondary', rotX: 'Rotate (pitch)', rotY: 'Rotate (yaw)', rotZ: 'Rotate (roll)',
-  swap: 'Quick-swap tool', vehicle: 'Enter / exit vehicle', unflip: 'Unflip vehicle (hold)', guide: 'Look-up guide', map: 'Map / journal', lantern: 'Lantern', debug: 'Debug overlay',
+  swap: 'Quick-swap tool', vehicle: 'Enter / exit vehicle', unflip: 'Unflip vehicle (hold)', guide: 'Look-up guide', map: 'Map / journal', lantern: 'Lantern', fly: 'Fly (sandbox games)', debug: 'Debug overlay',
 };
 const DEFAULTS = {
   fov: 75, sensitivity: 1, invertY: false, sprintToggle: false, headBob: false, graphics: 'high',

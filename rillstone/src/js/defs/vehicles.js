@@ -1,6 +1,7 @@
 // Vehicle definitions (BUILD_BRIEF 3.7). Chassis space: +z forward, +y up.
 import * as THREE from 'three';
 import { paint, merge, place, bevelBox } from '../render/geom.js';
+import { cheap } from './prices.js';
 
 export const VEHICLES = {
   hauler: {
@@ -63,6 +64,7 @@ export const VEHICLES = {
 // How deep a vehicle can wade (m of water over the bed) before its engine
 // starts to drown: past this it sputters along at a fifth of its power.
 for (const [k, w] of Object.entries({ hauler: 0.95, hauler2: 1.05, buggy: 0.55, survey: 0.6, excavator: 1.3 })) if (VEHICLES[k]) VEHICLES[k].wade = w;
+for (const v of Object.values(VEHICLES)) v.price = cheap(v.price);
 export const FUEL_PER_SACK = 480; // about 8 minutes
 
 const TEAL = 0x2a8a86, TEAL_DARK = 0x1f6a68, CREAM = 0xf0e4c4, IRON = 0x3a3e44, WOOD = 0xb07a44, WOOD_DARK = 0x8a5a30, BRASS = 0xc89a48, GLASS = 0x22343e, RUBBER = 0x24262a;

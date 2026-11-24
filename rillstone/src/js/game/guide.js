@@ -4,10 +4,13 @@
 // and short reference notes. Progress lives in economy.state.flags.guide.
 import { h } from '../ui/dom.js';
 import { MACHINES } from '../defs/machines.js';
-import { SHOPS } from '../defs/shops.js';
+import { SHOPS, STARTER_KIT } from '../defs/shops.js';
+import { CLAIMS } from '../world/valley.js';
 import { BLUEPRINTS } from '../defs/progression.js';
 import { MATERIALS } from '../defs/materials.js';
 
+const priceOf = (id) => { for (const S of Object.values(SHOPS)) { const e = S.items.find(i => i.id === id); if (e) return e.price; } return 0; };
+const KIT_COST = Math.ceil(STARTER_KIT.reduce((a, id) => a + priceOf(id), 0) / 50) * 50;
 export function createGuide({ hud, panels, economy, hands, items, machines, vehicles, audio }) {
   const E = economy.state;
   const G = () => (E.flags.guide ||= { step: 0, seen: {} });
@@ -23,10 +26,10 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
     { title: 'Load the truck', text: 'Your old hauler is parked by the claim. Click its bed with the pan to tip your finds in (or drop things on it with G), then F to drive to town.', done: () => [...vehicles.list.values()].some(v => v.cargo.length > 0) || G().drove, pay: 20 },
     { title: 'A better shovel', text: 'Buy the Sturdy Shovel at the General Store: it holds 2 loads.', done: () => has(e => e.type === 'shovel' && (e.data?.cap || 1) >= 2), pay: 20 },
     { title: 'Your first contract', text: 'Read the board by the Guild Hall and finish a contract. Contracts pay Scrip.', done: () => E.standing > 0, pay: 40 },
-    { title: 'The starter kit', text: 'Save up § 1,000. At the Millwright buy a Sluice Box, a Drill, a River Intake and copper pipe.', done: () => has(e => e.type === 'crate' && e.data.def === 'drill1') || !!machine(m => m.def === 'drill1'), pay: 50 },
+    { title: 'The starter kit', text: `Save up § ${KIT_COST.toLocaleString('en-GB')}. At any shop counter buy a Sluice Box, a Drill, a River Intake and copper pipe.`, done: () => has(e => e.type === 'crate' && e.data.def === 'drill1') || !!machine(m => m.def === 'drill1'), pay: 50 },
     { title: 'Set up a line', text: 'Place the drill in your claim with its spout over the sluice hopper, and lock both with the mallet.', done: () => !!machine(m => m.def.startsWith('drill') && machines.linkOf(m.id)), pay: 60 },
     { title: 'Bring the water', text: 'Put the intake in the river and lay copper pipe from it to the drill and the sluice. Watch it run.', done: () => !!machine(m => m.def.startsWith('drill') && m.status === 'running'), pay: 80 },
-    { title: 'Dig deeper', text: 'Buy the Willow Bend deed at the Guild Hall (§ 900). It goes down to the gravel bed and slate.', done: () => economy.owns('willow'), pay: 100 },
+    { title: 'Dig deeper', text: `Buy the Willow Bend deed at the Guild Hall (§ ${CLAIMS.find(c => c.id === 'willow').price.toLocaleString('en-GB')}). It goes down to the gravel bed and slate.`, done: () => economy.owns('willow'), pay: 100 },
   ];
   // HUD card.
   const title = h('b'), text = h('span'), count = h('i');

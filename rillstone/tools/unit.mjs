@@ -59,10 +59,12 @@ check(Math.abs(itemValue({ material: 'silver', stage: 'crafted', craft: 'ring', 
   const before = st.scrip;
   if (c.kind === 'kg') { E.sell([{ material: c.want.material, stage: 'ore', kg: c.target + 0.5 }], 'assay'); check(c.done && st.scrip > before + c.reward - 1 && st.standing >= 1, `contract "${c.text}" completes and pays § ${c.reward} + standing`); }
   check(st.contracts.filter(x => !x.done).length === 3, 'contracts refill to 3');
-  check(E.buyClaim('willow') === 'poor' || E.state.scrip >= 900, 'claim deed needs § 900');
+  { const { CLAIMS } = await import('../src/js/world/valley.js'); const w = CLAIMS.find(c => c.id === 'willow'); const s0 = st.scrip; st.scrip = w.price - 1;
+    check(E.buyClaim('willow') === 'poor' && (st.scrip = w.price, E.buyClaim('willow')) === 'ok' && st.scrip === 0, `the Willow Bend deed costs § ${w.price}, money only`); st.scrip = s0; }
   const gem = { material: 'garnet', stage: 'uncut', kg: 1 }, ore = { material: 'gold', stage: 'ore', kg: 1 };
-  check(E.quote(gem, 'assay') == null && E.quote(gem, 'gems') > 0 && E.quote(ore, 'gems') == null && E.quote(ore, 'assay') === 30, 'gems sell at the Gem Buyer, everything else at the Assay Office');
-  const rg = E.sell([gem], 'assay'); check(rg.total === 0 && /Gem Buyer/.test(rg.refused[0].why), 'the Assay Office sends gems to the Gem Buyer');
+  check(E.quote(gem, 'assay') > 0 && E.quote(ore, 'assay') === 30, 'the Assay Office buys gems and ore alike');
+  const rg = E.sell([gem], 'assay'); check(rg.total > 0 && !rg.refused.length, 'selling a gem at the Assay Office pays');
+  { const { CLAIMS } = await import('../src/js/world/valley.js'); E.makeSandbox(); check(E.sandbox && E.spend(1e9) && st.scrip === 9999999 && st.owned.length === CLAIMS.length, 'sandbox: spending never runs out and every claim is owned'); st.flags.sandbox = false; }
 }
 // M4: water flow.
 {

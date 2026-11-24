@@ -244,7 +244,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
         ...(own.length ? [h('h3', {}, 'Your vehicles'), ...own.map(v => h('div', { class: 'entry' }, h('b', {}, v.def.name),
           h('span', { class: 'row' }, h('button', { class: 'btn', onclick: () => { api.callVehicle(v.id); panels.close(); } }, 'Call'), ' ', h('button', { class: 'btn', onclick: async () => { await api.sellVehicle(v.id); render(); } }, `Sell § ${vehicles.refund(v)}`)),
           h('span', { class: 'desc' }, `Fuel ${v.def.fuelMax ? Math.round(v.fuel / v.def.fuelMax * 100) + '%' : '—'}${v.cargo.length ? ` · ${v.cargo.length} in the bed` : ''} · Call brings it to the yard.`)))] : []));
-      panels.show('shop:' + shopId, S.name, body, { badge: `§ ${economy.state.scrip.toLocaleString('en-GB')}` });
+      panels.show('shop:' + shopId, S.name, body, { badge: economy.sandbox ? '§ ∞' : `§ ${economy.state.scrip.toLocaleString('en-GB')}` });
     };
     render();
   }
@@ -279,6 +279,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
   }
 
   const api = {
+    shops: SHOPS,
     group, props, counters, pads, statics, custom: {}, customProp: {}, customHint: {}, customCard: {},
     async build() { await physics.call({ op: 'batch', ops: statics }); redrawBoards(); mergeStatic(); },
     has: (id) => props.has(id),

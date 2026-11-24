@@ -86,7 +86,7 @@ export function createSaves() {
       const ab = cur && !cur.empty && cur.ab === 'A' ? 'B' : 'A';
       const key = `${slot}:${ab}`;
       const name = String(snap.saveName || cur?.name || `Claim ${slot}`).trim().slice(0, 40);
-      const meta = { slot, ab, name, claims: snap.economy?.owned?.length ?? 0, saveVersion: SAVE_VERSION, savedAt: Date.now(), playTime: snap.playTime || 0, day: snap.day, scrip: snap.economy?.scrip ?? 0, standing: snap.economy?.standing ?? 0, thumb: typeof snap.thumb === 'string' && snap.thumb.length < 120000 ? snap.thumb : null };
+      const meta = { slot, ab, name, claims: snap.economy?.owned?.length ?? 0, saveVersion: SAVE_VERSION, savedAt: Date.now(), playTime: snap.playTime || 0, day: snap.day, scrip: snap.economy?.scrip ?? 0, sandbox: !!snap.economy?.flags?.sandbox, standing: snap.economy?.standing ?? 0, thumb: typeof snap.thumb === 'string' && snap.thumb.length < 120000 ? snap.thumb : null };
       const { chunks = [], economy = {}, thumb, saveName, ...rest } = snap; void thumb; void saveName;
       await new Promise((res, rej) => {
         const tx = db.transaction(STORES, 'readwrite');

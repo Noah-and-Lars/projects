@@ -1,4 +1,5 @@
 import { LOGIC_PRICES, MACHINES2 } from './machines2.js';
+import { cheap } from './prices.js';
 // Shop catalogues (BUILD_BRIEF 3.6 cost curve). Each entry spawns an entity
 // on the shop's delivery pad: a tool, a sack, or a machine crate.
 const LOGIC_DESC = {
@@ -90,11 +91,12 @@ export const SHOPS = {
       { id: 'hauler2', name: 'Hauler Mk II', price: 1800, spawn: 'vehicle', data: { type: 'hauler2' }, desc: 'Bigger bed (3,000 kg, 90 items) and better handling.' },
       { id: 'survey', name: 'Survey Buggy', price: 3000, spawn: 'vehicle', data: { type: 'survey' }, desc: 'A scanner on a mast shows ore veins near you while you drive.' },
       { id: 'excavator', name: 'Excavator', price: 6500, spawn: 'vehicle', data: { type: 'excavator' }, desc: 'Tracks and a bucket arm: LMB digs a world-grid cell into its 10-load hopper, RMB empties it.' },
-      { id: 'railkit', name: 'Rails · 10 segments', price: 300, spawn: 'railkit', data: { n: 10 }, desc: '4 m a segment (§ 30 each). Click a start, then an end, to lay a line.' },
+      { id: 'railkit', name: 'Rails · 10 segments', price: 300, spawn: 'railkit', data: { n: 10 }, desc: '4 m a segment. Click a start, then an end, to lay a line.' },
       { id: 'tramkit', name: 'Ore Tram', price: 400, spawn: 'tramkit', desc: 'Carries 600 kg along a rail line. Click a rail to set it on; F sends it to the other end.' },
     ],
     callVehicle: true,
   },
 };
+for (const S of Object.values(SHOPS)) for (const it of S.items) it.price = cheap(it.price);
 // The starter automation kit (BUILD_BRIEF 3.6): sluice, drill, intake, 8 pipes.
 export const STARTER_KIT = ['sluice1', 'drill1', 'intake1', 'junction', 'pipe_copper', 'pipe_copper', 'pipe_copper', 'pipe_copper', 'pipe_copper', 'pipe_copper', 'pipe_copper', 'pipe_copper'];

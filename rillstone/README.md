@@ -72,6 +72,7 @@ nothing under the crosshair, B opens the full guide.
 | Look-up guide for the hovered item | B | Select |
 | Map | M | Start |
 | Lantern | L | |
+| Fly (sandbox games only) | V | |
 | Debug overlay | F3 | |
 | Menu | Esc | Start (hold) |
 
@@ -90,6 +91,19 @@ power. Back out to shallower water. The river flows: wood, charcoal sacks, bedro
 crates and empty buckets float off downstream and wash up on a bank, while
 ore, ingots, gems and metal tools sink and stay put, and deep water pushes you
 along.
+
+## Sandbox mode
+
+Pick **Sandbox** on the New game page to build without earning first:
+
+- Scrip never runs out (the wallet shows § ∞);
+- every claim is yours and every Machine Shop blueprint is unlocked;
+- Machine Shop builds need no ingots;
+- vehicles never use fuel;
+- **V** toggles flying (Space to rise, C to sink).
+
+The mode is kept in the save, and the Saves page marks sandbox games with a
+badge. Normal games stay as they were.
 
 ## First hour
 
@@ -139,6 +153,10 @@ merge into a pile so the physics stays cheap.
 ## Town and money
 
 Millbrook sits across the bridge from the Gravel Bar.
+
+Prices are low so you progress fast: the starter kit (sluice, drill, intake
+and pipe) costs about § 200, and Machine Shop builds take half the ingots
+they used to.
 
 - **Selling.** Put anything on the **Assay Office** counter and ring the
   bell (E): ore, ingots, gems (cut or uncut) and crafted goods. The clerk
@@ -249,13 +267,13 @@ crates.
 | Claim | Deed | Character |
 | --- | --- | --- |
 | Gravel Bar | yours | 6 m deep starter by the river |
-| Willow Bend | § 900 | 22 m deep, good river access |
-| Old Cut | § 1,500 | A half-dug pit. Dig its floor to find the relic the old diggers left |
-| Slate Shelf | § 6,000 | Three terraces stepping down to the hillside: lifts and belts country |
-| Glimmer Hollow | § 8,500 | A sure Glimmerite vein about 11 m down |
-| Ember Seam | § 12,000 | Behind the door at the end of the adit; it gets deeper the further in you dig, down to basalt (band 4) |
+| Willow Bend | § 180 | 22 m deep, good river access |
+| Old Cut | § 300 | A half-dug pit. Dig its floor to find the relic the old diggers left |
+| Slate Shelf | § 1,200 | Three terraces stepping down to the hillside: lifts and belts country |
+| Glimmer Hollow | § 1,700 | A sure Glimmerite vein about 11 m down |
+| Ember Seam | § 2,400 | Behind the door at the end of the adit; it gets deeper the further in you dig, down to basalt (band 4) |
 
-**Veins.** Every claim has one hidden ore vein. A third of the loads washed from inside it give its metal. The **Prospector's Lamp** (General Store, § 400) is worn: E on it, and a meter by your Scrip glows violet and ticks faster as you near a vein. The **Survey Buggy** shows veins on a scanner while you drive.
+**Veins.** Every claim has one hidden ore vein. A third of the loads washed from inside it give its metal. The **Prospector's Lamp** (any shop, § 80) is worn: E on it, and a meter by your Scrip glows violet and ticks faster as you near a vein. The **Survey Buggy** shows veins on a scanner while you drive.
 
 **Machine Shop** (Millbrook, by the Wagon Shed). Buy a blueprint once, then put ingots on its counter and build. Leftover metal comes back as a smaller ingot; machines arrive as crates on its pad. A blueprint only needs the Scrip, then the ingots.
 
@@ -271,11 +289,11 @@ crates.
 
 | Vehicle | Price | What it does |
 | --- | --- | --- |
-| Trail Buggy | § 700 | Light, quick and bouncy. No bed |
-| Hauler Mk II | § 1,800 | Bigger bed (3,000 kg, 90 items) and better grip |
-| Survey Buggy | § 3,000 | A scanner shows veins within 90 m and how deep they are |
-| Excavator | § 6,500 | Tracks. LMB cuts the next 1 m cell (fixed to the world grid) into its 10-load hopper; RMB empties it into a sluice under the bucket, or onto the ground |
-| Ore Tram | § 400, rails § 300 for 10 | Click a start and an end to lay rails (4 m segments). Click a rail with the tram kit to set it on, drop up to 600 kg into its tub, and F sends it to the far end |
+| Trail Buggy | § 140 | Light, quick and bouncy. No bed |
+| Hauler Mk II | § 360 | Bigger bed (3,000 kg, 90 items) and better grip |
+| Survey Buggy | § 600 | A scanner shows veins within 90 m and how deep they are |
+| Excavator | § 1,300 | Tracks. LMB cuts the next 1 m cell (fixed to the world grid) into its 10-load hopper; RMB empties it into a sluice under the bucket, or onto the ground |
+| Ore Tram | § 80, rails § 60 for 10 | Click a start and an end to lay rails (4 m segments). Click a rail with the tram kit to set it on, drop up to 600 kg into its tub, and F sends it to the far end |
 
 **The Rillstone Pumphouse** stands ruined on the bank below Millbrook. It is restored in five stages, and each stage takes a large delivery at its counter:
 

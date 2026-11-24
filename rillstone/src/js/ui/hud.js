@@ -23,7 +23,7 @@ export function createHUD(root) {
       const s = `Day ${day} · ${String(hh).padStart(2, '0')}:${String(mm - (mm % 5)).padStart(2, '0')}`;
       if (clock.textContent !== s) clock.textContent = s;
     },
-    wallet(scrip) { const s = `§ ${Math.floor(scrip).toLocaleString('en-GB')}`; if (wallet.textContent !== s) wallet.textContent = s; },
+    wallet(scrip, sandbox) { const s = sandbox ? '§ ∞ · Sandbox' : `§ ${Math.floor(scrip).toLocaleString('en-GB')}`; if (wallet.textContent !== s) wallet.textContent = s; },
     toast(text, kind = '') {
       const t = h('div', { class: 'toast ' + kind }, text);
       toasts.append(t);
