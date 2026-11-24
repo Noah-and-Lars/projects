@@ -45,6 +45,8 @@ export class VoxelBody {
   /** half diagonal of the grid box in metres */
   radius: number;
   mass = 0;
+  /** multiplies the voxel-computed mass + inertia (vehicles: 0.1 m sheet-metal panels would weigh far too much) */
+  massScale = 1;
 
   constructor(id: number, grid: VoxelGrid, rb: RAPIER.RigidBody, col: RAPIER.Collider, dynamic: boolean, kind: BodyKind) {
     this.id = id; this.grid = grid; this.rb = rb; this.col = col; this.dynamic = dynamic; this.kind = kind;

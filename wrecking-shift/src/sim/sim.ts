@@ -87,6 +87,8 @@ export interface BodyOptions {
   anchorBottom?: boolean;
   name?: string;
   tags?: string[];
+  /** see VoxelBody.massScale */
+  massScale?: number;
 }
 
 export class Sim {
@@ -152,6 +154,7 @@ export class Sim {
     body.createdTick = this.tick;
     if (opts.name) body.name = opts.name;
     if (opts.tags) for (const t of opts.tags) body.tags.add(t);
+    if (opts.massScale) body.massScale = opts.massScale;
     if (dynamic) this.applyMass(body);
     this.bodies.set(body.id, body);
     this.byCollider.set(col.handle, body);
@@ -176,10 +179,11 @@ export class Sim {
 
   private applyMass(body: VoxelBody): void {
     const mp = computeMassProps(body.grid);
-    body.mass = mp.mass;
+    const k = body.massScale;
+    body.mass = mp.mass * k;
     body.massDirty = false;
     if (mp.mass <= 0) return;
-    body.rb.setAdditionalMassProperties(mp.mass, mp.com, mp.inertia, mp.frame, true);
+    body.rb.setAdditionalMassProperties(mp.mass * k, mp.com, { x: mp.inertia.x * k, y: mp.inertia.y * k, z: mp.inertia.z * k }, mp.frame, true);
   }
 
   removeBody(body: VoxelBody): void {
