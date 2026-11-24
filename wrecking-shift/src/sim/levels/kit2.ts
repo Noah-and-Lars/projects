@@ -6,6 +6,7 @@ import type { Sim } from '../sim';
 import { qyaw } from '../vec';
 import { VoxelGrid } from '../voxels';
 import { Heightmap, smoothstep } from './terrain';
+import { allComponents } from '../connectivity';
 
 /**
  * Shared prefab helpers for the Kestrel Ridge and Brackwater Works maps (additions to kit.ts).
@@ -14,6 +15,14 @@ import { Heightmap, smoothstep } from './terrain';
  */
 
 export type Paint = PalFn | number;
+
+/** remove voxels not face-connected to the bottom layer (they would drop as debris at the first edit); returns count */
+export function dropFloating(g: VoxelGrid): number {
+  let n = 0;
+  for (const c of allComponents(g)) if (c.min[1] > 0) { for (const i of c.indices) g.data[i] = 0; n += c.indices.length; }
+  if (n) g.recount();
+  return n;
+}
 
 /** add a static grid with its min corner at world (x, y, z) */
 export function addStatic(sim: Sim, g: VoxelGrid, x: number, y: number, z: number, name: string, tags?: string[]): VoxelBody {

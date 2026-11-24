@@ -1,4 +1,4 @@
-import { bricks, box, clear, cylinderY, flat, planks, shaded, shell, windowX, windowZ, type PalFn } from '../build';
+import { box, clear, cylinderY, flat, planks, shaded, shell, windowX, windowZ, type PalFn } from '../build';
 import { MAT, pal } from '../materials';
 import { hash3 } from '../rng';
 import type { Sim } from '../sim';
@@ -71,7 +71,8 @@ const HILL = 20.0;
 
 type Marks = Record<string, V3>;
 
-const brickFn = bricks(MAT.brick, 4);
+/** coarse brick courses (big uniform patches keep greedy quads large; the shader adds the grain) */
+const brickFn: PalFn = (x, y, z) => { const row = (y / 6) | 0; return pal(MAT.brick, (hash3(((x + z + (row % 2) * 8) / 16) | 0, row, 0, 4) * 4) | 0); };
 const concFn = shaded(MAT.concrete, 10, 2);
 const plastFn = shaded(MAT.plaster, 16, 3);
 const woodFloor = planks(MAT.wood, 4, 6);
@@ -449,8 +450,8 @@ function gazebo(sim: Sim, cx: number, gy: number, cz: number): void {
   const posts: [number, number][] = [];
   for (let k = 0; k < 8; k++) { const a = (k + 0.5) * Math.PI / 4; posts.push([Math.round(c + Math.cos(a) * (R - 3)) - 1, Math.round(c + Math.sin(a) * (R - 3)) - 1]); }
   for (const [px, pz] of posts) box(g, px, 5, pz, px + 2, 32, pz + 2, flat(MAT.whitepaint, 2));
-  cylinderY(g, c, c, R - 2, 12, 13, flat(MAT.whitepaint, 1), 1);
-  clear(g, c - 6, 12, c, c + 6, 13, S); // entrance (south)
+  cylinderY(g, c, c, R - 1.5, 12, 14, flat(MAT.whitepaint, 1), 3);
+  clear(g, c - 6, 12, c, c + 6, 14, S); // entrance (south)
   for (let k = 0; k < 14; k++) cylinderY(g, c, c, R + 1 - k * 2, 30 + k, 31 + k, shaded(MAT.tile, 10, 4), 3);
   cylinderY(g, c, c, 2, 30, 46, flat(MAT.whitepaint, 1));
   addStatic(sim, g, cx - c * 0.1, gy - 0.3, cz - c * 0.1, 'gazebo');

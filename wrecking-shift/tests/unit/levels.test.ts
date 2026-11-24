@@ -175,8 +175,14 @@ describe('Kestrel Ridge', () => {
     const keep = lightDamage(sim, tower, [{ x: c.x - 2.5, y: c.y + 1.2, z: c.z }, { x: c.x + 2.5, y: c.y + 3, z: c.z }]);
     expect(keep).toBeGreaterThan(0.97);
     expect([...sim.bodies.values()].filter((b) => b.kind === 'debris' && b.grid.count > 500).length).toBe(0);
-    ringBlast(sim, c, 2.6, c.y + 1.0, 12, 1.6);
+    // charges along the (square) wall centre line, 1 m above the floor
+    const n0 = tower.grid.count;
+    for (let k = -2; k <= 2; k++) for (const [sx, sz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const u = k * 1.15;
+      sim.explode({ x: c.x + (sx ? sx * 2.3 : u), y: c.y + 1.0, z: c.z + (sz ? sz * 2.3 : u) }, 1.6);
+    }
     for (let i = 0; i < 120; i++) sim.step();
+    expect(tower.removed ? 0 : tower.grid.count).toBeLessThan(n0 * 0.3);
     expect(debrisAbove(sim, c.y)).toBeGreaterThan(20000);
     void info;
   });

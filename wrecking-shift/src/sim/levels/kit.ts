@@ -5,6 +5,7 @@ import { hash3 } from '../rng';
 import type { Sim } from '../sim';
 import { qyaw } from '../vec';
 import { VoxelGrid } from '../voxels';
+import { dropFloating } from './kit2';
 
 /** ------------------------------------------------------------------ buildings */
 
@@ -185,6 +186,7 @@ export function tree(sim: Sim, x: number, y: number, z: number, seed = 0, scale 
   cylinderY(g, c, c, 2.4 * scale + 0.4, 0, trunk + R, shaded(MAT.wood, 2, seed));
   sphere(g, c, trunk + R, c, R, shaded(MAT.leaves, 2, seed), 0.5, seed);
   cylinderY(g, c, c, 2.0 * scale + 0.3, trunk - 4, trunk + R - 3, shaded(MAT.wood, 2, seed));
+  dropFloating(g);
   g.recount();
   return sim.addBody(g, { x: x - c * 0.1, y: y - 0.3, z: z - c * 0.1 }, { name: 'tree' });
 }
@@ -192,12 +194,13 @@ export function tree(sim: Sim, x: number, y: number, z: number, seed = 0, scale 
 export function pine(sim: Sim, x: number, y: number, z: number, seed = 0): VoxelBody {
   const h = 60 + ((hash3(seed, 3, 4) * 30) | 0);
   const g = new VoxelGrid(30, h + 4, 30);
-  cylinderY(g, 15, 15, 1.8, 0, h - 6, shaded(MAT.wood, 2, seed));
+  cylinderY(g, 15, 15, 1.8, 0, h - 1, shaded(MAT.wood, 2, seed)); // trunk reaches the top tier (tiers are only joined through it)
   for (let y0 = 14; y0 < h; y0 += 7) {
     const r = 13 * (1 - (y0 - 14) / (h - 8)) + 2;
     cylinderY(g, 15, 15, r, y0, y0 + 3, shaded(MAT.leaves, 2, seed + y0));
     cylinderY(g, 15, 15, r * 0.7, y0 + 3, y0 + 5, shaded(MAT.leaves, 2, seed + y0 + 1));
   }
+  dropFloating(g);
   g.recount();
   return sim.addBody(g, { x: x - 1.5, y: y - 0.3, z: z - 1.5 }, { name: 'pine' });
 }
@@ -205,6 +208,7 @@ export function pine(sim: Sim, x: number, y: number, z: number, seed = 0): Voxel
 export function rock(sim: Sim, x: number, y: number, z: number, r = 10, seed = 0): VoxelBody {
   const g = new VoxelGrid(r * 2 + 2, r + 4, r * 2 + 2);
   sphere(g, r + 1, 2, r + 1, r, shaded(MAT.rock, 3, seed), 0.35, seed);
+  dropFloating(g);
   g.recount();
   return sim.addBody(g, { x: x - r * 0.1, y: y - 0.3, z: z - r * 0.1 }, { name: 'rock' });
 }
