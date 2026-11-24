@@ -1,11 +1,11 @@
-import { box, clear, cylinderY, flat, planks, shaded, shell, windowX, windowZ, type PalFn } from '../build';
+import { box, clear, cylinderY, flat, planks, shaded, shell, sphere, windowX, windowZ, type PalFn } from '../build';
 import { MAT, pal } from '../materials';
 import { hash3 } from '../rng';
 import type { Sim } from '../sim';
 import type { V3 } from '../vec';
 import { VoxelGrid } from '../voxels';
 import { barrel, container, crate, fence, makeBuilding, placeBuilding, shelf, table, tank } from './kit';
-import { RoadHeightmap, addStatic, chair, cylinderX, cylinderZ, lattice, railing, scrap, spool, stairs, streetLamp, wallRun, wallSeg } from './kit2';
+import { RoadHeightmap, addStatic, dropFloating, chair, cylinderX, cylinderZ, lattice, railing, scrap, spool, stairs, streetLamp, wallRun, wallSeg } from './kit2';
 import { buildTerrain, fbm2, smoothstep } from './terrain';
 import type { LevelDef, LevelInfo } from './types';
 
@@ -44,6 +44,7 @@ import type { LevelDef, LevelInfo } from './types';
  *   dock_ramp         foot of the dock ramp (west end)
  *   container_yard    between the container stacks
  *   scrap_yard        scrap heaps (south-east)
+ *   weighbridge       weighbridge hut by the gravel / coal heaps (south-west yard)
  *   rail_siding       on the track between the wagons
  *   wagon_box         boxcar (side door), wagon_gondola  open wagon with scrap, wagon_tank  tank wagon
  *   gantry            under the gantry crane over the siding
@@ -454,6 +455,17 @@ export const works: LevelDef = {
     }
     for (const [sx, sz] of [[50, 36], [52, 36.4]]) barrel(sim, sx, G + 0.12, sz, false);
     m.scrap_yard = { x: 54, y: G, z: 31 };
+    // south-west yard: gravel / coal heaps, weighbridge hut, spare containers
+    for (const [hx, hz, r, mat] of [[-57, 35.5, 34, MAT.rock], [-48.5, 37, 26, MAT.char], [-60.5, 28.5, 20, MAT.sand]] as const) {
+      const g = new VoxelGrid(r * 2 + 2, r + 4, r * 2 + 2);
+      sphere(g, r + 1, 0, r + 1, r, shaded(mat, 8, r), 0.15, r);
+      dropFloating(g);
+      addStatic(sim, g, hx - (r + 1) * 0.1, G - 0.3, hz - (r + 1) * 0.1, 'heap');
+    }
+    placeBuilding(sim, makeBuilding({ w: 56, d: 44, floors: 1, wall: MAT.brick, roof: 'gable', roofMat: MAT.tile, doors: 'e', winStep: 22, lamps: true, seed: 21 }), -45, G, 25.5, 'weighbridge hut');
+    container(sim, -40.5, G, 30.5, MAT.paintedmetal, true); container(sim, -37.6, G, 30.5, MAT.sheetmetal, true);
+    m.weighbridge = { x: -41.6, y: G, z: 27.7 };
+    for (const [cx, cz, cy] of [[20, -8, 0], [20.9, -8, 0], [20.45, -8.1, 0.82], [22.5, -7.6, 0]]) crate(sim, cx, G + 0.12 + cy, cz, 8);
     // rail siding + wagons + gantry crane
     for (let i = 0; i < 5; i++) track(sim, -64 + i * 25.6, 43.5, 25.6);
     wagon(sim, -44, 43.6, 'box', m);
