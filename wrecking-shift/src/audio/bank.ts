@@ -48,7 +48,7 @@ function material(group: AudioGroup, ev: SoundEvent, s: 0 | 1 | 2): SoundFn {
           E(tone(ctx, d, { f0: 150 * pf, f1: 80 * pf, t0: t, decay: 0.25 * ds, gain: 0.7 * sg }));
           E(nz(ctx, d, { filter: 'bandpass', f0: 2400, f1: 1200, q: 1, kind: 'pink', t0: t + 0.02, decay: 0.3 * ds, gain: 0.3 * sg }));
         } else {
-          E(texture(ctx, d, { f0: 500 * pf, f1: 900 * pf, q: 3, t0: t, dur: 0.35 + 0.3 * ds, gain: 0.35 * sg }));
+          E(texture(ctx, d, { f0: 500 * pf, f1: 900 * pf, q: 3, t0: t, dur: 0.35 + 0.3 * ds, gain: 1.0 * sg }));
         }
         break;
       case 'masonry':
@@ -75,11 +75,11 @@ function material(group: AudioGroup, ev: SoundEvent, s: 0 | 1 | 2): SoundFn {
           E(nz(ctx, d, { filter: 'bandpass', f0: 3000, q: 0.8, t0: t, decay: 0.25 * ds, gain: 0.4 * sg }));
           E(tone(ctx, d, { f0: 110 * pf, f1: 60, t0: t, decay: 0.2, gain: 0.6 * sg }));
         } else {
-          E(texture(ctx, d, { filter: 'highpass', f0: 2500, q: 0.7, t0: t, dur: 0.4 + 0.3 * ds, gain: 0.22 * sg }));
+          E(texture(ctx, d, { filter: 'highpass', f0: 2500, q: 0.7, t0: t, dur: 0.4 + 0.3 * ds, gain: 0.55 * sg }));
           const o = ctx.createOscillator(); o.type = 'sawtooth';
           const f = rnd(1500, 2400) * pf;
           o.frequency.setValueAtTime(f, t); o.frequency.linearRampToValueAtTime(f * 1.12, t + 0.4 * ds);
-          const g = ctx.createGain(); jitterEnv(g.gain, t, 0.4 * ds + 0.3, 0.05 * sg, 10);
+          const g = ctx.createGain(); jitterEnv(g.gain, t, 0.4 * ds + 0.3, 0.12 * sg, 10);
           const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 6;
           o.connect(bp).connect(g).connect(d); o.start(t); o.stop(t + 0.4 * ds + 0.35);
           E(t + 0.4 * ds + 0.3);
@@ -141,7 +141,7 @@ function material(group: AudioGroup, ev: SoundEvent, s: 0 | 1 | 2): SoundFn {
           E(tone(ctx, d, { f0: 190 * pf, f1: 100, t0: t, decay: 0.3 * ds, gain: 0.6 * sg }));
           E(grains(ctx, d, { n: 8 + s * 6, t0: t, span: 0.35 * ds, fMin: 1200, fMax: 5000, dMin: 0.01, dMax: 0.06, gain: 0.25, tonal: true }));
         } else {
-          E(texture(ctx, d, { filter: 'bandpass', f0: 3500, q: 4, t0: t, dur: 0.3 + 0.2 * ds, gain: 0.25 * sg }));
+          E(texture(ctx, d, { filter: 'bandpass', f0: 3500, q: 4, t0: t, dur: 0.3 + 0.2 * ds, gain: 0.8 * sg }));
           E(tone(ctx, d, { f0: 900, f1: 700, t0: t, attack: 0.04, decay: 0.2, gain: 0.05 }));
         }
         break;
@@ -244,13 +244,13 @@ SOUNDS['tool.shot.rocket'] = (ctx, d, p) => {
 };
 SOUNDS['tool.empty'] = (ctx, d, p) => {
   const t = t00(ctx, p);
-  nz(ctx, d, { filter: 'bandpass', f0: 2800, q: 3, t0: t, decay: 0.02, gain: 0.5 });
-  const e = tone(ctx, d, { type: 'square', f0: 900, f1: 500, t0: t + 0.01, decay: 0.03, gain: 0.12 });
+  nz(ctx, d, { filter: 'bandpass', f0: 2800, q: 3, t0: t, decay: 0.02, gain: 0.9 });
+  const e = tone(ctx, d, { type: 'square', f0: 900, f1: 500, t0: t + 0.01, decay: 0.03, gain: 0.3 });
   return dur(ctx, p, e);
 };
 SOUNDS['tool.throw'] = (ctx, d, p) => {
   const t = t00(ctx, p);
-  const e = nz(ctx, d, { kind: 'pink', filter: 'bandpass', f0: 500, f1: 1600, q: 1.2, t0: t, attack: 0.07, decay: 0.1, gain: 0.35 });
+  const e = nz(ctx, d, { kind: 'pink', filter: 'bandpass', f0: 500, f1: 1600, q: 1.2, t0: t, attack: 0.07, decay: 0.1, gain: 0.7 });
   return dur(ctx, p, e);
 };
 SOUNDS['tool.place'] = (ctx, d, p) => {
@@ -261,7 +261,7 @@ SOUNDS['tool.place'] = (ctx, d, p) => {
 };
 SOUNDS['tool.beep'] = (ctx, d, p) => {
   const t = t00(ctx, p);
-  const e = tone(ctx, d, { type: 'square', f0: 1760 * (p.pitch ?? 1), t0: t, attack: 0.002, decay: 0.08, gain: 0.22 });
+  const e = tone(ctx, d, { type: 'square', f0: 1760 * (p.pitch ?? 1), t0: t, attack: 0.002, decay: 0.08, gain: 0.4 });
   return dur(ctx, p, e);
 };
 SOUNDS['tool.spray'] = (ctx, d, p) => {
@@ -289,7 +289,7 @@ SOUNDS['tool.torch.on'] = (ctx, d, p) => {
 };
 SOUNDS['tool.torch.off'] = (ctx, d, p) => {
   const t = t00(ctx, p);
-  const e = nz(ctx, d, { kind: 'pink', filter: 'bandpass', f0: 2500, f1: 400, q: 0.8, t0: t, attack: 0.01, decay: 0.2, gain: 0.35 });
+  const e = nz(ctx, d, { kind: 'pink', filter: 'bandpass', f0: 2500, f1: 400, q: 0.8, t0: t, attack: 0.01, decay: 0.2, gain: 0.8 });
   return dur(ctx, p, e);
 };
 
@@ -312,7 +312,7 @@ for (const g of GROUPS) {
 }
 SOUNDS['player.jump'] = (ctx, d, p) => {
   const t = t00(ctx, p);
-  const e = nz(ctx, d, { kind: 'pink', filter: 'bandpass', f0: 400, f1: 900, q: 1, t0: t, attack: 0.04, decay: 0.12, gain: 0.2 });
+  const e = nz(ctx, d, { kind: 'pink', filter: 'bandpass', f0: 400, f1: 900, q: 1, t0: t, attack: 0.04, decay: 0.12, gain: 0.55 });
   return dur(ctx, p, e);
 };
 SOUNDS['player.land'] = (ctx, d, p) => {
@@ -349,7 +349,7 @@ SOUNDS['fire.ignite'] = (ctx, d, p) => {
 };
 SOUNDS['fire.pop'] = (ctx, d, p) => {
   const t = t00(ctx, p);
-  const e = nz(ctx, d, { filter: 'bandpass', f0: rnd(1200, 4200), q: 2, t0: t, attack: 0.001, decay: rnd(0.01, 0.04), gain: rnd(0.25, 0.6) });
+  const e = nz(ctx, d, { filter: 'bandpass', f0: rnd(1200, 4200), q: 2, t0: t, attack: 0.001, decay: rnd(0.01, 0.04), gain: rnd(0.5, 1.0) });
   return dur(ctx, p, e);
 };
 
@@ -394,7 +394,7 @@ SOUNDS['vehicle.crash'] = (ctx, d, p) => {
 SOUNDS['vehicle.skid'] = (ctx, d, p) => {
   const t = t00(ctx, p);
   const a = Math.min(1, Math.max(0.2, p.amount ?? 0.6));
-  const e = texture(ctx, d, { kind: 'white', filter: 'bandpass', f0: 1300 * rnd(0.9, 1.15), f1: 1100, q: 5, t0: t, dur: 0.35, gain: 0.3 * a, steps: 8, depth: 0.4 });
+  const e = texture(ctx, d, { kind: 'white', filter: 'bandpass', f0: 1300 * rnd(0.9, 1.15), f1: 1100, q: 5, t0: t, dur: 0.35, gain: 0.8 * a, steps: 8, depth: 0.4 });
   return dur(ctx, p, e);
 };
 
@@ -403,12 +403,12 @@ const note = (ctx: Ctx, d: AudioNode, t: number, midi: number, dec: number, gain
   tone(ctx, d, { type, f0: midiToHz(midi), t0: t, attack: 0.004, decay: dec, gain });
 SOUNDS['mission.tick'] = (ctx, d, p) => {
   const t = t00(ctx, p);
-  const e = tone(ctx, d, { type: 'sine', f0: 1100, t0: t, attack: 0.001, decay: 0.03, gain: 0.15 });
+  const e = tone(ctx, d, { type: 'sine', f0: 1100, t0: t, attack: 0.001, decay: 0.03, gain: 0.3 });
   return dur(ctx, p, e);
 };
 SOUNDS['mission.urgent'] = (ctx, d, p) => {
   const t = t00(ctx, p);
-  const e = tone(ctx, d, { type: 'square', f0: 1320 * (p.pitch ?? 1), t0: t, attack: 0.002, decay: 0.12, gain: 0.2 });
+  const e = tone(ctx, d, { type: 'square', f0: 1320 * (p.pitch ?? 1), t0: t, attack: 0.002, decay: 0.12, gain: 0.45 });
   return dur(ctx, p, e);
 };
 SOUNDS['mission.target'] = (ctx, d, p) => {
@@ -451,13 +451,13 @@ SOUNDS['mission.fail'] = (ctx, d, p) => {
 };
 SOUNDS['ui.click'] = (ctx, d, p) => {
   const t = t00(ctx, p);
-  nz(ctx, d, { filter: 'bandpass', f0: 3000, q: 2, t0: t, decay: 0.012, gain: 0.25 });
-  const e = tone(ctx, d, { type: 'triangle', f0: 880, f1: 660, t0: t, decay: 0.05, gain: 0.22 });
+  nz(ctx, d, { filter: 'bandpass', f0: 3000, q: 2, t0: t, decay: 0.012, gain: 0.5 });
+  const e = tone(ctx, d, { type: 'triangle', f0: 880, f1: 660, t0: t, decay: 0.05, gain: 0.45 });
   return dur(ctx, p, e);
 };
 SOUNDS['ui.hover'] = (ctx, d, p) => {
   const t = t00(ctx, p);
-  const e = tone(ctx, d, { type: 'sine', f0: 1500, t0: t, attack: 0.003, decay: 0.03, gain: 0.08 });
+  const e = tone(ctx, d, { type: 'sine', f0: 1500, t0: t, attack: 0.003, decay: 0.03, gain: 0.2 });
   return dur(ctx, p, e);
 };
 
@@ -533,7 +533,7 @@ export const LOOPS: Record<string, LoopBuilder> = {
     const sh = loopShell(ctx, dest, [n1, n2, l1, l2, l3]);
     n1.connect(lp).connect(gustG).connect(sh.out);
     n2.connect(bp).connect(g2).connect(sh.out);
-    return { out: sh.out, stop: sh.stop, update: (p) => setLevel(sh.out, ctx, p.level ?? 0.5) };
+    return { out: sh.out, stop: sh.stop, update: (p) => setLevel(sh.out, ctx, (p.level ?? 0.5) * 0.3) };
   },
   fire(ctx, dest) {
     const n = noiseSource(ctx, 'brown', ctx.currentTime, 0);
@@ -546,7 +546,7 @@ export const LOOPS: Record<string, LoopBuilder> = {
     const sh = loopShell(ctx, dest, [n, n2, l1, l2]);
     n.connect(lp).connect(sh.out);
     n2.connect(bp).connect(g2).connect(sh.out);
-    return { out: sh.out, stop: sh.stop, update: (p) => setLevel(sh.out, ctx, (p.level ?? 0.5) * 1.1) };
+    return { out: sh.out, stop: sh.stop, update: (p) => setLevel(sh.out, ctx, (p.level ?? 0.5) * 0.35) };
   },
   torch(ctx, dest) {
     const n = noiseSource(ctx, 'pink', ctx.currentTime, 0);
@@ -558,7 +558,7 @@ export const LOOPS: Record<string, LoopBuilder> = {
     const sh = loopShell(ctx, dest, [n, n2, l1]);
     n.connect(bp).connect(sh.out);
     n2.connect(lp).connect(g2).connect(sh.out);
-    return { out: sh.out, stop: sh.stop, update: (p) => setLevel(sh.out, ctx, (p.level ?? 0.5) * 0.5) };
+    return { out: sh.out, stop: sh.stop, update: (p) => setLevel(sh.out, ctx, (p.level ?? 0.5) * 0.3) };
   },
   engine(ctx, dest) {
     const o1 = ctx.createOscillator(); o1.type = 'sawtooth';
@@ -585,7 +585,7 @@ export const LOOPS: Record<string, LoopBuilder> = {
         o1.frequency.setTargetAtTime(f, t, 0.08); o2.frequency.setTargetAtTime(f * 0.5, t, 0.08); o3.frequency.setTargetAtTime(f * 1.003, t, 0.08);
         lp.frequency.setTargetAtTime(p.cutoff ?? 600, t, 0.1);
         void now;
-        setLevel(sh.out, ctx, (p.level ?? 0.5) * 0.8);
+        setLevel(sh.out, ctx, (p.level ?? 0.5) * 0.45);
       },
     };
   },
@@ -603,7 +603,7 @@ export const LOOPS: Record<string, LoopBuilder> = {
     o.connect(bp); o2.connect(g2).connect(bp);
     bp.connect(trem).connect(sh.out);
     o.start(); o2.start();
-    return { out: sh.out, stop: sh.stop, update: (p) => setLevel(sh.out, ctx, (p.level ?? 0.5) * 0.35) };
+    return { out: sh.out, stop: sh.stop, update: (p) => setLevel(sh.out, ctx, (p.level ?? 0.5) * 0.14) };
   },
   /** helicopter rotor chop */
   heli(ctx, dest) {
@@ -627,7 +627,7 @@ export const LOOPS: Record<string, LoopBuilder> = {
       update(p) {
         const r = p.rate ?? 11;
         cl.frequency.setTargetAtTime(r, ctx.currentTime, 0.2); ocl.frequency.setTargetAtTime(r, ctx.currentTime, 0.2);
-        setLevel(sh.out, ctx, (p.level ?? 0.5) * 0.9);
+        setLevel(sh.out, ctx, (p.level ?? 0.5) * 0.4);
       },
     };
   },

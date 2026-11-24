@@ -1,3 +1,4 @@
+import { LOOPS, SOUNDS, createMasterChain } from '../audio/bank';
 import { AudioDirector } from '../audio/director';
 import { AudioEngine, type Bus, type PlayOpts } from '../audio/engine';
 import type { Game, GameModule } from './game';
@@ -26,6 +27,8 @@ export function createAudioModule(): GameModule {
     uiClick: () => engine.play('ui.click', { category: 'ui' }),
     uiHover: () => engine.play('ui.hover', { category: 'uih', gain: 0.8 }),
     setVolume: (bus: Bus, v: number) => engine.setVolume(bus, v),
+    /** raw bank access (offline rendering in tests, sound-design tooling) */
+    bank: { SOUNDS, LOOPS, createMasterChain },
     /** create the AudioContext now (tests / explicit "enable sound" buttons) */
     ensure: () => { const ok = engine.ensure(); engine.resume(); return ok; },
   };
