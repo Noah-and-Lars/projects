@@ -157,7 +157,7 @@ export const SOUNDS: Record<string, SoundFn> = {};
 export const matSoundName = (g: AudioGroup, ev: SoundEvent, size: number): string => `mat.${g}.${ev}.${size}`;
 for (const g of GROUPS) for (const ev of SOUND_EVENTS) for (const s of [0, 1, 2] as const) SOUNDS[matSoundName(g, ev, s)] = material(g, ev, s);
 
-const dur = (ctx: Ctx, p: SoundParams, end: number) => end - ctx.currentTime + 0.05;
+const dur = (ctx: Ctx, _p: SoundParams, end: number) => end - ctx.currentTime + 0.05;
 
 // --- structural
 SOUNDS['struct.creak'] = (ctx, d, p) => {

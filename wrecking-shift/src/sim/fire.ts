@@ -483,7 +483,7 @@ export class FireSystem implements FireApi, SimSystem {
     }
   }
 
-  private trySpread(b: VoxelBody, x: number, y: number, z: number, idx: number, key: number, h: number): void {
+  private trySpread(b: VoxelBody, x: number, y: number, z: number, idx: number, _key: number, h: number): void {
     if (this.newThisTick >= this.budget || this.n >= this.maxFires) return;
     if (h < IGNITE_HEAT * INTERIOR_FACTOR && !this.exposed(b.grid, x, y, z)) return;
     if (this.start(b, x, y, z, idx) >= 0) this.newThisTick++;

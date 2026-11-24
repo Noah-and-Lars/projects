@@ -1,7 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { HARBOR_MISSIONS } from '../../src/game/missionsHarbor';
 import { DroneSystem } from '../../src/sim/drones';
-import { harbor } from '../../src/sim/levels/harbor';
 import { MORE_MISSIONS } from '../../src/game/missionsMore';
 import { LEVELS } from '../../src/game/levels';
 import { Mission } from '../../src/sim/mission';

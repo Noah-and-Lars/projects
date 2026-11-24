@@ -16,6 +16,8 @@ export const PLAYER_RADIUS = 0.3;
 export const PLAYER_HEIGHT = 1.8;
 export const PLAYER_CROUCH_HEIGHT = 1.0;
 export const EYE_OFFSET = 0.15; // eye below top of head
+/** a character placed with its feet exactly on a surface starts inside the controller's skin and cannot move */
+const SPAWN_LIFT = 0.03;
 
 /** First-person character (kinematic cylinder + Rapier character controller). */
 export class Player {
@@ -69,7 +71,7 @@ export class Player {
 
   constructor(readonly sim: Sim, pos: V3) {
     const w = sim.world;
-    this.rb = w.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(pos.x, pos.y + PLAYER_HEIGHT / 2, pos.z));
+    this.rb = w.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(pos.x, pos.y + PLAYER_HEIGHT / 2 + SPAWN_LIFT, pos.z));
     this.col = this.makeCollider(PLAYER_HEIGHT);
     this.ctrl = w.createCharacterController(0.02);
     this.ctrl.enableAutostep(0.36, 0.12, false);

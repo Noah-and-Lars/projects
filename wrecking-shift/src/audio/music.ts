@@ -80,7 +80,6 @@ export function stepCue(cue: CueName, step: number, tension = 0, seed = 7): Musi
 }
 
 /** next cue after an event; pure state machine used by the director */
-export function cueFor(heist: boolean): CueName { return heist ? 'heist' : 'calm'; }
 
 // ----------------------------------------------------------------- WebAudio player
 
@@ -107,7 +106,7 @@ export class MusicSystem {
   private riser: { gain: GainNode; filter: BiquadFilterNode; src: AudioBufferSourceNode } | null = null;
   private last = 0;
 
-  constructor(private ctx: Ctx, private dest: AudioNode) {
+  constructor(private ctx: Ctx, dest: AudioNode) {
     const mk = (name: CueName): CueRuntime => {
       const gain = ctx.createGain(); gain.gain.value = 0;
       const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = name === 'calm' ? 1800 : 2500; filter.Q.value = 0.7;

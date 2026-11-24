@@ -1,9 +1,9 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { VoxelBody, type BodyKind } from './body';
 import { findIslands, type Island } from './connectivity';
-import { MATERIALS, PAL_DENSITY, PAL_EXPLOSIVE, PAL_HARDNESS, PAL_STRENGTH, VOXEL, matOf, scorch as scorchPal } from './materials';
+import { MATERIALS, PAL_DENSITY, PAL_EXPLOSIVE, PAL_HARDNESS, PAL_STRENGTH, VOXEL, scorch as scorchPal } from './materials';
 import { Rng, hash3 } from './rng';
-import { QID, qrot, vadd, vcross, vlen, vscale, vsub, type Quat, type V3 } from './vec';
+import { QID, vadd, vcross, vlen, vscale, vsub, type Quat, type V3 } from './vec';
 import { VoxelGrid, computeMassProps } from './voxels';
 
 export { RAPIER };
@@ -461,7 +461,7 @@ export class Sim {
     return left;
   }
 
-  /** remove voxels inside an oriented box given in body-local voxel coords (blowtorch lines, cutters...) */
+  /** wake sleeping dynamic bodies around a point (after edits, so resting things react) */
   wakeNear(c: V3, r: number): void {
     for (const b of this.bodies.values()) {
       if (!b.dynamic || !b.rb.isSleeping()) continue;
@@ -884,4 +884,3 @@ function rayGrid(body: VoxelBody, origin: V3, dir: V3, maxDist: number): RayHit 
   }
 }
 
-export { qrot, matOf };

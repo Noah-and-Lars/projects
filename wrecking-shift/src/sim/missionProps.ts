@@ -45,7 +45,7 @@ export function serverBox(sim: Sim, pos: V3, targetId: string, name = 'Server Bo
 /** paint can with a wire handle (0.4 x 0.5 x 0.4 m) */
 export function paintCan(sim: Sim, pos: V3, targetId: string, name = 'Paint Can'): VoxelBody {
   const g = new VoxelGrid(4, 5, 4);
-  cylinderY(g, 2, 2, 2, 0, 4, (x, y) => pal(y === 1 || y === 2 ? MAT.whitepaint : MAT.paintedmetal, y === 1 ? 2 : 1));
+  cylinderY(g, 2, 2, 2, 0, 4, (_x, y) => pal(y === 1 || y === 2 ? MAT.whitepaint : MAT.paintedmetal, y === 1 ? 2 : 1));
   g.set(0, 4, 2, pal(MAT.wire)); g.set(3, 4, 2, pal(MAT.wire)); g.set(1, 4, 2, pal(MAT.wire));
   return prop(sim, g, pos, name, ['target:' + targetId]);
 }

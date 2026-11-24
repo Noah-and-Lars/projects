@@ -56,7 +56,7 @@ export class VehicleModule implements GameModule {
     game.renderer.scene.add(this.fx.root);
   }
 
-  save(game: Game): any {
+  save(): any {
     const sys = this.system;
     if (!sys) return [];
     return sys.list.filter((v) => !v.removed && !v.body.removed).map((v) => ({ body: v.body.id, wear: v.wear, seated: v === this.current }));

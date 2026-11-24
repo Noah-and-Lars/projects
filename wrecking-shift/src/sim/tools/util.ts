@@ -1,6 +1,5 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import type { VoxelBody } from '../body';
-import { VOXEL } from '../materials';
 import type { RayHit, Sim } from '../sim';
 import { qconj, qrot, vcross, vdot, vnorm, type Quat, type V3 } from '../vec';
 import { computeMassProps } from '../voxels';
@@ -11,7 +10,6 @@ export function emit(sim: Sim, name: string, data: any): void {
   sim.out.push({ type: 'custom', name, data });
 }
 
-export const vmad = (a: V3, d: V3, s: number): V3 => ({ x: a.x + d.x * s, y: a.y + d.y * s, z: a.z + d.z * s });
 
 /** rotation whose columns are the given orthonormal basis vectors (local X,Y,Z -> world) */
 export function quatFromBasis(X: V3, Y: V3, Z: V3): Quat {
@@ -103,6 +101,4 @@ export function setBodyMass(body: VoxelBody, mass: number): void {
 }
 
 /** world centre of a body's voxel box */
-export const bodyCenter = (b: VoxelBody): V3 => b.center();
 
-export const VOX = VOXEL;

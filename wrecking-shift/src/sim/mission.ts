@@ -216,12 +216,6 @@ const TICKS = Math.round(1 / DT);
 
 // ------------------------------------------------------------------------------------------ helpers
 
-/** the id part of the first tag `<prefix>:<id>` on a body, or null */
-export function tagValue(body: VoxelBody, prefix: string): string | null {
-  const p = prefix + ':';
-  for (const t of body.tags) if (t.startsWith(p)) return t.slice(p.length);
-  return null;
-}
 /** all bodies carrying exactly this tag, in id order (deterministic) */
 export function bodiesWithTag(sim: Sim, tag: string): VoxelBody[] {
   const out: VoxelBody[] = [];

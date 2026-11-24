@@ -106,7 +106,6 @@ export const DEAD_HEALTH = 0.12;
 export const SMOKE_ENGINE = 0.55;
 export const DEAD_ENGINE = 0.25;
 
-let vehicleSerial = 0;
 
 /** ramming probe origin (voxel coords); `low` = underside band */
 interface Probe extends V3 { low: boolean; edge: boolean }
@@ -610,8 +609,6 @@ export class VehicleSystem implements SimSystem {
   readonly list: Vehicle[] = [];
   /** water surface (from the level) — vehicles stall when their COM is 0.5 m under it */
   waterLevel: number | null = null;
-  private outRef: SimEvent[] | null = null;
-  private outIdx = 0;
   private lastImpactTick = new Map<number, number>();
 
   /** the vehicle system of a sim (created + registered on first use) */
