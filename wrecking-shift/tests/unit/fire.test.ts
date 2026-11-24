@@ -75,6 +75,19 @@ describe('fire', () => {
     expect(fire.stats.burntOut).toBeGreaterThan(1000);
   });
 
+  it('jumps small air gaps and spreads to a separate nearby body', () => {
+    const { sim, fire } = world(13);
+    // two wooden walls (separate bodies) with a 1.5-voxel gap, plus a wall 1 m away that must not catch
+    const a = wall(sim, MAT.wood, 10, 20, 2, { x: 0, y: 0, z: 0 });
+    const b = wall(sim, MAT.wood, 10, 20, 2, { x: 0, y: 0, z: 0.35 });
+    const far = wall(sim, MAT.wood, 10, 20, 2, { x: 0, y: 0, z: 1.5 });
+    for (let x = 0; x < 10; x += 2) fire.ignite(a, x, 0, 1);
+    let hitB = -1;
+    run(sim, 60 * 25, (t) => { if (hitB < 0 && fire.countOn(b) > 0) hitB = t; });
+    expect(hitB).toBeGreaterThan(0);
+    expect(far.grid.count).toBe(400);
+  });
+
   it('respects the global cap', () => {
     const { sim, fire } = world(4);
     fire.maxFires = 300;

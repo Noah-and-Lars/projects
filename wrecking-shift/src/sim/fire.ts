@@ -56,7 +56,7 @@ const BURNING = -1;
 /** heat given to a neighbour per fire update (face neighbour, sideways, flammability 1, intensity 1) */
 const SPREAD = 0.2;
 /** heat given by a gap-jumping probe */
-const JUMP = 0.4;
+const JUMP = 0.6;
 const WET_TICKS = 150;
 /** per-palette multiplier of how readily neighbour-to-neighbour spread reaches a voxel (grass: no endless lawn fires) */
 const SPREAD_MUL = new Float32Array(256).fill(1);
@@ -467,7 +467,7 @@ export class FireSystem implements FireApi, SimSystem {
     // gap jumping / other bodies
     if (this.probesThisTick < this.maxProbesPerTick && this.sim.rng.next() < this.jumpChance * I) {
       this.probesThisTick++;
-      this.probe(b, wx, wy, wz, I);
+      this.probe(s, b, wx, wy, wz, I);
     }
   }
 
@@ -477,10 +477,19 @@ export class FireSystem implements FireApi, SimSystem {
     if (this.start(b, x, y, z, idx) >= 0) this.newThisTick++;
   }
 
-  /** random probe 1.5–3 voxels away (biased upward): jumps small air gaps and reaches touching / nearby bodies */
-  private probe(b: VoxelBody, wx: number, wy: number, wz: number, I: number): void {
+  /**
+   * random probe 1.5–3 voxels away, biased out of the burning face and upward: jumps small air gaps and reaches
+   * touching / nearby bodies
+   */
+  private probe(s: number, b: VoxelBody, wx: number, wy: number, wz: number, I: number): void {
     const rng = this.sim.rng;
-    let dx = rng.next() * 2 - 1, dy = rng.next() * 1.5 - 0.5, dz = rng.next() * 2 - 1;
+    const o3 = s * 3;
+    let ex: number = this.sexp[o3], ey: number = this.sexp[o3 + 1], ez: number = this.sexp[o3 + 2];
+    if (ex | ey | ez) {
+      const a = this.xf(b);
+      if (!a[8]) { this.rotate(a, ex, ey, ez, false); ex = this.tmp[0]; ey = this.tmp[1]; ez = this.tmp[2]; }
+    }
+    const dx = rng.next() * 2 - 1 + ex * 1.3, dy = rng.next() * 1.5 - 0.5 + ey * 1.3, dz = rng.next() * 2 - 1 + ez * 1.3;
     const l = Math.hypot(dx, dy, dz) || 1;
     const len = (1.5 + rng.next() * 1.5) * VOXEL / l;
     const px = wx + dx * len, py = wy + dy * len, pz = wz + dz * len;
