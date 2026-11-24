@@ -117,7 +117,8 @@ export const testYard: LevelDef = {
       waterLevel: null,
       sunDir: { x: -0.45, y: -0.75, z: -0.5 },
       sky: 'day',
-      markers: {},
+      // mission markers (see src/sim/mission.ts): escape point next to the spawn, helicopter approach
+      markers: { escape: { x: 0, y: 0, z: 5 }, heli_start: { x: -70, y: 32, z: 70 } },
     };
   },
 };

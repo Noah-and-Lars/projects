@@ -20,6 +20,13 @@ research session's artifact; lighting prototype source in `docs/research/lookpro
 
 ## Known issues
 - `tests/unit/mesher.test.ts > is fast enough` is timing-based and can fail when the machine is busy.
+- M0 Scaffold — done (Vite + TS + three + Rapier, Vitest, Playwright smoke harness, `window.__game`).
+- M1 Voxel world — basic version done (materials/palette, greedy mesher + AO, test level, first-person controller).
+- M2 Carving — basic version done (sledge / gun / bomb placeholders, hardness radii, chips).
+- M3 Connectivity & debris — core done (island search, split to dynamic voxel bodies, budgets).
+- Heist framework (missions, alarms, escape, score), progression (ranks / unlocks / upgrades / settings), HUD, menus,
+  map view - done (demo heist "Housewarming" + "Shed Happens" on the test yard).
+- M4+ — not started.
 
 ## Notes for the morning
 - Nothing was blocked by approval prompts so far.

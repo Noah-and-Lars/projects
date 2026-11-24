@@ -37,6 +37,8 @@ await (await import('./audio.mjs')).default({ url, test });
 // player tools (tests/e2e/tools.mjs)
 const { runToolTests } = await import('./tools.mjs');
 await runToolTests(url, test);
+// heist framework / HUD / menus (tests/e2e/mission.mjs)
+failed += await (await import('./mission.mjs')).default(url);
 
 srv.close();
 if (failed) { console.log(failed + ' e2e test(s) failed'); process.exit(1); }
