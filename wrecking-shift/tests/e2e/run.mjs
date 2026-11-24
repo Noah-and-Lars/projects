@@ -33,6 +33,10 @@ await test('boot + spawn + screenshot', async () => {
   await browser.close();
 });
 
+// player tools (tests/e2e/tools.mjs)
+const { runToolTests } = await import('./tools.mjs');
+await runToolTests(url, test);
+
 srv.close();
 if (failed) { console.log(failed + ' e2e test(s) failed'); process.exit(1); }
 console.log('e2e ok');
