@@ -1,41 +1,55 @@
 # Wrecking Shift — progress log
 
-Branch: `teardown-voxel-game`, folder: `wrecking-shift/`. Research files: `docs/research/` (all 10 received via the
-research session's artifact; lighting prototype source in `docs/research/lookproto/`).
+Branch: `teardown-voxel-game`, folder: `wrecking-shift/`. Research: `docs/research/` (all 10 files received).
+
+**Playable private artifact:** https://claude.ai/artifact/XDodp916GTbW3g8YQ8pPyN
+(published from `dist/`; it could not be opened from the build container, so whether the artifact sandbox allows the
+physics WebAssembly and pointer lock is unverified — if it shows "Failed to start", run locally: `npm install && npm run dev`).
+
+## What to try first
+1. `npm install && npm run dev`, open the URL, **Play — Job Board → Housewarming** (tiny tutorial yard), then
+   **Paper Trail** on Gullwick Harbour. Sandbox mode gives every tool with infinite ammo on any map.
+2. Break things: sledge the wooden cottage, shoot brick, bomb concrete, cut the lighthouse base (mission *Lights Out*),
+   burn the tree, drive the loader through the warehouse wall.
+3. Settings → graphics quality (low / medium / high). If it runs slowly, use low or lower the resolution scale.
 
 ## Status by milestone
-- M0 Scaffold — done.
-- M1 Voxel world — done (materials/palette, greedy mesher + AO, levels, first-person controller).
-- M2 Carving — done (hardness radii, fracture pattern, chips).
-- M3 Connectivity & debris — done (island search, split to dynamic voxel bodies, budgets, impact damage,
-  structural crush check = overloaded supports fail).
-- M4 Tools — in progress (agent).
-- M5 Fire & smoke — in progress (agent).
-- M6 Vehicles — in progress (agent).
-- M7 Heist loop / HUD / menus — in progress (agent).
-- M8 Audio — merged (procedural WebAudio bank, music cues; balanced by numbers only, not by ear).
-- M9 Look upgrade — in progress (agent).
-- M10 Content — harbour map geometry done; two more maps in progress (agent); missions pending the mission framework.
-- M11 Extras — water buoyancy + swimming/drowning done; security drones pending.
+- M0 Scaffold — done.  M1 Voxel world — done.  M2 Carving — done.
+- M3 Connectivity & debris — done, plus impact damage and a structural crush check (thin supports fail under load).
+- M4 Tools — done: sledge, spray, extinguisher, blowtorch, handgun, shotgun, plank, cable, pipe bomb, bomb, rocket,
+  nitro, rifle, leaf blower; RMB grab/throw; view models.
+- M5 Fire & smoke — done (spreads, burns structures through, extinguisher, fire alarm).
+- M6 Vehicles — done: hatchback, van, wheel loader; ramming; damage; chase/hood cameras.
+- M7 Heist loop — done: objectives (collect/deliver/destroy/demolish/reach), wired alarm boxes, countdown, cosmetic
+  helicopter, escape van, score, HUD, map (Tab), menus, pause, quicksave/quickload (F5/F9, planning only).
+- M8 Audio — done (fully procedural; **balanced by measured levels only — nobody has listened to it**).
+- M9 Look — done: traced sun shadows + voxel AO from a world occupancy volume, sky/time-of-day presets, lamp lights,
+  bloom/tone mapping, three quality tiers with automatic fallback.
+- M10 Content — done: 4 levels (test yard, Gullwick Harbour, Kestrel Ridge, Brackwater Works), 13 missions across
+  heist / demolition / sink-in-water / destroy-% / drone-guarded types, sandbox, ranks + tool unlocks, cash upgrades,
+  localStorage save.
+- M11 Extras — partly: security drones (watcher/gunner, die only in water), water buoyancy + swimming/drowning,
+  rain/snow particles (no level uses them yet). Not done: photo mode, challenge modes, wet-road physics.
 
-## Known issues
-- `tests/unit/mesher.test.ts > is fast enough` is timing-based and can fail when the machine is busy.
-- M0 Scaffold — done (Vite + TS + three + Rapier, Vitest, Playwright smoke harness, `window.__game`).
-- M1 Voxel world — basic version done (materials/palette, greedy mesher + AO, test level, first-person controller).
-- M2 Carving — basic version done (sledge / gun / bomb placeholders, hardness radii, chips).
-- M3 Connectivity & debris — core done (island search, split to dynamic voxel bodies, budgets).
-- Heist framework (missions, alarms, escape, score), progression (ranks / unlocks / upgrades / settings), HUD, menus,
-  map view - done (demo heist "Housewarming" + "Shed Happens" on the test yard).
-- M4+ — not started.
+## Tests
+`npm test`: typecheck, 194 unit/sim tests in Node, build, headless-browser tests (boot, audio, 14 tools, missions/UI,
+vehicles, lighting incl. GPU-vs-CPU ray check, fire, quicksave). All green at the last commit.
 
-## Notes for the morning
-- Nothing was blocked by approval prompts so far.
-
-## Timeline notes
-- ~13:10–16:20 UTC: the account's 5-hour usage limit was hit; the vehicles, lighting and extra-maps agents were
-  interrupted mid-work (their worktrees were kept) and resumed at 16:22 UTC. Nothing was lost, ~3 h of wall time were.
-- Merged so far: audio, fire & smoke, 14 tools + grab, heist missions/HUD/menus/progression, 5 harbour missions.
-- Research files had not arrived when the build started; work began from the instruction summary (§4).
+## Known issues / not verified
+- **Never run on a real GPU.** The container renders in software, so frame rate, the medium/high tiers' cost and the
+  96 MiB lighting-volume budget are untested on real hardware. Sim cost is measured: ~0.1–2 ms per tick idle.
+- Nobody has played it with a real mouse and keyboard: pointer lock, Esc/pause, feel of movement, driving and
+  difficulty/score balance are tuned by numbers and scripted tests only.
+- The 9 missions on the three big maps are only tested for "props rest where placed, nothing trips on its own";
+  none has been played start to finish (the two test-yard missions are completed in tests). Some may be too hard
+  or too easy with the tools unlocked at that point.
+- Level load takes ~5 s on the big maps (no progress bar, just "LOADING…").
+- Quickload does not restore fires, thrown/placed explosives in flight, or drone alert state.
+- Glass is opaque-ish from inside vehicles (hood camera instead of a true driver view); the Kestrel Ridge pool is
+  empty (one water level per map); roads on Kestrel Ridge are steep (13–17%) and untested with vehicles.
+- The map edges are abrupt: terrain simply ends at the water plane.
+- A 5-hour account usage limit paused all work from ~13:10 to 16:20 UTC; nothing was lost.
+- Nothing was blocked by approval prompts.
 
 ## Rendering
 Lighting / look upgrade (see `src/render/*`, research recipe `docs/research/08-lighting-look.md`). Reference screenshots: `docs/look/`.
