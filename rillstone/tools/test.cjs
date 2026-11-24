@@ -365,6 +365,25 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return { sellers, board: !!board, n: list.length, gold: gold.forms[0].perKg, q: +q.toFixed(2), moved, inRange, rows, quartz: list.some(r => r.material === 'quartz') };
     });
     check(px.sellers.join() === 'assay' && px.board && px.n === px.rows && !px.quartz && Math.abs(px.gold - px.q) < 0.06 && px.moved && px.inRange, `one sell shop (${px.sellers.join()}); the price board lists ${px.n} materials (gold ore $${px.gold}/kg today, the counter pays $${px.q}); a new day moves prices within 80–125%`);
+    // The shop and Machine Shop show each thing's model turning beside its
+    // name, with the description under the name.
+    const pv = await p.evaluate(async () => {
+      const R = __rill, wait = (ms) => new Promise(r => setTimeout(r, ms));
+      const sc = document.createElement('canvas'); sc.width = sc.height = 192; const sx = sc.getContext('2d', { willReadFrequently: true });
+      const pix = (c) => { sx.clearRect(0, 0, 192, 192); sx.drawImage(c, 0, 0); return sx.getImageData(0, 0, 192, 192).data; };
+      const drawn = (c) => { const d = pix(c); for (let i = 3; i < d.length; i += 4) if (d[i] > 0) return true; return false; };
+      R.town.openShop('store'); await wait(400);
+      const items = [...document.querySelectorAll('#scr-panel .shop .item')];
+      const layout = items.every(it => it.children[0].matches('canvas.pv') && it.querySelector('.item-text > b + .desc') && it.querySelector('.item-buy'));
+      const cs = items.map(it => it.querySelector('canvas.pv')), blank = cs.filter(c => !drawn(c)).map(c => c.parentElement.querySelector('b').textContent);
+      const c0 = cs.find(c => c.parentElement.querySelector('b').textContent === 'Pick'), a = pix(c0).slice(); await wait(700); const b = pix(c0);
+      let diff = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) diff++;
+      R.panels.close(); R.economy.state.standing = 14; R.workshop.openWorkshop(); await wait(300);
+      const bps = [...document.querySelectorAll('#scr-panel .shop .item canvas.pv')], bpBlank = bps.filter(c => !drawn(c)).length;
+      R.panels.close();
+      return { n: cs.length, layout, blank, diff, bps: bps.length, bpBlank };
+    });
+    check(pv.n > 50 && pv.layout && !pv.blank.length && pv.diff > 100 && pv.bps > 10 && !pv.bpBlank, `shop items show a turning 3D model beside the name, description below (${pv.n} in the shop, ${pv.bps} blueprints; ${pv.diff} pixels changed as the pick turned${pv.blank.length ? `; blank: ${pv.blank.join(', ')}` : ''})`);
     // Cargo: a nugget rides in the truck bed while driving, then comes back out.
     const cargo = await p.evaluate(async () => {
       const R = __rill, V = R.vehicles; R.noRender(true);

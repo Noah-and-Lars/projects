@@ -177,6 +177,9 @@ they used to.
   logic parts, fuel and vehicles. What you buy appears on the pad by that
   counter, and vehicles wait in the yard. Any counter can call or sell your
   vehicles, and E on any claim post calls your vehicle to that claim.
+- **Catalogue.** Each thing for sale (and each Machine Shop blueprint) shows
+  its real model turning slowly beside its name, with the description under
+  the name and the price on the right.
 - **Guild board.** It has three contracts, which pay money, and claim deeds
   for money (see Claims below). After a few contracts they also ask for
   ingots, cut gems and crafted goods.
@@ -503,6 +506,7 @@ underground, and L toggles it.
 | `js/net/net.js`, `js/net/coop.js` | Co-op rooms over the arcade realtime server (rt.js); host-authoritative replication, guest actions, avatars |
 | `js/core/save.js` | IndexedDB save slots with A/B halves, migrations, `.rillsave` export/import |
 | `js/ui/panels.js` | Shop, contracts and save panels |
+| `js/ui/preview.js` | Turning 3D models in the shop and Machine Shop lists |
 | `js/sim/flow.js` | Water flow budget: networks, sources, boosters, tanks, widest-path pipe limits, silt |
 | `js/defs/machines.js`, `js/game/machines.js` | Machine models and specs; placement ghost, pipe runs, item links, production, furnaces, crafting, wear, machine panels |
 | `js/defs/machines2.js`, `js/game/automation.js` | Belts (data lanes), containers, shaft power, stamp mill, trommel, lift, smelter feeding, logic engine |

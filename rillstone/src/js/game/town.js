@@ -11,6 +11,7 @@ import { MACHINES } from '../defs/machines.js';
 import { MATERIALS, itemName, CRAFT_MULT, ALLOYS, ALLOY_GRADES } from '../defs/materials.js';
 import { EXTRA_MESH, EXTRA_BOX, EXTRA_CARD, EXTRA_MASS } from './items.js';
 import { h } from '../ui/dom.js';
+import { previews } from '../ui/preview.js';
 
 // Machine crates bought before machines can be placed (M4).
 const FAMILY = { water: 0x2a8a86, extraction: 0xc8902c, heat: 0xa84a3a, logic: 0x6e56a8 };
@@ -250,9 +251,12 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
       for (const [key, shop] of Object.entries(SHOPS)) {
         const list = shop.items.filter(it => !seen.has(it.id) && seen.add(it.id));
         if (!list.length) continue;
-        sections.push(h('h3', {}, CATEGORY[key] || shop.name), ...list.map(it => h('div', { class: 'entry' }, h('b', {}, it.name),
-          h('button', { class: 'btn primary', disabled: economy.state.scrip < it.price, onclick: () => { api.buy(shopId, it.id); render(); } }, `$${it.price.toLocaleString('en-GB')}`),
-          h('span', { class: 'desc' }, it.desc))));
+        // Each thing for sale: its model turning slowly beside the name, the
+        // description under the name, and the price.
+        sections.push(h('h3', {}, CATEGORY[key] || shop.name), ...list.map(it => h('div', { class: 'item' },
+          previews().entry(it.spawn, it.data, 'pv item-pic'),
+          h('div', { class: 'item-text' }, h('b', {}, it.name), h('span', { class: 'desc' }, it.desc)),
+          h('button', { class: 'btn primary item-buy', disabled: economy.state.scrip < it.price, onclick: () => { api.buy(shopId, it.id); render(); } }, `$${it.price.toLocaleString('en-GB')}`))));
       }
       const own = [...vehicles.list.values()].filter(v => !v.def.kinematic);
       const body = h('div', {}, h('p', { class: 'small' }, 'Everything in Millbrook is sold here. Things you buy go on the pad beside this counter; vehicles wait in the yard.'),

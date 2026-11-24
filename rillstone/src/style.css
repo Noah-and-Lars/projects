@@ -58,6 +58,20 @@ select { font: 15px var(--font); padding: 4px 8px; border-radius: 8px; border: 1
 .shop .entry .btn { grid-row: 1 / span 2; grid-column: 2; min-width: 96px; }
 .shop .entry .btn:disabled { opacity: 0.45; cursor: default; }
 .shop .entry.done { opacity: 0.6; }
+/* Catalogue items: the model turning on the left, the name with the
+   description under it in the middle, the price on the right. */
+.shop .item { display: grid; grid-template-columns: 96px 1fr auto; gap: 2px 14px; align-items: center; padding: 8px 12px 8px 8px; border-radius: 12px; background: #fffaf0; box-shadow: inset 0 0 0 1px var(--cream-2); margin-top: 8px; }
+.shop .item .pv { width: 96px; height: 96px; border-radius: 10px; background: radial-gradient(circle at 50% 40%, #f4ead4, #e2d4b4 75%); box-shadow: inset 0 0 0 1px rgba(43, 52, 64, 0.08); }
+.shop .item-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.shop .item-text b { font-size: 16px; }
+.shop .item-text .desc { font-size: 13px; color: var(--slate-2); line-height: 1.35; }
+.shop .item-buy { min-width: 96px; }
+.shop .item-buy:disabled { opacity: 0.45; cursor: default; }
+@media (max-width: 520px) {
+  .shop .item { grid-template-columns: 72px 1fr; }
+  .shop .item .pv { width: 72px; height: 72px; grid-row: span 2; }
+  .shop .item-buy { grid-column: 2; justify-self: start; }
+}
 .shop .bar { height: 6px; border-radius: 3px; background: var(--cream-2); overflow: hidden; grid-column: 1; }
 .shop .bar i { display: block; height: 100%; background: var(--teal); }
 .shop h3 { margin: 16px 0 2px; font-size: 15px; color: var(--slate-2); text-transform: uppercase; letter-spacing: 0.06em; }

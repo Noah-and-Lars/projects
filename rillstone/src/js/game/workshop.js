@@ -8,6 +8,7 @@ import { PUMPHOUSE } from '../world/valley.js';
 import { pumphouseParts, pumpWheel, PUMP_DIMS, WHEEL } from '../render/pumphouse.js';
 import { counter, bell, textPlane } from '../render/buildings.js';
 import { h } from '../ui/dom.js';
+import { previews } from '../ui/preview.js';
 import { SHOPS } from '../defs/shops.js';
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV'];
@@ -113,7 +114,9 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
           const ok = !!F().sandbox || Object.entries(bp.ingots).every(([m, kg]) => (st[m] || 0) + 1e-6 >= kg);
           const btn = own ? h('button', { class: 'btn primary', disabled: !ok, onclick: () => { WS_API.build(bp); setTimeout(render, 400); } }, 'Build')
               : h('button', { class: 'btn', disabled: E.scrip < bp.bp, onclick: () => { WS_API.buyBlueprint(bp); setTimeout(render, 400); } }, `Blueprint $${fmt(bp.bp)}`);
-          rows.push(h('div', { class: 'entry' }, h('b', {}, bp.name), btn, h("span", { class: "desc" }, `${bp.desc} ${F().sandbox ? 'Sandbox: builds are free.' : `Each build takes ingots: ${need}.`}`)));
+          btn.classList.add('item-buy');
+          rows.push(h('div', { class: 'item' }, previews().entry(bp.spawn, bp.data, 'pv item-pic'),
+            h('div', { class: 'item-text' }, h('b', {}, bp.name), h('span', { class: 'desc' }, `${bp.desc} ${F().sandbox ? 'Sandbox: builds are free.' : `Each build takes ingots: ${need}.`}`)), btn));
         }
       }
       const sl = scrapList(), sv = sl.reduce((a, e) => a + scrapValue(e), 0);

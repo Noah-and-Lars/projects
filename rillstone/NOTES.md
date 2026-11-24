@@ -1764,3 +1764,25 @@ that tests point to are used.
   Ember Seam restriction, and the sluice band limit (any sluice washes any
   load; tiers differ in speed).
 - **Unchanged:** hand tools still need the right tier for a band.
+
+### Shop previews
+
+- **Asked for:** buying items and machinery should show the thing in 3D,
+  turning slowly beside its name, with the description below.
+- **Now:** every catalogue entry (the shop counters and the Machine Shop's
+  blueprints) is a card. On the left is a 96 px canvas with the real model:
+  machines from `MACHINES[def].build()` (belts with their surface), tools
+  from `toolGeometry`, camp gear from `EXTRA_MESH`, and vehicles as their
+  body plus wheels. In the middle is the name with the description under it,
+  and on the right the price. On a phone the price drops under the text.
+- **How:** `ui/preview.js` keeps one small offscreen WebGL renderer
+  (192 px, low-power) for all previews. Each frame it draws every visible
+  canvas in turn and copies it in. Geometry is cached per entry, and
+  canvases off screen (IntersectionObserver) or removed from the page are
+  skipped. It runs at 30 fps (10 on Very low graphics) and stops when no
+  panel is open. If WebGL fails, the cards just show the plain backdrop.
+- **Test:** `--town` checks the layout (canvas, then name over
+  description, then price), checks that all shop previews and blueprints
+  drew something, and checks that the pick's preview changes between two
+  reads (it turns).
+
