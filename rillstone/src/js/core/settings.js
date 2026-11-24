@@ -25,7 +25,7 @@ export function loadSettings() {
   for (const k in DEFAULT_BINDS) if (Array.isArray(s.binds?.[k])) out.binds[k] = s.binds[k].filter(x => typeof x === 'string').slice(0, 2);
   out.fov = Math.min(100, Math.max(60, +out.fov || 75));
   out.sensitivity = Math.min(3, Math.max(0.2, +out.sensitivity || 1));
-  if (!['low', 'medium', 'high'].includes(out.graphics)) out.graphics = 'high';
+  if (!['verylow', 'low', 'medium', 'high'].includes(out.graphics)) out.graphics = 'high';
   return out;
 }
 export function saveSettings(s) {

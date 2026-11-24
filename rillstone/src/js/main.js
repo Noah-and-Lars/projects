@@ -65,6 +65,10 @@ async function boot() {
   const terrain = buildTerrain(scene, view.materials);
   const water = buildWater(scene);
   const flora = buildFlora(scene, view.materials, 99);
+  // Very low graphics: a third of the trees drawn (rocks stay: they're solid).
+  const allTrees = flora.pine.count;
+  function applyLowDetail() { flora.pine.count = settings.graphics === 'verylow' ? Math.floor(allTrees * 0.35) : allTrees; }
+  applyLowDetail();
   const adit = buildAdit(scene, view.materials);
   await physics.call({ op: 'batch', ops: [
     ...terrain.colliders.map(c => ({ op: 'setStatic', ...c })),
@@ -196,7 +200,7 @@ async function boot() {
     onHostLeft: () => { const body = h('div', {}, h('p', {}, 'The host left, so this co-op session has ended. Their save holds the world.')); panels.show('hostleft', 'Host left', body, { closeLabel: 'Back to the title' }); const close = panels.close; panels.close = () => { panels.close = close; location.reload(); }; },
     onMembers: () => { if (coopPage.open) coopPage.refresh(); },
   });
-  const camp = createCamp({ scene, camera, items, hands, economy, town, hud, audio, state, view, ui, h });
+  const camp = createCamp({ scene, camera, items, hands, economy, town, hud, audio, state, view, ui, h, settings });
   camp.coop = coop;
   const guide = createGuide({ hud, panels, economy, hands, items, machines, vehicles, audio });
   const map = createMap({ panels, economy, vehicles, player, coop });
@@ -232,7 +236,7 @@ async function boot() {
         });
       }
     },
-    onSettingsChanged: () => { view.applySettings(); audio.apply(); },
+    onSettingsChanged: () => { view.applySettings(); audio.apply(); applyLowDetail(); },
     // Settings: clear loose dirt clods and nugget piles (BUILD_BRIEF 9).
     onCleanup: () => { if (coop.isGuest()) return 0; let n = 0; for (const e of [...items.ents.values()]) if ((e.type === 'clod' || e.type === 'pile' || e.type === 'dirtpile') && e.loc === 'loose') { items.remove(e.id); n++; } return n; },
     // Pause menu (BUILD_BRIEF 6; laid out after the usual sandbox flow: save,

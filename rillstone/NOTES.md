@@ -1178,3 +1178,18 @@ so far:
   Purchases go on the pad of the counter you're at, and vehicles wait in
   the yard. Co-op guests can buy anything at any counter too.
 - **Claims:** the Guild Hall sells every claim for its price alone.
+
+### Very low graphics
+
+- **What it changes:** a fourth preset, "Very low (fastest)":
+  - renders at 0.6× resolution, stretched to fill the screen;
+  - no shadows and no bloom;
+  - a nearer view: 620 m far plane, fog from 50 to 300 m, and a smaller
+    sky dome inside that;
+  - about a third of the trees drawn (rocks stay, since they're solid);
+  - no pooled lantern lights.
+- **Measured:** in the start view, draw calls drop from 363 (High) to 73,
+  and triangles from 884k to 151k. Software-rendered frame time drops from
+  about 3–4 ms on High to under 1 ms.
+- **Test:** `--shots` switches to Very low through the Settings menu,
+  checks all of the above, and checks that High restores it.

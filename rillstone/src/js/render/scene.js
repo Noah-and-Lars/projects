@@ -89,8 +89,8 @@ export function createScene(canvas, settings) {
     shadowQ = settings.graphics; gen++;
     if (csm) { csm.remove(); csm.dispose(); csm = null; }
     const q = settings.graphics;
-    renderer.shadowMap.enabled = q !== 'low';
-    if (q === 'low') return;
+    renderer.shadowMap.enabled = q !== 'low' && q !== 'verylow';
+    if (q === 'low' || q === 'verylow') return;
     csm = new CSM({ camera, parent: scene, cascades: q === 'high' ? 3 : 2, maxFar: q === 'high' ? 240 : 160, shadowMapSize: q === 'high' ? 2048 : 1024, lightDirection: new THREE.Vector3(-1, -1, -1).normalize(), lightIntensity: 3, lightFar: 900, shadowBias: -0.0004 });
     csm.fade = true;
     for (const l of csm.lights) { l.shadow.normalBias = 0.04; }
@@ -192,7 +192,7 @@ export function createScene(canvas, settings) {
     if (bloomFor === settings.graphics) return;
     bloomFor = settings.graphics;
     if (composer) { bloomPass?.dispose(); composer.dispose(); composer = null; bloomPass = null; }
-    if (settings.graphics === 'low') return;
+    if (settings.graphics === 'low' || settings.graphics === 'verylow') return;
     const pr = renderer.getPixelRatio(), w = Math.floor(innerWidth * pr), h = Math.floor(innerHeight * pr);
     const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: 4 });
     composer = new EffectComposer(renderer, rt);
@@ -200,8 +200,17 @@ export function createScene(canvas, settings) {
     composer.addPass(bloomPass = new UnrealBloomPass(new THREE.Vector2(w / 2, h / 2), 0.55, 0.35, 1.05));
     composer.addPass(new OutputPass());
   }
+  // Very low: render at 0.6x and let the browser stretch it, see less far
+  // (closer fog, a nearer far plane, a smaller sky dome to stay inside it).
+  function applyDetail() {
+    const vl = settings.graphics === 'verylow';
+    camera.far = vl ? 620 : 1400; scene.fog.near = vl ? 50 : 140; scene.fog.far = vl ? 300 : 620;
+    sky.scale.setScalar(vl ? 0.55 : 1);
+    camera.updateProjectionMatrix();
+  }
   function resize() {
-    const pr = Math.min(devicePixelRatio, settings.graphics === 'low' ? 1 : settings.graphics === 'medium' ? 1.5 : 2);
+    const g = settings.graphics;
+    const pr = g === 'verylow' ? 0.6 : Math.min(devicePixelRatio, g === 'low' ? 1 : g === 'medium' ? 1.5 : 2);
     renderer.setPixelRatio(pr);
     renderer.setSize(innerWidth, innerHeight, false);
     if (composer) { composer.setPixelRatio(pr); composer.setSize(innerWidth, innerHeight); }
@@ -213,11 +222,12 @@ export function createScene(canvas, settings) {
   setupShadows();
   resize();
   setupBloom();
+  applyDetail();
 
   return {
     renderer, scene, camera, hemi, sky, materials, env, grain,
     setTime, resize,
-    applySettings() { camera.fov = settings.fov; setupShadows(); resize(); setupBloom(); },
+    applySettings() { camera.fov = settings.fov; setupShadows(); resize(); setupBloom(); applyDetail(); },
     get bloom() { return !!composer; },
     render() {
       sky.position.copy(camera.position);

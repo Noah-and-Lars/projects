@@ -1194,6 +1194,16 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return { top, back, page, free, saved, gone, escBack };
     });
     check(flow.top === 'scr-coop' && flow.back && flow.page && flow.saved && flow.gone && flow.escBack, `menus: Co-op from pause sits on top and closes back to it; the Saves page saved into slot ${flow.free}, deleted it after a confirm, and Esc went back (${JSON.stringify(flow)})`);
+    // Very low graphics: 0.6x resolution, no shadows or bloom, a nearer view
+    // and fewer trees; back to High restores it all.
+    const vl = await p.evaluate(async () => {
+      const R = __rill, set = (g) => { R.menu.openSettings(); [...document.querySelectorAll('#scr-settings .tab')].find(t => t.textContent === 'General')?.click(); const sel = document.querySelector('#scr-settings select'); sel.value = g; sel.dispatchEvent(new Event('change')); R.menu.closeSettings(); R.menu.showPause(false); };
+      const trees0 = R.flora.pine.count; set('verylow'); await R.frames(2);
+      const v = { px: R.view.renderer.getPixelRatio(), shadows: R.view.renderer.shadowMap.enabled, bloom: R.view.bloom, far: R.view.camera.far, trees: R.flora.pine.count };
+      set('high'); await R.frames(2);
+      return { ...v, trees0, back: R.flora.pine.count === trees0 && R.view.renderer.shadowMap.enabled };
+    });
+    check(vl.px === 0.6 && !vl.shadows && !vl.bloom && vl.far < 1000 && vl.trees < vl.trees0 * 0.5 && vl.back, `very low graphics: ${vl.px}x resolution, no shadows or bloom, view ${vl.far} m, ${vl.trees} of ${vl.trees0} trees; High restores it`);
     errs.push(...fresh.errs);
   }
   check(errs.length === 0, 'no console errors' + (errs.length ? ': ' + errs.slice(0, 5).join(' | ') : ''));

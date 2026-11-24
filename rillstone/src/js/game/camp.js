@@ -30,7 +30,7 @@ EXTRA_CARD.firewood = () => ({ name: 'Firewood', lines: ['Put it in a lit kiln:'
 export const SLEEP_FROM = 19 / 24, SLEEP_UNTIL = 5 / 24, WAKE_AT = 6 / 24;
 const LIGHTS = 4; // pooled point lights for placed lanterns
 
-export function createCamp({ scene, camera, items, hands, economy, town, hud, audio, state, view, ui, h }) {
+export function createCamp({ scene, camera, items, hands, economy, town, hud, audio, state, view, ui, h, settings }) {
   const api = { coop: null, sleepers: new Map() };
   const canSleep = () => state.time >= SLEEP_FROM || state.time < SLEEP_UNTIL;
   const fade = h('div', { id: 'sleep-fade' });
@@ -96,6 +96,7 @@ export function createCamp({ scene, camera, items, hands, economy, town, hud, au
   api.update = (dt) => {
     t -= dt; if (t > 0) return; t = 0.25;
     const night = view.env?.night ?? 0, cam = camera.position, lit = [];
+    if (settings?.graphics === 'verylow') { for (const l of pool) l.intensity = 0; return; } // very low graphics: no lantern lights
     for (const e of items.ents.values()) if (e.type === 'lantern' && e.loc === 'loose') lit.push([e, (e.pos[0] - cam.x) ** 2 + (e.pos[2] - cam.z) ** 2]);
     lit.sort((a, b) => a[1] - b[1]);
     pool.forEach((l, i) => {
