@@ -36,15 +36,15 @@ export interface SkyPreset {
 
 export const SKY_PRESETS: Record<TimeOfDay, SkyPreset> = {
   day: {
-    elevation: 48, sunColor: [1.0, 0.95, 0.86], sunIntensity: 3.4,
-    skyLight: [0.52, 0.68, 1.0], groundLight: [0.42, 0.38, 0.32], ambient: 0.95,
+    elevation: 48, sunColor: [1.0, 0.95, 0.86], sunIntensity: 3.2,
+    skyLight: [0.55, 0.7, 1.0], groundLight: [0.45, 0.4, 0.33], ambient: 1.35,
     zenith: [0.13, 0.3, 0.72], horizon: [0.56, 0.72, 0.92], glow: [1.0, 0.9, 0.7], disc: 40,
     cloudCover: 0.42, cloudColor: [1.0, 1.0, 1.0], stars: 0,
     fogNear: 50, fogFar: 420, exposure: 1.0, emissive: 2.5, lamp: 5, aoMin: 0.1, bloom: 0.35,
   },
   sunset: {
     elevation: 16, sunColor: [1.0, 0.62, 0.32], sunIntensity: 4.4,
-    skyLight: [0.4, 0.52, 0.95], groundLight: [0.5, 0.36, 0.26], ambient: 1.0,
+    skyLight: [0.48, 0.58, 0.95], groundLight: [0.5, 0.38, 0.28], ambient: 1.5,
     zenith: [0.09, 0.17, 0.46], horizon: [0.82, 0.44, 0.2], glow: [1.0, 0.45, 0.12], disc: 30,
     cloudCover: 0.4, cloudColor: [0.85, 0.48, 0.34], stars: 0,
     fogNear: 25, fogFar: 300, exposure: 1.0, emissive: 3.5, lamp: 9, aoMin: 0.12, bloom: 0.55,
@@ -58,7 +58,7 @@ export const SKY_PRESETS: Record<TimeOfDay, SkyPreset> = {
   },
   night: {
     elevation: 38, sunColor: [0.55, 0.68, 1.0], sunIntensity: 0.42,
-    skyLight: [0.2, 0.3, 0.6], groundLight: [0.08, 0.09, 0.14], ambient: 0.22,
+    skyLight: [0.2, 0.3, 0.6], groundLight: [0.08, 0.09, 0.14], ambient: 0.32,
     zenith: [0.006, 0.012, 0.04], horizon: [0.03, 0.05, 0.11], glow: [0.3, 0.4, 0.7], disc: 6,
     cloudCover: 0.3, cloudColor: [0.08, 0.1, 0.18], stars: 1,
     fogNear: 20, fogFar: 260, exposure: 1.25, emissive: 6, lamp: 14, aoMin: 0.2, bloom: 0.8,

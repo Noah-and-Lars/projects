@@ -86,7 +86,7 @@ const FRAG_PARS = /* glsl */ `
 uniform float uEmissive; uniform float uAOMin; uniform float uSunSpread; uniform float uSaturation;
 uniform vec3 uSkyZenith; uniform vec3 uSkyHorizon;
 #ifdef VX_OWN
-varying vec2 vAux; varying vec3 vWPos; varying vec3 vWNrm; varying vec3 vVox;
+varying vec2 vAux; centroid varying vec3 vWPos; varying vec3 vWNrm; centroid varying vec3 vVox;
 #endif
 float vxGrain(vec3 p) { p = fract(p * 0.1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }
 #ifdef VX_VOLUME
@@ -189,7 +189,7 @@ function makeBase(kind: Kind, shared: LookShared, cfg: LookConfig, params: THREE
     vs = mustReplace(vs, '#include <common>', `#include <common>
       attribute vec3 aux;
       uniform float uInflate;
-      varying vec2 vAux; varying vec3 vWPos; varying vec3 vWNrm; varying vec3 vVox;`);
+      varying vec2 vAux; centroid varying vec3 vWPos; varying vec3 vWNrm; centroid varying vec3 vVox;`);
     // Overlap quads along edges where the surface continues, proportional to the view distance: rasterizers snap
     // vertices to a sub-pixel grid, so T-junctions of greedy meshes need a (tiny) screen-space overlap, not a
     // fixed world-space one, or distant ground sparkles with background pixels.

@@ -68,6 +68,23 @@ for (let p = 0; p < 256; p++) { SEE[p] = p === 0 || PAL_GLASS[p] ? 1 : 0; OCC[p]
 const Rs = new Int32Array(P * P), Ro = new Int32Array(P * P), Cs = new Int32Array(P * P), Co = new Int32Array(P * P);
 const lines = new Int32Array(CHUNK);
 
+const tA = new Int32Array(CHUNK);
+/** C[zc + x + 1] bit y = R[zc + y + 1] bit x  for x, y in 0..31 (32x32 bit-matrix transpose, Hacker's Delight 7-3) */
+function transposeLayer(R: Int32Array, C: Int32Array, zc: number): void {
+  let any = 0, all = -1;
+  for (let k = 0; k < CHUNK; k++) { const r = R[zc + 1 + k]; any |= r; all &= r; }
+  if (any === 0 || all === -1) { C.fill(any, zc + 1, zc + 1 + CHUNK); return; }
+  for (let k = 0; k < CHUNK; k++) tA[k] = R[zc + CHUNK - k];
+  for (let j = 16, m = 0x0000ffff; j !== 0; j >>= 1, m ^= m << j) {
+    for (let k = 0; k < 32; k = (k + j + 1) & ~j) {
+      const t = (tA[k] ^ (tA[k + j] >>> j)) & m;
+      tA[k] ^= t;
+      tA[k + j] ^= t << j;
+    }
+  }
+  for (let x = 0; x < CHUNK; x++) C[zc + 1 + x] = tA[CHUNK - 1 - x];
+}
+
 /**
  * Greedy mesher with optional per-vertex ambient occlusion.
  * Faces merge when the palette index matches and (with `bakeAO`) their AO is uniform; faces with an AO
@@ -92,9 +109,9 @@ export function meshChunk(grid: VoxelGrid, cx: number, cy: number, cz: number, o
       }
     if (!any) return null;
   }
-  // copy the chunk with a 1-voxel border into pad and build the bit rows
-  Cs.fill(0); Co.fill(0);
+  // copy the chunk with a 1-voxel border into pad and build the x bit rows
   const gx0 = Math.max(0, bx - 1), gx1 = Math.min(sx, bx + CHUNK + 1);
+  const xOff = 1 - bx;
   for (let z = 0; z < P; z++) {
     const gz = bz + z - 1;
     for (let y = 0; y < P; y++) {
@@ -104,20 +121,27 @@ export function meshChunk(grid: VoxelGrid, cx: number, cy: number, cz: number, o
       pad.fill(0, row, row + P);
       if (gz < 0 || gz >= sz || gy < 0 || gy >= sy) { Rs[zy] = 0; Ro[zy] = 0; continue; }
       const src = (gz * sy + gy) * sx;
-      const zc = z * P;
-      const yIn = y >= 1 && y <= CHUNK, ybit = 1 << (y - 1);
       let rs = 0, ro = 0;
       for (let gx = gx0; gx < gx1; gx++) {
         const v = data[src + gx];
         if (!v) continue;
-        const x = gx - bx + 1;
+        const x = gx + xOff;
         pad[row + x] = v;
-        const o = OCC[v];
-        if (x >= 1 && x <= CHUNK) { rs |= 1 << (x - 1); if (o) ro |= 1 << (x - 1); }
-        if (yIn) { Cs[zc + x] |= ybit; if (o) Co[zc + x] |= ybit; }
+        if (x >= 1 && x <= CHUNK) { rs |= 1 << (x - 1); if (OCC[v]) ro |= 1 << (x - 1); }
       }
       Rs[zy] = rs; Ro[zy] = ro;
     }
+    // y bit rows of this layer = transpose of its x bit rows (word-parallel), plus the two border columns
+    const zc = z * P;
+    transposeLayer(Rs, Cs, zc);
+    transposeLayer(Ro, Co, zc);
+    let s0 = 0, o0 = 0, s1 = 0, o1 = 0;
+    for (let y = 1; y <= CHUNK; y++) {
+      const r = (zc + y) * P, v0 = pad[r], v1 = pad[r + P - 1];
+      if (v0) { s0 |= 1 << (y - 1); if (OCC[v0]) o0 |= 1 << (y - 1); }
+      if (v1) { s1 |= 1 << (y - 1); if (OCC[v1]) o1 |= 1 << (y - 1); }
+    }
+    Cs[zc] = s0; Co[zc] = o0; Cs[zc + P - 1] = s1; Co[zc + P - 1] = o1;
   }
 
   let q = 0, qo = 0, qg = 0;

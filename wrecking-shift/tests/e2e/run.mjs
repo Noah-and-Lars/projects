@@ -1,4 +1,5 @@
 import { assert, openGame, serve, shot } from './harness.mjs';
+import { runLookTests } from './look.mjs';
 
 const { srv, url } = await serve();
 let failed = 0;
@@ -32,6 +33,8 @@ await test('boot + spawn + screenshot', async () => {
   assert(errors.length === 0, 'console errors: ' + errors.join('\n'));
   await browser.close();
 });
+
+await runLookTests(url, test);
 
 srv.close();
 if (failed) { console.log(failed + ' e2e test(s) failed'); process.exit(1); }

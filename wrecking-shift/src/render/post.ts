@@ -110,7 +110,7 @@ export class PostFX {
   bloomStrength = 0.4;
   bloomThreshold = 1.1;
   vignette = 0.28;
-  contrast = 1.06;
+  contrast = 1.02;
   saturation = 1.0;
   private scene: THREE.WebGLRenderTarget | null = null;
   private ldr: THREE.WebGLRenderTarget | null = null;
