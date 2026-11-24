@@ -458,7 +458,7 @@ underground, and L toggles it.
 | `js/game/items.js` | Entity store for carriable things: location states, physics bodies, instanced nuggets, piles |
 | `js/game/hands.js` | Hand and swap slot, tool actions (dig, scoop, pour, wash), pick up/drop, drop ring, hover outline, tooltips |
 | `js/render/fx.js`, `js/core/audio.js` | Particle bursts; synthesised sound cues on volume buses with captions |
-| `js/sim/economy.js` | Ledger, market buyers with saturation, contracts, claim deeds |
+| `js/sim/economy.js` | Ledger, the one shop's daily prices, contracts (including alloy orders), claim deeds |
 | `js/game/town.js`, `js/render/buildings.js` | Millbrook: buildings, counters, bells, clerks, stalls, guild board, delivery pads, bridge |
 | `js/defs/shops.js` | Shop catalogues |
 | `js/game/vehicles.js`, `js/defs/vehicles.js` | Vehicles (hauler, buggies, Excavator, tram): models, wheels, driving input, chase camera, fuel, unflip, cargo |

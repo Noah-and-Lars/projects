@@ -285,7 +285,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
       const body = h('div', {},
         h('h3', {}, 'Contracts'),
         ...E.contracts.map(c => h('div', { class: 'entry' + (c.done ? ' done' : '') }, h('b', {}, c.text), h('span', { class: 'pill' }, `$${c.reward}`), h('span', { class: 'bar' }, h('i', { style: { width: Math.min(100, c.progress / c.target * 100) + '%' } })))),
-        h('p', { class: 'small' }, 'Contracts fill as you sell matching goods anywhere in town. New ones arrive as you finish them.'),
+        h('p', { class: 'small' }, 'Contracts fill as you sell matching goods at the Assay Office (smelting contracts fill as you pour). New ones arrive as you finish them.'),
         h('h3', {}, 'Claim deeds'),
         ...CLAIMS.filter(c => c.voxel).map(c => h('div', { class: 'entry' }, h('b', {}, c.name), economy.owns(c.id) ? h('span', { class: 'pill' }, 'Owned') : (h('button', { class: 'btn primary', disabled: E.scrip < c.price, onclick: () => { const r = economy.buyClaim(c.id); if (r === 'ok') { audio.play('coins'); hud.toast(`${c.name} is yours${c.tunnel ? ' — the adit door is open' : ''}`, 'gold'); } render(); } }, `$${c.price.toLocaleString('en-GB')}`)), h('span', { class: 'desc' }, `${c.blurb || ''} · ${c.w} × ${c.d} m · ${c.depth} m deep`))),
       );

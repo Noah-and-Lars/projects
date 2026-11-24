@@ -458,7 +458,9 @@ export function createMachines({ scene, physics, materials, items, claims, water
     // The smelter pours by itself once full (unless set to pour on a pulse only).
     // "Full" means no room for another typical piece (3 kg), since intake
     // refuses anything that would overflow. A blocked pour waits 5 s.
-    if (def.pourOnPulse && s.ore <= 0 && s.molten >= def.capKg - 3 && !s.pulseOnly) {
+    // m._full is set when a piece on the belt was refused for lack of room, so
+    // a smelter at, say, 96.5 kg fed 4 kg pieces still pours.
+    if (def.pourOnPulse && s.ore <= 0 && s.molten > 0 && (s.molten >= def.capKg - 3 || m._full) && !s.pulseOnly) {
       if ((m._pourWait = (m._pourWait || 0) - dt) <= 0 && !api.pour(m.id, true)) m._pourWait = 5;
     }
     if (m._glow) m._glow.material.opacity = hot && (s.ore > 0 || s.molten > 0 || s.reheat.length) ? 0.55 + Math.sin(api.clock * 9) * 0.1 : 0;
@@ -484,7 +486,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
   api.furnaceRefuse = (m, def, it, byHand) => {
     const s = m.state;
     if (it.stage !== 'ore' || MATERIALS[it.material]?.kind !== 'metal') return `${def.name} melts metal ore only`;
-    if (s.ore + s.molten + it.kg > def.capKg) return `${def.name} is full (${def.capKg} kg)`;
+    if (s.ore + s.molten + it.kg > def.capKg) { if (!byHand) m._full = true; return `${def.name} is full (${def.capKg} kg)`; }
     const mix = furnaceMix(s), metals = Object.keys(mix).filter(k => mix[k] > 1e-6);
     if (!byHand && s.alloy) { const r = ALLOYS[s.alloy]; if (r && it.material !== r.a && it.material !== r.b) return `${def.name} is set for ${MATERIALS[s.alloy].name.toLowerCase()} (${r.a} and ${r.b} only)`; }
     if (!metals.length || metals.includes(it.material) && (metals.length === 1 || alloyOf(metals[0], metals[1]))) return null;
@@ -515,6 +517,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
     s.molten = 0; if (s.ore <= 0) { s.material = null; s.mix = {}; }
     // Nothing is deleted: if the out port refuses the ingot, the metal stays molten.
     if (output(m, { item: it }) === false) { s.molten = kg; s.material = before.material; s.mix = before.mix; if (!quiet) { hud.toast('The way out is blocked: clear the belt or bin first', 'err'); audio.play('error'); } return null; }
+    m._full = false;
     audio.play('pour'); hud.toast(`Poured a ${kg.toFixed(1)} kg ${itemName({ ...it, hotUntil: 0 }).toLowerCase()}${alloy ? ` (${metals.map(k => `${Math.round(it.mix[k] * 100)}% ${k}`).join(', ')})` : ''}`, 'gold');
     for (const k of economy.smelted?.(it.material, kg) || []) { audio.play('contract'); hud.toast(`Contract done: ${k.text} · $${k.reward}`, 'gold'); }
     return it;
@@ -946,7 +949,8 @@ export function createMachines({ scene, physics, materials, items, claims, water
     // now name the loaded world's items, so don't drop them.
     for (const m of list.values()) if (m.state?.lanes) m.state.lanes = m.state.lanes.map(() => []);
     for (const id of [...list.keys()]) api.remove(id);
-    for (const d of arr || []) if (!d.run) api.place(d.def, d.pos, d.rot, d.state, { id: d.id, locked: d.locked, wear: d.wear, on: d.on });
+    // A machine this build doesn't know (a save from a newer one) is skipped, not fatal.
+    for (const d of arr || []) if (!d.run && MACHINES[d.def]) api.place(d.def, d.pos, d.rot, d.state, { id: d.id, locked: d.locked, wear: d.wear, on: d.on });
     for (const d of arr || []) if (d.run) api.layRun(d.tier, d.a, d.b, { id: d.id, via: d.via });
   };
   api.name = (defId) => MACHINES[defId]?.name || defId;

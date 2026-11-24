@@ -731,6 +731,45 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     console.log('     pipe mounts: ' + JSON.stringify(pm));
     check(pm.mounts.every(Boolean) && pm.air === false && pm.laid === 'laid' && pm.via === 3 && pm.len > pm.straight && Math.abs(30 - pm.coil - pm.len) < 0.11 && pm.sat === 1 && pm.onGround && pm.kept === 3 && pm.keptLen === pm.len && pm.undo.join(',') === 'undone,cancelled,false' && pm.parts === 2,
       `pipe on 3 floor mounts: ${pm.len} m routed (straight line ${pm.straight} m), taken from the coil (${pm.coil} m left), water flows (${pm.sat}), brackets on the ground, a save keeps the route; RMB took back a mount, then cancelled`);
+
+    // Alloys: copper and iron melted together by hand pour fine millbrass;
+    // a third metal or a non-alloy pair is refused; the smelter mixes from a
+    // belt only with an alloy picked; the ingot keeps its grade at the bench.
+    const al = await p.evaluate(async () => {
+      const R = __rill, Mc = R.machines, I = R.items, H = R.hands, T = R.places.TOWN; R.noRender(true);
+      const said = []; const t0 = R.hud.toast; R.hud.toast = (m, k) => { said.push(m); t0(m, k); };
+      const X = T.x + 30, Z = T.z + 40, out = {};
+      const at = (dx, dz) => [X + dx, R.height(X + dx, Z + dz), Z + dz];
+      const seen = new Set(I.ents.keys()); const fresh = (f) => [...I.ents.values()].filter(e => !seen.has(e.id) && f(e));
+      const kiln = Mc.place('kiln', at(0, 0), 0, { fuel: 20 });
+      const keep = [H.hand, H.slot]; H.hand = H.slot = null;
+      const feed = (m, material, kg) => { const e = H.give('nugget', {}); e.item = { material, stage: 'ore', kg }; Mc.useOn(m.id, e, H); const left = H.hand === e.id; if (left) { I.remove(e.id); H.hand = null; } return !left; };
+      out.copper = feed(kiln, 'copper', 6); out.iron = feed(kiln, 'iron', 4);
+      out.gold = feed(kiln, 'gold', 1); out.goldSaid = said.at(-1);
+      for (let i = 0; i < 20 * 12; i++) Mc.tick(0.05);
+      out.molten = +kiln.state.molten.toFixed(2);
+      Mc.pour(kiln.id, true); await R.physics.step(6); I.update();
+      const ing = fresh(e => e.item?.material === 'millbrass')[0];
+      out.ingot = ing ? { grade: ing.item.grade, mix: ing.item.mix, kg: ing.item.kg } : null;
+      out.quote = ing ? Math.round(R.economy.quote(ing.item) / R.economy.priceFactor('millbrass')) : 0;
+      // Copper and silver make no alloy.
+      const k2 = Mc.place('kiln', at(4, 0), 0, { fuel: 5 });
+      feed(k2, 'copper', 2); out.silver = feed(k2, 'silver', 2); out.silverSaid = said.at(-1);
+      // Smelter on a belt: refused until an alloy is picked.
+      const sm = Mc.place('smelter', at(8, 0), 0, { fuel: 5 }); const sd = Mc._int.MACHINES.smelter;
+      Mc.furnaceAdd(sm, { material: 'gold', stage: 'ore', kg: 5 });
+      out.beltPure = Mc.furnaceRefuse(sm, sd, { material: 'silver', stage: 'ore', kg: 5 }, false);
+      sm.state.alloy = 'electrum';
+      out.beltAlloy = Mc.furnaceRefuse(sm, sd, { material: 'silver', stage: 'ore', kg: 5 }, false);
+      // Work the hot ingot into a ring: it keeps its grade.
+      if (ing) { H.hand = ing.id; const ring = Mc.craft(ing, H, 'ring'); out.ring = ring?.item ? { grade: ring.item.grade, mat: ring.item.material } : null; if (ring) { I.remove(ring.id); H.hand = null; } }
+      for (const m of [kiln, k2, sm]) Mc.remove(m.id);
+      H.hand = keep[0]; H.slot = keep[1]; R.hud.toast = t0;
+      return out;
+    });
+    console.log('     alloys: ' + JSON.stringify(al));
+    check(al.copper && al.iron && !al.gold && /two metals/.test(al.goldSaid) && al.ingot && al.ingot.grade === 'fine' && Math.abs(al.ingot.kg - 10) < 0.01 && al.ingot.mix.copper === 0.6 && al.quote === 115 && !al.silver && /don't make an alloy/.test(al.silverSaid) && /mixed ore refused/.test(al.beltPure) && al.beltAlloy === null && al.ring?.grade === 'fine' && al.ring.mat === 'millbrass',
+      `alloys: 6 kg copper + 4 kg iron pour a 10 kg fine millbrass ingot worth $${al.quote} at par (×1.25 the metals' $92 as ingots); a third metal and copper with silver are refused; a belt-fed smelter mixes only with an alloy set; the ring keeps its grade`);
   }
 
   if (all || flags.has('--belts')) {

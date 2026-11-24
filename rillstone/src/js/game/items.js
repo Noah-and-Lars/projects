@@ -204,7 +204,7 @@ const PLAIN_KEYS = new Set(['material', 'stage', 'kg', 'hotUntil']);
       const e = ents.get(id); if (!e) return null;
       if (e.item) {
         const m = MATERIALS[e.item.material];
-        return { name: itemName(e.item), badge: FORMS[e.item.material]?.glyph, lines: [`${e.item.kg.toFixed(2)} kg · ${m.name} · ${e.item.stage === 'ore' ? (m.kind === 'fuel' ? 'fuel' : 'ore') : e.item.stage}`, m.kind === 'fuel' ? 'Burns in kilns and boosters' : `≈ $${itemValue(e.item).toFixed(0)}`] };
+        return { name: itemName(e.item), badge: FORMS[e.item.material]?.glyph, lines: [`${e.item.kg.toFixed(2)} kg · ${m.name} · ${e.item.stage === 'ore' ? (m.kind === 'fuel' ? 'fuel' : 'ore') : e.item.stage}`, m.kind === 'fuel' ? 'Burns in kilns and boosters' : `≈ $${itemValue(e.item).toFixed(0)}`, ...(e.item.mix ? [Object.entries(e.item.mix).map(([k, v]) => `${Math.round(v * 100)}% ${k}`).join(' · ')] : [])] };
       }
       if (e.type === 'pile') {
         const kg = e.data.kgs.reduce((a, b) => a + b, 0), m = MATERIALS[e.data.material];
