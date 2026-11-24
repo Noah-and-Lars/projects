@@ -161,6 +161,12 @@ export class MissionModule implements GameModule {
     game.ext.hud?.setPrompt(null, 0, 'mission');
   }
 
+  onEvents(_game: Game, events: { type: string; name?: string }[]): void {
+    const m = this.mission;
+    if (!m || m.phase !== 'planning') return;
+    for (const e of events) if (e.type === 'custom' && e.name === 'drone:alarm') { m.triggerAlarm('drone'); break; }
+  }
+
   fixedUpdate(game: Game): void {
     const m = this.mission;
     if (!m) return;

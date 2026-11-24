@@ -8,6 +8,7 @@ import { alarmBox, goldIdol, paintCan, serverBox, valuable } from '../sim/missio
 import type { VoxelBody } from '../sim/body';
 import type { Sim } from '../sim/sim';
 import { HARBOR_MISSIONS } from './missionsHarbor';
+import { MORE_MISSIONS } from './missionsMore';
 
 /** nearest body with a given name to a point (for tagging level geometry in MissionDef.setup) */
 export function nearestNamed(sim: Sim, name: string, x: number, z: number): VoxelBody | null {
@@ -84,7 +85,7 @@ export const shedHappens: MissionDef = {
   },
 };
 
-export const MISSIONS: MissionDef[] = [housewarming, shedHappens, ...HARBOR_MISSIONS];
+export const MISSIONS: MissionDef[] = [housewarming, shedHappens, ...HARBOR_MISSIONS, ...MORE_MISSIONS];
 
 export function missionById(id: string): MissionDef | undefined {
   return MISSIONS.find((m) => m.id === id);
