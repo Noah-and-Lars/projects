@@ -540,7 +540,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       const give = (item) => { const e = R.items.spawn('nugget', [0, 0, 0], { item, loc: 'held' }); H.hand = e.id; return e; };
       give({ material: 'quartz', stage: 'ore', kg: 2 }); Mc.useOn(kiln.id, R.items.get(H.hand), H);
       give({ material: 'silver', stage: 'ore', kg: 4 }); Mc.useOn(kiln.id, R.items.get(H.hand), H);
-      const mixed = give({ material: 'gold', stage: 'ore', kg: 1 }); Mc.useOn(kiln.id, mixed, H); const kept = !!R.items.get(mixed.id); R.items.remove(mixed.id); H.hand = null;
+      const mixed = give({ material: 'iron', stage: 'ore', kg: 1 }); /* silver + iron is no alloy */ Mc.useOn(kiln.id, mixed, H); const kept = !!R.items.get(mixed.id); R.items.remove(mixed.id); H.hand = null;
       for (let i = 0; i < 200; i++) Mc.tick(0.05);
       const ingot = Mc.pour(kiln.id);
       await R.physics.step(30); R.items.update();
@@ -555,7 +555,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       R.noRender(false);
       return { kept, ingot, cut: gem.item.stage, ring: ring && ring.item, value: ring && R.economy.quote(ring.item, 'assay') };
     });
-    check(craft.kept && craft.ingot && Math.abs(craft.ingot.kg - 4) < 0.01, `kiln melted 4 kg silver into an ingot and refused gold without deleting it`);
+    check(craft.kept && craft.ingot && Math.abs(craft.ingot.kg - 4) < 0.01, `kiln melted 4 kg silver into an ingot and refused iron (no alloy with silver) without deleting it`);
     check(craft.cut === 'cut' && craft.ring && craft.ring.craft === 'ring' && craft.ring.gem, `workbench: hot silver ingot + cut garnet -> ${craft.ring && craft.ring.material} ring worth $${craft.value && craft.value.toFixed(0)}`);
     // Pipes and machines survive a save round-trip.
     const saved = await p.evaluate(() => { const R = __rill; const s = R.snapshot(); return { n: s.machines.length, runs: s.machines.filter(m => m.run).length }; });
@@ -677,6 +677,21 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     check(mo.logic.mul === 18 && mo.logic.div === 2 && mo.logic.pass === 18 && mo.logic.toggle.join(',') === '0,1,0' && mo.logic.gauge >= 90 && mo.logic.switchedOff && mo.logic.target, `logic: 6×3=${mo.logic.mul}, 6÷3=${mo.logic.div}, pass ${mo.logic.pass}, toggle ${mo.logic.toggle.join('→')}, gauge ${mo.logic.gauge}%, machine switch turned the hopper off`);
     check(mo.magnet.to < mo.magnet.from - 0.8, `magnet pulled a nugget from ${mo.magnet.from} m to ${mo.magnet.to} m`);
     check(mo.rod.to < mo.rod.from - 1, `magnet rod pulled a find from ${mo.rod.from} m to ${mo.rod.to} m`);
+    // Simple drills: no "too hard". Deeper pays, up to what the drill can
+    // handle: in Willow Bend a Mk III on the surface digs the gravel bed, sunk
+    // 6 m it digs slate; a Mk I sunk deep keeps digging its own band 1.
+    const sd = await p.evaluate(async () => {
+      const R = __rill, Mc = R.machines, E = R.economy.state, w = R.places.CLAIMS.find(c => c.id === 'willow');
+      const had = E.owned.includes('willow'); if (!had) E.owned.push('willow');
+      const at = (dx, dz, sink) => [w.x0 + dx, w.top - sink, w.z0 + dz];
+      const top3 = Mc.place('drill3', at(6, 6, 0), 0), deep3 = Mc.place('drill3', at(12, 6, 6), 0), deep1 = Mc.place('drill1', at(18, 6, 6), 0);
+      for (let i = 0; i < 4; i++) Mc.tick(0.05);
+      const out = { top3: [top3.band, top3.status], deep3: [deep3.band, deep3.status], deep1: [deep1.band, deep1.status] };
+      for (const m of [top3, deep3, deep1]) Mc.remove(m.id);
+      if (!had) E.owned.splice(E.owned.indexOf('willow'), 1);
+      return out;
+    });
+    check(sd.top3[0] === 2 && sd.deep3[0] === 3 && sd.deep1[0] === 1 && ![sd.top3[1], sd.deep3[1], sd.deep1[1]].some(s => s === 'too hard' || s === 'no claim'), `simple drills: a Mk III on the surface digs band ${sd.top3[0]}, sunk 6 m it digs band ${sd.deep3[0]} (deeper pays); a Mk I sunk deep keeps digging band ${sd.deep1[0]} instead of stopping`);
     // Placement on a slope: the grid follows the terrain, the ghost sits on
     // the ground at the snapped cell, and port arrows show on nearby machines.
     const gr = await p.evaluate(async () => {

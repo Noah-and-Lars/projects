@@ -39,7 +39,7 @@ export const SHOPS = {
     name: 'Millwright', blurb: 'Water machines, pipe and intakes',
     items: [
       { id: 'sluice1', name: 'Sluice Box Mk I', price: 300, spawn: 'crate', data: { def: 'sluice1', family: 'water' }, desc: 'Washes gravel loads with water flow (15 L/s). Hopper on top.' },
-      { id: 'drill1', name: 'Drill Mk I', price: 450, spawn: 'crate', data: { def: 'drill1', family: 'extraction' }, desc: 'Endless gravel from band 1 (20 L/s). Place it in a claim you own.' },
+      { id: 'drill1', name: 'Drill Mk I', price: 450, spawn: 'crate', data: { def: 'drill1', family: 'extraction' }, desc: 'Set it anywhere in a claim you own: endless topsoil-and-gravel loads (20 L/s). Better drills bring up richer ores.' },
       { id: 'intake1', name: 'River Intake Mk I', price: 40, spawn: 'crate', data: { def: 'intake1', family: 'water' }, desc: 'Draws 40 L/s. Its mouth must sit in the river.' },
       { id: 'pipe_copper', name: 'Copper Pipe · 2 m', price: 25, spawn: 'coil', data: { tier: 'copper', m: 2 }, desc: 'Carries 60 L/s. Click a port, then another, to lay a run.' },
       { id: 'pipe_copper10', name: 'Copper Pipe · 10 m coil', price: 120, spawn: 'coil', data: { tier: 'copper', m: 10 }, desc: 'A longer coil for longer runs.' },

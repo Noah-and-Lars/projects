@@ -85,7 +85,7 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
       placeOnBelt(t, lane, q[q.length - 1]);
       return true;
     }
-    if (def.hopper) { const l = payloadLoad(p); if (!l || t.state.loads.length >= def.hopper || l.band > def.tier) return false; t.state.loads.push(l); return finish(p); }
+    if (def.hopper) { const l = payloadLoad(p); if (!l || t.state.loads.length >= def.hopper) return false; t.state.loads.push(l); return finish(p); }
     if (def.role === 'container') {
       const it = payloadItem(p); if (!it) return false;
       const kg = t.state.contents.reduce((a, x) => a + x.kg, 0);

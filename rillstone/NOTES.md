@@ -1743,3 +1743,24 @@ that tests point to are used.
 - unit: server hardening (outsiders, odd ids, prototype keys, bad JSON,
   impossible totals, name ownership, rate limit, unknown routes);
 - `--shots`: markup in names and item text is shown, never run.
+
+### Simple drills
+
+- **Asked for:** the player found "too hard" on drills confusing (it came
+  from where the drill's bit ended up: a pit, or the Gravel Bar's 6 m
+  bottom). They wanted drills much simpler, better drills spitting out more
+  valuable ores, and it still to pay to put a drill deeper if it can handle
+  the ground.
+- **Now:** a drill digs anywhere in a claim you own; nothing else stops it.
+  - Its bit's depth (the drill's base minus `tipDepth`) sets the band and
+    the find weight, as before.
+  - That depth is clamped to the deepest band its tier can cut (Mk I band 1
+    … Mk IV band 4) and to the claim's bottom. Going deeper keeps paying
+    until the drill's limit, and past it the drill keeps digging its best
+    band instead of stopping.
+  - The panel shows "Digging: slate (band 3) · 12.0 m down", and "sink it
+    deeper…" when that would help.
+- **Removed:** the "too hard" and "Ember Seam only" statuses, the Mk IV's
+  Ember Seam restriction, and the sluice band limit (any sluice washes any
+  load; tiers differ in speed).
+- **Unchanged:** hand tools still need the right tier for a band.

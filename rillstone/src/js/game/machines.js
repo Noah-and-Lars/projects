@@ -319,7 +319,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
       const n = { id: m.id, kind: def.drive ? 'consumer' : ['none', 'belt', 'logic', 'container', 'shaftuser', 'funnel'].includes(def.role) ? 'other' : def.role === 'tank' ? 'tank' : def.role };
       if (def.drive) n.demand = def.demand, n.on = m.on;
       if (def.role === 'source') { m.valid = !requirement(m.def, m.pos, m.rot); n.flow = m.on && m.valid ? def.flow * (m.state.throttle ?? 1) : 0; n.silt = riverSilt(m.pos[2]); }
-      if (def.role === 'consumer') { n.demand = def.demand; n.on = m.on && m.wear < 1 && m.status !== 'too hard' && m.status !== 'no claim' && m.status !== 'Ember Seam only'; }
+      if (def.role === 'consumer') { n.demand = def.demand; n.on = m.on && m.wear < 1 && m.status !== 'no claim'; }
       if (def.role === 'pipe') n.cap = m.closed ? 0 : def.cap;
       if (def.role === 'source' && m.closed) n.flow = 0;
       if (def.role === 'tank') n.tank = { level: m.state.level, cap: def.tankCap };
@@ -356,15 +356,22 @@ export function createMachines({ scene, physics, materials, items, claims, water
     if (m.def.startsWith('drill')) drillTick(m, def, dt);
     else if (def.hopper) sluiceTick(m, def, sat, dt);
   }
-  // Why a drill can't dig here at all (null when it can); sets m.band/depth.
+  // Drills are simple: set one down anywhere in a claim you own and it digs;
+  // nothing else stops it. Where you put it still pays: its bit digs the
+  // ground at its depth, so sinking it deeper brings up richer bands and
+  // heavier finds, up to the deepest band its tier can handle (Mk I the
+  // topsoil band ... Mk IV basalt). Deeper than that, or past the claim's
+  // bottom, it keeps digging the best ground it can. Returns why it can't dig
+  // (only "no claim"), or null; sets m.band, m.depth and m.maxBand.
+  const BAND_RANGE = [null, [0, 6], [6, 14], [14, 22], [22, 28]];
   function drillBlock(m, def) {
     const vol = claims.volumeAt(m.pos[0], m.pos[2], m.pos[1]);
     if (!vol || !economy.owns(vol.id)) return 'no claim';
-    if (def.emberOnly && vol.id !== 'ember') return 'Ember Seam only';
-    const depth = vol.depthAt(m.pos[0], m.pos[1] - def.tipDepth);
-    const band = depth > vol.def.depth ? BEDROCK : bandAtDepth(Math.max(0, depth));
-    m.band = band; m.depth = depth; m._vol = vol;
-    return band === BEDROCK || band > def.tier ? 'too hard' : null;
+    const tier = Math.max(1, Math.min(4, def.tier || 1));
+    let d = vol.depthAt(m.pos[0], m.pos[1] - (def.tipDepth || 3.6)); if (!Number.isFinite(d)) d = 0;
+    d = Math.max(0, Math.min(d, vol.def.depth - 0.1, BAND_RANGE[tier][1] - 0.1)); // no deeper than the claim, or than the drill can cut
+    m.band = bandAtDepth(d); m.depth = d; m.maxBand = tier; m._vol = vol;
+    return null;
   }
   function drillTick(m, def, dt) {
     const vol = m._vol, tipY = m.pos[1] - def.tipDepth, depth = m.depth, band = m.band;
@@ -406,7 +413,6 @@ export function createMachines({ scene, physics, materials, items, claims, water
     if (target) {
       if (what.load && MACHINES[target.def].hopper && !MACHINES[target.def].role.startsWith('belt')) {
         if (target.state.loads.length >= MACHINES[target.def].hopper) return false;
-        if (MACHINES[target.def].tier && what.load.band > MACHINES[target.def].tier) return false; // too hard for that sluice
         target.state.loads.push(what.load); return true;
       }
       if (api.accept) { const r = api.accept(target, what, link.s, m); if (r !== undefined) return r; }
@@ -541,7 +547,6 @@ export function createMachines({ scene, physics, materials, items, claims, water
       let n = 0;
       while (held.data.loads.length && m.state.loads.length < def.hopper) {
         const l = held.data.loads[held.data.loads.length - 1];
-        if (l.band > def.tier) { hud.toast(`This sluice only washes band ${def.tier}; needs a Mk ${['', 'I', 'II', 'III', 'IV'][l.band]}`, 'err'); break; }
         m.state.loads.push(held.data.loads.pop()); n++;
       }
       if (n) { items.refresh(held.id); audio.play('pour'); H.play?.('pour'); }
@@ -652,7 +657,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
         row('Pressure', `${Math.round((m.pressure || 0) * 100)}%${(m.pressure || 0) < 0.6 ? ' · low: add a header tank or shorter pipe' : ''}`);
         row('Speed', `${Math.round((m.speed || 0) * 100)}% of nominal`);
         if (!def.meltRate && !def.noWear) row('Wear', `${Math.round(m.wear * 100)}% · silt ${net.silt ?? 0}`);
-        if (m.def.startsWith('drill')) row('Tip', m.band ? `band ${m.band} · ${m.depth.toFixed(1)} m down` : '—');
+        if (m.def.startsWith('drill')) row('Digging', m.band ? `${['', 'topsoil and gravel', 'the gravel bed', 'slate', 'basalt'][m.band]} (band ${m.band}) · ${m.depth.toFixed(1)} m down${m.band < m.maxBand ? ` · sink it deeper for richer ground (it can reach band ${m.maxBand})` : ''}` : 'place it in a claim you own');
         if (def.hopper) row('Hopper', `${m.state.loads.length} / ${def.hopper} loads`);
       }
       if (def.role === 'source') { row('Status', m.valid ? `drawing ${(def.flow * m.state.throttle).toFixed(0)} L/s` : 'mouth not in the river'); }

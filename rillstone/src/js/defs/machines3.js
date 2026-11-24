@@ -38,7 +38,7 @@ export const MACHINES3 = {
   goldwheel: { ...MACHINES2.waterwheel, name: 'Gold-plated Water Wheel', spin: { ...MACHINES2.waterwheel.spin, gold: true }, build: () => recolor(recolor(MACHINES2.waterwheel.build(), 0xc8902c, 0xe8b830), 0x8a5a30, 0xb8901a) },
   drill2: variant('drill1', 2, { demand: 30, period: 4, tipDepth: 6.5 }, OCHRE, [0, 1.75, 0.262]),
   drill3: variant('drill1', 3, { demand: 45, period: 3.5, tipDepth: 9 }, OCHRE, [0, 1.75, 0.262]),
-  drill4: variant('drill1', 4, { demand: 60, period: 3, tipDepth: 10, emberOnly: true }, OCHRE, [0, 1.75, 0.262]),
+  drill4: variant('drill1', 4, { demand: 60, period: 3, tipDepth: 10 }, OCHRE, [0, 1.75, 0.262]),
   sluice2: variant('sluice1', 2, { demand: 25, period: 3, hopper: 12 }, TEAL, [0.44, 0.75, -0.6, Math.PI / 2]),
   sluice3: variant('sluice1', 3, { demand: 40, period: 2, hopper: 14 }, TEAL, [0.44, 0.75, -0.6, Math.PI / 2]),
   // Not in the brief's table: Mk IV fills the gap for band-4 (basalt) loads.

@@ -371,9 +371,19 @@ crates.
 
 | Tier | Machines and tools |
 | --- | --- |
-| Mk II | Drill (tip 6.5 m: the gravel bed from the surface), Sluice (3 s), River Intake (90 L/s), Steel Pick |
-| Mk III | Drill (tip 9 m), Sluice (2 s), River Intake (160 L/s), Glimmer Pick, Glimmer Pipe |
-| Mk IV | Drill (Ember Seam only), Sluice for basalt, Ember Shovel, Ember Pick |
+| Mk II | Drill (gravel-bed loads), Sluice (3 s), River Intake (90 L/s), Steel Pick |
+| Mk III | Drill (slate loads), Sluice (2 s), River Intake (160 L/s), Glimmer Pick, Glimmer Pipe |
+| Mk IV | Drill (basalt loads, the richest), Sluice (1.6 s), Ember Shovel, Ember Pick |
+
+**Drills are simple.** Set one down anywhere in a claim you own and it digs;
+standing outside your claims is the only thing that stops it. Where you put
+it still pays: its bit digs the ground at its depth, so sinking it deeper (in
+a pit or on a low terrace) brings up richer bands and heavier finds, up to the
+deepest band it can handle: Mk I topsoil and gravel, Mk II the gravel bed,
+Mk III slate (glimmerite country), Mk IV basalt (emberite). Deeper than that,
+it keeps digging its best band instead of stopping. Its panel shows what it's
+digging and whether going deeper would help. Any sluice washes any load;
+better sluices are faster.
 
 **Upper Falls.** Take the switchback road up the falls step, on the west bank. The **Gem Cutter** cuts any uncut gems on its counter for 12% of their cut value (ring the bell).
 

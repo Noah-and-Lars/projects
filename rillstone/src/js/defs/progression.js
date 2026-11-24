@@ -9,20 +9,20 @@ import { cheap, fewerIngots } from './prices.js';
 export const BLUEPRINTS = [
   // Mk II: the gravel bed.
   { id: 'steelpick', name: 'Steel Pick', tier: 2, bp: 300, ingots: { iron: 15 }, spawn: 'pick', data: { tier: 2, name: 'Steel Pick' }, desc: 'Breaks the gravel bed (band 2) fast.' },
-  { id: 'drill2', name: 'Drill Mk II', tier: 2, bp: 700, ingots: { iron: 150, glimmerite: 10 }, spawn: 'crate', data: { def: 'drill2', family: 'extraction' }, desc: 'Band ≤ 2, a load every 4 s, 30 L/s. Its tip reaches 6.5 m: the gravel bed from the surface.' },
-  { id: 'sluice2', name: 'Sluice Box Mk II', tier: 2, bp: 900, ingots: { iron: 120, glimmerite: 15 }, spawn: 'crate', data: { def: 'sluice2', family: 'water' }, desc: 'Washes band ≤ 2 loads every 3 s, 25 L/s.' },
+  { id: 'drill2', name: 'Drill Mk II', tier: 2, bp: 700, ingots: { iron: 150, glimmerite: 10 }, spawn: 'crate', data: { def: 'drill2', family: 'extraction' }, desc: 'Brings up gravel-bed loads (richer finds than a Mk I) anywhere in a claim you own. A load every 4 s, 30 L/s.' },
+  { id: 'sluice2', name: 'Sluice Box Mk II', tier: 2, bp: 900, ingots: { iron: 120, glimmerite: 15 }, spawn: 'crate', data: { def: 'sluice2', family: 'water' }, desc: 'Washes any load every 3 s, 25 L/s.' },
   { id: 'intake2', name: 'River Intake Mk II', tier: 2, bp: 600, ingots: { copper: 60 }, spawn: 'crate', data: { def: 'intake2', family: 'water' }, desc: 'Draws 90 L/s.' },
   // Mk III: slate.
   { id: 'glimmerpick', name: 'Glimmer Pick', tier: 3, bp: 900, ingots: { glimmerite: 6 }, spawn: 'pick', data: { tier: 3, name: 'Glimmer Pick' }, desc: 'Breaks slate (band 3).' },
   { id: 'pipe_glimmer', name: 'Glimmer Pipe · 10 m coil', tier: 3, bp: 1000, ingots: { glimmerite: 8 }, spawn: 'coil', data: { tier: 'glimmer', m: 10 }, desc: 'Carries 300 L/s.' },
   { id: 'intake3', name: 'River Intake Mk III', tier: 3, bp: 1400, ingots: { copper: 80, glimmerite: 10 }, spawn: 'crate', data: { def: 'intake3', family: 'water' }, desc: 'Draws 160 L/s.' },
-  { id: 'drill3', name: 'Drill Mk III', tier: 3, bp: 2200, ingots: { glimmerite: 40, emberite: 10 }, spawn: 'crate', data: { def: 'drill3', family: 'extraction' }, desc: 'Band ≤ 3, a load every 3.5 s, 45 L/s. Tip 9 m down: stand it in a pit or on a low terrace for slate.' },
-  { id: 'sluice3', name: 'Sluice Box Mk III', tier: 3, bp: 2200, ingots: { glimmerite: 100, emberite: 40 }, spawn: 'crate', data: { def: 'sluice3', family: 'water' }, desc: 'Washes band ≤ 3 loads every 2 s, 40 L/s.' },
-  // Mk IV: basalt, Ember Seam only.
+  { id: 'drill3', name: 'Drill Mk III', tier: 3, bp: 2200, ingots: { glimmerite: 40, emberite: 10 }, spawn: 'crate', data: { def: 'drill3', family: 'extraction' }, desc: 'Brings up slate loads (glimmerite country) anywhere in a claim you own. A load every 3.5 s, 45 L/s.' },
+  { id: 'sluice3', name: 'Sluice Box Mk III', tier: 3, bp: 2200, ingots: { glimmerite: 100, emberite: 40 }, spawn: 'crate', data: { def: 'sluice3', family: 'water' }, desc: 'Washes any load every 2 s, 40 L/s.' },
+  // Mk IV: basalt.
   { id: 'embershovel', name: 'Ember Shovel', tier: 4, bp: 2500, ingots: { emberite: 8 }, spawn: 'shovel', data: { tier: 4, cap: 3, name: 'Ember Shovel' }, desc: 'Cuts basalt (band 4). Holds 3 loads.' },
   { id: 'emberpick', name: 'Ember Pick', tier: 4, bp: 2500, ingots: { emberite: 6 }, spawn: 'pick', data: { tier: 4, name: 'Ember Pick' }, desc: 'Breaks basalt (band 4).' },
-  { id: 'drill4', name: 'Drill Mk IV', tier: 4, bp: 4000, ingots: { emberite: 60, glimmerite: 40 }, spawn: 'crate', data: { def: 'drill4', family: 'extraction' }, desc: 'Band ≤ 4, a load every 3 s, 60 L/s. Ember Seam only.' },
-  { id: 'sluice4', name: 'Sluice Box Mk IV', tier: 4, bp: 4000, ingots: { emberite: 60 }, spawn: 'crate', data: { def: 'sluice4', family: 'water' }, desc: 'Washes basalt loads every 1.6 s, 55 L/s.' },
+  { id: 'drill4', name: 'Drill Mk IV', tier: 4, bp: 4000, ingots: { emberite: 60, glimmerite: 40 }, spawn: 'crate', data: { def: 'drill4', family: 'extraction' }, desc: 'Brings up basalt loads (the richest: emberite) anywhere in a claim you own. A load every 3 s, 60 L/s.' },
+  { id: 'sluice4', name: 'Sluice Box Mk IV', tier: 4, bp: 4000, ingots: { emberite: 60 }, spawn: 'crate', data: { def: 'sluice4', family: 'water' }, desc: 'Washes any load every 1.6 s, 55 L/s.' },
 ];
 
 for (const b of BLUEPRINTS) { b.bp = cheap(b.bp); for (const m in b.ingots) b.ingots[m] = fewerIngots(b.ingots[m]); }
