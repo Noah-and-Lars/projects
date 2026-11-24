@@ -53,6 +53,7 @@ import type { LevelDef, LevelInfo } from './types';
  *   jetty_end         far end of the jetty
  *   lake_dump         deep water south of the jetty (dump objectives here)
  *   lake_dump_east    deep water off the east shore below the spawn
+ *   vineyard          vine rows on the slope between the two road legs
  *   ravine            ravine floor under the footbridge
  *   footbridge        middle of the wooden footbridge (T2 <-> T3)
  *   greenhouse        inside the greenhouse (east lawn)
@@ -279,8 +280,8 @@ function garage(sim: Sim, wx: number, wz: number, gy: number, m: Marks): void {
   for (const lx of [24, 70, 116]) box(g, lx - 2, H - 1, 48, lx + 2, H, 52, pal(MAT.lamp));
   // inspection pit edge marking / workbench along the back wall
   box(g, 10, 3, 3, 60, 12, 10, planks(MAT.wood, 3, 7));
-  addStatic(sim, g, wx, gy - 0.3, wz, 'garage', ['garage']);
-  const P = (lx: number, lz: number): V3 => ({ x: wx + lx * 0.1, y: gy + 0.02, z: wz + lz * 0.1 });
+  addStatic(sim, g, wx, gy - 0.2, wz, 'garage', ['garage']);
+  const P = (lx: number, lz: number): V3 => ({ x: wx + lx * 0.1, y: gy + 0.12, z: wz + lz * 0.1 });
   { const p = P(70, 4); shelf(sim, p.x, p.y, p.z); }
   { const p = P(95, 4); shelf(sim, p.x, p.y, p.z); }
   for (const [lx, lz, ex] of [[124, 10, 1], [131, 10, 1], [127, 17, 0]] as const) { const p = P(lx, lz); barrel(sim, p.x, p.y, p.z, !!ex); }
@@ -333,8 +334,8 @@ function gallery(sim: Sim, wx: number, wz: number, gy: number, m: Marks): void {
   for (let z = 44; z < D; z += 22) box(g, W + 14, 0, z, W + 16, 3 + Math.max(0, Math.floor((D - 6 - z) / 3) * 2) - 2, z + 2, steelStep);
   box(g, W + 14, 0, 26, W + 16, H, 28, steelStep);
   railing(g, 'x', W, W + 16, 26, R, flat(MAT.steel, 1), 10);
-  addStatic(sim, g, wx, gy - 0.3, wz, 'gallery', ['gallery']);
-  const P = (lx: number, ly: number, lz: number): V3 => ({ x: wx + lx * 0.1, y: gy - 0.3 + ly * 0.1 + 0.02, z: wz + lz * 0.1 });
+  addStatic(sim, g, wx, gy - 0.2, wz, 'gallery', ['gallery']);
+  const P = (lx: number, ly: number, lz: number): V3 => ({ x: wx + lx * 0.1, y: gy - 0.2 + ly * 0.1 + 0.02, z: wz + lz * 0.1 });
   plinths.forEach(([px, pz], i) => { const p = P(px - 3, 13, pz - 3); sculpture(sim, p.x, p.y, p.z, i % 4); });
   { const p = P(165, 3, 30); sofa(sim, p.x, p.y, p.z); }
   { const p = P(190, 3, 60); sofa(sim, p.x, p.y, p.z, Math.PI / 2, MAT.plastic); }
@@ -356,7 +357,7 @@ function pool(sim: Sim, wx: number, wz: number, deckY: number, m: Marks): void {
   shell(g, 0, H - 1, 0, W, H, D, 4, flat(MAT.concrete, 0));
   box(g, 2, 2, 2, W - 2, 3, D - 2, pal(MAT.fabric, 1)); // blue floor liner
   stairs(g, 'x', W - 2, -1, 4, 16, 2, 15, t); // steps down at the east end
-  addStatic(sim, g, wx, deckY - H * 0.1, wz, 'pool');
+  addStatic(sim, g, wx, deckY - H * 0.1 + 0.1, wz, 'pool');
   m.pool = { x: wx + 4, y: deckY - 1.5, z: wz + 2.2 };
 }
 
@@ -436,9 +437,9 @@ function watchtower(sim: Sim, cx: number, gy: number, cz: number, m: Marks): voi
   // brazier
   box(g, 22, TOP, 22, 28, TOP + 2, 28, flat(MAT.steel)); box(g, 23, TOP + 2, 23, 27, TOP + 3, 27, pal(MAT.lamp));
   const x0 = cx - S * 0.05, z0 = cz - S * 0.05;
-  addStatic(sim, g, x0, gy - 0.3, z0, 'watchtower', ['tower']);
+  addStatic(sim, g, x0, gy - 0.2, z0, 'watchtower', ['tower']);
   m.watchtower_door = { x: cx, y: gy, z: z0 + S * 0.1 + 1.0 };
-  m.watchtower_top = { x: cx - 1, y: gy - 0.3 + TOP * 0.1, z: cz - 1 };
+  m.watchtower_top = { x: cx - 1, y: gy - 0.2 + TOP * 0.1, z: cz - 1 };
 }
 
 // ------------------------------------------------------------------ small structures
@@ -489,8 +490,8 @@ function greenhouse(sim: Sim, wx: number, wz: number, gy: number, m: Marks): voi
     box(g, x0 + 1, 9, 11, x0 + 19, 10, D - 11, flat(MAT.dirt, 2));
     for (let z = 14; z < D - 14; z += 9) box(g, x0 + 4 + ((z * 7) % 10), 10, z, x0 + 9 + ((z * 7) % 10), 13 + (z % 4), z + 5, shaded(MAT.leaves, 3, z));
   }
-  addStatic(sim, g, wx, gy - 0.3, wz, 'greenhouse', ['greenhouse']);
-  for (let i = 0; i < 4; i++) plant(sim, wx + 4.0, gy + 0.02, wz + 2 + i * 3.2, i);
+  addStatic(sim, g, wx, gy - 0.2, wz, 'greenhouse', ['greenhouse']);
+  for (let i = 0; i < 4; i++) plant(sim, wx + 4.0, gy + 0.12, wz + 2 + i * 3.2, i);
   m.greenhouse = { x: wx + 4.5, y: gy, z: wz + 7 };
   m.greenhouse_door = { x: wx - 1, y: gy, z: wz + 7 };
 }
@@ -539,7 +540,7 @@ export const ridge: LevelDef = {
     hm.addPad(-8, -28, 28, -17, T2, 2, MAT.concrete);                // forecourt
     hm.addPad(8, -32.6, 22, -28, T2, 1, MAT.concrete);               // garage apron
     hm.addPad(-46, 5, -24, 12.5, T1, 1.5, MAT.concrete);             // pool deck
-    hm.addPad(-20, -43, 3, -28, 9.6, 0.15);                          // mansion basement pit
+    hm.addPad(-20, -43, 3, -28, 9.5, 0.15);                          // mansion basement pit
     hm.addPad(-42, 6.5, -30, 11, T1 - 1.8, 0.15);                    // pool pit
     hm.addPad(40, 16, 51.2, 26.5, SHORE, 2, MAT.asphalt);            // spawn lot
     // roads: shore lane, switchback up to the forecourt, footpath to the hilltop
@@ -580,13 +581,16 @@ export const ridge: LevelDef = {
     boat(sim, -27.8, LAKE + 0.1, 44, Math.PI / 2 - 0.15);
     m.jetty_end = { x: -23.2, y: SHORE + 0.2, z: 46.8 };
 
+    // --- vineyard rows on the slope between the two road legs (short pieces so they follow the slope)
+    for (const vz of [-2.5, 0.5, 3.5]) for (let vx = -1; vx <= 15; vx += 4) hedge(sim, vx, Math.min(gy(vx, vz), gy(vx + 3.2, vz), gy(vx, vz + 0.6)) - 0.2, vz, 3.2, 0.6, 1.2);
+    m.vineyard = { x: 7, y: gy(7, 2), z: 2 };
     // --- lamps along the roads
     for (let lx = -44; lx <= 44; lx += 14) if (lx < -36 || lx > -18) streetLamp(sim, lx, gy(lx, 25.6), 25.6, true);
     for (const [lx, lz] of [[19, 13.7], [3, 9.0], [-20, 4], [-4.7, -1.7], [9.3, -7.3], [-4, -18], [22, -18]]) streetLamp(sim, lx, gy(lx, lz), lz);
     streetLamp(sim, -23, SHORE + 0.2, 46.4);
 
     // --- nature: trees, rocks
-    const pines: [number, number][] = [[-48, -30], [-42, -22], [-36, -32], [-49, -16], [-34, -14], [46, -46], [42, 2], [-48, 14], [2, 0], [26, 6], [-6, 16.2], [12, -46], [-2, -48]];
+    const pines: [number, number][] = [[-48, -30], [-42, -22], [-36, -32], [-49, -16], [-34, -14], [46, -46], [42, 2], [-48, 14], [24, 0], [26, 6], [-6, 16.2], [12, -46], [-2, -48]];
     pines.forEach(([x, z], i) => pine(sim, x, gy(x, z), z, i + 3));
     const trees: [number, number][] = [[44, -40], [48, -10], [-26, -33], [24, -46], [14, 8]];
     trees.forEach(([x, z], i) => tree(sim, x, gy(x, z), z, i + 11));
