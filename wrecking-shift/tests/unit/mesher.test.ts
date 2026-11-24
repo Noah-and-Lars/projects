@@ -73,19 +73,70 @@ describe('mesher options', () => {
     };
     expect(area(b)).toBeCloseTo(area(a), 3);
   });
-  it('inflate grows quads in-plane only', () => {
+  it('inflate grows quads in-plane, only where the surface continues past the edge', () => {
+    // an isolated cube has only convex edges: nothing is inflated (no fins poking out of neighbouring surfaces)
     const g = new VoxelGrid(8, 8, 8);
     g.fill(2, 2, 2, 6, 6, 6, pal(MAT.brick, 2));
     const m = meshChunk(g, 0, 0, 0, { bakeAO: false, inflate: 0.01 })!;
     expect(m.quads).toBe(6);
-    for (let q = 0; q < 6; q++) {
-      const d = [0, 1, 2].find((k) => m.normals[q * 12 + k] !== 0)!;
-      for (let c = 0; c < 4; c++) for (let k = 0; k < 3; k++) {
-        const v = m.positions[q * 12 + c * 3 + k];
-        if (k === d) expect(Math.min(Math.abs(v - 0.2), Math.abs(v - 0.6))).toBeLessThan(1e-6);
-        else expect(Math.min(Math.abs(v - 0.199), Math.abs(v - 0.601))).toBeLessThan(1e-6);
+    for (const v of m.positions) expect(Math.min(Math.abs(v - 0.2), Math.abs(v - 0.6))).toBeLessThan(1e-6);
+    // a slab made of two materials filling the grid: the shared edge overlaps, top faces also grow past the grid
+    // boundary (neighbouring ground tiles), side faces do not
+    const s = new VoxelGrid(8, 4, 8);
+    s.fill(0, 0, 0, 4, 4, 8, pal(MAT.brick, 2));
+    s.fill(4, 0, 0, 8, 4, 8, pal(MAT.concrete, 2));
+    const sm = meshChunk(s, 0, 0, 0, { bakeAO: false, inflate: 0.01 })!;
+    expect(sm.quads).toBe(10);
+    // corner codes: bits 0/1 = +u/+v corner, bits 2/3 = surface continues past that edge
+    for (let q = 0; q < sm.quads; q++) {
+      const d = [0, 1, 2].find((k) => sm.normals[q * 12 + k] !== 0)!;
+      const u = (d + 1) % 3, v = (d + 2) % 3;
+      const us = [0, 1, 2, 3].map((c) => sm.positions[q * 12 + c * 3 + u]), vs = [0, 1, 2, 3].map((c) => sm.positions[q * 12 + c * 3 + v]);
+      for (let c = 0; c < 4; c++) {
+        const code = sm.aux[q * 12 + c * 3 + 2];
+        expect(!!(code & 1)).toBe(us[c] > (Math.min(...us) + Math.max(...us)) / 2);
+        expect(!!(code & 2)).toBe(vs[c] > (Math.min(...vs) + Math.max(...vs)) / 2);
+        if (d !== 1) { // side faces: only the edge shared by the two materials (x = 0.4) continues
+          const xAxisIsU = u === 0;
+          const x = sm.positions[q * 12 + c * 3];
+          const onSeam = Math.abs(x - 0.4) < 0.01;
+          if (d === 2) { expect(!!(code & (xAxisIsU ? 4 : 8))).toBe(onSeam); expect(code & (xAxisIsU ? 8 : 4)).toBe(0); }
+          else expect(code & 12).toBe(0);
+        } else expect(code & 12).toBe(12);
       }
     }
+    const near = (v: number, list: number[]) => Math.min(...list.map((t) => Math.abs(v - t))) < 1e-6;
+    for (let q = 0; q < sm.quads; q++) {
+      const d = [0, 1, 2].find((k) => sm.normals[q * 12 + k] !== 0)!;
+      const xs = [0, 1, 2, 3].map((c) => sm.positions[q * 12 + c * 3]);
+      const ys = [0, 1, 2, 3].map((c) => sm.positions[q * 12 + c * 3 + 1]);
+      const zs = [0, 1, 2, 3].map((c) => sm.positions[q * 12 + c * 3 + 2]);
+      if (d === 1) { // top / bottom
+        for (const y of ys) expect(near(y, [0, 0.4])).toBe(true);
+        for (const x of xs) expect(near(x, [-0.001, 0.399, 0.401, 0.801])).toBe(true);
+        for (const z of zs) expect(near(z, [-0.001, 0.801])).toBe(true);
+      } else {
+        for (const y of ys) expect(near(y, [0, 0.4])).toBe(true); // never above the top surface
+        if (d === 2) { for (const x of xs) expect(near(x, [0, 0.399, 0.401, 0.8])).toBe(true); for (const z of zs) expect(near(z, [0, 0.8])).toBe(true); }
+        else { for (const z of zs) expect(near(z, [0, 0.8])).toBe(true); for (const x of xs) expect(near(x, [0, 0.8])).toBe(true); }
+      }
+    }
+  });
+  it('skips empty chunks and handles hollow / solid ones', () => {
+    const g = new VoxelGrid(96, 96, 96);
+    g.fill(0, 0, 0, 96, 96, 96, pal(MAT.rock, 2));
+    expect(meshChunk(g, 1, 1, 1)).toBeNull();          // buried: no faces
+    expect(meshChunk(g, 0, 1, 1)!.quads).toBe(1);      // one outer face
+    expect(meshChunk(g, 0, 0, 0)!.quads).toBe(3);
+    g.fill(40, 40, 40, 56, 56, 56, 0);                 // cavity inside the middle chunk
+    expect(meshChunk(g, 1, 1, 1, { bakeAO: false })!.quads).toBe(6);
+    const e = new VoxelGrid(64, 64, 64);
+    e.set(40, 40, 40, pal(MAT.wood));
+    expect(meshChunk(e, 0, 0, 0)).toBeNull();
+    expect(meshChunk(e, 1, 1, 1)!.quads).toBe(6);
+    // a voxel just across the chunk border hides the face it touches
+    e.set(31, 5, 5, pal(MAT.wood)); e.set(32, 5, 5, pal(MAT.wood));
+    expect(meshChunk(e, 0, 0, 0)!.quads).toBe(5);
   });
   it('glass gets its own index list and opaque faces behind glass are kept', () => {
     const g = new VoxelGrid(8, 8, 8);
@@ -95,7 +146,7 @@ describe('mesher options', () => {
     // brick: 6 faces (the +z one is visible through the glass); glass: 5 faces (not the one against the brick)
     expect(m.quads).toBe(11); expect(m.glassQuads).toBe(5);
     expect(m.indices.length).toBe(36); expect(m.glassIndices.length).toBe(30);
-    for (const i of m.glassIndices) expect(m.aux[i * 2 + 1]).toBe(255);
-    for (const i of m.indices) expect(m.aux[i * 2 + 1]).toBe(0);
+    for (const i of m.glassIndices) expect(m.aux[i * 3 + 1]).toBe(255);
+    for (const i of m.indices) expect(m.aux[i * 3 + 1]).toBe(0);
   });
 });
