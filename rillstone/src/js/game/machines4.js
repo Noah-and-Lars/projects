@@ -41,10 +41,16 @@ export function createMachines4({ machines, auto, items, physics, hands, hud, au
       g.push({ ...it }); t.state.lastIn = machines.clock; return done(p);
     }
     if (def.role === 'funnel') {
+      // Two funnels spouting into each other would pass a find back and
+      // forth for ever: a funnel already passing something refuses.
+      if (t._passing) return false;
       const it = payloadItem(p), l = payloadLoad(p);
-      if (it) return machines.output(t, { item: { ...it } }) ? done(p) : false;
-      if (l) return machines.output(t, { load: { ...l } }) ? done(p) : false;
-      return false;
+      t._passing = true;
+      try {
+        if (it) return machines.output(t, { item: { ...it } }) ? done(p) : false;
+        if (l) return machines.output(t, { load: { ...l } }) ? done(p) : false;
+        return false;
+      } finally { t._passing = false; }
     }
     if (def.logic === 'shredder') {
       if (!shredOn(t)) return false;

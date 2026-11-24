@@ -77,7 +77,7 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
   const SCRAP = 0.3;
   // Anything still holding something (a full bin's crate, a pan of finds)
   // isn't scrapped: what's inside would be lost.
-  const holdsThings = (e) => !!(e.data?.contents?.length || e.data?.loads?.length || e.data?.state?.contents?.length || e.data?.state?.molten > 0 || e.data?.state?.ore > 0 || e.data?.state?.loads?.length);
+  const holdsThings = (e) => !!(e.data?.contents?.length || e.data?.loads?.length || e.data?.state?.contents?.length || e.data?.state?.molten > 0 || e.data?.state?.ore > 0 || e.data?.state?.loads?.length || e.data?.state?.gems?.length || e.data?.state?.out || e.data?.state?.reheat?.length || e.data?.state?.queue?.length || e.data?.state?.charges > 0);
   function scrapValue(e) {
     if (e.data?.starter) return 0; // the free starter tools
     const same = (d) => (d?.tier ?? null) === (e.data?.tier ?? null) && (d?.cap ?? null) === (e.data?.cap ?? null);

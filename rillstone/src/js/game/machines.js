@@ -417,7 +417,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
       // Dumped loads pile up as clods; too many and the drill jams.
       let near = 0; for (const e of items.ents.values()) if (e.type === 'clod' && e.loc === 'loose' && Math.hypot(e.pos[0] - p[0], e.pos[2] - p[2]) < 1.6) near++;
       if (near >= 8) return false;
-      items.spawn('clod', [p[0] + d[0] * 0.3, p[1], p[2] + d[2] * 0.3], { data: { band: what.load.band, depth: what.load.depth, loads: [what.load] }, vel: [d[0], 0.5, d[2]] });
+      items.spawn('clod', [p[0] + d[0] * 0.3, p[1], p[2] + d[2] * 0.3], { data: { band: what.load.band, depth: what.load.depth, loads: [what.load], ...(what.load.ore ? { ore: true } : {}) }, vel: [d[0], 0.5, d[2]] }); // an ore clod stays one
       return true;
     }
     if (what.item) {

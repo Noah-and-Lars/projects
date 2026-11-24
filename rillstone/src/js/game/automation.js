@@ -21,6 +21,7 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
   const { list } = machines, I = machines._int, D = I.MACHINES;
   const beltTex = makeBeltTexture();
   const lines = new THREE.Group(); scene.add(lines);
+  const lineMat = new THREE.MeshStandardMaterial({ color: 0x3a3e44, roughness: 0.8 }); // shaft drive lines share one material
   let logicT = 0, groupsDirty = true, beltGroups = new Map();
   const auto = { counters: new Map(), logicEffects: [] };
 
@@ -100,7 +101,7 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
       if (why) { if (!t._warned && !/full/.test(why)) { t._warned = true; hud.toast(`${why} (it waits on the belt)`, 'err'); } return false; }
       machines.furnaceAdd(t, it); t._warned = false; return finish(p);
     }
-    if (t.def === 'stampmill') { const l = payloadLoad(p); const ent = p.ent; if (!l || !(ent?.data?.ore || p.oreClod)) return false; if ((t.state.queue ||= []).length >= 4) return false; t.state.queue.push(l); return finish(p); }
+    if (t.def === 'stampmill') { const l = payloadLoad(p); const ent = p.ent; if (!l || !(l.ore || ent?.data?.ore || p.oreClod)) return false; /* ore loads from a funnel, lift or trommel count too */ if ((t.state.queue ||= []).length >= 4) return false; t.state.queue.push(l); return finish(p); }
     if (t.def === 'trommel') { const l = payloadLoad(p); if (!l) return false; if ((t.state.queue ||= []).length >= 6) return false; t.state.queue.push(l); return finish(p); }
     if (t.def === 'lift') { if ((t.state.queue ||= []).length >= 6) return false; const it = payloadItem(p), l = payloadLoad(p); t.state.queue.push(it ? { item: { ...it } } : { load: l }); return finish(p); }
     return undefined; // not a machine that takes things
@@ -164,7 +165,7 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
         // Belt Saw: ingots and gems are cut to size; the offcut follows behind.
         if (def.saw && !it.sawed && it.s >= lane.len / 2) {
           const e = items.get(it.eid); it.sawed = true;
-          const sig = inputsOf(m), cut = sig.conn[0] && sig.a > 0 ? sig.a : (m.state.cutKg || 1);
+          const sig = inputsOf(m), cut = sig.conn[0] && sig.a > 0 ? Math.max(0.25, sig.a) : (m.state.cutKg || 1);
           const kind = e?.item && MATERIALS[e.item.material]?.kind;
           if (e?.item && (e.item.stage === 'ingot' || (kind === 'gem' && (e.item.stage === 'uncut' || e.item.stage === 'cut'))) && e.item.kg > cut + 0.05) {
             const back = it.s - GAP;
@@ -226,7 +227,7 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
     const all = [...list.values()].filter(m => !m.run && D[m.def].role === 'shaftuser');
     for (const u of all) if (!u.on) { u.speed = 0; u.status = 'off'; u._provider = null; }
     const users = all.filter(m => m.on);
-    for (const p of providers) { const def = D[p.def]; p.shaftUnits = def.role === 'source' ? (machines.requirement(p.def, p.pos, p.rot) ? 0 : def.shaft) : def.shaft * (I.flowOf(p.id)?.satisfaction || 0); p._users = []; }
+    for (const p of providers) { const def = D[p.def]; p.shaftUnits = !p.on ? 0 : def.role === 'source' ? (machines.requirement(p.def, p.pos, p.rot) ? 0 : def.shaft) : def.shaft * (I.flowOf(p.id)?.satisfaction || 0); p._users = []; } // a switched-off wheel or turbine drives nothing
     for (const u of users) {
       let best = null, bd = SHAFT_RANGE;
       for (const p of providers) { const d = Math.hypot(p.pos[0] - u.pos[0], p.pos[2] - u.pos[2]); if (d < bd && p.shaftUnits > 0) { bd = d; best = p; } }
@@ -236,11 +237,11 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
     // Drive lines between providers and the machines they drive.
     const key = users.map(u => `${u.id}-${u._provider?.id}`).join(',');
     if (key !== auto._lineKey) {
-      auto._lineKey = key; lines.clear();
+      auto._lineKey = key; for (const c of lines.children) c.geometry.dispose(); lines.clear();
       for (const u of users) if (u._provider) {
         const a = new THREE.Vector3(...u._provider.pos).add(new THREE.Vector3(0, 1.3, 0)), b = new THREE.Vector3(...u.pos).add(new THREE.Vector3(0, 1.0, 0));
         const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([a, a.clone().lerp(b, 0.5).add(new THREE.Vector3(0, -0.2, 0)), b]), 12, 0.025, 5);
-        lines.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x3a3e44, roughness: 0.8 })));
+        lines.add(new THREE.Mesh(g, lineMat));
       }
     }
   }
@@ -300,7 +301,7 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
         case 'pulse': v = a > 0 && !(s.last > 0) ? 1 : 0; s.last = a; break;
         case 'delay': { (s.buf ||= []).push([clock, a]); const d = s.delay ?? 1; while (s.buf.length > 1 && s.buf[1][0] <= clock - d) s.buf.shift(); v = s.buf[0][0] <= clock - d ? s.buf[0][1] : (s.prevOut ?? 0); s.prevOut = v; break; }
         case 'scale': { let kg = 0; const r = 0.6; for (const e of items.ents.values()) if (e.loc === 'loose' && e.item && Math.abs(e.pos[0] - m.pos[0]) < r && Math.abs(e.pos[2] - m.pos[2]) < r && e.pos[1] > m.pos[1] - 0.2 && e.pos[1] < m.pos[1] + 1.5) kg += e.item.kg; for (const e of items.ents.values()) if (e.type === 'pile' && Math.abs(e.pos[0] - m.pos[0]) < r && Math.abs(e.pos[2] - m.pos[2]) < r) kg += e.data.kgs.reduce((x, y) => x + y, 0); v = Math.round(kg * 100) / 100; break; }
-        case 'counter': { const t = nearestMachine(m, d => d.role === 'belt'); if (a > 0 && !(s.lastA > 0)) s.base = t ? auto.counters.get(t.id) || 0 : 0; s.lastA = a; v = t ? (auto.counters.get(t.id) || 0) - (s.base || 0) : 0; break; }
+        case 'counter': { const t = nearestMachine(m, d => d.role === 'belt'); if (a > 0 && !(s.lastA > 0)) s.base = t ? auto.counters.get(t.id) || 0 : 0; s.lastA = a; const n = t ? auto.counters.get(t.id) || 0 : 0; if (n < (s.base || 0)) s.base = 0; v = n - (s.base || 0); break; } // belt tallies aren't saved: after a load, count from 0 rather than below it
         case 'wearsensor': { const t = nearestMachine(m, d => d.role === 'consumer'); v = t ? Math.round(t.wear * 100) : 0; break; }
         case 'fillsensor': { const t = nearestMachine(m, d => d.role === 'container' || d.role === 'tank' || !!d.meltRate); if (t) { const d = D[t.def]; v = d.role === 'container' ? (d.capKg ? t.state.contents.reduce((x, y) => x + y.kg, 0) : t.state.contents.length) : d.role === 'tank' ? Math.round(t.state.level / d.tankCap * 100) : t.state.ore + t.state.molten; v = Math.round(v * 100) / 100; } break; }
         default: v = a; // outputs show their input

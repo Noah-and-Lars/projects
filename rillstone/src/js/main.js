@@ -390,7 +390,7 @@ async function boot() {
     // Pause menu (BUILD_BRIEF 6; laid out after the usual sandbox flow: save,
     // the saves page, settings, then the ways out).
     items: [
-      { label: 'Save and quit to title', icon: 'exit', onclick: async () => { if (!coop.isGuest() && state.slot) await saveTo(state.slot, true); location.reload(); } },
+      { label: 'Save and quit to title', icon: 'exit', onclick: async () => { if (!coop.isGuest() && (state.slot || state.mp)) await saveTo(state.slot, true); location.reload(); } },
       { label: 'Save', icon: 'save', onclick: () => quickSave() },
       { label: 'Saves', icon: 'saves', onclick: () => openSavesPage() },
       { label: 'Settings', icon: 'settings', onclick: () => menu.openSettings() },
@@ -412,7 +412,8 @@ async function boot() {
     menu.showPause(false); hud.show(false); hands.setVisible(false); state.photo = true;
     const done = (e) => { e.preventDefault?.(); removeEventListener('keydown', done, true); removeEventListener('mousedown', done, true); state.photo = false; hud.show(true); hands.setVisible(true); menu.showPause(true); };
     setTimeout(() => { addEventListener('keydown', done, true); addEventListener('mousedown', done, true); }, 250);
-    hud.toast('Photo mode: press any key or click to come back');
+    const hint = document.createElement('div'); hint.className = 'photo-hint'; hint.textContent = 'Photo mode: press any key or click to come back';
+    document.body.append(hint); setTimeout(() => hint.remove(), 2500);
   }
   // Bring the nearest vehicle nobody is driving to just in front of you.
   function callNearestVehicle() {
@@ -524,7 +525,12 @@ async function boot() {
       download(saves.exportBlob(snap), `${(snap.saveName || 'rillstone').replace(/[^\w-]+/g, '-').toLowerCase()}-day${snap.day || 1}.rillsave`);
     },
     onImport: async (slot, file) => {
-      try { const snap = await saves.importFile(file); await saves.save(slot, { ...snap, saveName: snap.saveName || 'Imported claim' }); hud.toast(`Imported into slot ${slot}`); refreshTitle(); }
+      try {
+        const snap = await saves.importFile(file); await saves.save(slot, { ...snap, saveName: snap.saveName || 'Imported claim' }); hud.toast(`Imported into slot ${slot}`);
+        // Autosave would otherwise write this game over the import.
+        if (state.slot === slot && state.playing) { state.slot = null; hud.toast('That was the slot you are playing: autosave is off until you save to a slot (load the slot to play the import)', 'err'); }
+        refreshTitle();
+      }
       catch (err) { hud.toast('Import failed: ' + err.message, 'err'); }
     },
     onDeleted: (slot) => { if (state.slot === slot && state.playing) { state.slot = null; hud.toast('That was the slot you are playing: autosave is off until you save to a slot', 'err'); } refreshTitle(); },
@@ -765,7 +771,9 @@ async function boot() {
   if (pending) {
     let want = null; try { want = JSON.parse(pending); } catch (_) {}
     if (typeof want === 'number') want = { slot: want };
-    const snap = want ? await saves.load(+want.slot, want.half) : null;
+    let snap = null;
+    try { snap = want ? await saves.load(+want.slot, want.half) : null; }
+    catch (e) { snap = null; hud.toast(`Could not load slot ${want?.slot}: ${e.message}`, 'err'); }
     if (snap) { await restore(snap); state.slot = +want.slot; state.saveName = snap.saveName; state.slotChosen = true; play(); hud.toast(`Loaded “${snap.saveName}”${want.half === 'backup' ? ' (backup)' : ''}`); }
     // "Host" on the title's Co-op page: open the room now the world is loaded.
     let autohost = null; try { autohost = sessionStorage.getItem('rill-autohost'); sessionStorage.removeItem('rill-autohost'); } catch (_) {}

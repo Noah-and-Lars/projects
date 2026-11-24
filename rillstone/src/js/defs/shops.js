@@ -47,7 +47,7 @@ export const SHOPS = {
       { id: 'pipe_steel', name: 'Steel Pipe · 2 m', price: 180, spawn: 'coil', data: { tier: 'steel', m: 2 }, desc: 'Carries 140 L/s.' },
       { id: 'headtank', name: 'Header Tank', price: 350, spawn: 'crate', data: { def: 'headtank', family: 'water' }, desc: 'Stores 2,000 L; gives up to 60 L/s while above 10%.' },
       { id: 'settle', name: 'Settling Tank', price: 250, spawn: 'crate', data: { def: 'settle', family: 'water' }, desc: 'Takes 3 silt out of the water: less wear downstream.' },
-      { id: 'booster', name: 'Booster Pump', price: 600, spawn: 'crate', data: { def: 'booster', family: 'water' }, desc: '+50% of the network\'s intake flow. Burns 1 kg quartz a minute.' },
+      { id: 'booster', name: 'Booster Pump', price: 600, spawn: 'crate', data: { def: 'booster', family: 'water' }, desc: '+20% of the network\'s intake flow and +10% pressure each, up to four. Burns 1 kg quartz a minute.' },
       { id: 'mallet', name: 'Mallet', price: 40, spawn: 'mallet', desc: 'LMB locks a placed machine, RMB unlocks it.' },
       { id: 'belt', name: 'Belt (straight)', price: 200, spawn: 'crate', data: { def: 'belt', family: 'extraction' }, desc: 'Carries items 1 m. Needs a Belt Drive somewhere on the line.' },
       { id: 'belt_corner', name: 'Belt (corner)', price: 220, spawn: 'crate', data: { def: 'belt_corner', family: 'extraction' }, desc: 'Turns a belt line 90°.' },
@@ -88,7 +88,7 @@ export const SHOPS = {
       { id: 'cable', name: 'Signal Cable · 10 m', price: 20, spawn: 'coil', data: { tier: 'cable', m: 10 }, desc: 'Join an output terminal (right) to an input (left).' },
       { id: 'shredder', name: 'Disposal Chute', price: 900, spawn: 'crate', data: { def: 'shredder', family: 'logic' }, desc: 'Destroys whatever falls in or arrives by belt while its signal is above 0 (always, with no cable).' },
       { id: 'mender', name: 'Mender', price: 1500, spawn: 'crate', data: { def: 'mender', family: 'logic' }, desc: 'Load it with wrenches or repair kits; each rising signal fixes the most worn machine within 4 m by 25%.' },
-      ...Object.entries(LOGIC_PRICES).map(([id, price]) => ({ id, name: MACHINES2[id].name, price, spawn: 'crate', data: { def: id, family: 'logic' }, desc: LOGIC_DESC[id] })),
+      ...Object.entries(LOGIC_PRICES).map(([id, price]) => ({ id: ['scale', 'lamp'].includes(id) ? 'logic_' + id : id, name: MACHINES2[id].name, price, spawn: 'crate', data: { def: id, family: 'logic' }, desc: LOGIC_DESC[id] })),
     ],
   },
   wagons: {

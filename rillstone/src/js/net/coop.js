@@ -135,7 +135,11 @@ export function createCoop(ctx) {
   }
   async function sendPackage(g) {
     const t0 = performance.now();
-    scanEntities(); // pending changes go to everyone first (seq after the package's)
+    scanEntities();
+    // Send pending ops (terrain brushes, spawns) to everyone now, so they're
+    // baked into the package and the joiner skips them (q <= the package's
+    // seq). Otherwise a dig queued since the last snapshot is applied twice.
+    if (ops.length) hostSnapshot();
     const snap = snapshot(); snap.coop = { seq: C.seq };
     // A multiplayer world: the guest gets its id and invite, and can reopen it later.
     const mpw = ctx.mpInfo?.(); if (mpw) snap.mp = mpw;
@@ -361,8 +365,16 @@ export function createCoop(ctx) {
     }
     if (s.ec) { economy.restore(s.ec); town.newDay(); workshop.applyStage(); }
   }
-  async function loadPackage(str, ) {
+  async function loadPackage(str) {
     C.loading = true;
+    try { await loadPackageInner(str); }
+    catch (e) {
+      // A bad package (or a host on a newer save version) must not leave the
+      // guest waiting forever: say why, and let the retry logic run.
+      hud.toast(`Couldn't load the host's world: ${e.message}. Leave from the Co-op menu and try again.`, 'err');
+    } finally { C.loading = false; }
+  }
+  async function loadPackageInner(str) {
     const u8 = b64.dec(str);
     const snap = await saves.importFile(new Blob([u8]));
     // Drop the local world's bodies, then switch to puppet mode and load.

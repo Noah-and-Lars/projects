@@ -72,7 +72,7 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
       else if (ref.type === 'shovel') desc.push('Your starter shovel: 1 load of topsoil or clay. Better shovels are at the General Store.');
       const m = ref.material && MATERIALS[ref.material];
       if (m) {
-        if (m.kind === 'gem') desc.push(ref.stage === 'uncut' ? 'Sell gems at the Assay Office, or cut them first on a grinding wheel (or at the Upper Falls cutter) to roughly double their price.' : 'Cut gems sell at the Assay Office, or set one in a ring, pendant or chalice at a workbench.');
+        if (m.kind === 'gem') desc.push(ref.stage === 'uncut' ? 'Sell gems at the Assay Office, or cut them first on a grinding wheel (or at the Upper Falls cutter) for about half as much again.' : 'Cut gems sell at the Assay Office, or set one in a ring, pendant or chalice at a workbench.');
         else if (m.kind === 'fuel') desc.push('Quartz is fuel: kilns, smelters and booster pumps burn it.');
         else if (m.kind === 'alloy') { const a = ALLOYS[ref.material]; desc.push(`An alloy of ${a.a} and ${a.b}, best at ${Math.round(a.ideal * 100)}% ${a.a}. A fine pour (within 5 points) sells for a quarter more than the two metals would as ingots; good (within 15) an eighth more. Work it hot at a workbench like any ingot.`); }
         else if (ref.stage === 'ore') { const mates = Object.keys(MATERIALS).filter(k => MATERIALS[k].kind === 'metal' && alloyOf(ref.material, k)); desc.push(`Sell it at the Assay Office, or melt it in a crucible or kiln into an ingot worth more.${mates.length ? ` Melted with ${mates.join(' or ')} it pours an alloy worth more again.` : ''}`); }

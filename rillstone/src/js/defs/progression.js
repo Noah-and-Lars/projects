@@ -39,13 +39,13 @@ export const PUMP_STAGES = [
 export const needKey = (n) => `${n.kind}:${n.material || n.craft || ''}`;
 export const needLabel = (n, MATERIALS) => n.kind === 'relic' ? 'The brass governor (Old Cut relic)'
   : n.kind === 'ingot' ? `${n.kg} kg ${MATERIALS[n.material].name.toLowerCase()} ingots`
-  : n.kind === 'cut' ? `${n.n} cut gems` : `${n.n} ${n.craft}s (any metal)`;
+  : n.kind === 'cut' ? `${n.n} cut gems (whole, not sawn)` : `${n.n} ${n.craft}s (any metal, 1 kg or more)`;
 // Does an entity count toward a need?
 export function needMatches(n, e) {
   if (n.kind === 'relic') return e.type === 'relic';
   const it = e.item; if (!it) return false;
   if (n.kind === 'ingot') return it.stage === 'ingot' && it.material === n.material;
-  if (n.kind === 'cut') return it.stage === 'cut';
-  if (n.kind === 'crafted') return it.stage === 'crafted' && (!n.craft || it.craft === n.craft);
+  if (n.kind === 'cut') return it.stage === 'cut' && !it.sawn; // no sawing one stone into many
+  if (n.kind === 'crafted') return it.stage === 'crafted' && it.kg >= 1 && (!n.craft || it.craft === n.craft); // a real piece, not a scrap-ingot chalice
   return false;
 }

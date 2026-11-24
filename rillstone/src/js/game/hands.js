@@ -383,7 +383,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     if (info.kind === 'vehicle' && info.dist < bedReach()) {
       const r = H.vehicles.addCargo(info.id, e, info.p);
       if (r === 'ok') { H.hand = null; audio.play('drop'); H.play('place'); return true; }
-      say(r === 'full' ? 'The bed is full (60 items)' : r === 'heavy' ? 'Too heavy for the bed (2,000 kg)' : 'Aim at the truck bed', 'err'); return false;
+      const vd = H.vehicles.list.get(info.id)?.def; say(r === 'full' ? `The bed is full (${vd?.cargoItems ?? 60} items)` : r === 'heavy' ? `Too heavy for the bed (${(vd?.cargoKg ?? 2000).toLocaleString('en-GB')} kg)` : 'Aim at the truck bed', 'err'); return false;
     }
     if (!H.ringPos) { say('Aim at the ground to drop'); return false; }
     if (!H.ringOk) { say('No room there', 'err'); audio.play('error'); return false; }
