@@ -47,6 +47,22 @@ export class Player {
   /** last landing speed for fall damage / audio (consumed by game) */
   landed = 0;
   noclip = false;
+  /** ticks since last damage (regen delay) */
+  private sinceHurt = 999;
+  /** last damage cause for the fail screen */
+  lastHurt = '';
+  godMode = false;
+
+  /** apply damage (0..1 of full health) */
+  damage(amount: number, cause = ''): void {
+    if (this.dead || this.godMode || amount <= 0) return;
+    this.health = Math.max(0, this.health - amount);
+    this.sinceHurt = 0;
+    this.lastHurt = cause;
+    this.sim.out.push({ type: 'custom', name: 'player:hurt', data: { amount, cause } });
+    if (this.health <= 0) { this.dead = true; this.sim.out.push({ type: 'custom', name: 'player:dead', data: { cause } }); }
+  }
+  revive(): void { this.dead = false; this.health = 1; }
 
   constructor(readonly sim: Sim, pos: V3) {
     const w = sim.world;
@@ -115,6 +131,8 @@ export class Player {
   }
 
   update(): void {
+    this.sinceHurt++;
+    if (!this.dead && this.sinceHurt > 240 && this.health < 1) this.health = Math.min(1, this.health + DT * 0.12);
     if (this.seated || this.dead) return;
     const inp = this.input;
     // crouch handling
@@ -175,7 +193,7 @@ export class Player {
     // velocity feedback from collisions
     const fallSpeed = -this.vel.y;
     if (this.grounded) {
-      if (!wasGrounded && fallSpeed > 3) this.landed = fallSpeed;
+      if (!wasGrounded && fallSpeed > 3) { this.landed = fallSpeed; if (fallSpeed > 13) this.damage((fallSpeed - 13) * 0.07, 'fall'); }
       this.vel.y = -1.0;
     } else if (this.vel.y > 0 && m.y < desired.y * 0.5) {
       this.vel.y = 0; // bumped head

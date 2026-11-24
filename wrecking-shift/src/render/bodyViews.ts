@@ -102,6 +102,14 @@ export class BodyViews {
     }
   }
 
+  clear(): void {
+    for (const v of this.views.values()) {
+      for (const m of v.chunks.values()) m.geometry.dispose();
+      this.root.remove(v.group);
+    }
+    this.views.clear();
+  }
+
   meshFor(bodyId: number): THREE.Group | undefined {
     return this.views.get(bodyId)?.group;
   }

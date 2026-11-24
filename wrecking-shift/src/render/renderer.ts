@@ -23,13 +23,14 @@ export class Renderer {
     this.three = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.three.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.three.shadowMap.enabled = true;
-    this.three.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.three.shadowMap.type = THREE.PCFShadowMap;
     this.three.toneMapping = THREE.ACESFilmicToneMapping;
     this.three.toneMappingExposure = 1.0;
     this.scene.background = new THREE.Color(0x9cc4e8);
     this.scene.fog = new THREE.Fog(0xa9cbe8, 40, 260);
     this.bodies = new BodyViews(this.worldMaterial);
     this.scene.add(this.bodies.root, this.chips.mesh, this.hemi, this.sun, this.sun.target);
+    this.sun.castShadow = true;
     const s = this.sun.shadow;
     s.mapSize.set(2048, 2048);
     s.camera.near = 1; s.camera.far = 160;
@@ -37,6 +38,12 @@ export class Renderer {
     s.camera.left = -e; s.camera.right = e; s.camera.top = e; s.camera.bottom = -e;
     s.bias = -0.0004; s.normalBias = 0.03;
     this.resize();
+  }
+
+  /** drop all per-level state (meshes are rebuilt from the new sim) */
+  reset(): void {
+    this.bodies.clear();
+    this.shake = 0;
   }
 
   setLevel(info: LevelInfo): void {
