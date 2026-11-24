@@ -51,7 +51,7 @@ describe('Gullwick Harbour playthroughs', () => {
     // mezzanine -> office door -> stairs -> warehouse door -> office
     r.walk([v3(-36.5, 4.4, 20.8), v3(-35.3, 4.3, 20.8), v3(-31.0, 1.5, 20.8), v3(-31, 1.5, 15), v3(-37, 1.5, 11), v3(-37, 1.5, 8), v3(-20, 1.4, 2), v3(8, 1.4, -3), v3(12, 1.5, -3), v3(15, 1.5, -3.7), v3(17, 1.5, -3.7), v3(21.3, 1.5, -6.6), v3(21.3, 4.3, -1.2), v3(17.5, 4.5, -1.8), v3(15.5, 4.5, -1.8), v3(14.5, 4.5, -3.4)]);
     r.take(server);
-    r.walk([v3(15.5, 4.5, -1.8), v3(17.5, 4.5, -1.8), v3(21.3, 4.5, -1.0), v3(21.3, 1.5, -6.6), v3(17, 1.5, -3.7), v3(15, 1.5, -3.7), v3(12, 1.5, -3), v3(8, 1.4, -3), v3(2, 1.5, -20), v3(0, 2, -50), r.mission.escapePos()], { r: 2.5 });
+    r.walk([v3(15.5, 4.5, -1.8), v3(17.5, 4.5, -1.8), v3(21.3, 4.5, -1.0), v3(21.3, 1.5, -6.6), v3(17, 1.5, -3.7), v3(15, 1.5, -3.7), v3(12, 1.5, -3), v3(8, 1.4, -3), v3(2, 1.5, -20), v3(0, 2, -50), r.mission.escapePos()], { r: 2.8 });
     r.clockOut();
     finish(r);
   }, T);
@@ -80,7 +80,7 @@ describe('Gullwick Harbour playthroughs', () => {
     expect(r.mission.objectives()[0].done).toBe(true);
     expect(r.player.dead).toBe(false);
     // no alarm on this job: walk back
-    r.walk([v3(-44, 1.6, 25.5), v3(-20, 1.5, 25.5), v3(-15, 1.5, 5), v3(0, 1.5, 0), v3(0, 2, -50), r.mission.escapePos()], { r: 2.5 });
+    r.walk([v3(-44, 1.6, 25.5), v3(-20, 1.5, 25.5), v3(-15, 1.5, 5), v3(0, 1.5, 0), v3(0, 2, -50), r.mission.escapePos()], { r: 2.8 });
     r.clockOut();
     finish(r, null);
   }, T);
@@ -112,7 +112,7 @@ describe('Gullwick Harbour playthroughs', () => {
     r.step(240, () => r.mission.escapeOpen);
     r.log('A', A.removed ? '-' : A.center(), 'B', B.removed ? '-' : B.center());
     expect(r.mission.escapeOpen).toBe(true);
-    r.walk([v3(10, 1.5, 26), v3(2, 1.5, 6), v3(0, 1.5, -20), v3(0, 2, -50), r.mission.escapePos()], { r: 2.5 });
+    r.walk([v3(10, 1.5, 26), v3(2, 1.5, 6), v3(0, 1.5, -20), v3(0, 2, -50), r.mission.escapePos()], { r: 2.8 });
     r.clockOut();
     finish(r);
   }, T);
@@ -135,7 +135,7 @@ describe('Gullwick Harbour playthroughs', () => {
     for (let i = 0; i < 3 && r.planning; i++) { r.aim(v3(31, 3.2, -27)); r.click(); }
     for (let i = 0; i < 3; i++) { r.aim(v3(31, 3.2, -27)); r.click(); r.wait(0.2); }
     expect(r.phase).toBe('alarm');
-    r.walk([v3(37.5, 1.5, -24), v3(37.5, 1.5, -15.5), v3(42, 1.5, -12.5), v3(30, 1.5, -11), v3(4, 1.5, -11), v3(2, 1.5, -25), v3(0, 2, -50), r.mission.escapePos()], { r: 2.5 });
+    r.walk([v3(37.5, 1.5, -24), v3(37.5, 1.5, -15.5), v3(42, 1.5, -12.5), v3(30, 1.5, -11), v3(4, 1.5, -11), v3(2, 1.5, -25), v3(0, 2, -50), r.mission.escapePos()], { r: 2.8 });
     r.clockOut();
     finish(r);
   }, T);
@@ -150,7 +150,7 @@ describe('Gullwick Harbour playthroughs', () => {
     r.walk([v3(0, 1.5, 31), v3(10, 1.5, 28.5), v3(quay.center().x - 1.3, 1.5, quay.center().z + 0.5)]);
     r.take(quay);
     r.log('hp', r.player.health.toFixed(2));
-    r.walk([v3(10, 1.5, 28), v3(4, 1.5, 9), v3(2, 1.5, -20), v3(0, 2, -50), r.mission.escapePos()], { r: 2.5 });
+    r.walk([v3(10, 1.5, 28), v3(4, 1.5, 9), v3(2, 1.5, -20), v3(0, 2, -50), r.mission.escapePos()], { r: 2.8 });
     r.clockOut();
     finish(r);
   }, T);
@@ -170,7 +170,7 @@ describe('Kestrel Ridge playthroughs', () => {
       r.take(a);
     }
     expect(r.phase).toBe('alarm');
-    r.walk([v3(-35.3, floor, 2.5), v3(-35.3, floor, 5.0), v3(-24, 6.9, 5.5), v3(-12, 6.9, 8.5), v3(-9, 6.9, 9.6), v3(25, 1.3, 19.3), v3(40, 1.3, 22), r.mission.escapePos()], { r: 2.5 });
+    r.walk([v3(-35.3, floor, 2.5), v3(-35.3, floor, 5.0), v3(-24, 6.9, 5.5), v3(-12, 6.9, 8.5), v3(-9, 6.9, 9.6), v3(25, 1.3, 19.3), v3(40, 1.3, 22), r.mission.escapePos()], { r: 2.8 });
     r.clockOut();
     finish(r);
   }, T);
@@ -358,7 +358,7 @@ describe('Brackwater Works playthroughs', () => {
     }
     expect(r.phase).toBe('alarm');
     expect(tanksObj().done).toBe(true);
-    r.walk([v3(40, 1.7, -4), v3(20, 1.7, 1.5), v3(-30, 1.7, 1.5), v3(-55, 1.7, 1.5), r.mission.escapePos()], { r: 2.5 });
+    r.walk([v3(40, 1.7, -4), v3(20, 1.7, 1.5), v3(-30, 1.7, 1.5), v3(-55, 1.7, 1.5), r.mission.escapePos()], { r: 2.8 });
     r.clockOut();
     finish(r);
   }, T);

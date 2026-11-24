@@ -32,8 +32,8 @@ physics WebAssembly and pointer lock is unverified — if it shows "Failed to st
   rain/snow particles (no level uses them yet). Not done: photo mode, challenge modes, wet-road physics.
 
 ## Tests
-`npm test`: typecheck, 194 unit/sim tests in Node, build, headless-browser tests (boot, audio, 14 tools, missions/UI,
-vehicles, lighting incl. GPU-vs-CPU ray check, fire, quicksave). All green at the last commit.
+`npm test`: typecheck, 212 unit/sim tests in Node (incl. 11 mission playthroughs, ~2.5 min), build, headless-browser tests (boot, audio, 14 tools, missions/UI,
+vehicles, lighting incl. GPU-vs-CPU ray check, fire, quicksave, one mission played through per big map). All green at the last commit.
 
 ## Known issues / not verified
 - **Never run on a real GPU.** The container renders in software, so frame rate, the medium/high tiers' cost and the
@@ -61,17 +61,17 @@ Browser runs (one per map): `tests/e2e/playthrough.mjs` (Paper Trail, Private Vi
 
 | mission | career | tools / means | time left | score | changed to make it completable / tense |
 |---|---|---|---|---|---|
-| paper-trail | 220 | none (E), on foot | 20.1 s | 290 | warehouse mezzanine stairs rebuilt (rose away from the door); building stair openings widened; alarm 60→45 s |
+| paper-trail | 220 | none (E), on foot | 18.2 s | 286 | warehouse mezzanine stairs rebuilt (rose away from the door); building stair openings widened; alarm 60→45 s |
 | lights-out | 440 | sledge | no alarm | 100 | timber shoring band at the lighthouse foot (brick drum not fellable with 440-career tools) |
-| dead-weight | 440 | grab/carry (RMB), on foot | 17.5 s | 234 | pump-house box got its own target id (was alarmed against the brief); alarm 75→50 s |
-| depot-clearance | 760 | bomb, pistol | 15.3 s | 230 | pump house 40 % → 6 % (concrete: ~10 % max with all explosives); alarm 50→30 s |
-| night-watch | 980 | none, on foot (drone spots you) | 24.4 s | 148 | drones count as an alarm source (time bonus); alarm 60→45 s |
-| private-view | 440 | none, on foot | 17.8 s | 184 | alarm 60→35 s |
+| dead-weight | 440 | grab/carry (RMB), on foot | 17.4 s | 234 | pump-house box got its own target id (was alarmed against the brief); alarm 75→50 s |
+| depot-clearance | 760 | bomb, pistol | 15.0 s | 230 | pump house 40 % → 6 % (concrete: ~10 % max with all explosives); alarm 50→30 s |
+| night-watch | 980 | none, on foot (drone spots you) | 24.2 s | 148 | drones count as an alarm source (time bonus); alarm 60→45 s |
+| private-view | 440 | none, on foot | 17.7 s | 184 | alarm 60→35 s |
 | cellar-door | 540 | blowtorch, hatchback down the switchback | 16.8 s | 282 | vault door is riveted plate (blowtorchable); alarm 75→50 s; Ridge roads/vehicles fixed (below) |
 | tower-down | 760 | bomb | no alarm | 100 | watchtower above head height is timber (rock needed ~20 bombs) |
 | long-drop | 760 | bomb | no alarm | 100 | now also unlocks after Dead Weight (needs bombs) |
-| payday | 660 | none, on foot | 15.6 s | 280 | door in the office's top-floor corridor wall (office 1 was sealed); alarm 60→45 s |
-| bund-fire | 1080 | pistol | 16.4 s | 132 | alarm 45→35 s |
+| payday | 660 | none, on foot | 12.7 s | 274 | door in the office's top-floor corridor wall (office 1 was sealed); alarm 60→45 s |
+| bund-fire | 1080 | pistol | 16.2 s | 132 | alarm 45→35 s |
 
 Kestrel Ridge roads (`tests/unit/ridgeRoads.test.ts`, lot → forecourt, turn round, back): van up 33 s (grade top
 35 km/h, mean 21), hatchback 27 s (37 / 26), loader 41 s (23 / 14); down 20-26 s. Fixes: road junction without a

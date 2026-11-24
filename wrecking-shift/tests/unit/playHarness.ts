@@ -401,10 +401,17 @@ export class Run {
 
   /** finish: E at the escape point (on foot) */
   clockOut(): void {
-    // the escape point follows the van, which may have rolled a little since the route was planned
-    const e = this.mission.escapePos();
-    if (!this.player.seated && hdist(this.player.pos, e) > 2.2) this.walk([v3(e.x, e.y, e.z)], { r: 2.0 });
-    for (let i = 0; i < 3 && !this.mission.ended; i++) { this.player.pitch = 0.6; this.pressE(); }
+    // the escape point follows the van, which gets shoved when the player runs into it: re-aim at its current
+    // position and stop 2 m short of its centre on our side
+    for (let k = 0; k < 4 && !this.mission.ended; k++) {
+      const e = this.mission.escapePos();
+      const p = this.player.pos;
+      const d = hdist(p, e);
+      if (!this.player.seated && d > 2.6) this.walk([v3(e.x + ((p.x - e.x) / d) * 2.0, e.y, e.z + ((p.z - e.z) / d) * 2.0)], { r: 0.3, sprint: false });
+      this.stop();
+      this.step(5);
+      for (let i = 0; i < 2 && !this.mission.ended; i++) { this.player.pitch = 0.6; this.pressE(); }
+    }
   }
 
   summary(): string {

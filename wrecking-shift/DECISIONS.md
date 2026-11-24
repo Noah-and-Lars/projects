@@ -231,4 +231,4 @@ Scripted, deterministic playthroughs of all 11 big-map missions live in `tests/u
 - **Not fixed (noted)**: `VehicleSystem.scanImpacts` reads impact events from `sim.out`, but the game drains `sim.out`
   after every step, before the next step's systems run, so contact-force crashes never wear vehicles in the real game
   (ramming damage still works). Fixing it would suddenly make vehicles take crash damage everywhere; left for a
-  deliberate decision.
+  deliberate decision. Also noted: a player running into the parked escape van shoves it a metre or two.
