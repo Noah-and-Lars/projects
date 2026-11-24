@@ -89,7 +89,7 @@ export function createMenu(root, { settings, input, onPlay, onSettingsChanged, o
       row('Invert look', check('invertY')),
       row('Sprint toggles', check('sprintToggle'), 'Shift switches sprint on and off instead of holding it'),
       row('Captions for sounds', check('captions')),
-      row('Show me on the online leaderboard', check('leaderboard'), 'Shares your Arcade name, Scrip and ores sold while you play'),
+      row('Show me on the online leaderboard', check('leaderboard'), 'Shares your Arcade name, money and ores sold while you play'),
       onCleanup ? row('Tidy up', h('button', { class: 'btn', onclick: (e) => { const n = onCleanup(); e.currentTarget.textContent = `Cleared ${n}`; } }, 'Clear loose clods and piles'), 'Happens straight away') : null);
     // Controls: a table of key chips (two per action) and what they do.
     const keyChip = (a, i) => h('button', {

@@ -1,7 +1,7 @@
 // Progression data (BUILD_BRIEF 3.5, 3.6): Machine Shop blueprints and the
 // Rillstone Pumphouse's five restoration stages.
 //
-// A blueprint is bought once with Scrip; each build
+// A blueprint is bought once with money; each build
 // then takes ingots placed on the Machine Shop counter. The brief's ingot
 // amounts (e.g. 600 kg iron + 80 kg glimmerite for a Mk II sluice) are scaled
 // to a fifth so the first Mk II arrives in the mid game; see NOTES.md.

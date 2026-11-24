@@ -1449,3 +1449,12 @@ so far:
   - the Multiplayer tab shows 2 players, the cash and View plot;
   - the friend only gets Remove me and is removed;
   - the owner deletes it, and everything is gone from the server.
+
+### Money
+
+- **What changed:** the currency is now called **money** and shown with a
+  `$` sign ($1,234) everywhere players see it: the HUD wallet, shops, the
+  price board, contracts, the guide, saves, leaderboards and the end
+  screen. It used to be "Scrip" (§).
+- **Unchanged:** code names stay as they were (`economy.state.scrip`), so
+  saves are unaffected.

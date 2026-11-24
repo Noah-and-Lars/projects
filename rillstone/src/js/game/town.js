@@ -180,12 +180,12 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     const soldSet = new Set(r.sold);
     for (const e of list) if (soldSet.has(e.item)) items.remove(e.id);
     c.clerk.busy = 1.2;
-    if (r.total > 0) { audio.play('coins'); hud.toast(`${p.name}: ${r.sold.length} item${r.sold.length > 1 ? 's' : ''} weighed and stamped · § ${r.total.toLocaleString('en-GB')}`, 'gold'); }
+    if (r.total > 0) { audio.play('coins'); hud.toast(`${p.name}: ${r.sold.length} item${r.sold.length > 1 ? 's' : ''} weighed and stamped · $${r.total.toLocaleString('en-GB')}`, 'gold'); }
     if (r.refused.length) hud.toast(`${r.refused.length} left on the counter · ${r.refused[0].why}`, 'err');
-    for (const k of r.completed) { audio.play('contract'); hud.toast(`Contract done: ${k.text} · § ${k.reward}`, 'gold'); }
+    for (const k of r.completed) { audio.play('contract'); hud.toast(`Contract done: ${k.text} · $${k.reward}`, 'gold'); }
     return r;
   }
-  // The price board's face: every material, its two forms in § per kg, and
+  // The price board's face: every material, its two forms in $ per kg, and
   // whether it went up or down this morning.
   let drawnDay = -1;
   function redrawBoards() {
@@ -195,7 +195,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     g.strokeStyle = 'rgba(244, 240, 224, 0.35)'; g.lineWidth = 6; g.strokeRect(14, 14, c.width - 28, c.height - 28);
     const font = (px, w = 'bold') => `${w} ${px}px ui-rounded, "Nunito", "Segoe UI", sans-serif`;
     g.fillStyle = '#f4f0e0'; g.textBaseline = 'middle'; g.textAlign = 'center'; g.font = font(58); g.fillText("TODAY'S PRICES", c.width / 2, 70);
-    g.font = font(28, '600'); g.fillStyle = '#c8d8c8'; g.fillText(`§ per kg · day ${economy.state.day}`, c.width / 2, 118);
+    g.font = font(28, '600'); g.fillStyle = '#c8d8c8'; g.fillText(`$ per kg · day ${economy.state.day}`, c.width / 2, 118);
     g.font = font(24, '700'); g.textAlign = 'right'; g.fillText('RAW', 640, 160); g.fillText('REFINED', 870, 160); g.textAlign = 'center'; g.fillText('TODAY', 950, 160);
     g.font = font(20, '600'); g.textAlign = 'left'; g.fillText('raw: ore or uncut · refined: ingot or cut', 52, c.height - 34);
     const top = 182, rowH = (c.height - top - 62) / list.length;
@@ -204,7 +204,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
       if (i % 2 === 0) { g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(30, y - rowH / 2, c.width - 60, rowH); }
       g.textAlign = 'left'; g.fillStyle = '#f4f0e0'; g.font = font(Math.min(44, rowH * 0.62)); g.fillText(r.name, 52, y);
       g.textAlign = 'right'; g.font = font(Math.min(38, rowH * 0.55), '600');
-      r.forms.forEach((f, k) => { g.fillStyle = '#f4f0e0'; g.font = font(Math.min(40, rowH * 0.62)); g.fillText(`§ ${f.perKg % 1 ? f.perKg.toFixed(1) : f.perKg}`, 640 + k * 230, y); });
+      r.forms.forEach((f, k) => { g.fillStyle = '#f4f0e0'; g.font = font(Math.min(40, rowH * 0.62)); g.fillText(`$${f.perKg % 1 ? f.perKg.toFixed(2) : f.perKg}`, 640 + k * 230, y); });
       g.textAlign = 'center'; g.font = font(Math.min(42, rowH * 0.6)); g.fillStyle = r.trend > 0 ? '#8ce08c' : r.trend < 0 ? '#f08a7a' : '#a8b0a8'; g.fillText(r.trend > 0 ? '▲' : r.trend < 0 ? '▼' : '–', 950, y);
     });
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
@@ -217,7 +217,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
       h('p', { class: 'small' }, `Day ${economy.state.day}. The Assay Office buys everything at these prices; they move a little every morning (▲ up, ▼ down since yesterday).`),
       h('div', { class: 'price-table' },
         h('div', { class: 'ph' }, h('span', {}, 'Material'), h('span', {}, 'Raw'), h('span', {}, 'Refined'), h('span', {}, 'Today')),
-        ...list.map(r => h('div', { class: 'pr' }, h('b', {}, r.name), ...r.forms.map(f => h('span', {}, `§ ${f.perKg} /kg`, h('small', {}, ` ${f.stage}`))), h('span', { class: r.trend > 0 ? 'up' : r.trend < 0 ? 'down' : '' }, `${r.trend > 0 ? '▲' : r.trend < 0 ? '▼' : '–'} ${Math.round(r.factor * 100)}%`)))),
+        ...list.map(r => h('div', { class: 'pr' }, h('b', {}, r.name), ...r.forms.map(f => h('span', {}, `$${f.perKg % 1 ? f.perKg.toFixed(2) : f.perKg} /kg`, h('small', {}, ` ${f.stage}`))), h('span', { class: r.trend > 0 ? 'up' : r.trend < 0 ? 'down' : '' }, `${r.trend > 0 ? '▲' : r.trend < 0 ? '▼' : '–'} ${Math.round(r.factor * 100)}%`)))),
       h('p', { class: 'small' }, `Gems: bigger stones pay more per kilo. Crafted goods pay their metal's ingot price × ${Object.entries(CRAFT_MULT).map(([k, v]) => `${k === 'toolhead' ? 'tool head' : k} ${v}`).join(', ')}, plus any gem set in. Quartz is fuel and isn't bought.`));
     panels.show('prices', "Today's prices", body, { badge: `day ${economy.state.day}` });
   }
@@ -236,7 +236,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
   const findEntry = (itemId) => { for (const S of Object.values(SHOPS)) { const e = S.items.find(i => i.id === itemId); if (e) return e; } return null; };
   function buy(shopId, itemId) {
     const entry = findEntry(itemId); if (!entry || !pads[shopId]) return false;
-    if (!economy.spend(entry.price)) { audio.play('error'); hud.toast(`Not enough Scrip for ${entry.name}`, 'err'); return false; }
+    if (!economy.spend(entry.price)) { audio.play('error'); hud.toast(`Not enough money for ${entry.name}`, 'err'); return false; }
     deliver(shopId, entry); audio.play('coins');
     hud.toast(`${entry.name} · ${entry.spawn === 'vehicle' ? 'waiting in the yard' : 'delivered to the pad'}`, 'gold');
     return true;
@@ -249,16 +249,16 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
         const list = shop.items.filter(it => !seen.has(it.id) && seen.add(it.id));
         if (!list.length) continue;
         sections.push(h('h3', {}, CATEGORY[key] || shop.name), ...list.map(it => h('div', { class: 'entry' }, h('b', {}, it.name),
-          h('button', { class: 'btn primary', disabled: economy.state.scrip < it.price, onclick: () => { api.buy(shopId, it.id); render(); } }, `§ ${it.price.toLocaleString('en-GB')}`),
+          h('button', { class: 'btn primary', disabled: economy.state.scrip < it.price, onclick: () => { api.buy(shopId, it.id); render(); } }, `$${it.price.toLocaleString('en-GB')}`),
           h('span', { class: 'desc' }, it.desc))));
       }
       const own = [...vehicles.list.values()].filter(v => !v.def.kinematic);
       const body = h('div', {}, h('p', { class: 'small' }, 'Everything in Millbrook is sold here. Things you buy go on the pad beside this counter; vehicles wait in the yard.'),
         ...sections,
         ...(own.length ? [h('h3', {}, 'Your vehicles'), ...own.map(v => h('div', { class: 'entry' }, h('b', {}, v.def.name),
-          h('span', { class: 'row' }, h('button', { class: 'btn', onclick: () => { api.callVehicle(v.id); panels.close(); } }, 'Call'), ' ', h('button', { class: 'btn', onclick: async () => { await api.sellVehicle(v.id); render(); } }, `Sell § ${vehicles.refund(v)}`)),
+          h('span', { class: 'row' }, h('button', { class: 'btn', onclick: () => { api.callVehicle(v.id); panels.close(); } }, 'Call'), ' ', h('button', { class: 'btn', onclick: async () => { await api.sellVehicle(v.id); render(); } }, `Sell $${vehicles.refund(v)}`)),
           h('span', { class: 'desc' }, `Fuel ${v.def.fuelMax ? Math.round(v.fuel / v.def.fuelMax * 100) + '%' : '—'}${v.cargo.length ? ` · ${v.cargo.length} in the bed` : ''} · Call brings it to the yard.`)))] : []));
-      panels.show('shop:' + shopId, S.name, body, { badge: economy.sandbox ? '§ ∞' : `§ ${economy.state.scrip.toLocaleString('en-GB')}` });
+      panels.show('shop:' + shopId, S.name, body, { badge: economy.sandbox ? '$∞' : `$${economy.state.scrip.toLocaleString('en-GB')}` });
     };
     render();
   }
@@ -270,7 +270,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     if (vehicles.driving === v.id || vehicles.remoteDrivers?.has(v.id)) { hud.toast('Someone is driving it', 'err'); return false; }
     const back = vehicles.refund(v);
     v.selling = true; // a second click while the worker removes it pays nothing
-    await vehicles.remove(v.id); economy.state.scrip += back; audio.play('coins'); hud.toast(`Sold the ${v.def.name} back for § ${back}`, 'gold');
+    await vehicles.remove(v.id); economy.state.scrip += back; audio.play('coins'); hud.toast(`Sold the ${v.def.name} back for $${back}`, 'gold');
     return true;
   }
   function callVehicle(id) {
@@ -282,12 +282,12 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
     const render = () => {
       const body = h('div', {},
         h('h3', {}, 'Contracts'),
-        ...E.contracts.map(c => h('div', { class: 'entry' + (c.done ? ' done' : '') }, h('b', {}, c.text), h('span', { class: 'pill' }, `§ ${c.reward}`), h('span', { class: 'bar' }, h('i', { style: { width: Math.min(100, c.progress / c.target * 100) + '%' } })))),
+        ...E.contracts.map(c => h('div', { class: 'entry' + (c.done ? ' done' : '') }, h('b', {}, c.text), h('span', { class: 'pill' }, `$${c.reward}`), h('span', { class: 'bar' }, h('i', { style: { width: Math.min(100, c.progress / c.target * 100) + '%' } })))),
         h('p', { class: 'small' }, 'Contracts fill as you sell matching goods anywhere in town. New ones arrive as you finish them.'),
         h('h3', {}, 'Claim deeds'),
-        ...CLAIMS.filter(c => c.voxel).map(c => h('div', { class: 'entry' }, h('b', {}, c.name), economy.owns(c.id) ? h('span', { class: 'pill' }, 'Owned') : (h('button', { class: 'btn primary', disabled: E.scrip < c.price, onclick: () => { const r = economy.buyClaim(c.id); if (r === 'ok') { audio.play('coins'); hud.toast(`${c.name} is yours${c.tunnel ? ' — the adit door is open' : ''}`, 'gold'); } render(); } }, `§ ${c.price.toLocaleString('en-GB')}`)), h('span', { class: 'desc' }, `${c.blurb || ''} · ${c.w} × ${c.d} m · ${c.depth} m deep`))),
+        ...CLAIMS.filter(c => c.voxel).map(c => h('div', { class: 'entry' }, h('b', {}, c.name), economy.owns(c.id) ? h('span', { class: 'pill' }, 'Owned') : (h('button', { class: 'btn primary', disabled: E.scrip < c.price, onclick: () => { const r = economy.buyClaim(c.id); if (r === 'ok') { audio.play('coins'); hud.toast(`${c.name} is yours${c.tunnel ? ' — the adit door is open' : ''}`, 'gold'); } render(); } }, `$${c.price.toLocaleString('en-GB')}`)), h('span', { class: 'desc' }, `${c.blurb || ''} · ${c.w} × ${c.d} m · ${c.depth} m deep`))),
       );
-      panels.show('guild', 'Guild Hall', body, { badge: `§ ${E.scrip.toLocaleString('en-GB')}` });
+      panels.show('guild', 'Guild Hall', body, { badge: `$${E.scrip.toLocaleString('en-GB')}` });
     };
     render();
   }
@@ -312,7 +312,7 @@ export function createTown({ scene, physics, materials, items, vehicles, economy
       const p = props.get(id); if (!p) return null;
       if (api.customCard[p.kind]) return api.customCard[p.kind](p, id);
       if (p.kind === 'prices') { if (drawnDay !== economy.state.day) redrawBoards(); const l = economy.priceList().slice().sort((a, b) => b.factor - a.factor); return { name: "Today's prices", lines: [`Best today: ${l[0].name} (${Math.round(l[0].factor * 100)}%)`, 'E for the full list'] }; }
-      if (p.kind === 'bell') { const c = counters.find(k => k.bell === id), list = counterItems(c); const q = list.reduce((a, e) => a + (economy.quote(e.item, c.venue) ?? 0), 0); return { name: p.name, lines: [list.length ? `${list.length} on the counter · ≈ § ${Math.round(q)}` : 'Counter is empty'] }; }
+      if (p.kind === 'bell') { const c = counters.find(k => k.bell === id), list = counterItems(c); const q = list.reduce((a, e) => a + (economy.quote(e.item, c.venue) ?? 0), 0); return { name: p.name, lines: [list.length ? `${list.length} on the counter · ≈ $${Math.round(q)}` : 'Counter is empty'] }; }
       return { name: p.name };
     },
     newDay() { redrawBoards(); },

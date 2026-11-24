@@ -1,5 +1,5 @@
 // The economy, held by the host (BUILD_BRIEF 3.6): an abstract ledger in
-// Scrip (§), one shop that buys everything (the Assay Office) at prices that
+// money ($), one shop that buys everything (the Assay Office) at prices that
 // drift a little each day, guild contracts and claim deeds. Plain data, so it
 // saves and syncs.
 import { MATERIALS, itemValue, itemName } from '../defs/materials.js';
@@ -10,7 +10,7 @@ const matches = (w, it) => it.stage === w.stage && (w.kind ? MATERIALS[it.materi
 
 // Contract templates, scaled by how many contracts you've finished (a
 // hidden counter, `standing`; it's never shown or required for anything). kind: 'kg' (deliver kg of a
-// material/stage), 'count' (items matching), 'big' (one piece over X kg), 'day' (sell § in a day).
+// material/stage), 'count' (items matching), 'big' (one piece over X kg), 'day' (sell $ in a day).
 const CRAFT_MIN_KG = 1;
 function makeContract(rng, standing, id) {
   const tier = Math.min(4, 1 + Math.floor(standing / 4));
@@ -30,7 +30,7 @@ function makeContract(rng, standing, id) {
   if (t < 0.4) { const kg = Math.round((6 + rng() * 10) * tier * (metal === 'gold' ? 0.4 : metal === 'silver' ? 0.6 : 1)); c = { kind: 'kg', want: { stage: 'ore', material: metal }, target: kg, text: `Deliver ${kg} kg of ${MATERIALS[metal].name.toLowerCase()} ore` }; }
   else if (t < 0.6) { const n = 2 + Math.floor(rng() * 2 * tier); c = { kind: 'count', want: { stage: 'uncut', kind: 'gem' }, target: n, text: `Deliver ${n} uncut gems` }; }
   else if (t < 0.8) { const kg = Math.round((0.8 + rng() * 0.8) * tier * 10) / 10; c = { kind: 'big', want: { stage: 'ore', material: metal }, target: kg, text: `Deliver ${/^[aeiou]/i.test(metal) ? 'an' : 'a'} ${MATERIALS[metal].name.toLowerCase()} nugget over ${kg} kg` }; }
-  else { const s = Math.round((150 + rng() * 150) * tier / 10) * 10; c = { kind: 'day', target: s, text: `Sell § ${s} in one day` }; }
+  else { const s = Math.round((150 + rng() * 150) * tier / 10) * 10; c = { kind: 'day', target: s, text: `Sell $${s} in one day` }; }
   const reward = Math.round((c.kind === 'day' ? c.target * 0.35 : c.kind === 'big' ? 60 * tier : c.kind === 'count' ? c.target * 25 : c.target * MATERIALS[c.want.material].ore * 0.6) / 5) * 5 + 20;
   return { id, ...c, progress: 0, reward, standing: tier, done: false };
 }
@@ -69,7 +69,7 @@ export function createEconomy(rng) {
     if (it.gem) { const { gem, ...rest } = it; return itemValue(rest) * api.priceFactor(it.material) + itemValue(gem) * 1.1 * api.priceFactor(gem.material); }
     return itemValue(it) * api.priceFactor(it.material);
   };
-  // The board outside the shop: § per kg for each material and form today,
+  // The board outside the shop: $ per kg for each material and form today,
   // with the change since yesterday.
   api.priceList = () => SELLABLE.map(m => {
     const M = MATERIALS[m], f = api.priceFactor(m), prev = S.pricesPrev?.[m] ?? f;

@@ -51,7 +51,7 @@ export function createMpPage(root, o) {
     body.append(h('b', { class: 'slot-name' }, m.name),
       h('div', { class: 'slot-stats' },
         h('span', { title: 'Day' }, h('b', {}, `Day ${m.day || 1}`)),
-        h('span', { title: 'Shared cash: everyone in the world adds to one pot' }, `§ ${fmt(m.scrip)} shared`),
+        h('span', { title: 'Shared cash: everyone in the world adds to one pot' }, `$${fmt(m.scrip)} shared`),
         h('span', { title: 'Ores sold' }, `${fmt(m.ores)} ores sold`),
         h('span', { title: m.members.join(', ') }, `${m.members.length} player${m.members.length > 1 ? 's' : ''}`)),
       h('p', { class: 'small when' }, `${m.isOwner ? 'You made it' : `Made by ${m.owner}`} · ${m.members.join(', ')} · saved ${ago(m.savedAt)}`));

@@ -1,12 +1,12 @@
 // The online leaderboard, over the arcade realtime server (rt.js): every
 // player with an online Arcade account joins one presence channel while
 // they play and shares a line about themselves: their Arcade name, their
-// Scrip and how many ores they've sold. The server keeps nothing, so each
+// money and how many ores they've sold. The server keeps nothing, so each
 // client also remembers the rows it has seen (localStorage), to show
 // players who aren't online right now.
 //
 // Two boards: solo games (by Arcade name) and multiplayer worlds (by world,
-// with how many players are in it; the world's Scrip is shared by all of
+// with how many players are in it; the world's money is shared by all of
 // them). When the Rillstone server is up (net/mp.js) its stored rows are
 // merged in too, so players who aren't online still show.
 //

@@ -96,7 +96,7 @@ along.
 
 Pick **Sandbox** on the New game page to build without earning first:
 
-- Scrip never runs out (the wallet shows § ∞);
+- Money never runs out (the wallet shows $∞);
 - every claim is yours and every Machine Shop blueprint is unlocked;
 - Machine Shop builds need no ingots;
 - vehicles never use fuel;
@@ -107,7 +107,7 @@ badge. Normal games stay as they were.
 
 ## First hour
 
-A guide card in the top-left corner walks you through your first hour: scoop, wash, sell, load the truck, buy a better shovel, finish a contract, set up a drill line and buy your next claim. Each step pays a little Scrip. **B** opens the full guide with reference notes, and **M** opens the map.
+A guide card in the top-left corner walks you through your first hour: scoop, wash, sell, load the truck, buy a better shovel, finish a contract, set up a drill line and buy your next claim. Each step pays a little money. **B** opens the full guide with reference notes, and **M** opens the map.
 
 Every metal has its own shape as well as its colour, so finds read without colour (● copper lump, ■ iron block, ⬢ silver flake, ▲ gold pebble). Tooltips show the same glyph.
 
@@ -155,19 +155,19 @@ merge into a pile so the physics stays cheap.
 Millbrook sits across the bridge from the Gravel Bar.
 
 Prices are low so you progress fast: the starter kit (sluice, drill, intake
-and pipe) costs about § 200, and Machine Shop builds take half the ingots
+and pipe) costs about $200, and Machine Shop builds take half the ingots
 they used to.
 
 - **Selling.** The **Assay Office** is the one shop that buys, and it buys
   everything: ore, ingots, gems (cut or uncut) and crafted goods. Put things
   on its counter and ring the bell (E); the clerk weighs them and pays
-  today's price in Scrip (§).
+  today's price in money.
 - **Today's prices.** Prices move a little every morning (between 80% and
   125% of a material's base value). The big board beside the Assay Office
-  shows today's § per kg for every material, raw and refined, with ▲/▼ for
+  shows today's $ per kg for every material, raw and refined, with ▲/▼ for
   the change since yesterday; E on it opens the full list.
 - **Leaderboard** (pause menu or title). Players with an online Arcade
-  account are listed by their Arcade name, ranked by Scrip, with how many
+  account are listed by their Arcade name, ranked by money, with how many
   ores they've sold. **View plot** on an online player asks their game for
   a picture of their plot from above. Players who aren't online show their
   last-seen numbers. Sandbox games and co-op guests aren't listed, and
@@ -177,8 +177,8 @@ they used to.
   logic parts, fuel and vehicles. What you buy appears on the pad by that
   counter, and vehicles wait in the yard. Any counter can call or sell your
   vehicles, and E on any claim post calls your vehicle to that claim.
-- **Guild board.** It has three contracts, which pay Scrip, and claim deeds
-  for Scrip (see Claims below). After a few contracts they also ask for
+- **Guild board.** It has three contracts, which pay money, and claim deeds
+  for money (see Claims below). After a few contracts they also ask for
   ingots, cut gems and crafted goods.
 - **The Old Hauler.** F gets in and out, WASD drives, Space brakes and H
   (hold) unflips. Drop items onto the bed with G to carry them to town; E takes
@@ -202,7 +202,7 @@ they used to.
   - **New game:** name the claim and pick one of 6 slots. A used slot says
     what it would replace.
   - **Saves page:** a card per slot, showing a picture, the name, day,
-    Scrip, claims, play time and when it was saved. Each card has
+    money, claims, play time and when it was saved. Each card has
     Load, Save here, Rename, Export (to a `.rillsave` file), Import and
     Delete (which asks first).
   - **Backups:** with "Show backups" ticked, each slot's save-before-last
@@ -285,7 +285,7 @@ crates.
   or any form) drop out of the side chute; the rest go out of the front.
 - **Gem Press** (15 L/s). Feed it cut gems of one kind. Two seconds after
   the last one arrives it fuses them into one bigger stone, and bigger gems
-  are worth more per kilo (four 0.3 kg peridots: § 28 loose, § 35 pressed).
+  are worth more per kilo (four 0.3 kg peridots: $28 loose, $35 pressed).
 - **Funnel.** Drop finds or clods into its mouth, or feed it from a belt:
   they slide out of the spout into the machine in front, or onto the ground.
 - **Magnet Rod** (General Store). LMB pulls loose finds within 6 m towards
@@ -330,20 +330,20 @@ crates.
 
 ## Claims, progression and the Pumphouse
 
-**Claims.** Six claims, each its own voxel volume. Deeds are on the Guild board and cost Scrip only.
+**Claims.** Six claims, each its own voxel volume. Deeds are on the Guild board and cost money only.
 
 | Claim | Deed | Character |
 | --- | --- | --- |
 | Gravel Bar | yours | 6 m deep starter by the river |
-| Willow Bend | § 180 | 22 m deep, good river access |
-| Old Cut | § 300 | A half-dug pit. Dig its floor to find the relic the old diggers left |
-| Slate Shelf | § 1,200 | Three terraces stepping down to the hillside: lifts and belts country |
-| Glimmer Hollow | § 1,700 | A sure Glimmerite vein about 11 m down |
-| Ember Seam | § 2,400 | Behind the door at the end of the adit; it gets deeper the further in you dig, down to basalt (band 4) |
+| Willow Bend | $180 | 22 m deep, good river access |
+| Old Cut | $300 | A half-dug pit. Dig its floor to find the relic the old diggers left |
+| Slate Shelf | $1,200 | Three terraces stepping down to the hillside: lifts and belts country |
+| Glimmer Hollow | $1,700 | A sure Glimmerite vein about 11 m down |
+| Ember Seam | $2,400 | Behind the door at the end of the adit; it gets deeper the further in you dig, down to basalt (band 4) |
 
-**Veins.** Every claim has one hidden ore vein. A third of the loads washed from inside it give its metal. The **Prospector's Lamp** (any shop, § 80) is worn: E on it, and a meter by your Scrip glows violet and ticks faster as you near a vein. The **Survey Buggy** shows veins on a scanner while you drive.
+**Veins.** Every claim has one hidden ore vein. A third of the loads washed from inside it give its metal. The **Prospector's Lamp** (any shop, $80) is worn: E on it, and a meter by your money glows violet and ticks faster as you near a vein. The **Survey Buggy** shows veins on a scanner while you drive.
 
-**Machine Shop** (Millbrook, by the Wagon Shed). Buy a blueprint once, then put ingots on its counter and build. Leftover metal comes back as a smaller ingot; machines arrive as crates on its pad. A blueprint only needs the Scrip, then the ingots.
+**Machine Shop** (Millbrook, by the Wagon Shed). Buy a blueprint once, then put ingots on its counter and build. Leftover metal comes back as a smaller ingot; machines arrive as crates on its pad. A blueprint only needs the money, then the ingots.
 
 | Tier | Machines and tools |
 | --- | --- |
@@ -357,11 +357,11 @@ crates.
 
 | Vehicle | Price | What it does |
 | --- | --- | --- |
-| Trail Buggy | § 140 | Light, quick and bouncy. No bed |
-| Hauler Mk II | § 360 | Bigger bed (3,000 kg, 90 items) and better grip |
-| Survey Buggy | § 600 | A scanner shows veins within 90 m and how deep they are |
-| Excavator | § 1,300 | Tracks. LMB cuts the next 1 m cell (fixed to the world grid) into its 10-load hopper; RMB empties it into a sluice under the bucket, or onto the ground |
-| Ore Tram | § 80, rails § 60 for 10 | Click a start and an end to lay rails (4 m segments). Click a rail with the tram kit to set it on, drop up to 600 kg into its tub, and F sends it to the far end |
+| Trail Buggy | $140 | Light, quick and bouncy. No bed |
+| Hauler Mk II | $360 | Bigger bed (3,000 kg, 90 items) and better grip |
+| Survey Buggy | $600 | A scanner shows veins within 90 m and how deep they are |
+| Excavator | $1,300 | Tracks. LMB cuts the next 1 m cell (fixed to the world grid) into its 10-load hopper; RMB empties it into a sluice under the bucket, or onto the ground |
+| Ore Tram | $80, rails $60 for 10 | Click a start and an end to lay rails (4 m segments). Click a rail with the tram kit to set it on, drop up to 600 kg into its tub, and F sends it to the far end |
 
 **The Rillstone Pumphouse** stands ruined on the bank below Millbrook. It is restored in five stages, and each stage takes a large delivery at its counter:
 
@@ -371,7 +371,7 @@ crates.
 4. Glimmerite ingots.
 5. Emberite ingots and three chalices.
 
-Each stage pays Scrip, and the building comes back piece by piece. The fifth stage shows the end screen and puts a gold-plated water wheel on the Millwright's pad.
+Each stage pays money, and the building comes back piece by piece. The fifth stage shows the end screen and puts a gold-plated water wheel on the Millwright's pad.
 
 **Sound.** Machines play spatial loops by type. Machines of one type within 6 m share a voice, at most 8 play at once, and worn ones grind. The river sounds louder as you near it, and the engine follows your speed. Captions can show every cue.
 
@@ -381,7 +381,7 @@ Up to 4 players share one world. Open **Co-op** from the pause menu.
 
 - **Hosting.** Press Host to get a 5-letter room code to share. Your browser runs the world, and your save keeps it.
 - **Joining.** Type a friend's code and press Join. Their world loads in a moment; your own world is set aside until you leave.
-- **Sharing.** Scrip and claims are shared. Everyone can dig, build and drive anywhere the group owns.
+- **Sharing.** Money and claims are shared. Everyone can dig, build and drive anywhere the group owns.
 - **Accounts.** Online play goes through the arcade's realtime server and needs an Arcade account.
 - **If the host leaves,** the session ends for everyone else with a "host left" message.
 
@@ -400,7 +400,7 @@ when its owner is offline.
 - **Play:** if someone is already in the world you join them. Otherwise you
   open its last save and host it, and the others can join you. Whoever
   hosts saves it to the server (every 3 minutes, and from the pause menu).
-- **Shared cash:** all players' Scrip goes into one pot for the world.
+- **Shared cash:** all players' money goes into one pot for the world.
 - **Delete game** (owner only) removes the world for everyone. Anyone else
   can only **Remove me**, which takes it out of their slots and takes them
   out of the world.
@@ -511,7 +511,7 @@ outside request to prove the file is self-contained. Add `--src` to test
   presses B over it for its look-up entry;
 - fills and levels claim ground with the shovel's RMB, and checks a dozen
   resting clods merge into a dirt pile you can scoop from;
-- earns § 1,000 by panning and selling, buys the starter kit, carries a
+- earns $1,000 by panning and selling, buys the starter kit, carries a
   nugget in the truck bed, drives over fresh ruts (benchmark 3), unflips the
   truck, saves, reloads the page and checks everything persists (`--town`);
 - runs an intake → drill → sluice line for 10 simulated minutes, checks that
@@ -534,7 +534,7 @@ outside request to prove the file is self-contained. Add `--src` to test
 - runs co-op in two browser contexts over the local relay: the guest joins
   a well-used world, both dig in the same claim, the guest carries an ingot
   to the truck, the host drives it, the guest sells it and buys a bucket,
-  and claims, positions and Scrip must agree; then the host leaves
+  and claims, positions and money must agree; then the host leaves
   (`--coop`);
 - fails on any console error.
 
@@ -544,3 +544,4 @@ matching the table within ±5 percentage points.
 Pointer Lock doesn't work headless, so `?test=1` exposes `window.__rill`
 with methods to teleport, fly, set the time, run physics ticks and read
 state.
+

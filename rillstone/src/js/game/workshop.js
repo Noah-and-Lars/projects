@@ -44,7 +44,7 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
   };
   function buyBlueprint(bp) {
     if (owned().includes(bp.id)) return 'owned';
-    if (!economy.spend(bp.bp)) { audio.play('error'); hud.toast(`Not enough Scrip for the ${bp.name} blueprint`, 'err'); return 'poor'; }
+    if (!economy.spend(bp.bp)) { audio.play('error'); hud.toast(`Not enough money for the ${bp.name} blueprint`, 'err'); return 'poor'; }
     owned().push(bp.id); audio.play('coins'); hud.toast(`Blueprint: ${bp.name}. Put the ingots on the counter to build one.`, 'gold');
     return 'ok';
   }
@@ -112,7 +112,7 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
           const need = Object.entries(bp.ingots).map(([m, kg]) => `${kg} kg ${MATERIALS[m].name.toLowerCase()}`).join(' + ');
           const ok = !!F().sandbox || Object.entries(bp.ingots).every(([m, kg]) => (st[m] || 0) + 1e-6 >= kg);
           const btn = own ? h('button', { class: 'btn primary', disabled: !ok, onclick: () => { WS_API.build(bp); setTimeout(render, 400); } }, 'Build')
-              : h('button', { class: 'btn', disabled: E.scrip < bp.bp, onclick: () => { WS_API.buyBlueprint(bp); setTimeout(render, 400); } }, `Blueprint § ${fmt(bp.bp)}`);
+              : h('button', { class: 'btn', disabled: E.scrip < bp.bp, onclick: () => { WS_API.buyBlueprint(bp); setTimeout(render, 400); } }, `Blueprint $${fmt(bp.bp)}`);
           rows.push(h('div', { class: 'entry' }, h('b', {}, bp.name), btn, h("span", { class: "desc" }, `${bp.desc} ${F().sandbox ? 'Sandbox: builds are free.' : `Each build takes ingots: ${need}.`}`)));
         }
       }
@@ -121,7 +121,7 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
         h('button', { class: 'btn', disabled: !sl.length, onclick: () => { WS_API.scrap(); setTimeout(render, 400); } }, sl.length ? `Scrap for ${(sv * SCRAP / MATERIALS.iron.refined).toFixed(1)} kg iron` : 'Scrap'),
         h('span', { class: 'desc' }, 'Machine crates and tools left on the counter come back as scrap iron worth 30% of what they cost.')));
       const body = h('div', {}, h('p', { class: 'small' }, `Buy a blueprint once, then put ingots on the counter and build. Leftover metal comes back as a smaller ingot. On the counter: ${have}.`), ...rows);
-      panels.show('shop:machineshop', 'Machine Shop', body, { badge: F().sandbox ? '§ ∞' : `§ ${fmt(E.scrip)}` });
+      panels.show('shop:machineshop', 'Machine Shop', body, { badge: F().sandbox ? '$∞' : `$${fmt(E.scrip)}` });
     };
     render();
   }
@@ -135,7 +135,7 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
     audio.play('pickup');
     if (!gems.length) { hud.toast('Put uncut gems on the counter, then ring: the cutter charges 12% of the cut value'); return; }
     const fee = gems.reduce((a, e) => a + cutFee(e.item), 0);
-    if (!economy.spend(fee)) { audio.play('error'); hud.toast(`The cutter wants § ${fee} for ${gems.length} gem${gems.length > 1 ? 's' : ''}`, 'err'); return; }
+    if (!economy.spend(fee)) { audio.play('error'); hud.toast(`The cutter wants $${fee} for ${gems.length} gem${gems.length > 1 ? 's' : ''}`, 'err'); return; }
     for (const e of gems) {
       const it = { ...e.item, stage: 'cut', kg: Math.round(e.item.kg * 0.85 * 1000) / 1000 };
       const pos = e.pos.slice(); items.remove(e.id);
@@ -143,11 +143,11 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
     }
     town.cutter.clerk.busy = 2;
     audio.play('rare'); fx?.burst([CUT.x, CUT.top + 0.2, CUT.z], 0xfff4e0, 18, { speed: 1.6, size: 0.02, life: 0.4 });
-    hud.toast(`Gem Cutter: ${gems.length} gem${gems.length > 1 ? 's' : ''} cut and polished · § ${fee}`, 'gold');
+    hud.toast(`Gem Cutter: ${gems.length} gem${gems.length > 1 ? 's' : ''} cut and polished · $${fee}`, 'gold');
   }
   town.customProp.cutbell = ringCutter;
   town.customHint.cutbell = () => 'ring for the gem cutter';
-  town.customCard.cutbell = () => { const g = onCounter(CUT, e => e.item && MATERIALS[e.item.material]?.kind === 'gem' && e.item.stage === 'uncut'); return { name: 'Gem Cutter', lines: [g.length ? `${g.length} uncut on the counter · fee § ${g.reduce((a, e) => a + cutFee(e.item), 0)}` : 'Cuts uncut gems for 12% of the cut value'] }; };
+  town.customCard.cutbell = () => { const g = onCounter(CUT, e => e.item && MATERIALS[e.item.material]?.kind === 'gem' && e.item.stage === 'uncut'); return { name: 'Gem Cutter', lines: [g.length ? `${g.length} uncut on the counter · fee $${g.reduce((a, e) => a + cutFee(e.item), 0)}` : 'Cuts uncut gems for 12% of the cut value'] }; };
 
   // ---- The Rillstone Pumphouse ----
   const P = PUMPHOUSE, { W, D, H } = PUMP_DIMS;
@@ -205,7 +205,7 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
       E.scrip += stage.reward; E.totalEarned += stage.reward; E.standing += stage.standing;
       applyStage(); audio.play('rare');
       fx?.burst([P.x, P.y + H + 1, P.z], 0xffd27a, 40, { speed: 4, size: 0.06, life: 1 });
-      hud.toast(`Pumphouse stage ${st.stage} complete: ${stage.name} · § ${fmt(stage.reward)}`, 'gold');
+      hud.toast(`Pumphouse stage ${st.stage} complete: ${stage.name} · $${fmt(stage.reward)}`, 'gold');
       if (st.stage >= PUMP_STAGES.length) finale();
     } else {
       hud.toast(`Delivered ${used} piece${used > 1 ? 's' : ''} · ${stage.needs.map(n => `${needLabel(n, MATERIALS).replace(/^\d+ (kg )?/, '')}: ${Math.max(0, remaining(n)).toFixed(n.kind === 'ingot' ? 1 : 0)} to go`).join(' · ')}`);
@@ -213,8 +213,8 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
   }
   function openBoard() {
     const st = pump();
-    const body = h('div', {}, h('p', { class: 'small' }, 'The valley\'s old pumphouse fed every claim from Millbrook to the falls. Restore it in five stages: put the goods on the counter beside it and ring the bell. Each stage pays the town\'s thanks in Scrip.'),
-      ...PUMP_STAGES.map((s, i) => h('div', { class: 'entry' + (i < st.stage ? ' done' : '') }, h('b', {}, `${i + 1}. ${s.name}`), h('span', { class: 'pill' }, i < st.stage ? 'Done' : i === st.stage ? 'Now' : `§ ${fmt(s.reward)}`),
+    const body = h('div', {}, h('p', { class: 'small' }, 'The valley\'s old pumphouse fed every claim from Millbrook to the falls. Restore it in five stages: put the goods on the counter beside it and ring the bell. Each stage pays the town\'s thanks in money.'),
+      ...PUMP_STAGES.map((s, i) => h('div', { class: 'entry' + (i < st.stage ? ' done' : '') }, h('b', {}, `${i + 1}. ${s.name}`), h('span', { class: 'pill' }, i < st.stage ? 'Done' : i === st.stage ? 'Now' : `$${fmt(s.reward)}`),
         h('span', { class: 'desc' }, `${s.text}. ${s.needs.map(n => needLabel(n, MATERIALS) + (i === st.stage ? ` (${Math.max(0, remaining(n)).toFixed(n.kind === 'ingot' ? 1 : 0)} to go)` : '')).join(' · ')}`))));
     panels.show('pumphouse', 'Rillstone Pumphouse', body, { badge: `Stage ${Math.min(st.stage + 1, 5)} of 5` });
   }
@@ -231,7 +231,7 @@ export function createWorkshop({ scene, physics, materials, items, economy, town
       h('div', { class: 'finale-wheel' }, '✦'),
       h('p', {}, 'Water runs through the old race again, the great wheel turns and the ember boiler glows. From Millbrook to Upper Falls, the valley has its pumphouse back, thanks to you.'),
       h('div', { class: 'finale-stats' },
-        ...[['Days', E.day], ['Scrip earned', '§ ' + fmt(E.totalEarned)], ['Claims', E.owned.length + ' of 6'], ['Time played', s.playTime ? `${Math.floor(s.playTime / 3600)} h ${Math.floor(s.playTime / 60) % 60} min` : '—']].map(([k, v]) => h('div', {}, h('span', {}, k), h('b', {}, String(v))))),
+        ...[['Days', E.day], ['Money earned', '$' + fmt(E.totalEarned)], ['Claims', E.owned.length + ' of 6'], ['Time played', s.playTime ? `${Math.floor(s.playTime / 3600)} h ${Math.floor(s.playTime / 60) % 60} min` : '—']].map(([k, v]) => h('div', {}, h('span', {}, k), h('b', {}, String(v))))),
       h('p', { class: 'small' }, 'A gold-plated water wheel is waiting on the Millwright\'s pad. Keep digging as long as you like.'));
     panels.show('finale', 'The Rillstone Pumphouse runs again', body, { cls: 'finale', closeLabel: 'Keep playing' });
   }

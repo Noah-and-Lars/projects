@@ -1,7 +1,7 @@
 // The Leaderboard page (a full screen, like Saves and Co-op), with two tabs:
 // Solo (players by Arcade name) and Multiplayer (worlds, with how many
-// players are in each; a world's Scrip is shared by everyone in it). Both
-// rank by Scrip, show ores sold, and have a View plot button that shows a
+// players are in each; a world's money is shared by everyone in it). Both
+// rank by money, show ores sold, and have a View plot button that shows a
 // picture of the plot from above.
 import { h } from './dom.js';
 import { iconEl, ago } from './saves.js';
@@ -24,7 +24,7 @@ export function createLeaderboardPage(root, o) {
       ...rows.map((r, i) => h('div', { class: 'lb-row' + (r.me ? ' me' : '') + (i < 3 ? ' top' + (i + 1) : '') },
         h('span', { class: 'rank' }, String(i + 1)),
         h('span', { class: 'who' }, h('i', { class: 'dot' + (r.online ? ' on' : ''), title: r.online ? 'Online now' : 'Offline' }), h('b', {}, r.name), r.me ? h('span', { class: 'tag' }, 'you') : null, h('small', {}, seen(r))),
-        h('span', { class: 'num' }, `§ ${fmt(r.scrip)}`),
+        h('span', { class: 'num' }, `$${fmt(r.scrip)}`),
         h('span', { class: 'num' }, fmt(r.ores), h('small', {}, kgTxt(r.kg))),
         h('span', {}, plotBtn(r)))));
   }
@@ -36,7 +36,7 @@ export function createLeaderboardPage(root, o) {
         h('span', { class: 'rank' }, String(i + 1)),
         h('span', { class: 'who' }, h('i', { class: 'dot' + (r.online ? ' on' : ''), title: r.online ? 'Being played now' : 'Nobody in it right now' }), h('b', {}, r.name), r.me ? h('span', { class: 'tag' }, 'yours') : null, h('small', {}, `${r.host ? `by ${r.host} · ` : ''}${seen(r)}`)),
         h('span', { class: 'num', title: (r.members || []).join(', ') }, `${r.players || 1}`, h('small', {}, (r.players || 1) === 1 ? ' player' : ' players')),
-        h('span', { class: 'num' }, `§ ${fmt(r.scrip)}`),
+        h('span', { class: 'num' }, `$${fmt(r.scrip)}`),
         h('span', { class: 'num' }, fmt(r.ores), h('small', {}, kgTxt(r.kg))),
         h('span', {}, plotBtn(r)))));
   }
@@ -54,7 +54,7 @@ export function createLeaderboardPage(root, o) {
         viewing.url === 'wait' ? h('div', { class: 'lb-pic wait' }, 'Fetching a picture of the plot…')
           : viewing.url ? h('img', { class: 'lb-pic', src: viewing.url, alt: `${viewing.row.name}'s plot from above` })
             : h('div', { class: 'lb-pic wait' }, 'No picture yet: they may have just gone offline, or never been online since pictures were kept. Try again later.'),
-        h('p', { class: 'small' }, `${viewing.row.world ? `${viewing.row.players || 1} player${(viewing.row.players || 1) === 1 ? '' : 's'} · ` : ''}§ ${fmt(viewing.row.scrip)} · ${fmt(viewing.row.ores)} ores sold · day ${viewing.row.day}`))) : null;
+        h('p', { class: 'small' }, `${viewing.row.world ? `${viewing.row.players || 1} player${(viewing.row.players || 1) === 1 ? '' : 's'} · ` : ''}$${fmt(viewing.row.scrip)} · ${fmt(viewing.row.ores)} ores sold · day ${viewing.row.day}`))) : null;
     el.replaceChildren(h('div', { class: 'page-inner narrow lb' }, head, tabs, note, h('div', { class: 'coop-card' },
       tab === 'solo' ? soloTable(o.board.rows) : mpTable(o.board.mpRows),
       h('p', { class: 'small' }, tab === 'solo' ? 'Sandbox games aren’t listed. Players who aren’t online show their last numbers.' : 'A world’s cash is shared by all its players. Worlds nobody is in right now show their last save.'))), overlay);

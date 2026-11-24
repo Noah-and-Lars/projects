@@ -204,11 +204,11 @@ const PLAIN_KEYS = new Set(['material', 'stage', 'kg', 'hotUntil']);
       const e = ents.get(id); if (!e) return null;
       if (e.item) {
         const m = MATERIALS[e.item.material];
-        return { name: itemName(e.item), badge: FORMS[e.item.material]?.glyph, lines: [`${e.item.kg.toFixed(2)} kg · ${m.name} · ${e.item.stage === 'ore' ? (m.kind === 'fuel' ? 'fuel' : 'ore') : e.item.stage}`, m.kind === 'fuel' ? 'Burns in kilns and boosters' : `≈ § ${itemValue(e.item).toFixed(0)}`] };
+        return { name: itemName(e.item), badge: FORMS[e.item.material]?.glyph, lines: [`${e.item.kg.toFixed(2)} kg · ${m.name} · ${e.item.stage === 'ore' ? (m.kind === 'fuel' ? 'fuel' : 'ore') : e.item.stage}`, m.kind === 'fuel' ? 'Burns in kilns and boosters' : `≈ $${itemValue(e.item).toFixed(0)}`] };
       }
       if (e.type === 'pile') {
         const kg = e.data.kgs.reduce((a, b) => a + b, 0), m = MATERIALS[e.data.material];
-        return { name: `Pile of ${m.name.toLowerCase()} ${e.data.stage === 'ore' ? 'nuggets' : e.data.stage}`, lines: [`${e.data.kgs.length} pieces · ${kg.toFixed(1)} kg`, m.kind === 'fuel' ? 'Fuel' : `≈ § ${e.data.kgs.reduce((a, k) => a + itemValue({ material: e.data.material, stage: e.data.stage, kg: k }), 0).toFixed(0)}`, 'E takes one'] };
+        return { name: `Pile of ${m.name.toLowerCase()} ${e.data.stage === 'ore' ? 'nuggets' : e.data.stage}`, lines: [`${e.data.kgs.length} pieces · ${kg.toFixed(1)} kg`, m.kind === 'fuel' ? 'Fuel' : `≈ $${e.data.kgs.reduce((a, k) => a + itemValue({ material: e.data.material, stage: e.data.stage, kg: k }), 0).toFixed(0)}`, 'E takes one'] };
       }
       if (e.type === 'dirtpile') return { name: 'Dirt pile', lines: [`${e.data.loads.length} gravel loads`, 'LMB with a shovel, bucket or pan scoops a load', 'E takes a clod'] };
       if (EXTRA_CARD[e.type]) return EXTRA_CARD[e.type](e);

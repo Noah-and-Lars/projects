@@ -34,7 +34,7 @@ for (const b in LOOT) { const s = Object.values(LOOT[b]).reduce((a, x) => a + x,
   check(Math.abs(share - (1 / 3 + 2 / 3 * 0.08)) < 0.03, `vein share of gold ${(share * 100).toFixed(1)}%`);
 }
 // Values: ore x kg, superlinear gems, crafted multiplier.
-check(itemValue({ material: 'gold', stage: 'ore', kg: 2 }) === 60, 'gold ore 2 kg = § 60');
+check(itemValue({ material: 'gold', stage: 'ore', kg: 2 }) === 60, 'gold ore 2 kg = $60');
 check(Math.abs(itemValue({ material: 'garnet', stage: 'cut', kg: 2 }) - 26 * Math.pow(2, 1.15)) < 1e-9, 'cut garnet uses kg^1.15');
 check(Math.abs(itemValue({ material: 'silver', stage: 'crafted', craft: 'ring', kg: 1, gem: { material: 'garnet', stage: 'cut', kg: 1 } }) - (23 * 1.15 + 26 * 1.1)) < 1e-9, 'silver ring with garnet');
 // M3: market saturation and contracts.
@@ -56,10 +56,10 @@ check(Math.abs(itemValue({ material: 'silver', stage: 'crafted', craft: 'ring', 
   // Complete a contract by selling.
   const c = st.contracts.find(x => x.kind === 'kg') || st.contracts[0];
   const before = st.scrip;
-  if (c.kind === 'kg') { E.sell([{ material: c.want.material, stage: 'ore', kg: c.target + 0.5 }], 'assay'); check(c.done && st.scrip > before + c.reward - 1 && st.standing >= 1, `contract "${c.text}" completes and pays § ${c.reward} + standing`); }
+  if (c.kind === 'kg') { E.sell([{ material: c.want.material, stage: 'ore', kg: c.target + 0.5 }], 'assay'); check(c.done && st.scrip > before + c.reward - 1 && st.standing >= 1, `contract "${c.text}" completes and pays $${c.reward} + standing`); }
   check(st.contracts.filter(x => !x.done).length === 3, 'contracts refill to 3');
   { const { CLAIMS } = await import('../src/js/world/valley.js'); const w = CLAIMS.find(c => c.id === 'willow'); const s0 = st.scrip; st.scrip = w.price - 1;
-    check(E.buyClaim('willow') === 'poor' && (st.scrip = w.price, E.buyClaim('willow')) === 'ok' && st.scrip === 0, `the Willow Bend deed costs § ${w.price}, money only`); st.scrip = s0; }
+    check(E.buyClaim('willow') === 'poor' && (st.scrip = w.price, E.buyClaim('willow')) === 'ok' && st.scrip === 0, `the Willow Bend deed costs $${w.price}, money only`); st.scrip = s0; }
   const gem = { material: 'garnet', stage: 'uncut', kg: 1 }, ore = { material: 'gold', stage: 'ore', kg: 1 };
   check(E.quote(gem, 'assay') > 0 && Math.abs(E.quote(ore, 'assay') - 30 * st.prices.gold) < 1e-9, 'the Assay Office buys gems and ore alike');
   const rg = E.sell([gem], 'assay'); check(rg.total > 0 && !rg.refused.length, 'selling a gem at the Assay Office pays');

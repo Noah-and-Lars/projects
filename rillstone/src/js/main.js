@@ -231,7 +231,7 @@ async function boot() {
     onBack: () => { coopPage.hide(); if (coopFrom === 'title') menu.showTitle(true); else menu.showPause(true); },
   });
   // ---- Leaderboard (net/board.js, ui/leaderboard.js) ----
-  // Your line: Scrip and ores sold (not for sandbox games, co-op guests, or
+  // Your line: money and ores sold (not for sandbox games, co-op guests, or
   // if you switched it off in Settings).
   const mp = createMp();
   const board = createBoard({
@@ -517,7 +517,7 @@ async function boot() {
       savesPage.hide(); play();
       await saveTo(slot, true); // claim the slot now (and a first picture)
       hud.toast(`${name}: saved to slot ${slot}. It autosaves every 3 minutes.`);
-      if (sandbox) hud.toast('Sandbox: unlimited Scrip, every claim and blueprint, free builds, no fuel. V to fly.', 'gold');
+      if (sandbox) hud.toast('Sandbox: unlimited money, every claim and blueprint, free builds, no fuel. V to fly.', 'gold');
     },
     onExport: async (slot) => {
       const snap = await saves.load(slot); if (!snap) return;
@@ -729,7 +729,7 @@ async function boot() {
     if (state.mode === 'play') { state.playTime += dt; state.autosaveT += dt; if (state.autosaveT > 180 && !coop.isGuest() && (state.slot || state.mp)) { state.autosaveT = 0; saveTo(state.slot, true); } }
     coop.update(dt);
     board.update(dt);
-    // (tests switch the guide on only when they check it: it pays out Scrip)
+    // (tests switch the guide on only when they check it: it pays out money)
     guide.auth = !coop.isGuest() && (!TEST || !!state.guideOn);
     guide.update(dt, state.mode === 'play');
     fx.update(dt);

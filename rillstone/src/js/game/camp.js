@@ -81,7 +81,7 @@ export function createCamp({ scene, camera, items, hands, economy, town, hud, au
     else if (info.kind === 'vehicle') { const v = H.vehicles?.list.get(info.id); for (const id of v?.cargo || []) { const c = items.get(id); if (c?.item) list.push(c.item); } }
     if (!list.length) { say('Nothing to weigh there'); return true; }
     const kg = list.reduce((a, it) => a + it.kg, 0), val = list.reduce((a, it) => a + (MATERIALS[it.material]?.kind === 'fuel' ? 0 : itemValue(it)), 0);
-    audio.play('tick'); say(`${list.length} item${list.length > 1 ? 's' : ''} · ${kg.toFixed(2)} kg · ≈ § ${Math.round(val).toLocaleString('en-GB')}`);
+    audio.play('tick'); say(`${list.length} item${list.length > 1 ? 's' : ''} · ${kg.toFixed(2)} kg · ≈ $${Math.round(val).toLocaleString('en-GB')}`);
     return true;
   };
   hands.hintHook = (e, info, H = hands) => {

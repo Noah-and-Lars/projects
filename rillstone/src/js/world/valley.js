@@ -54,7 +54,7 @@ function plot(id, name, price, w, d, depth, cx, cz, extra = {}) {
 export const ADIT = { x: snap(TOWN.x + 70), z: snap(TOWN.z - 30), y: 0, len: 46, w: 4.2, h: 3.6, dir: 1 };
 ADIT.y = floorY(ADIT.z) + 3.2;
 
-// Deeds cost Scrip only (the player asked for areas to be bought with money).
+// Deeds cost money only (the player asked for areas to be bought with money).
 export const CLAIMS = [
   plot('gravel', 'Gravel Bar', 0, 24, 24, 6, riverX(76) - 23, 76, { band: 1, blurb: 'River-edge starter' }),
   plot('willow', 'Willow Bend', 900, 32, 32, 22, riverX(150) + 30, 150, { blurb: 'Gentle bank, good river access' }),

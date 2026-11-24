@@ -154,7 +154,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     // Dig slightly into the surface along the view ray.
     const d = camDir();
     const c = [info.p[0] + d.x * def.dig * 0.45, info.p[1] + d.y * def.dig * 0.45, info.p[2] + d.z * def.dig * 0.45];
-    if (H.owns && !H.owns(info.vol.id)) { audio.play('error'); say(`${info.vol.def.name} isn't yours — buy the deed at the Guild Hall (§ ${info.vol.def.price.toLocaleString('en-GB')})`, 'err'); return null; }
+    if (H.owns && !H.owns(info.vol.id)) { audio.play('error'); say(`${info.vol.def.name} isn't yours — buy the deed at the Guild Hall ($${info.vol.def.price.toLocaleString('en-GB')})`, 'err'); return null; }
     const band = info.vol.bandAt(info.p[0], info.p[1], info.p[2]);
     if (band > def.tier || band === BEDROCK) {
       audio.play('clink'); H.play('clink');

@@ -313,7 +313,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
   }
 
   if (all || flags.has('--town')) {
-    // M3: earn § 1,000 by panning and selling at the Assay Office, buy the
+    // M3: earn $1,000 by panning and selling at the Assay Office, buy the
     // starter automation kit, save, reload, and check it all persists.
     const earn = await p.evaluate(async () => {
       const R = __rill, H = R.hands, E = R.economy, g = R.places.CLAIMS[0], T = R.town; R.noRender(true); R.fly(false);
@@ -338,7 +338,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       R.noRender(false);
       return { scrip: E.state.scrip, loads, sales, perLoad: sales / loads };
     });
-    check(earn.scrip >= 1000, `earned § ${earn.scrip} from ${earn.loads} panned loads (§ ${earn.perLoad.toFixed(1)} per load)`);
+    check(earn.scrip >= 1000, `earned $${earn.scrip} from ${earn.loads} panned loads ($${earn.perLoad.toFixed(1)} per load)`);
     const kit = await p.evaluate(async () => {
       const R = __rill; R.noRender(true);
       const before = R.economy.state.scrip;
@@ -349,7 +349,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       R.noRender(false);
       return { ok, spent: before - R.economy.state.scrip, crates, coils };
     });
-    check(kit.ok === 12 && kit.crates === 4 && kit.coils === 8, `bought the starter kit: ${kit.crates} machine crates and ${kit.coils} pipe coils for § ${kit.spent}`);
+    check(kit.ok === 12 && kit.crates === 4 && kit.coils === 8, `bought the starter kit: ${kit.crates} machine crates and ${kit.coils} pipe coils for $${kit.spent}`);
     // Market saturation in the live game.
     // One shop buys everything, at today's prices from the board beside it.
     const px = await p.evaluate(() => {
@@ -364,7 +364,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       const rows = document.querySelectorAll('#scr-panel .price-table .pr').length; R.panels.close();
       return { sellers, board: !!board, n: list.length, gold: gold.forms[0].perKg, q: +q.toFixed(2), moved, inRange, rows, quartz: list.some(r => r.material === 'quartz') };
     });
-    check(px.sellers.join() === 'assay' && px.board && px.n === px.rows && !px.quartz && Math.abs(px.gold - px.q) < 0.06 && px.moved && px.inRange, `one sell shop (${px.sellers.join()}); the price board lists ${px.n} materials (gold ore § ${px.gold}/kg today, the counter pays § ${px.q}); a new day moves prices within 80–125%`);
+    check(px.sellers.join() === 'assay' && px.board && px.n === px.rows && !px.quartz && Math.abs(px.gold - px.q) < 0.06 && px.moved && px.inRange, `one sell shop (${px.sellers.join()}); the price board lists ${px.n} materials (gold ore $${px.gold}/kg today, the counter pays $${px.q}); a new day moves prices within 80–125%`);
     // Cargo: a nugget rides in the truck bed while driving, then comes back out.
     const cargo = await p.evaluate(async () => {
       const R = __rill, V = R.vehicles; R.noRender(true);
@@ -440,7 +440,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     const tdist = Math.hypot(...before.truck.map((v, i) => v - after.truck[i]));
     if (tdist > 0.6) console.log('     truck moved ' + tdist.toFixed(2) + ' m');
     before.truck = after.truck = null;
-    check(JSON.stringify(before) === JSON.stringify(after) && tdist < 0.6, `reload keeps everything: § ${after.scrip}, ${after.items} items, ${after.crates} crates, ${after.chunks} dug chunks, contracts ${after.contracts}, truck within ${tdist.toFixed(2)} m`);
+    check(JSON.stringify(before) === JSON.stringify(after) && tdist < 0.6, `reload keeps everything: $${after.scrip}, ${after.items} items, ${after.crates} crates, ${after.chunks} dug chunks, contracts ${after.contracts}, truck within ${tdist.toFixed(2)} m`);
     // A/B: the slot keeps a complete older half too; export round-trips.
     const ab = await p.evaluate(async () => { const R = __rill; await R.saveTo(1, true); const l = await R.saves.list(); const blob = R.saves.exportBlob(R.snapshot()); const snap = await R.saves.importFile(new File([blob], 'x.rillsave')); return { ab: l[0].ab, size: blob.size, scrip: snap.economy.scrip }; });
     check(ab.size > 100 && ab.scrip === after.scrip, `export/import round-trips a ${(ab.size / 1024).toFixed(0)} KB .rillsave (slot 1 now on half ${ab.ab})`);
@@ -452,7 +452,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       const v = [...R.vehicles.list.values()].find(v => v.type === 'hauler');
       return { loc: R.items.get(n.id)?.loc, refund: v ? R.vehicles.refund(v) : null, free: v?.free };
     });
-    check(orphan.loc === 'loose' && orphan.refund === 0, `a guest's held item comes back loose after a host save (${orphan.loc}); the starter hauler sells for § ${orphan.refund}`);
+    check(orphan.loc === 'loose' && orphan.refund === 0, `a guest's held item comes back loose after a host save (${orphan.loc}); the starter hauler sells for $${orphan.refund}`);
     // One store buys everything; no Standing needed for machines or items.
     const open = await p.evaluate(async () => {
       const R = __rill, E = R.economy;
@@ -464,10 +464,10 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       E.state.standing = s0; E.state.scrip = sc0;
       return { gem, cut, ring, bp: got, owns: E.state.flags.blueprints?.includes?.('drill4') ?? null, exc };
     });
-    check(open.gem > 0 && open.cut > 0 && open.ring > 0 && open.exc !== false && open.bp !== 'standing', `the Assay Office buys gems (§ ${open.gem?.toFixed(0)} uncut, § ${open.cut?.toFixed(0)} cut) and crafts (§ ${open.ring?.toFixed(0)}); at ★ 0 the Drill Mk IV blueprint (${open.bp}) and the Excavator (${open.exc}) can be bought`);
+    check(open.gem > 0 && open.cut > 0 && open.ring > 0 && open.exc !== false && open.bp !== 'standing', `the Assay Office buys gems ($${open.gem?.toFixed(0)} uncut, $${open.cut?.toFixed(0)} cut) and crafts ($${open.ring?.toFixed(0)}); at ★ 0 the Drill Mk IV blueprint (${open.bp}) and the Excavator (${open.exc}) can be bought`);
 
     // Everything is about a fifth of the brief's prices; builds take half the ingots.
-    // Sandbox: unlimited Scrip, every claim and blueprint, free builds, no fuel use.
+    // Sandbox: unlimited money, every claim and blueprint, free builds, no fuel use.
     const sb = await p.evaluate(async () => {
       const R = __rill, E = R.economy, snap = R.snapshot(), price = (id) => { for (const S of Object.values(R.town.shops)) { const e = S.items.find(i => i.id === id); if (e) return e.price; } };
       const bp = R.workshop.blueprints.find(b => b.id === 'sluice2');
@@ -480,8 +480,8 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       out.after = E.sandbox; out.scripAfter = E.state.scrip;
       return out;
     });
-    check(sb.prices.sluice1 === 60 && sb.prices.excavator === 1300 && sb.prices.willow === 180 && sb.prices.bp === 180 && sb.prices.iron === 60, `prices are a fifth: Sluice Mk I § ${sb.prices.sluice1}, Excavator § ${sb.prices.excavator}, Willow Bend § ${sb.prices.willow}, Mk II sluice blueprint § ${sb.prices.bp} + ${sb.prices.iron} kg iron a build`);
-    check(sb.exc !== false && sb.built === 'ok' && sb.scrip === 9999999 && sb.claims === sb.of && sb.fuel && /∞/.test(sb.wallet) && sb.after === false, `sandbox: bought an Excavator and built a Mk IV sluice with no ingots, Scrip stays full ("${sb.wallet}"), all ${sb.of} claims owned, fuel stays full; loading a normal save turns it off (§ ${sb.scripAfter})`);
+    check(sb.prices.sluice1 === 60 && sb.prices.excavator === 1300 && sb.prices.willow === 180 && sb.prices.bp === 180 && sb.prices.iron === 60, `prices are a fifth: Sluice Mk I $${sb.prices.sluice1}, Excavator $${sb.prices.excavator}, Willow Bend $${sb.prices.willow}, Mk II sluice blueprint $${sb.prices.bp} + ${sb.prices.iron} kg iron a build`);
+    check(sb.exc !== false && sb.built === 'ok' && sb.scrip === 9999999 && sb.claims === sb.of && sb.fuel && /∞/.test(sb.wallet) && sb.after === false, `sandbox: bought an Excavator and built a Mk IV sluice with no ingots, money stays full ("${sb.wallet}"), all ${sb.of} claims owned, fuel stays full; loading a normal save turns it off ($${sb.scripAfter})`);
   }
 
   if (all || flags.has('--machines')) {
@@ -556,7 +556,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return { kept, ingot, cut: gem.item.stage, ring: ring && ring.item, value: ring && R.economy.quote(ring.item, 'assay') };
     });
     check(craft.kept && craft.ingot && Math.abs(craft.ingot.kg - 4) < 0.01, `kiln melted 4 kg silver into an ingot and refused gold without deleting it`);
-    check(craft.cut === 'cut' && craft.ring && craft.ring.craft === 'ring' && craft.ring.gem, `workbench: hot silver ingot + cut garnet -> ${craft.ring && craft.ring.material} ring worth § ${craft.value && craft.value.toFixed(0)}`);
+    check(craft.cut === 'cut' && craft.ring && craft.ring.craft === 'ring' && craft.ring.gem, `workbench: hot silver ingot + cut garnet -> ${craft.ring && craft.ring.material} ring worth $${craft.value && craft.value.toFixed(0)}`);
     // Pipes and machines survive a save round-trip.
     const saved = await p.evaluate(() => { const R = __rill; const s = R.snapshot(); return { n: s.machines.length, runs: s.machines.filter(m => m.run).length }; });
     check(saved.n >= 7 && saved.runs === 3, `snapshot keeps ${saved.n} machines and ${saved.runs} pipe runs`);
@@ -669,7 +669,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     console.log('     more machines: ' + JSON.stringify(mo));
     check(mo.pressure.near > 0.9 && mo.pressure.far < 0.8 && mo.pressure.far > 0.5 && mo.pressure.farSpeed < 1, `pipe pressure: ${Math.round(mo.pressure.near * 100)}% after a short run, ${Math.round(mo.pressure.far * 100)}% after 30 m of copper (machine at ${Math.round(mo.pressure.farSpeed * 100)}% speed)`);
     check(mo.sorter.sorted === 6 && mo.sorter.matched === 3 && mo.sorter.goldSide === 3 && mo.sorter.restFront === 3, `sorting hopper: 3 gold out of the side chute, 3 others out of the front (${JSON.stringify(mo.sorter)})`);
-    check(mo.press && mo.press.pressed === 4 && Math.abs(mo.press.kg - 1.2) < 1e-6 && mo.press.value > mo.press.four && mo.pressRefusesMixed, `gem press: four 0.3 kg peridots became one ${mo.press?.kg} kg stone worth § ${mo.press?.value} (four loose: § ${mo.press?.four}); a garnet was refused`);
+    check(mo.press && mo.press.pressed === 4 && Math.abs(mo.press.kg - 1.2) < 1e-6 && mo.press.value > mo.press.four && mo.pressRefusesMixed, `gem press: four 0.3 kg peridots became one ${mo.press?.kg} kg stone worth $${mo.press?.value} (four loose: $${mo.press?.four}); a garnet was refused`);
     check(mo.saw.cuts === 1 && mo.saw.pieces.join(',') === '1,4', `belt saw cut a 5 kg ingot into ${mo.saw.pieces.join(' + ')} kg`);
     check(mo.funnel.linked && mo.funnel.inBin === 1, `funnel: a nugget dropped in its mouth slid into the ore bin (${JSON.stringify(mo.funnel)})`);
     check(mo.shredder.gone && mo.shredder.ground === 1, 'disposal chute destroyed a nugget dropped on it');
@@ -1024,12 +1024,12 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     check(Math.abs(pr.veinShare - (1 / 3 + 2 / 3 * 0.024)) < 0.06, `vein rolls give glimmerite ${(pr.veinShare * 100).toFixed(1)}% of the time (want ≈ 35%)`);
     check(pr.build === 'ok' && pr.crates === 1 && Math.abs((pr.leftover.iron || 0) - (160 - pr.need.iron)) < 0.01 && Math.abs((pr.leftover.glimmerite || 0) - (12 - pr.need.glimmerite)) < 0.01, `Machine Shop built a Drill Mk II (${pr.need.iron} kg iron + ${pr.need.glimmerite} kg glimmerite) and gave back ${pr.leftover.iron} kg iron + ${pr.leftover.glimmerite} kg glimmerite`);
     check(pr.drill2.band === 2 && pr.drill2.made > 0, `Drill Mk II reaches band ${pr.drill2.band} (${pr.drill2.status}, ${pr.drill2.made} loads)`);
-    check(pr.cut === 1 && pr.cutFee > 0, `Upper Falls gem cutter cut the garnet for § ${pr.cutFee}`);
+    check(pr.cut === 1 && pr.cutFee > 0, `Upper Falls gem cutter cut the garnet for $${pr.cutFee}`);
     check(pr.pump === '1,2,3,4,5' && pr.finale && pr.goldwheel, `Pumphouse stages ${pr.pump}, end screen shown, gold-plated wheel delivered`);
     check(pr.hopper === 3 && pr.dumped === 3 && pr.cells.split(' ').every(c => c.split(',').every(v => Math.abs(v % 1) === 0.5)), `excavator dug 3 loads from world-grid cell ${pr.cells.split(' ')[0]} into its hopper and dumped them`);
     check(pr.panToBed.added === 3 && pr.panToBed.left === 0, `a pan of 3 finds tips into the truck bed (${pr.panToBed.added} added)`);
     check(pr.called < 6, `a claim post calls the hauler to it (${pr.called} m away)`);
-    check(pr.guide.step >= 2 && pr.guide.paid >= 15, `the guide's first steps complete and pay (step ${pr.guide.step} of ${pr.guide.of}, § ${pr.guide.paid})`);
+    check(pr.guide.step >= 2 && pr.guide.paid >= 15, `the guide's first steps complete and pay (step ${pr.guide.step} of ${pr.guide.of}, $${pr.guide.paid})`);
     check(pr.voices2 === 2 && pr.voicesMax === 8, `machine audio: 2 drills + a sluice play ${pr.voices2} voices; 12 drills are capped at ${pr.voicesMax}`);
     check(pr.rails === 'ok' && pr.railLen > 19 && pr.load === 'ok' && !pr.tram.moving && pr.tram.cargo === 1 && Math.abs((pr.tram?.x ?? 1e9) - pr.bx) < 1, `20 m of rails (${pr.rails}); the tram carried 1 nugget to the far end (x ${pr.tram?.x} vs ${pr.bx})`);
     // Camp gear and the workshop extras (brief gap pass).
@@ -1128,11 +1128,11 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     console.log('     pacing: ' + JSON.stringify(pace));
     const [t1, t2, t3, t4] = pace.tiers;
     check(pace.tiers.every((t, i) => t.band === i + 1 && t.washed > 20), `every tier runs in its band: ${pace.tiers.map(t => `Mk ${t.tier} band ${t.band} (${t.washed} washed)`).join(', ')}`);
-    check(pace.hand.perMin >= 42 && pace.hand.perMin <= 78, `hand washing earns § ${pace.hand.perMin}/min (target 40–80, midpoint 60 ±30%); the first § 1,000 takes ${pace.hand.firstKMin} min (target 15–20)`);
-    check(t1.perMin >= 105 && t1.perMin <= 195, `one Mk I drill + sluice earns § ${t1.perMin}/min (target 120–180, midpoint 150 ±30%)`);
-    check(t2.perMin > t1.perMin && t3.perMin > t2.perMin && t4.perMin > t3.perMin, `each tier earns more: Mk II § ${t2.perMin}/min, Mk III § ${t3.perMin}/min, Mk IV § ${t4.perMin}/min`);
+    check(pace.hand.perMin >= 42 && pace.hand.perMin <= 78, `hand washing earns $${pace.hand.perMin}/min (target 40–80, midpoint 60 ±30%); the first $1,000 takes ${pace.hand.firstKMin} min (target 15–20)`);
+    check(t1.perMin >= 105 && t1.perMin <= 195, `one Mk I drill + sluice earns $${t1.perMin}/min (target 120–180, midpoint 150 ±30%)`);
+    check(t2.perMin > t1.perMin && t3.perMin > t2.perMin && t4.perMin > t3.perMin, `each tier earns more: Mk II $${t2.perMin}/min, Mk III $${t3.perMin}/min, Mk IV $${t4.perMin}/min`);
     const base = 20 * t1.perMin + 10 * t2.perMin;
-    check(base / pace.hand.perMin >= 70 && base / pace.hand.perMin <= 130, `a late base of 20 Mk I + 10 Mk II drills earns § ${(base * 60).toLocaleString('en-GB')}/h, ${(base / pace.hand.perMin).toFixed(0)}× hand washing (target: two orders of magnitude, 100× ±30%)`);
+    check(base / pace.hand.perMin >= 70 && base / pace.hand.perMin <= 130, `a late base of 20 Mk I + 10 Mk II drills earns $${(base * 60).toLocaleString('en-GB')}/h, ${(base / pace.hand.perMin).toFixed(0)}× hand washing (target: two orders of magnitude, 100× ±30%)`);
   }
 
 
@@ -1149,7 +1149,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     const openCtx = async () => { const c = await b.newContext({ viewport: { width: 960, height: 540 } }); await c.addInitScript(init); const pg = await c.newPage(); const e2 = []; pg.on('pageerror', e => e2.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error' && !/GL Driver|GPU stall/.test(m.text())) e2.push(m.text()); }); await pg.goto(URL); await pg.waitForFunction(() => window.__rill && window.__rill.ready, null, { timeout: 120000 }); await pg.evaluate(() => { __rill.play(); __rill.noRender(true); }); return { c, pg, e2 }; };
     if (!all) {} // the main page stays open; the co-op pages are separate contexts
     const H = await openCtx(), G = await openCtx();
-    // Leaderboard: both players appear with their Arcade names, Scrip and
+    // Leaderboard: both players appear with their Arcade names, money and
     // ores sold; G opens the page and views H's base (a picture from above).
     await H.pg.evaluate(() => { const E = __rill.economy.state; E.scrip = 4321; E.stats.oresSold = 17; E.stats.oreKg = 9.5; __rill.board.push(true); });
     await G.pg.evaluate(() => { const E = __rill.economy.state; E.scrip = 1234; E.stats.oresSold = 3; E.stats.oreKg = 1.2; __rill.board.push(true); });
@@ -1170,7 +1170,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     console.log('     leaderboard: ' + JSON.stringify(lb));
     const hostRow = lb.rows.find(r => !r.me), meRow = lb.rows.find(r => r.me);
     check(lb.rows.length === 2 && hostRow?.scrip === 4321 && hostRow?.ores === 17 && meRow?.name === lb.me && lb.rows[0].scrip === 4321 && lb.ui >= 2 && lb.pic === 'data:image/jpeg;base64,' && lb.size > 5000,
-      `leaderboard: ${lb.rows.map(r => `${r.name} § ${r.scrip} · ${r.ores} ores`).join(', ')} (ranked by Scrip); View base brought back a ${(lb.size / 1024).toFixed(0)} KB picture of the other player's base`);
+      `leaderboard: ${lb.rows.map(r => `${r.name} $${r.scrip} · ${r.ores} ores`).join(', ')} (ranked by money); View base brought back a ${(lb.size / 1024).toFixed(0)} KB picture of the other player's base`);
     // Benchmark 5: a well-used world (dug claims, 400 loose finds, machines).
     const world = await H.pg.evaluate(async () => {
       const R = __rill, I = R.items, C = R.places.CLAIMS;
@@ -1287,7 +1287,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     check(hh.h === gh.h && hh.seq > 0, `both dug in the Gravel Bar and the claim voxels match (hash ${hh.h})`);
     check(carry.inBed && hv.cargo.includes(carry.ing) && gv.cargo.includes(carry.ing), 'the guest carried an ingot to the truck bed; both see it there');
     check(Math.hypot(hv.p[0] - gv.p[0], hv.p[1] - gv.p[1], hv.p[2] - gv.p[2]) < 0.1, `the host drove the truck; positions agree within ${Math.hypot(hv.p[0] - gv.p[0], hv.p[1] - gv.p[1], hv.p[2] - gv.p[2]).toFixed(3)} m`);
-    check(he.scrip === ge.scrip && he.earned > 0, `the guest sold the ingot and bought a bucket: Scrip § ${he.scrip} on both`);
+    check(he.scrip === ge.scrip && he.earned > 0, `the guest sold the ingot and bought a bucket: money $${he.scrip} on both`);
     check(placed.guest === 1 && hostJ === 1, `the guest placed a machine from a crate; host and guest both have it (${JSON.stringify(placed)}, host ${hostJ})`);
     check(bought === 1, 'the bucket the guest bought appears on the store pad for the guest');
     check(missing === 0 && worst < 0.1 && n > 300, `${n} loose things within 55 m of the guest agree within ${worst.toFixed(3)} m (${missing} missing)`);
@@ -1347,7 +1347,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return { ready: !!R.coop.ready, slot: R.mp.slots().findIndex(Boolean), id: R.mp.slots().find(Boolean), scrip: R.economy.state.scrip };
     }, made.code);
     console.log('     joined: ' + JSON.stringify(joined));
-    check(joined.ready && joined.id === made.id && joined.scrip === 777, `the friend joined with the room code; the world went into their slot ${joined.slot + 1}, and they see the shared § ${joined.scrip}`);
+    check(joined.ready && joined.id === made.id && joined.scrip === 777, `the friend joined with the room code; the world went into their slot ${joined.slot + 1}, and they see the shared $${joined.scrip}`);
     // The owner goes offline; the friend reopens the world from their slot.
     // (Only the page closes: the owner's browser keeps their key and slots.)
     await H.pg.evaluate(() => __rill.mpSave(true)); await H.pg.close();
@@ -1359,7 +1359,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return { mp: R.state.mp?.id, role: R.coop.role, scrip: R.economy.state.scrip, ores: R.economy.state.stats?.oresSold, owner: R.state.mp?.isOwner, members: R.state.mp?.members, guest: R.state.mpGuest, toasts: [...document.querySelectorAll('#toasts > *')].map(t => t.textContent), panel: R.panels.current, mpMsg: document.querySelector('#scr-mp .coop-msg')?.textContent };
     }, made.id);
     console.log('     reopened: ' + JSON.stringify(reopened) + ' server: ' + JSON.stringify({ members: srv.data.get(`w:${made.id}`)?.members.map(m => m.n), rev: srv.data.get(`w:${made.id}`)?.rev, scrip: srv.data.get(`w:${made.id}`)?.scrip }));
-    check(reopened.mp === made.id && reopened.role === 'host' && reopened.scrip === 777 && reopened.ores === 12 && reopened.owner === false, `with the owner offline, the friend reopened it from the owner's last save (§ ${reopened.scrip}, ${reopened.ores} ores sold) and now hosts it`);
+    check(reopened.mp === made.id && reopened.role === 'host' && reopened.scrip === 777 && reopened.ores === 12 && reopened.owner === false, `with the owner offline, the friend reopened it from the owner's last save ($${reopened.scrip}, ${reopened.ores} ores sold) and now hosts it`);
     // The Multiplayer leaderboard tab: the world, 2 players, its shared cash.
     const lbm = await G.pg.evaluate(async (id) => {
       const R = __rill; await R.mpSave(true); R.openLeaderboard(); R.boardPage.setTab('mp');
@@ -1372,7 +1372,7 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       R.boardPage.hide();
       return { row: row && { name: row.name, players: row.players, scrip: row.scrip, ores: row.ores }, tabs, ui: ui.length, plotBtn };
     }, made.id);
-    check(lbm.tabs.join() === 'Solo,Multiplayer' && lbm.row && lbm.row.players === 2 && lbm.row.scrip === 777 && lbm.row.name === 'Valley Two' && lbm.ui >= 1 && lbm.plotBtn, `leaderboard tabs ${lbm.tabs.join(' / ')}: Multiplayer lists “${lbm.row?.name}” with ${lbm.row?.players} players, § ${lbm.row?.scrip} shared, ${lbm.row?.ores} ores sold, and View plot`);
+    check(lbm.tabs.join() === 'Solo,Multiplayer' && lbm.row && lbm.row.players === 2 && lbm.row.scrip === 777 && lbm.row.name === 'Valley Two' && lbm.ui >= 1 && lbm.plotBtn, `leaderboard tabs ${lbm.tabs.join(' / ')}: Multiplayer lists “${lbm.row?.name}” with ${lbm.row?.players} players, $${lbm.row?.scrip} shared, ${lbm.row?.ores} ores sold, and View plot`);
     // The friend (not the owner) can only remove themselves.
     const removed = await G.pg.evaluate(async (id) => {
       const R = __rill; R.state.mode = 'pause'; await R.openMultiplayer();

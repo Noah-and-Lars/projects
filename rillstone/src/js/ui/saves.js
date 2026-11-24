@@ -1,6 +1,6 @@
 // The Saves page and the New game page (full screens, not panels).
 //
-// Saves: one card per slot with a picture, the save's name, day, Scrip,
+// Saves: one card per slot with a picture, the save's name, day, money,
 // claims, play time and when it was saved. Cards have Load,
 // Save here (in a game), Rename, Export, Import and Delete (which asks
 // first). "Show backups" reveals each slot's older copy (the other half of
@@ -61,7 +61,7 @@ export function createSavesPage(root, o) {
   function stats(m) {
     return h('div', { class: 'slot-stats' },
       h('span', { title: 'Day' }, h('b', {}, `Day ${m.day ?? 1}`)),
-      m.sandbox ? h('span', { class: 'sandbox-tag', title: 'Sandbox game' }, 'Sandbox') : h('span', { title: 'Scrip' }, `§ ${fmt(m.scrip)}`),
+      m.sandbox ? h('span', { class: 'sandbox-tag', title: 'Sandbox game' }, 'Sandbox') : h('span', { title: 'Money' }, `$${fmt(m.scrip)}`),
       m.claims ? h('span', { title: 'Claims owned' }, `${m.claims} claim${m.claims > 1 ? 's' : ''}`) : null,
       h('span', { title: 'Time played' }, playTime(m.playTime)));
   }
@@ -110,7 +110,7 @@ export function createSavesPage(root, o) {
       }
       if (showBackups) {
         body.append(m.backup
-          ? h('div', { class: 'backup' }, h('span', {}, `Backup: day ${m.backup.day ?? 1} · § ${fmt(m.backup.scrip)} · ${ago(m.backup.savedAt)}`), h('button', { class: 'btn small-btn', onclick: () => o.onLoad(m.slot, 'backup') }, 'Load backup'))
+          ? h('div', { class: 'backup' }, h('span', {}, `Backup: day ${m.backup.day ?? 1} · $${fmt(m.backup.scrip)} · ${ago(m.backup.savedAt)}`), h('button', { class: 'btn small-btn', onclick: () => o.onLoad(m.slot, 'backup') }, 'Load backup'))
           : h('div', { class: 'backup muted' }, 'No backup yet: it appears after the next save.'));
       }
     }
@@ -147,7 +147,7 @@ export function createSavesPage(root, o) {
         h('div', { class: 'field' }, h('span', {}, 'Mode'),
           h('div', { class: 'slot-pick modes' },
             modeBtn(false, 'Normal', 'Earn your way up from a pan and a shovel'),
-            modeBtn(true, 'Sandbox', 'Unlimited Scrip, every claim and blueprint, free builds, no fuel, V to fly'))),
+            modeBtn(true, 'Sandbox', 'Unlimited money, every claim and blueprint, free builds, no fuel, V to fly'))),
         h('div', { class: 'field' }, h('span', {}, 'Save slot'),
           h('div', { class: 'slot-pick' }, ...list.map(m => h('button', {
             class: 'pick' + (m.slot === pick ? ' on' : '') + (m.empty ? '' : ' used'),
