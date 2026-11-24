@@ -33,6 +33,9 @@ await test('boot + spawn + screenshot', async () => {
   await browser.close();
 });
 
+// heist framework / HUD / menus (tests/e2e/mission.mjs)
+failed += await (await import('./mission.mjs')).default(url);
+
 srv.close();
 if (failed) { console.log(failed + ' e2e test(s) failed'); process.exit(1); }
 console.log('e2e ok');

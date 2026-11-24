@@ -59,6 +59,8 @@ export class Game {
   /** modules may take over the camera for a frame (vehicles, map, cutscene) */
   cameraOverride: CameraOverride | null = null;
   fov = 80;
+  /** additive first-person camera sway (head-bob, set by the UI module); ignored while cameraOverride is set */
+  viewBob = { y: 0, roll: 0 };
   private toolInput: ToolInput = emptyToolInput();
   private prevButtons = 0;
   private fpsAcc = 0;
@@ -184,7 +186,7 @@ export class Game {
     const cam = this.cameraOverride;
     if (this.renderer.camera.fov !== this.fov) { this.renderer.camera.fov = this.fov; this.renderer.camera.updateProjectionMatrix(); }
     if (cam) this.renderer.setCamera(cam.eye, cam.yaw, cam.pitch, cam.roll ?? 0);
-    else this.renderer.setCamera(p.eye, p.yaw, p.pitch);
+    else { const e = p.eye; e.y += this.viewBob.y; this.renderer.setCamera(e, p.yaw, p.pitch, this.viewBob.roll); }
     this.renderer.render(this.sim, dt, full);
     this.perf.render = performance.now() - t0;
     this.frameCount++;

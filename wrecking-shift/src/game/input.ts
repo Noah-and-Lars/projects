@@ -10,6 +10,8 @@ export class Input {
   wheel = 0;
   locked = false;
   sensitivity = 0.0023;
+  /** invert vertical mouse look (settings) */
+  invertY = false;
 
   constructor(private el: HTMLElement) {
     window.addEventListener('keydown', (e) => {
@@ -26,7 +28,7 @@ export class Input {
     window.addEventListener('mouseup', (e) => { this.buttons &= ~(1 << e.button); });
     window.addEventListener('mousemove', (e) => {
       if (!this.locked) return;
-      this.mouseDX += e.movementX; this.mouseDY += e.movementY;
+      this.mouseDX += e.movementX; this.mouseDY += this.invertY ? -e.movementY : e.movementY;
     });
     window.addEventListener('wheel', (e) => { if (this.locked) this.wheel += Math.sign(e.deltaY); }, { passive: true });
     el.addEventListener('contextmenu', (e) => e.preventDefault());

@@ -10,6 +10,8 @@ async function boot() {
   await game.init(createModules());
   game.loadLevel(params.get('level') ?? 'testyard', Number(params.get('seed') ?? 1234));
   document.getElementById('boot')?.remove();
+  // menus / ?mission= / ?sandbox= (UI module, see src/game/uiModule.ts)
+  game.ext.ui?.boot(params);
 
   // test / debug hooks (also handy in the browser console)
   (window as any).__game = {
@@ -17,6 +19,8 @@ async function boot() {
     get sim() { return game.sim; },
     get player() { return game.player; },
     ready: true,
+    /** UI / mission helpers: startMission(id), openMenu(name), closeMenus(), state() ... */
+    get ui() { return game.ext.ui; },
     /** advance n fixed ticks (no rendering) */
     step(n = 1) { for (let i = 0; i < n; i++) game.fixedStep(); },
     /** draw one frame, remeshing everything that is dirty */
