@@ -206,7 +206,13 @@ function makeBase(kind: Kind, shared: LookShared, cfg: LookConfig, params: THREE
     vs = mustReplace(vs, '#include <project_vertex>', `#include <project_vertex>
       vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
       vWNrm = normalize(mat3(modelMatrix) * objectNormal);
+      #ifdef VX_FACE_AO
+      // static bodies are axis-aligned and grid-aligned: grain in world voxels, so the overlap strips where
+      // abutting bodies (ground tiles) meet show the same grain on both sides instead of z-fighting two patterns
+      vVox = vWPos * ${(1 / VOXEL).toFixed(1)} - normal * 0.5;
+      #else
       vVox = transformed * ${(1 / VOXEL).toFixed(1)} - normal * 0.5;
+      #endif
       vAux = aux.xy;`);
     shader.vertexShader = vs;
 
@@ -217,8 +223,13 @@ function makeBase(kind: Kind, shared: LookShared, cfg: LookConfig, params: THREE
         vec3 alb = pow(vColor.rgb, vec3(2.2));
         alb = mix(vec3(dot(alb, vec3(0.2126, 0.7152, 0.0722))), alb, uSaturation);
         vec3 vox = floor(vVox);
-        // per-voxel grain + a little 4-voxel blotchiness (greedy quads stay big, the shader adds the detail)
-        alb *= 0.9 + 0.14 * vxGrain(vox + 0.5) + 0.06 * vxGrain(floor(vox * 0.25) + 7.5);
+        // per-voxel grain + a little 4-voxel blotchiness (greedy quads stay big, the shader adds the detail).
+        // Both fade to their mean once a cell is smaller than about a pixel: point-sampled sub-pixel noise is
+        // pure aliasing and made distant ground sparkle with the slightest camera motion.
+        float vxFp = max(length(dFdx(vVox)), length(dFdy(vVox))); // voxels per pixel
+        float vxG1 = mix(vxGrain(vox + 0.5), 0.5, smoothstep(0.5, 1.5, vxFp));
+        float vxG4 = mix(vxGrain(floor(vox * 0.25) + 7.5), 0.5, smoothstep(2.0, 6.0, vxFp));
+        alb *= 0.9 + 0.14 * vxG1 + 0.06 * vxG4;
         diffuseColor.rgb *= alb;
       }`);
     fs = mustReplace(fs, '#include <emissivemap_fragment>', `#include <emissivemap_fragment>

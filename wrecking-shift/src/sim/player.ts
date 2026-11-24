@@ -197,6 +197,16 @@ export class Player {
     const m = this.ctrl.computedMovement();
     const wasGrounded = this.grounded;
     this.grounded = this.ctrl.computedGrounded() && !jumping;
+    // Rapier's controller nudges the character 0.1 mm off the ground every call (normal nudge factor 1e-4) and
+    // the -1 m/s "stick to ground" speed pulls it back the next tick: on terrain the eye flipped by 0.1 mm at
+    // 30 Hz while standing still, which made every sub-pixel edge of the distant ground flicker. Sub-0.3 mm
+    // vertical corrections while grounded are dropped (walking a slope moves > 1 mm per tick).
+    // On terraced slopes the cylinder rests on voxel edges, the controller never reports "grounded" and the
+    // nudge along the slanted edge normals made a standing player creep (~4 cm per 10 s on Kestrel Ridge).
+    // So the same applies while the fall is held up, and tiny sideways drift without movement input is dropped.
+    const held = desired.y < 0 && m.y > desired.y * 0.5;
+    if ((this.grounded || held) && Math.abs(m.y) < 0.0003) m.y = 0;
+    if (ml < 1e-3 && Math.abs(m.x) < 0.0003 && Math.abs(m.z) < 0.0003) { m.x = 0; m.z = 0; }
     const t = this.rb.translation();
     this.rb.setNextKinematicTranslation({ x: t.x + m.x, y: t.y + m.y, z: t.z + m.z });
 
