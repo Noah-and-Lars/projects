@@ -14,6 +14,7 @@ import { h } from '../ui/dom.js';
 
 const GAP = 0.26;            // minimum spacing on a belt, metres
 const SHAFT_RANGE = 8;       // a wheel or turbine drives shaft machines this close
+const MAGNET_RANGE = 2.5;    // a Magnet pulls loose finds this close
 const _v = new THREE.Vector3();
 
 export function createAutomation({ machines, items, scene, materials, hud, audio, panels, fx, brush, claims, economy }) {
@@ -21,7 +22,7 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
   const beltTex = makeBeltTexture();
   const lines = new THREE.Group(); scene.add(lines);
   let logicT = 0, groupsDirty = true, beltGroups = new Map();
-  const auto = { counters: new Map() };
+  const auto = { counters: new Map(), logicEffects: [] };
 
   // ---- Belt geometry helpers ----
   function lanesOf(m) {
@@ -132,7 +133,7 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
     // Line speed: 0.6-1.6 m/s from the best-supplied belt drive in the line.
     for (const group of beltGroups.values()) {
       let best = -1;
-      for (const m of group) if (D[m.def].drive && m.on) best = Math.max(best, I.flowOf(m.id)?.satisfaction ?? 0);
+      for (const m of group) if (D[m.def].drive && m.on) { const f = I.flowOf(m.id); best = Math.max(best, (f?.satisfaction ?? 0) * (0.55 + 0.45 * Math.min(1, f?.pressure ?? 1))); }
       const v = best >= 0 && best > 0 ? 0.6 + 1.0 * best : 0;
       for (const m of group) { m.beltSpeed = v; m.status = v ? (m._jam > 2 ? 'jammed' : 'running') : 'no drive'; }
     }
@@ -159,6 +160,23 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
           const side = def.split === 'alternate' ? (m.state.flip = !m.state.flip) : !(e?.item && matchesFilter(m, e.item));
           it.routed = true;
           if (side) { const q1 = lanes[1]; if (!q1.length || q1[q1.length - 1].s >= GAP) { q.splice(k, 1); k--; q1.push({ eid: it.eid, s: 0 }); continue; } else { it.s = lane.len / 2 - 0.001; it.routed = false; blocked = true; } }
+        }
+        // Belt Saw: ingots and gems are cut to size; the offcut follows behind.
+        if (def.saw && !it.sawed && it.s >= lane.len / 2) {
+          const e = items.get(it.eid); it.sawed = true;
+          const sig = inputsOf(m), cut = sig.conn[0] && sig.a > 0 ? sig.a : (m.state.cutKg || 1);
+          const kind = e?.item && MATERIALS[e.item.material]?.kind;
+          if (e?.item && (e.item.stage === 'ingot' || (kind === 'gem' && (e.item.stage === 'uncut' || e.item.stage === 'cut'))) && e.item.kg > cut + 0.05) {
+            const back = it.s - GAP;
+            if (back >= 0 && q.every(x => x === it || Math.abs(x.s - back) >= GAP * 0.95)) {
+              const rest = { ...e.item, kg: Math.round((e.item.kg - cut) * 1000) / 1000 }; delete rest.grind;
+              if (kind === 'gem') { rest.sawn = true; e.item.sawn = true; }
+              e.item.kg = cut; items.hideEnt(e);
+              const ne = items.spawn('nugget', [0, 0, 0], { item: rest, loc: 'belt' });
+              q.push({ eid: ne.id, s: back, sawed: true }); m.cuts = (m.cuts || 0) + 1;
+              fx?.burst(e.pos, 0xffe0a0, 8, { speed: 1.8, size: 0.02, life: 0.3 });
+            } else { it.sawed = false; it.s = lane.len / 2 - 0.001; blocked = true; }
+          }
         }
         if (def.gemcut && !it.cut && it.s >= lane.len / 2) {
           const e = items.get(it.eid); it.cut = true;
@@ -272,6 +290,11 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
         case 'not': v = a > 0 ? 0 : 1; break;
         case 'compare': { const rhs = conn[1] ? b : (s.value ?? 0); v = (s.op === '=' ? Math.abs(a - rhs) < 1e-6 : s.op === '<' ? a < rhs : a > rhs) ? 1 : 0; break; }
         case 'add': v = a + b; break;
+        case 'mul': v = a * b; break;
+        case 'div': v = b ? a / b : 0; break;
+        case 'toggle': if (a > 0 && !(s.lastT > 0)) s.t = !s.t; s.lastT = a; v = s.t ? 1 : 0; break;
+        case 'pass': v = a >= 1 ? a : 0; break;
+        case 'gauge': { const t = nearestMachine(m, (d, t) => d.role !== 'logic' && t.flow && t.flow.net); v = t ? Math.round((t.pressure || 0) * 100) : 0; break; }
         case 'sub': v = a - b; break;
         case 'latch': if (a > 0) s.held = 1; if (b > 0) s.held = 0; v = s.held || 0; break;
         case 'pulse': v = a > 0 && !(s.last > 0) ? 1 : 0; s.last = a; break;
@@ -290,6 +313,17 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
       if (L === 'pourer' && rising) { const t = nearestMachine(m, d => !!d.meltRate); if (t) machines.pour(t.id); }
       if (L === 'siren' && a > 0 && (s.next || 0) < clock) { s.next = clock + 1.2; audio.play('siren'); }
       if (L === 'charge' && rising) { const vol = claims.volumeAt(m.pos[0], m.pos[2], m.pos[1]); if (vol && economy.owns(vol.id)) { const c = [m.pos[0], m.pos[1] - 0.5, m.pos[2]]; brush(vol.id, c, 2.0, 'dig', 3); auto.onDig?.(vol, c, 2.0); } fx?.burst([m.pos[0], m.pos[1] + 0.3, m.pos[2]], 0xffb050, 40, { speed: 6, size: 0.08, life: 0.8 }); audio.play('boom'); hud.toast('Boom!'); machines.remove(m.id); }
+      if (L === 'switch') { const t = nearestMachine(m, d => d.role !== 'logic' && d.role !== 'pipe' && d.role !== 'container' && d.role !== 'funnel' && !(d.role === 'belt' && !d.drive)); if (t) t.on = a > 0; m.target = t?.id; }
+      if (L === 'magnet' && a > 0 && (s.pullT || 0) <= clock && !items.remote) {
+        s.pullT = clock + 0.15;
+        for (const e of items.ents.values()) {
+          if (e.loc !== 'loose' || !(e.item || e.type === 'clod')) continue;
+          const dx = m.pos[0] - e.pos[0], dy = m.pos[1] + 0.4 - e.pos[1], dz = m.pos[2] - e.pos[2], d = Math.hypot(dx, dz);
+          if (d > MAGNET_RANGE || d < 0.45) continue;
+          machines.physics?.post({ op: 'setBody', id: e.id, vel: [dx / d * 3, Math.max(1.2, dy), dz / d * 3], wake: true });
+        }
+      }
+      for (const f of auto.logicEffects) f(m, L, a, rising, clock);
       if (L === 'ejector' && rising) { const t = nearestMachine(m, d => d.role === 'container'); if (t && t.state.contents.length) { const it = t.state.contents.shift(); if (!machines.output(t, { item: it })) t.state.contents.unshift(it); } }
     }
     for (const m of logic) {
@@ -299,6 +333,7 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
     }
   }
 
+  auto.inputsOf = inputsOf;
   // ---- Interactions ----
   // E on a locked button or lever presses/toggles it.
   auto.interact = (m) => {
@@ -309,6 +344,7 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
   };
   auto.panelRows = (m, row, controls, render) => {
     const def = D[m.def];
+    if (def.saw) controls.append(h('div', { class: 'entry' }, h('b', {}, 'Cut to'), h('span', {}, ...[0.25, 0.5, 1, 2, 5, 10].map(v => h('button', { class: 'btn' + ((m.state.cutKg || 1) === v ? ' primary' : ''), style: { marginLeft: '4px' }, onclick: () => { m.state.cutKg = v; render(); } }, `${v} kg`))), h('span', { class: 'desc' }, 'A signal on its terminal overrides this: the number is the kg to cut.')));
     if (def.role === 'belt') {
       row('Line speed', m.beltSpeed ? `${m.beltSpeed.toFixed(2)} m/s` : 'stopped — needs a Belt Drive with water');
       row('On the belt', String(ensureBeltState(m).reduce((a, q) => a + q.length, 0)));
@@ -339,7 +375,8 @@ export function createAutomation({ machines, items, scene, materials, hud, audio
       if (L === 'compare') { num('Compare with (if input B is empty)', 'value', 0, 1); controls.append(h('div', { class: 'entry' }, h('b', {}, 'Test'), h('span', {}, ...['>', '<', '='].map(op => h('button', { class: 'btn' + ((s.op || '>') === op ? ' primary' : ''), onclick: () => { s.op = op; render(); } }, op))))); }
       if (L === 'button') controls.append(h('button', { class: 'btn primary', onclick: () => { auto.interact(m); render(); } }, 'Press'));
       if (L === 'lever') controls.append(h('button', { class: 'btn primary', onclick: () => { auto.interact(m); render(); } }, s.on ? 'Switch off' : 'Switch on'));
-      const help = { valve: 'Closes the nearest intake or junction while its input is 0.', beltgate: 'Stops the nearest belt while its input is 0.', pourer: 'Pours the nearest kiln or smelter when its input rises.', scale: 'Outputs the kg of items resting on the plate.', counter: 'Counts items leaving the nearest belt; input A resets it.', fillsensor: 'Outputs the fill of the nearest bin, tank or furnace.', wearsensor: 'Outputs the wear % of the nearest machine.', ejector: 'Pushes one item out of the nearest bin when its input rises.', charge: 'Blasts a hole when its input rises. Inside claims you own only.' }[L];
+      if (L === 'gauge') row('Reads', 'the water pressure at the nearest machine or junction, in %');
+      const help = { mul: 'A × B.', div: 'A ÷ B (0 if B is 0).', toggle: 'Flips between 0 and 1 each time its input rises.', pass: 'Passes its input on when it is 1 or more; otherwise 0.', gauge: 'Outputs the water pressure (%) at the nearest machine or junction.', switch: 'Turns the nearest machine on while its input is above 0, and off at 0.', magnet: 'While its input is above 0, pulls loose finds within 2.5 m towards it.', valve: 'Closes the nearest intake or junction while its input is 0.', beltgate: 'Stops the nearest belt while its input is 0.', pourer: 'Pours the nearest kiln or smelter when its input rises.', scale: 'Outputs the kg of items resting on the plate.', counter: 'Counts items leaving the nearest belt; input A resets it.', fillsensor: 'Outputs the fill of the nearest bin, tank or furnace.', wearsensor: 'Outputs the wear % of the nearest machine.', ejector: 'Pushes one item out of the nearest bin when its input rises.', charge: 'Blasts a hole when its input rises. Inside claims you own only.' }[L];
       if (help) controls.append(h('p', { class: 'small' }, help + ' "Nearest" means within 2.6 m.'));
     }
   };

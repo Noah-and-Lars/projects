@@ -34,6 +34,7 @@ import { createHeavy } from './game/heavy.js';
 import { createNet, cleanName } from './net/net.js';
 import { createCoop } from './net/coop.js';
 import { createCamp } from './game/camp.js';
+import { createMachines4 } from './game/machines4.js';
 import { createSavesPage, ago, playTime } from './ui/saves.js';
 import { createCoopPage } from './ui/coop.js';
 import { createGuide } from './game/guide.js';
@@ -201,6 +202,9 @@ async function boot() {
     onMembers: () => { if (coopPage.open) coopPage.refresh(); },
   });
   const camp = createCamp({ scene, camera, items, hands, economy, town, hud, audio, state, view, ui, h, settings });
+  // More machines (sorting hopper, gem press, funnel, disposal chute, mender) and the magnet rod.
+  createMachines4({ machines, auto, items, physics, hands, hud, audio, fx });
+  machines.panelRows = auto.panelRows;
   camp.coop = coop;
   const guide = createGuide({ hud, panels, economy, hands, items, machines, vehicles, audio });
   const map = createMap({ panels, economy, vehicles, player, coop });

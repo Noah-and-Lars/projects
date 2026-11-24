@@ -20,7 +20,7 @@ import { clerk, textPlane } from '../render/buildings.js';
 import { BLUEPRINTS } from '../defs/progression.js';
 import { SHOPS } from '../defs/shops.js';
 import { MACHINES } from '../defs/machines.js';
-import { MATERIALS } from '../defs/materials.js';
+import { MATERIALS, CRAFT_MULT } from '../defs/materials.js';
 
 const SNAP_HZ = 12, IN_HZ = 20, SCAN_HZ = 5, STATUS_HZ = 2;
 const COLORS = [0x2a8a86, 0xc8902c, 0xa84a3a, 0x6e56a8];
@@ -207,7 +207,7 @@ export function createCoop(ctx) {
         const i = a.sig == null || (c[a.i] && takeSig(c[a.i]) === a.sig) ? a.i : c.findIndex(it => takeSig(it) === a.sig);
         if (i >= 0) auto.takeFrom(m, i, H); break;
       }
-      case 'craft': { const held = H.hand ? items.get(H.hand) : null; if (held?.item?.stage === 'ingot' && held.item.hotUntil > items.clock && ['toolhead', 'ring', 'chain', 'chalice'].includes(a.kind)) machines.craft(held, H, a.kind); break; }
+      case 'craft': { const held = H.hand ? items.get(H.hand) : null; if (held?.item?.stage === 'ingot' && held.item.hotUntil > items.clock && Object.keys(CRAFT_MULT).includes(a.kind)) machines.craft(held, H, a.kind); break; }
       case 'mset': { const m = machines.get(a.id); if (!m) break; if (typeof a.on === 'boolean') m.on = a.on; for (const k of SETTINGS) if (a.set && k in a.set) { const v = cleanSetting(k, a.set[k], MATERIALS); if (v !== undefined) m.state[k] = v; } break; }
       case 'bedTake': bed.take(a.vid, a.ent, H); break;
       case 'bedPut': { const e = H.hand ? items.get(H.hand) : null; if (e) bed.putIn(a.vid, e, H); break; }

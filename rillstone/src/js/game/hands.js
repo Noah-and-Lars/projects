@@ -602,6 +602,7 @@ export function createHands({ scene, camera, physics, items, claims, water, fx, 
     return true;
   };
   H.camDir = camDir;
+  H.eye = () => camera.position.toArray();
 
   H.give = (type, data = {}) => {
     const base = TOOLS[type] ? { loads: [], contents: [], ...data } : data;

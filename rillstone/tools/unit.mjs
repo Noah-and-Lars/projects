@@ -89,7 +89,17 @@ check(Math.abs(itemValue({ material: 'silver', stage: 'crafted', craft: 'ring', 
   // Settling tanks and silt, booster, tank.
   const n4 = [N(1, 'source', { flow: 40 }), N(2, 'settle'), N(3, 'consumer', { demand: 60 }), N(4, 'booster', { fuelled: true })];
   r = solveFlow(n4, [[1, 2], [2, 3], [1, 4]]);
-  check(r.get(3).net.silt === 3 && Math.abs(r.get(3).net.supply - 60) < 1e-9, 'settling tank removes 3 silt; booster adds 50% of intake');
+  check(r.get(3).net.silt === 3 && Math.abs(r.get(3).net.supply - 48) < 1e-9, 'settling tank removes 3 silt; a booster adds 20% of intake');
+  { const B = (i) => N(10 + i, 'booster', { fuelled: true }); const nb = [N(1, 'source', { flow: 100 }), N(3, 'consumer', { demand: 500 }), ...[0, 1, 2, 3, 4, 5].map(B)];
+    r = solveFlow(nb, [[1, 3], ...[0, 1, 2, 3, 4, 5].map(i => [1, 10 + i])]);
+    check(Math.abs(r.get(3).net.supply - 180) < 1e-9 && r.get(3).net.boosters === 4 && Math.abs(r.get(3).pressure - 1.4) < 1e-9, 'boosters stack up to four: +80% flow, 140% pressure'); }
+  { const { PIPE_LOSS, pressureFactor } = await import('../src/js/sim/flow.js');
+    const run = (len) => N(100 + len, 'pipe', { cap: 60, len, loss: PIPE_LOSS.copper });
+    r = solveFlow([N(1, 'source', { flow: 60 }), run(20), run(40), N(3, 'consumer', { demand: 20 })], [[1, 120], [120, 140], [140, 3]]);
+    check(Math.abs(r.get(3).pressure - 0.4) < 1e-9 && Math.abs(pressureFactor(r.get(3).pressure) - 0.73) < 1e-9, `60 m of copper pipe leaves 40% pressure (the machine runs at 73%)`);
+    const tk = N(2, 'tank', { tank: { level: 1500, cap: 2000 } });
+    r = solveFlow([N(1, 'source', { flow: 60 }), run(20), run(40), tk, run(10), N(3, 'consumer', { demand: 20 })], [[1, 120], [120, 140], [140, 2], [2, 110], [110, 3]], 0);
+    check(Math.abs(r.get(3).pressure - 0.9) < 1e-9, 'a header tank part-way restores full pressure (10 m after it: 90%)'); }
   check(Math.abs(wearRate(6) * 60 - 0.02) < 1e-12 && wearRate(4) === 0, 'silt 6 wears 2% per minute; silt 4 none');
   const tank = N(2, 'tank', { tank: { level: 1000, cap: 2000 } });
   r = solveFlow([N(1, 'source', { flow: 10 }), tank, N(3, 'consumer', { demand: 50 })], [[1, 2], [2, 3]], 1);

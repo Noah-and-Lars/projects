@@ -112,6 +112,8 @@ const LOGIC = {
   scale: ['Scale Plate', 240, 'KG', 0, 1], counter: ['Counter', 160, 'COUNT', 1, 1], wearsensor: ['Wear Sensor', 160, 'WEAR', 0, 1], fillsensor: ['Fill Sensor', 160, 'FILL', 0, 1],
   valve: ['Valve', 200, 'VALVE', 1, 0], beltgate: ['Belt Gate', 180, 'GATE', 1, 0], pourer: ['Pour Trigger', 160, 'POUR', 1, 0], lamp: ['Lamp', 60, 'LAMP', 1, 0], siren: ['Siren', 120, 'SIREN', 1, 0],
   charge: ['Logic Charge', 300, 'BOOM', 1, 0], ejector: ['Item Ejector', 260, 'EJECT', 1, 0], display: ['Display Panel', 140, '0', 1, 0],
+  mul: ['Multiply', 90, '×', 2, 1], div: ['Divide', 90, '÷', 2, 1], toggle: ['Toggle', 80, 'TOGGLE', 1, 1], pass: ['Pass Gate', 70, '≥1', 1, 1],
+  gauge: ['Pressure Gauge', 140, 'PRESS', 0, 1], switch: ['Machine Switch', 180, 'SWITCH', 1, 0], magnet: ['Magnet', 650, 'MAGNET', 1, 0],
 };
 export const LOGIC_PRICES = Object.fromEntries(Object.entries(LOGIC).map(([k, v]) => [k, v[1]]));
 const labelCache = new Map();
@@ -140,6 +142,8 @@ for (const [id, [name, , label, nin, nout]] of Object.entries(LOGIC)) {
       if (id === 'button') parts.push(cyl(0.08, 0.08, 0.06, 0, 0.23, 0, BRICK, 0, 0, 12));
       if (id === 'lamp') parts.push(rod([0, 0.2, 0], [0, 0.45, 0], 0.03, DARK));
       if (id === 'siren') parts.push(P(place(new THREE.ConeGeometry(0.12, 0.2, 10, 1, true), 0, 0.32, 0, Math.PI), BRASS));
+      if (id === 'magnet') parts.push(P(place(new THREE.TorusGeometry(0.11, 0.035, 8, 16, Math.PI), 0, 0.22, 0, Math.PI / 2, 0, 0), BRICK), ...[-0.11, 0.11].map(x => cyl(0.04, 0.04, 0.06, x, 0.22, 0, STEEL, Math.PI / 2, 0, 8)));
+      if (id === 'gauge') parts.push(cyl(0.1, 0.1, 0.04, 0, 0.3, 0, BRASS, Math.PI / 2, 0, 14), cyl(0.085, 0.085, 0.045, 0, 0.3, 0.003, CREAM, Math.PI / 2, 0, 14), rod([0, 0.2, 0], [0, 0.26, 0], 0.02, DARK));
       if (id === 'charge') parts.push(...[0, 1, 2].map(i => cyl(0.05, 0.05, 0.3, -0.08 + i * 0.08, 0.32, 0, BRICK, 0, 0, 8, i)));
       for (const s of sockets) parts.push(cyl(0.035, 0.035, 0.05, s.p[0], s.p[1], s.p[2], BRASS, 0, Math.PI / 2, 8));
       return merge(parts);

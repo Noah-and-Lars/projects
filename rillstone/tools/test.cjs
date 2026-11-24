@@ -507,11 +507,12 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
         statuses.add(drill.status); statuses.add(sluice.status);
       }
       R.noRender(false);
-      return { washed: (sluice.washed || 0) - w0, drilled: (drill.made || 0) - d0, statuses: [...statuses], drillSat: drill.flow.satisfaction, speed: drill.speed, wear: [drill.wear, sluice.wear], awake: R.physics.stats.awake, items: R.items.counts() };
+      return { washed: (sluice.washed || 0) - w0, drilled: (drill.made || 0) - d0, statuses: [...statuses], drillSat: drill.flow.satisfaction, speed: drill.speed, pressure: +(drill.pressure || 0).toFixed(2), wear: [drill.wear, sluice.wear], awake: R.physics.stats.awake, items: R.items.counts() };
     }, [secs, throttle, setup, !!noWear]);
     const full = await runFor(600, 1);
     console.log('     10 min full flow: ' + JSON.stringify(full));
-    check(full.washed >= 105 && !full.statuses.includes('output blocked') && !full.statuses.includes('broken'), `ran 10 minutes unattended: ${full.drilled} loads drilled, ${full.washed} washed`);
+    // (The intake's pipe from the river costs some pressure: about 85%, so ~10% slower than nominal.)
+    check(full.washed >= 95 && !full.statuses.includes('output blocked') && !full.statuses.includes('broken'), `ran 10 minutes unattended: ${full.drilled} loads drilled, ${full.washed} washed (drill at ${Math.round(full.pressure * 100)}% pressure)`);
     check(Math.abs(full.wear[0] - 0.2) < 0.02, `silt 6 wore the drill ${(full.wear[0] * 100).toFixed(0)}% in 10 minutes (2% a minute)`);
     // Throughput with and without half the intake, wear held at zero so only flow differs.
     const ref = await runFor(300, 1, true);
@@ -558,6 +559,112 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
       return { loc: R.items.get(n.id).loc, left: keep.lanes.reduce((a, q) => a + q.length, 0) };
     });
     check(belt.loc === 'loose' && belt.left === 0, `a removed belt drops its riders (${belt.loc}) and keeps no lane entries (${belt.left})`);
+  }
+
+  if (all || flags.has('--machines') || flags.has('--more')) {
+    // More machines: pipe pressure, the Sorting Hopper, Gem Press, Belt Saw,
+    // Funnel, Disposal Chute, Mender, new logic parts, Magnet and Magnet Rod.
+    const mo = await p.evaluate(async () => {
+      const R = __rill, Mc = R.machines, I = R.items, H = R.hands, A = R.hands.auto, T = R.places.TOWN; R.noRender(true);
+      for (const id of [...Mc.list.keys()]) Mc.remove(id);
+      const X = T.x + 30, Z = T.z + 40, Y = T.y, out = {}, made = [];
+      const at = (dx, dz) => [X + dx, R.height(X + dx, Z + dz), Z + dz];
+      const tank = (dx, dz) => Mc.place('headtank', at(dx, dz), 0, { level: 2000 }, { locked: true });
+      const tanks = [];
+      const run = async (secs, phys = true) => { for (let t = 0; t < secs * 20; t++) { for (const k of tanks) k.state.level = 2000; Mc.tick(0.05); if (phys && t % 10 === 0) { await R.physics.step(6); I.update(); } } };
+      const newEnts = (f) => [...I.ents.values()].filter(e => !made.includes(e.id) && f(e));
+      const seen = new Set(I.ents.keys()); const fresh = (f) => [...I.ents.values()].filter(e => !seen.has(e.id) && f(e));
+      // Pressure: a short run versus a long one from the same kind of tank.
+      const t1 = tank(0, 0), t2 = tank(0, -60); tanks.push(t1, t2);
+      const sNear = Mc.place('sorthopper', at(3, 0), 0, {}, { locked: true }), sFar = Mc.place('sorthopper', at(3, -32), 0, {}, { locked: true });
+      Mc.layRun('copper', { m: t1.id, s: 0 }, { m: sNear.id, s: 0 }); Mc.layRun('copper', { m: t2.id, s: 0 }, { m: sFar.id, s: 0 });
+      await run(1, false);
+      out.pressure = { near: +sNear.pressure.toFixed(2), far: +sFar.pressure.toFixed(2), farSpeed: +sFar.speed.toFixed(2) };
+      // Sorting Hopper: 3 gold, 2 iron and a garnet; gold is the sample.
+      sNear.state.filter = { material: 'gold', stage: 'any' };
+      for (const it of [['gold', 'ore', 0.4], ['iron', 'ore', 0.5], ['gold', 'ore', 0.3], ['garnet', 'uncut', 0.2], ['gold', 'ingot', 1], ['iron', 'ore', 0.6]]) Mc.accept(sNear, { item: { material: it[0], stage: it[1], kg: it[2] } }, 1);
+      await run(6);
+      // Which chute a find left by: the side one is +x, the front one +z.
+      const near = (e, which) => { const dx = e.pos[0] - sNear.pos[0], dz = e.pos[2] - sNear.pos[2]; return Math.hypot(dx, dz) < 3 && (which === 'side' ? dx > dz : dz > dx); }, side = 'side', front = 'front';
+      const sorted = fresh(e => e.item && e.loc === 'loose');
+      out.sorter = { sorted: sNear.sorted, matched: sNear.matched, goldSide: sorted.filter(e => e.item.material === 'gold' && near(e, side)).length, restFront: sorted.filter(e => e.item.material !== 'gold' && near(e, front)).length };
+      // Gem Press: four 0.3 kg cut peridots by hand.
+      const t3 = tank(8, 0); tanks.push(t3);
+      const press = Mc.place('gempress', at(11, 0), 0, {}, { locked: true }); Mc.layRun('copper', { m: t3.id, s: 0 }, { m: press.id, s: 0 });
+      for (let i = 0; i < 4; i++) { const g = I.spawn('nugget', [0, 0, 0], { item: { material: 'peridot', stage: 'cut', kg: 0.3 }, loc: 'held' }); H.hand = g.id; Mc.useOn(press.id, g, H); }
+      const refused = I.spawn('nugget', [0, 0, 0], { item: { material: 'garnet', stage: 'cut', kg: 0.3 }, loc: 'held' }); H.hand = refused.id; Mc.useOn(press.id, refused, H); out.pressRefusesMixed = !!I.get(refused.id); I.remove(refused.id); H.hand = null;
+      await run(12);
+      const big = fresh(e => e.item?.pressed)[0];
+      const q1 = R.economy.quote({ material: 'peridot', stage: 'cut', kg: 0.3 }, 'assay');
+      out.press = big ? { kg: big.item.kg, pressed: big.item.pressed, value: Math.round(R.economy.quote(big.item, 'assay')), four: Math.round(q1 * 4) } : null;
+      // Belt Saw: a 5 kg ingot rides a drive into the saw and comes out as 1 kg + 4 kg.
+      const t4 = tank(16, -2); tanks.push(t4);
+      const drive = Mc.place('belt_drive', at(18, 0), 0, {}, { locked: true }), saw = Mc.place('belt_saw', at(18, 1), 0, { cutKg: 1 }, { locked: true });
+      Mc.layRun('copper', { m: t4.id, s: 0 }, { m: drive.id, s: 2 });
+      await run(0.5, false);
+      Mc.accept(drive, { item: { material: 'iron', stage: 'ingot', kg: 5 } }, 0);
+      await run(8);
+      out.saw = { cuts: saw.cuts || 0, pieces: fresh(e => e.item?.stage === 'ingot' && e.item.material === 'iron' && e.loc === 'loose').map(e => e.item.kg).sort((a, b) => a - b) };
+      // Funnel into an ore bin; a nugget dropped into its mouth ends up in the bin.
+      const fun = Mc.place('funnel', at(24, 0), 0, {}, { locked: true }), bin = Mc.place('orebin', at(24, 0.9), 0, {}, { locked: true });
+      await run(0.2, false);
+      const fp = Mc._int.toWorld(fun, [0, 1.3, 0]); I.spawn('nugget', fp, { item: { material: 'silver', stage: 'ore', kg: 0.5 } });
+      await run(3);
+      out.funnel = { linked: Mc.linkOf(fun.id) === bin.id, inBin: bin.state.contents.length, passed: fun.passed || 0 };
+      // Disposal Chute (no cable: always on).
+      const sh = Mc.place('shredder', at(28, 0), 0, {}, { locked: true });
+      const doomed = I.spawn('nugget', Mc._int.toWorld(sh, [0, 1.0, 0]), { item: { material: 'iron', stage: 'ore', kg: 0.5 } });
+      await run(3);
+      out.shredder = { gone: !I.get(doomed.id), ground: sh.state.ground || 0 };
+      // Mender: a lever wired to it repairs a worn sluice next to it.
+      const worn = Mc.place('sluice1', at(32, 0), 0, {}, { locked: true }); worn.wear = 0.6;
+      const mend = Mc.place('mender', at(34, 0), 0, {}, { locked: true }), lever = Mc.place('lever', at(35.5, 0), 0, {}, { locked: true });
+      const wr = I.spawn('wrench', [0, 0, 0], { loc: 'held' }); H.hand = wr.id; Mc.useOn(mend.id, wr, H); H.hand = null;
+      Mc.layRun('cable', { m: lever.id, s: 0 }, { m: mend.id, s: 0 });
+      A.interact(lever); await run(0.5, false);
+      out.mender = { wear: +worn.wear.toFixed(2), charges: mend.state.charges, usedWrench: !I.get(wr.id) };
+      // Logic: 6 × 3 and 6 ÷ 3, a toggle flipped by a button, a pass gate,
+      // a pressure gauge, and a machine switch turning a sorting hopper off.
+      const d6 = Mc.place('dial', at(0, 8), 0, { value: 6 }), d3 = Mc.place('dial', at(1, 8), 0, { value: 3 });
+      const mul = Mc.place('mul', at(3, 8), 0), div = Mc.place('div', at(3, 10), 0), pass = Mc.place('pass', at(5, 8), 0);
+      for (const g of [mul, div]) { Mc.layRun('cable', { m: d6.id, s: 0 }, { m: g.id, s: 0 }); Mc.layRun('cable', { m: d3.id, s: 0 }, { m: g.id, s: 1 }); }
+      Mc.layRun('cable', { m: mul.id, s: 2 }, { m: pass.id, s: 0 });
+      const btn = Mc.place('button', at(7, 8), 0), tog = Mc.place('toggle', at(8, 8), 0); Mc.layRun('cable', { m: btn.id, s: 0 }, { m: tog.id, s: 0 });
+      const gauge = Mc.place('gauge', at(4, 1.5), 0);
+      const sw = Mc.place('switch', at(4, -1), 0), off = Mc.place('lever', at(5.5, -2.5), 0); Mc.layRun('cable', { m: off.id, s: 0 }, { m: sw.id, s: 0 });
+      await run(0.5, false);
+      const t0 = tog.sig; A.interact(btn); await run(1.5, false); const t1v = tog.sig; A.interact(btn); await run(1.5, false);
+      out.logic = { mul: mul.sig, div: div.sig, pass: pass.sig, toggle: [t0, t1v, tog.sig], gauge: gauge.sig, switchedOff: sNear.on === false, target: sw.target === sNear.id };
+      // Magnet: pulls a nugget 2 m away towards it.
+      const mag = Mc.place('magnet', at(40, 0), 0), ml = Mc.place('lever', at(38.5, 0), 0, { on: true }); Mc.layRun('cable', { m: ml.id, s: 0 }, { m: mag.id, s: 0 });
+      const n = I.spawn('nugget', at(42, 0).map((v, i) => v + (i === 1 ? 0.3 : 0)), { item: { material: 'gold', stage: 'ore', kg: 0.3 } });
+      const d0 = Math.hypot(n.pos[0] - mag.pos[0], n.pos[2] - mag.pos[2]);
+      for (let k = 0; k < 20; k++) { Mc.tick(0.1); await R.physics.step(6); I.update(); }
+      out.magnet = { from: +d0.toFixed(2), to: +Math.hypot(I.get(n.id).pos[0] - mag.pos[0], I.get(n.id).pos[2] - mag.pos[2]).toFixed(2) };
+      // Magnet Rod: a loose find 4 m in front of the player flies towards them.
+      const eye = H.eye(), rod = I.spawn('magrod', [0, 0, 0], { loc: 'held' }); const keep = H.hand; H.hand = rod.id;
+      const fp2 = [eye[0] + 4, R.height(eye[0] + 4, eye[2]) + 0.3, eye[2]]; const f2 = I.spawn('nugget', fp2, { item: { material: 'copper', stage: 'ore', kg: 0.3 } });
+      await R.physics.step(30); I.update();
+      const r0 = Math.hypot(I.get(f2.id).pos[0] - eye[0], I.get(f2.id).pos[2] - eye[2]);
+      H.use();
+      await R.physics.step(20); I.update();
+      out.rod = { from: +r0.toFixed(2), to: +Math.hypot(I.get(f2.id).pos[0] - eye[0], I.get(f2.id).pos[2] - eye[2]).toFixed(2) };
+      I.remove(rod.id); H.hand = keep;
+      for (const id of [...Mc.list.keys()]) Mc.remove(id);
+      R.noRender(false);
+      return out;
+    });
+    console.log('     more machines: ' + JSON.stringify(mo));
+    check(mo.pressure.near > 0.9 && mo.pressure.far < 0.8 && mo.pressure.far > 0.5 && mo.pressure.farSpeed < 1, `pipe pressure: ${Math.round(mo.pressure.near * 100)}% after a short run, ${Math.round(mo.pressure.far * 100)}% after 30 m of copper (machine at ${Math.round(mo.pressure.farSpeed * 100)}% speed)`);
+    check(mo.sorter.sorted === 6 && mo.sorter.matched === 3 && mo.sorter.goldSide === 3 && mo.sorter.restFront === 3, `sorting hopper: 3 gold out of the side chute, 3 others out of the front (${JSON.stringify(mo.sorter)})`);
+    check(mo.press && mo.press.pressed === 4 && Math.abs(mo.press.kg - 1.2) < 1e-6 && mo.press.value > mo.press.four && mo.pressRefusesMixed, `gem press: four 0.3 kg peridots became one ${mo.press?.kg} kg stone worth § ${mo.press?.value} (four loose: § ${mo.press?.four}); a garnet was refused`);
+    check(mo.saw.cuts === 1 && mo.saw.pieces.join(',') === '1,4', `belt saw cut a 5 kg ingot into ${mo.saw.pieces.join(' + ')} kg`);
+    check(mo.funnel.linked && mo.funnel.inBin === 1, `funnel: a nugget dropped in its mouth slid into the ore bin (${JSON.stringify(mo.funnel)})`);
+    check(mo.shredder.gone && mo.shredder.ground === 1, 'disposal chute destroyed a nugget dropped on it');
+    check(mo.mender.wear === 0.35 && mo.mender.charges === 2 && mo.mender.usedWrench, `mender: a wrench gave 3 charges; the lever fixed the sluice from 60% to ${mo.mender.wear * 100}% wear`);
+    check(mo.logic.mul === 18 && mo.logic.div === 2 && mo.logic.pass === 18 && mo.logic.toggle.join(',') === '0,1,0' && mo.logic.gauge >= 90 && mo.logic.switchedOff && mo.logic.target, `logic: 6×3=${mo.logic.mul}, 6÷3=${mo.logic.div}, pass ${mo.logic.pass}, toggle ${mo.logic.toggle.join('→')}, gauge ${mo.logic.gauge}%, machine switch turned the hopper off`);
+    check(mo.magnet.to < mo.magnet.from - 0.8, `magnet pulled a nugget from ${mo.magnet.from} m to ${mo.magnet.to} m`);
+    check(mo.rod.to < mo.rod.from - 1, `magnet rod pulled a find from ${mo.rod.from} m to ${mo.rod.to} m`);
   }
 
   if (all || flags.has('--belts')) {

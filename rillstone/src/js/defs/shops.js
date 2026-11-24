@@ -9,6 +9,8 @@ const LOGIC_DESC = {
   scale: 'Weighs items resting on the plate (kg).', counter: 'Counts items leaving the nearest belt.', wearsensor: 'Wear % of the nearest machine.', fillsensor: 'Fill of the nearest bin, tank or furnace.',
   valve: 'Closes the nearest intake or junction while 0.', beltgate: 'Stops the nearest belt while 0.', pourer: 'Pours the nearest kiln or smelter on a rising input.', lamp: 'Lights green/yellow/red/blue for 1/2/3/4.', siren: 'Wails while above 0.',
   charge: 'Blasts a 2 m hole on a rising input.', ejector: 'Pushes one item out of the nearest bin on a rising input.', display: 'Shows the number on its input.',
+  mul: 'A × B.', div: 'A ÷ B.', toggle: 'Flips between 0 and 1 each time its input rises.', pass: 'Passes its input on when it is 1 or more.',
+  gauge: 'Water pressure (%) at the nearest machine or junction.', switch: 'Turns the nearest machine on and off.', magnet: 'Pulls loose finds within 2.5 m while its input is above 0.',
 };
 export const SHOPS = {
   store: {
@@ -29,6 +31,7 @@ export const SHOPS = {
       { id: 'firewood', name: 'Firewood', price: 6, spawn: 'firewood', desc: 'A lit kiln chars a bundle into a sack of charcoal in 40 s.' },
       { id: 'lamp', name: "Prospector's Lamp", price: 400, spawn: 'lamp', desc: 'Worn: glows violet and ticks faster as you near an ore vein.' },
       { id: 'wrench', name: 'Wrench', price: 60, spawn: 'wrench', desc: 'Takes 10% wear off a machine per click.' },
+      { id: 'magrod', name: 'Magnet Rod', price: 400, spawn: 'magrod', desc: 'LMB pulls loose finds within 6 m towards you.' },
       { id: 'repairkit', name: 'Repair Kit', price: 150, spawn: 'repairkit', data: { uses: 5 }, desc: 'Fully repairs a machine. 5 uses.' },
     ],
   },
@@ -55,6 +58,10 @@ export const SHOPS = {
       { id: 'belt_sorter', name: 'Belt Sorter', price: 520, spawn: 'crate', data: { def: 'belt_sorter', family: 'extraction' }, desc: 'Chosen material and stage go straight on; the rest turn right.' },
       { id: 'belt_gemcutter', name: 'Gem Cutter Hook', price: 500, spawn: 'crate', data: { def: 'belt_gemcutter', family: 'extraction' }, desc: 'A belt piece that cuts uncut gems riding under it.' },
       { id: 'orebin', name: 'Ore Bin', price: 260, spawn: 'crate', data: { def: 'orebin', family: 'extraction' }, desc: 'Holds 400 kg. Fed from the top; RMB to take things out.' },
+      { id: 'funnel', name: 'Funnel', price: 150, spawn: 'crate', data: { def: 'funnel', family: 'extraction' }, desc: 'Drop finds or clods in the mouth: they slide out of the spout into the machine in front.' },
+      { id: 'sorthopper', name: 'Sorting Hopper', price: 450, spawn: 'crate', data: { def: 'sorthopper', family: 'extraction' }, desc: 'Pour finds in: those matching the sample on its tray drop out of the side, the rest out of the front. 5 L/s.' },
+      { id: 'belt_saw', name: 'Belt Saw', price: 900, spawn: 'crate', data: { def: 'belt_saw', family: 'extraction' }, desc: 'A belt piece that cuts ingots and gems riding under it to a set size (or to the number on its signal input).' },
+      { id: 'gempress', name: 'Gem Press', price: 2400, spawn: 'crate', data: { def: 'gempress', family: 'extraction' }, desc: 'Fuses cut gems of one kind into one bigger stone, worth more per kilo. 15 L/s.' },
       { id: 'chute', name: 'Chute', price: 90, spawn: 'crate', data: { def: 'chute', family: 'extraction' }, desc: 'A slick steel ramp: things dropped on the high end slide off the low end. No power needed.' },
       { id: 'cratebox', name: 'Storage Crate', price: 120, spawn: 'crate', data: { def: 'cratebox', family: 'extraction' }, desc: 'Holds 40 items.' },
       { id: 'waterwheel', name: 'Water Wheel', price: 700, spawn: 'crate', data: { def: 'waterwheel', family: 'water' }, desc: 'Sits in the river: 20 L/s plus shaft power for machines within 8 m.' },
@@ -68,7 +75,7 @@ export const SHOPS = {
     name: 'Foundry Yard', blurb: 'Heat machines and the workbench',
     items: [
       { id: 'kiln', name: 'Kiln', price: 1200, spawn: 'crate', data: { def: 'kiln', family: 'heat' }, desc: 'Melts 10 kg of one ore every 8 s. Burns quartz. Reheats ingots.' },
-      { id: 'workbench', name: 'Workbench', price: 120, spawn: 'crate', data: { def: 'workbench', family: 'heat' }, desc: 'Hot ingot (+ cut gem) into tool heads, rings, chains, chalices.' },
+      { id: 'workbench', name: 'Workbench', price: 120, spawn: 'crate', data: { def: 'workbench', family: 'heat' }, desc: 'Hot ingot (+ cut gem) into tool heads, rings, chains, pendants, chalices and blades.' },
       { id: 'crucible', name: 'Crucible & Campfire', price: 140, spawn: 'crate', data: { def: 'crucible', family: 'heat' }, desc: 'A small, slow, fuel-free furnace.' },
       { id: 'grinder', name: 'Grinding Wheel', price: 90, spawn: 'crate', data: { def: 'grinder', family: 'heat' }, desc: 'Cuts uncut gems.' },
       { id: 'sawbench', name: 'Saw Bench', price: 160, spawn: 'crate', data: { def: 'sawbench', family: 'heat' }, desc: 'Splits an ingot or gem by a weight you set (RMB for its panel).' },
@@ -79,6 +86,8 @@ export const SHOPS = {
     name: 'Signal House', blurb: 'Logic parts and signal cable',
     items: [
       { id: 'cable', name: 'Signal Cable · 10 m', price: 20, spawn: 'coil', data: { tier: 'cable', m: 10 }, desc: 'Join an output terminal (right) to an input (left).' },
+      { id: 'shredder', name: 'Disposal Chute', price: 900, spawn: 'crate', data: { def: 'shredder', family: 'logic' }, desc: 'Destroys whatever falls in or arrives by belt while its signal is above 0 (always, with no cable).' },
+      { id: 'mender', name: 'Mender', price: 1500, spawn: 'crate', data: { def: 'mender', family: 'logic' }, desc: 'Load it with wrenches or repair kits; each rising signal fixes the most worn machine within 4 m by 25%.' },
       ...Object.entries(LOGIC_PRICES).map(([id, price]) => ({ id, name: MACHINES2[id].name, price, spawn: 'crate', data: { def: id, family: 'logic' }, desc: LOGIC_DESC[id] })),
     ],
   },

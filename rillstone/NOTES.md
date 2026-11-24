@@ -1229,3 +1229,41 @@ so far:
     Excavator, builds a Mk IV sluice with no ingots, keeps Scrip and fuel
     full, and owns every claim, and that loading a normal save turns it off;
   - the unit tests cover `spend()` and claim ownership.
+
+### Machine rework (pressure, boosters, more machines)
+
+- **Why:** the player asked for the machines to match the genre's depth.
+  Every part is our own design and name; the build brief's banned list
+  still applies.
+- **Pressure** (`sim/flow.js`):
+  - A second number on each network. Sources start at `1 + 0.1 ×
+    boosters`; each pipe run loses `len × PIPE_LOSS[tier]` (copper 0.01/m,
+    steel 0.006, glimmer 0.0035).
+  - A header tank above 10% resets the line to 0 loss (a Dijkstra over pipe
+    loss from sources and giving tanks).
+  - `pressureFactor(p) = 0.55 + 0.45 × p` multiplies machine speed (drills,
+    sluices, furnaces, shaft consumers and belt drives).
+  - The loss is gentle enough that the starter line and the pacing tiers
+    barely change.
+- **Boosters:** they now stack: +20% intake flow each, up to four (was
+  +50% once). Each also adds 10% pressure.
+- **New machines** (`defs/machines4.js`, behaviour in `game/machines4.js`):
+  - Sorting Hopper, Gem Press, Funnel, Disposal Chute and Mender;
+  - the Belt Saw (in automation.js with the other belts);
+  - the Magnet Rod tool.
+  - The Funnel and Disposal Chute catch loose items resting in their mouth
+    at 5 Hz.
+  - The Sorting Hopper and Gem Press don't wear (`noWear`).
+- **New logic:** multiply, divide, toggle, pass gate, pressure gauge,
+  machine switch and magnet (`defs/machines2.js` LOGIC table, effects in
+  automation.js). Other modules can add effects through
+  `auto.logicEffects`.
+- **Workbench:** two more recipes, the pendant (×1.25, takes a gem) and
+  the blade (×1.35).
+- **Pipe pressure on the starter line:** the M4 test line's intake pipe
+  costs some pressure, so its 10-minute wash count dropped from 112 (the
+  M4 run) to 105; the check now wants 95 or more and prints the pressure.
+- **Tests:**
+  - `--more` (also run by `--machines`) checks each new part;
+  - the unit tests check pressure loss, the tank reset and stacking
+    boosters.

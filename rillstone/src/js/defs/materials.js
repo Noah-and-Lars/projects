@@ -37,7 +37,9 @@ export function medianKg(depth) {
 }
 
 // value = baseValue[material][stage] x kg x craftMultiplier; gems superlinear.
-export const CRAFT_MULT = { toolhead: 1.1, ring: 1.15, chain: 1.2, chalice: 1.3 };
+export const CRAFT_MULT = { toolhead: 1.1, ring: 1.15, chain: 1.2, pendant: 1.25, chalice: 1.3, blade: 1.35 };
+// Crafts that can have a cut gem set in.
+export const GEM_CRAFTS = ['ring', 'pendant', 'chalice'];
 export function itemValue(it) {
   const m = MATERIALS[it.material];
   if (!m) return 0;
@@ -51,7 +53,7 @@ export function itemValue(it) {
 export function itemName(it) {
   const m = MATERIALS[it.material];
   if (!m) return it.material;
-  if (it.stage === 'crafted') return `${m.name} ${({ toolhead: 'tool head', ring: 'ring', chain: 'chain', chalice: 'chalice' })[it.craft] || 'piece'}${it.gem ? ' with ' + MATERIALS[it.gem.material].name.toLowerCase() : ''}`;
+  if (it.stage === 'crafted') return `${m.name} ${({ toolhead: 'tool head', ring: 'ring', chain: 'chain', pendant: 'pendant', chalice: 'chalice', blade: 'blade' })[it.craft] || 'piece'}${it.gem ? ' with ' + MATERIALS[it.gem.material].name.toLowerCase() : ''}`;
   if (m.kind === 'gem') return `${it.stage === 'cut' ? 'Cut' : 'Uncut'} ${m.name.toLowerCase()}`;
   if (m.kind === 'fuel') return `${m.name} shard`;
   if (it.stage === 'ingot') return `${it.hotUntil ? 'Hot ' : ''}${m.name.toLowerCase().replace(/^./, c => c.toUpperCase())} ingot`;

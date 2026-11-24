@@ -6,11 +6,12 @@ import * as THREE from 'three';
 import { MACHINES, PIPE_TIERS, FAMILY, spinPart, needle } from '../defs/machines.js';
 import { MACHINES2 } from '../defs/machines2.js';
 import { MACHINES3 } from '../defs/machines3.js';
-Object.assign(MACHINES, MACHINES2, MACHINES3);
+import { MACHINES4 } from '../defs/machines4.js';
+Object.assign(MACHINES, MACHINES2, MACHINES3, MACHINES4);
 PIPE_TIERS.cable = { name: 'Signal', cap: 0, hex: 0x8a6ad8, r: 0.022, cable: true };
-import { solveFlow, speedFrom, wearRate } from '../sim/flow.js';
+import { solveFlow, speedFrom, wearRate, PIPE_LOSS, pressureFactor } from '../sim/flow.js';
 import { rollLoot } from '../sim/loot.js';
-import { MATERIALS, itemName } from '../defs/materials.js';
+import { MATERIALS, itemName, CRAFT_MULT, GEM_CRAFTS } from '../defs/materials.js';
 import { bandAtDepth, BEDROCK } from '../world/claims.js';
 import { riverSilt } from '../world/valley.js';
 import { EXTRA_MESH, EXTRA_BOX, EXTRA_CARD, EXTRA_MASS } from './items.js';
@@ -45,7 +46,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
   let dirty = true;              // graph needs rebuilding
   let graph = { edges: [], links: new Map() };
   let flowResult = new Map();
-  const api = { list, group, clock: 0 };
+  const api = { physics, list, group, clock: 0 };
 
   // ---- Building meshes and colliders ----
   const ghostMats = { ok: new THREE.MeshBasicMaterial({ color: 0x3dff7a, transparent: true, opacity: 0.38, depthWrite: false }), bad: new THREE.MeshBasicMaterial({ color: 0xff3df0, transparent: true, opacity: 0.38, depthWrite: false }) };
@@ -231,9 +232,9 @@ export function createMachines({ scene, physics, materials, items, claims, water
     if (dirty) rebuild();
     const nodes = [];
     for (const m of list.values()) {
-      if (m.run) { if (m.tier !== 'cable') nodes.push({ id: m.id, kind: 'pipe', cap: PIPE_TIERS[m.tier].cap }); continue; }
+      if (m.run) { if (m.tier !== 'cable') nodes.push({ id: m.id, kind: 'pipe', cap: PIPE_TIERS[m.tier].cap, len: m.len || 0, loss: PIPE_LOSS[m.tier] ?? 0.01 }); continue; }
       const def = MACHINES[m.def];
-      const n = { id: m.id, kind: def.drive ? 'consumer' : ['none', 'belt', 'logic', 'container', 'shaftuser'].includes(def.role) ? 'other' : def.role === 'tank' ? 'tank' : def.role };
+      const n = { id: m.id, kind: def.drive ? 'consumer' : ['none', 'belt', 'logic', 'container', 'shaftuser', 'funnel'].includes(def.role) ? 'other' : def.role === 'tank' ? 'tank' : def.role };
       if (def.drive) n.demand = def.demand, n.on = m.on;
       if (def.role === 'source') { m.valid = !requirement(m.def, m.pos, m.rot); n.flow = m.on && m.valid ? def.flow * (m.state.throttle ?? 1) : 0; n.silt = riverSilt(m.pos[2]); }
       if (def.role === 'consumer') { n.demand = def.demand; n.on = m.on && m.wear < 1 && m.status !== 'too hard' && m.status !== 'no claim' && m.status !== 'Ember Seam only'; }
@@ -248,11 +249,11 @@ export function createMachines({ scene, physics, materials, items, claims, water
     for (const m of list.values()) {
       if (m.run) continue;
       const def = MACHINES[m.def], r = flowResult.get(m.id) || {};
-      m.flow = r;
+      m.flow = r; m.pressure = r.pressure ?? 0;
       if (def.role === 'tank') m.state.level = m._node.tank.level;
       if (def.role === 'booster' && m._node.fuelled && (r.net?.demand > 0)) m.state.fuel = Math.max(0, m.state.fuel - def.fuelPerSec * dt);
       if (def.role === 'consumer' && !def.meltRate && !def.shaft) consumerTick(m, def, r, dt);
-      if (def.role === 'consumer' && (def.meltRate || def.shaft)) { m.speed = m.on ? speedFrom(r.satisfaction || 0) : 0; }
+      if (def.role === 'consumer' && (def.meltRate || def.shaft)) { m.speed = m.on ? speedFrom(r.satisfaction || 0) * pressureFactor(r.pressure) : 0; }
       if (def.meltRate) furnaceTick(m, def, dt);
     }
     for (const f of api.extraTick) f(dt);
@@ -260,11 +261,11 @@ export function createMachines({ scene, physics, materials, items, claims, water
   api.extraTick = [];
   function consumerTick(m, def, r, dt) {
     const sat = r.satisfaction || 0;
-    m.speed = m.on ? speedFrom(sat) * (1 - 0.6 * m.wear) : 0;
+    m.speed = m.on ? speedFrom(sat) * pressureFactor(r.pressure) * (1 - 0.6 * m.wear) : 0;
     if (!m.on || m.wear >= 1) { m.status = m.wear >= 1 ? 'broken' : 'off'; return; }
     // Silt wears drills and sluices: 1% a minute per point above 4.
     const silt = r.net?.silt ?? 0;
-    if (sat > 0) m.wear = Math.min(1, m.wear + wearRate(silt) * dt * (m.speed > 0 ? 1 : 0));
+    if (sat > 0 && !def.noWear) m.wear = Math.min(1, m.wear + wearRate(silt) * dt * (m.speed > 0 ? 1 : 0));
     if (m.wear > 0.6 && Math.random() < dt * 0.6 && fx) fx.burst(toWorld(m, [0, 1.0, 0]), 0xffd27a, 6, { speed: 2, size: 0.025, life: 0.3 });
     // A drill that can't dig at all says why (it's kept off the water network
     // for that, so "no water" would flicker with it every other tick).
@@ -482,7 +483,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
   function craft(held, H, k) {
     const gem = H.slot ? items.get(H.slot) : null, gemOk = gem && gem.item && gem.item.stage === 'cut', it = held.item;
     const out = { material: it.material, stage: 'crafted', craft: k, kg: it.kg };
-    if (gemOk && (k === 'ring' || k === 'chalice')) { out.gem = { ...gem.item }; items.remove(gem.id); H.slot = null; }
+    if (gemOk && GEM_CRAFTS.includes(k)) { out.gem = { ...gem.item }; items.remove(gem.id); H.slot = null; }
     items.remove(held.id); H.hand = null;
     const e = items.spawn('crafted', [0, 0, 0], { item: out, loc: 'held' }); H.hand = e.id;
     audio.play('rare'); hud.toast(`Made a ${itemName(out).toLowerCase()}`, 'gold');
@@ -503,9 +504,9 @@ export function createMachines({ scene, physics, materials, items, claims, water
     const gem = H.slot ? items.get(H.slot) : null;
     const gemOk = gem && gem.item && gem.item.stage === 'cut';
     const it = held.item;
-    const opts = [['toolhead', 'Tool head', '×1.1'], ['ring', 'Ring', '×1.15'], ['chain', 'Chain', '×1.2'], ['chalice', 'Chalice', '×1.3']];
-    const body = h('div', {}, h('p', { class: 'small' }, `${itemName(it)} · ${it.kg.toFixed(2)} kg. ${gemOk ? `Rings and chalices get the ${itemName(gem.item).toLowerCase()} from your swap slot set in.` : 'Hold a cut gem in your swap slot to set it into a ring or chalice.'}`),
-      ...opts.map(([k, name, mult]) => h('div', { class: 'entry' }, h('b', {}, name), h('button', { class: 'btn primary', onclick: () => onMake(k) }, 'Make'), h('span', { class: 'desc' }, `Value ${mult}${k === 'ring' || k === 'chalice' ? ' · can hold a gem' : ''}`))));
+    const opts = [['toolhead', 'Tool head'], ['ring', 'Ring'], ['chain', 'Chain'], ['pendant', 'Pendant'], ['chalice', 'Chalice'], ['blade', 'Blade']].map(([k, n]) => [k, n, `×${CRAFT_MULT[k]}`]);
+    const body = h('div', {}, h('p', { class: 'small' }, `${itemName(it)} · ${it.kg.toFixed(2)} kg. ${gemOk ? `Rings, pendants and chalices get the ${itemName(gem.item).toLowerCase()} from your swap slot set in.` : 'Hold a cut gem in your swap slot to set it into a ring, pendant or chalice.'}`),
+      ...opts.map(([k, name, mult]) => h('div', { class: 'entry' }, h('b', {}, name), h('button', { class: 'btn primary', onclick: () => onMake(k) }, 'Make'), h('span', { class: 'desc' }, `Value ${mult}${GEM_CRAFTS.includes(k) ? ' · can hold a gem' : ''}`))));
     panels.show('craft', 'Workbench', body);
   };
 
@@ -520,20 +521,21 @@ export function createMachines({ scene, physics, materials, items, claims, water
       if (def.role === 'consumer' && !def.shaft && !def.drive) {
         row('Status', m.status || 'idle');
         row('Water', `${(f.flow || 0).toFixed(0)} / ${def.demand} L/s · ${Math.round((f.satisfaction || 0) * 100)}%`);
+        row('Pressure', `${Math.round((m.pressure || 0) * 100)}%${(m.pressure || 0) < 0.6 ? ' · low: add a header tank or shorter pipe' : ''}`);
         row('Speed', `${Math.round((m.speed || 0) * 100)}% of nominal`);
-        if (!def.meltRate) row('Wear', `${Math.round(m.wear * 100)}% · silt ${net.silt ?? 0}`);
+        if (!def.meltRate && !def.noWear) row('Wear', `${Math.round(m.wear * 100)}% · silt ${net.silt ?? 0}`);
         if (m.def.startsWith('drill')) row('Tip', m.band ? `band ${m.band} · ${m.depth.toFixed(1)} m down` : '—');
         if (def.hopper) row('Hopper', `${m.state.loads.length} / ${def.hopper} loads`);
       }
       if (def.role === 'source') { row('Status', m.valid ? `drawing ${(def.flow * m.state.throttle).toFixed(0)} L/s` : 'mouth not in the river'); }
       if (def.role === 'tank') row('Level', `${Math.round(m.state.level)} / ${def.tankCap} L`);
-      if (def.role === 'booster') row('Fuel', `${m.state.fuel.toFixed(2)} kg quartz (1 kg a minute)`);
+      if (def.role === 'booster') { row('Fuel', `${m.state.fuel.toFixed(2)} kg quartz (1 kg a minute)`); row('Boosters on this network', `${net.boosters ?? 0} of 4 working · +${(net.boosters ?? 0) * 20}% flow, +${(net.boosters ?? 0) * 10}% pressure`); }
       if (m.state.wood) row('Firewood', `${m.state.wood} bundle${m.state.wood > 1 ? 's' : ''} charring · ${Math.floor(40 - (m.state.charT || 0))} s to the next sack`);
       if (def.meltRate) { row('Contents', m.state.material ? `${MATERIALS[m.state.material].name} · ${m.state.ore.toFixed(1)} kg ore, ${m.state.molten.toFixed(1)} kg molten` : 'empty'); if (def.fuelPerSec) row('Fuel', `${m.state.fuel.toFixed(2)} kg quartz`); if (m.state.reheat.length) row('Reheating', `${m.state.reheat.length} ingot(s)`); }
       if (net.demand !== undefined && def.role !== 'none' && def.role !== 'logic' && def.role !== 'belt' || def.drive) row('Network', `${net.supply.toFixed(0)} L/s supply · ${net.demand.toFixed(0)} L/s demand`);
       const controls = h('div', { class: 'col' });
       api.panelRows?.(m, row, controls, render);
-      if (!['none', 'pipe', 'logic', 'container'].includes(def.role) && !(def.role === 'belt' && !def.drive)) controls.append(h('button', { class: 'btn', onclick: () => { m.on = !m.on; render(); } }, m.on ? 'Switch off' : 'Switch on'));
+      if (!['none', 'pipe', 'logic', 'container', 'funnel'].includes(def.role) && !(def.role === 'belt' && !def.drive)) controls.append(h('button', { class: 'btn', onclick: () => { m.on = !m.on; render(); } }, m.on ? 'Switch off' : 'Switch on'));
       if (def.role === 'source') controls.append(h('div', { class: 'entry' }, h('b', {}, 'Intake valve'), h('span', {}, ...[0.25, 0.5, 0.75, 1].map(v => h('button', { class: 'btn' + (m.state.throttle === v ? ' primary' : ''), style: { marginLeft: '4px', padding: '6px 10px' }, onclick: () => { m.state.throttle = v; render(); } }, `${v * 100}%`)))));
       if (def.meltRate) controls.append(h('button', { class: 'btn primary', disabled: m.state.molten < 0.05, onclick: () => { api.pour(m.id); render(); } }, `Pour (${m.state.molten.toFixed(1)} kg)`));
       if (m.def === 'sawbench') controls.append(h('div', { class: 'entry' }, h('b', {}, 'Cut'), h('span', {}, ...[0.25, 0.5, 1, 2, 5, 10].map(v => h('button', { class: 'btn' + ((m.state.cutKg || 1) === v ? ' primary' : ''), style: { marginLeft: '4px' }, onclick: () => { m.state.cutKg = v; render(); } }, `${v} kg`)))));
@@ -670,7 +672,7 @@ export function createMachines({ scene, physics, materials, items, claims, water
     if (m.run) return { name: `${PIPE_TIERS[m.tier].name} pipe run`, lines: [`${m.len.toFixed(1)} m · ${PIPE_TIERS[m.tier].cap} L/s`] };
     const def = MACHINES[m.def], f = m.flow || {};
     const lines = [];
-    if (def.role === 'consumer') { lines.push(`${def.meltRate ? '' : (m.status || 'idle') + ' · '}${Math.round((f.satisfaction || 0) * 100)}% water`); if (!def.meltRate && !def.shaft && !def.drive) lines.push(`wear ${Math.round(m.wear * 100)}%${def.hopper ? ` · hopper ${m.state.loads.length}/${def.hopper}` : ''}`); }
+    if (def.role === 'consumer') { lines.push(`${def.meltRate ? '' : (m.status || 'idle') + ' · '}${Math.round((f.satisfaction || 0) * 100)}% water`); if (!def.meltRate && !def.shaft && !def.drive && !def.noWear) lines.push(`wear ${Math.round(m.wear * 100)}%${def.hopper ? ` · hopper ${m.state.loads.length}/${def.hopper}` : ''}`); }
     if (def.role === 'source') lines.push(m.valid ? `${(def.flow * m.state.throttle).toFixed(0)} L/s` : 'needs to sit in the river');
     if (def.role === 'tank') lines.push(`${Math.round(m.state.level)} / ${def.tankCap} L`);
     if (def.role === 'booster') lines.push(`fuel ${m.state.fuel.toFixed(1)} kg quartz`);

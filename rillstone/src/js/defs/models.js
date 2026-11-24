@@ -275,6 +275,8 @@ export function ingot(form = 'trap') {
 export function crafted(kind) {
   if (kind === 'ring') return merge([P(new THREE.TorusGeometry(0.32, 0.1, 8, 20), 0xffffff, 0.02)]);
   if (kind === 'chain') return merge([0, 1, 2, 3].map(i => P(place(new THREE.TorusGeometry(0.16, 0.05, 6, 12), 0, 0, -0.36 + i * 0.24, 0, i % 2 ? Math.PI / 2 : 0, 0), 0xffffff, 0.02, i)));
+  if (kind === 'pendant') return merge([P(place(new THREE.CylinderGeometry(0.26, 0.26, 0.07, 16), 0, 0, 0, Math.PI / 2, 0, 0), 0xffffff, 0.02), P(place(new THREE.TorusGeometry(0.08, 0.025, 6, 12), 0, 0.32, 0), 0xffffff, 0.02, 2)]);
+  if (kind === 'blade') return merge([P(place(new THREE.BoxGeometry(0.12, 0.04, 0.85), 0, 0, 0.12), 0xffffff, 0.02), P(place(new THREE.ConeGeometry(0.06, 0.18, 4), 0, 0, 0.62, Math.PI / 2, 0, 0), 0xffffff, 0.02, 2), P(place(new THREE.BoxGeometry(0.34, 0.06, 0.06), 0, 0, -0.32), 0xffffff, 0.02, 3), P(place(new THREE.CylinderGeometry(0.04, 0.04, 0.26, 8), 0, 0, -0.5, Math.PI / 2, 0, 0), 0xffffff, 0.02, 4)]);
   if (kind === 'chalice') return merge([P(new THREE.LatheGeometry([[0, -0.4], [0.24, -0.4], [0.24, -0.35], [0.05, -0.3], [0.05, 0.05], [0.28, 0.2], [0.32, 0.45], [0.29, 0.45], [0.25, 0.22], [0, 0.12]].map(([x, y]) => new THREE.Vector2(x, y)), 12), 0xffffff, 0.02)]);
   return merge([P(place(new THREE.BoxGeometry(0.6, 0.18, 0.3), 0, 0, 0), 0xffffff, 0.02), P(place(new THREE.ConeGeometry(0.15, 0.3, 4), 0.42, 0, 0, 0, 0, -Math.PI / 2), 0xffffff, 0.02)]); // tool head
 }

@@ -72,7 +72,7 @@ export function createGuide({ hud, panels, economy, hands, items, machines, vehi
       else if (ref.type === 'shovel') desc.push('Your starter shovel: 1 load of topsoil or clay. Better shovels are at the General Store.');
       const m = ref.material && MATERIALS[ref.material];
       if (m) {
-        if (m.kind === 'gem') desc.push(ref.stage === 'uncut' ? 'Sell gems at the Assay Office, or cut them first on a grinding wheel (or at the Upper Falls cutter) to roughly double their price.' : 'Cut gems sell at the Assay Office, or set one in a ring or chalice at a workbench.');
+        if (m.kind === 'gem') desc.push(ref.stage === 'uncut' ? 'Sell gems at the Assay Office, or cut them first on a grinding wheel (or at the Upper Falls cutter) to roughly double their price.' : 'Cut gems sell at the Assay Office, or set one in a ring, pendant or chalice at a workbench.');
         else if (m.kind === 'fuel') desc.push('Quartz is fuel: kilns, smelters and booster pumps burn it.');
         else if (ref.stage === 'ore') desc.push('Sell it at the Assay Office, or melt 10 kg of one metal in a crucible or kiln into an ingot worth more.');
         else desc.push('Refined metal sells for more at the Assay Office. A hot ingot can be worked at a workbench.');

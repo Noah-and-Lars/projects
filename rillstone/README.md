@@ -223,6 +223,14 @@ crates.
 - **Flow.** Each network shares its flow: machines run at
   `0.2 + 0.8 × min(1, supply / demand)` of full speed, so too little water
   slows them rather than stopping them.
+- **Pressure.** Water leaves an intake at 100% pressure, and every metre of
+  pipe loses some of it: copper 1% a metre, steel 0.6%, glimmer 0.35%. A
+  **Header Tank** that is more than 10% full puts the line back to full
+  pressure, so long lines want a tank every 30 m or so. Low pressure slows
+  machines down to 55% of their speed (it never stops them). The machine
+  panel shows the pressure, and a **Pressure Gauge** reads it as a signal.
+- **Boosters.** Each fuelled **Booster Pump** on a network adds 20% of its
+  intake flow and 10% pressure, up to four.
 - **Silt.** River silt wears drills and sluices. Settling tanks clean the
   water, and the Wrench and Repair Kit fix wear.
 - **A first line.** Put a **Drill** in your claim with its spout over a
@@ -230,9 +238,20 @@ crates.
   spilling finds out of the sluice's end.
 - **Heat.** The **Kiln** (quartz fuel) or the **Crucible** melts one ore at
   a time; pour it from the panel to get a hot ingot. The **Workbench** turns
-  a hot ingot into a tool head, ring, chain or chalice; hold a cut gem in
-  your swap slot to set it into a ring or chalice. The **Grinding Wheel**
+  a hot ingot into a tool head, ring, chain, pendant, chalice or blade;
+  hold a cut gem in your swap slot to set it into a ring, pendant or
+  chalice. The **Grinding Wheel**
   cuts gems (3 clicks).
+- **Sorting Hopper** (5 L/s). Pour finds in the top, by hand or from a
+  belt. Those matching the sample set on its panel (a material, and a form
+  or any form) drop out of the side chute; the rest go out of the front.
+- **Gem Press** (15 L/s). Feed it cut gems of one kind. Two seconds after
+  the last one arrives it fuses them into one bigger stone, and bigger gems
+  are worth more per kilo (four 0.3 kg peridots: § 28 loose, § 35 pressed).
+- **Funnel.** Drop finds or clods into its mouth, or feed it from a belt:
+  they slide out of the spout into the machine in front, or onto the ground.
+- **Magnet Rod** (General Store). LMB pulls loose finds within 6 m towards
+  you.
 
 ## Belts and logic
 
@@ -242,6 +261,9 @@ crates.
   - **Routing:** **Sorters** pick one material and stage (RMB to choose),
     **Splitters** alternate, and **Mergers** join lines.
   - **Gems:** the **Gem Cutter Hook** cuts gems riding past.
+  - **Cutting to size:** the **Belt Saw** cuts ingots and gems riding under
+    it to the size on its panel, or to the number on its signal terminal.
+    The offcut follows behind.
   - **Jams:** belts back up when the next machine is full; nothing is ever
     deleted.
 - **Ore Bins** and **Storage Crates** collect items. RMB lists what's in
@@ -254,10 +276,18 @@ crates.
 - **Logic parts** (Signal House) hold numbers on signal cable, laid like
   pipe from an output (right) to an input (left).
   - **Inputs:** buttons and levers (E), dials, clocks.
-  - **Gates:** AND/OR/NOT, compare, add/subtract, latch, pulse, delay.
-  - **Sensors:** scale plate, counter, wear, fill.
-  - **Outputs:** valve, belt gate, pour trigger, lamp, siren, charge,
-    ejector, display.
+  - **Gates:** AND/OR/NOT, compare, add/subtract/multiply/divide, latch,
+    toggle, pass gate, pulse, delay.
+  - **Sensors:** scale plate, counter, wear, fill, pressure gauge.
+  - **Outputs:** valve, belt gate, pour trigger, machine switch (turns the
+    nearest machine on and off), lamp, siren, charge, ejector, display,
+    magnet (pulls loose finds within 2.5 m).
+  - **Machines on signal:** the **Disposal Chute** destroys whatever falls
+    in or arrives by belt while its signal is above 0 (always, with no
+    cable). The **Mender** holds repair charges (a wrench gives 3, a repair
+    kit up to 20); each rising signal fixes the most worn machine within
+    4 m by 25%. A wear sensor, a compare gate and a Mender keep a line
+    running on its own.
   - **Range:** sensors and outputs act on the nearest machine within 2.6 m.
 
 ## Claims, progression and the Pumphouse
