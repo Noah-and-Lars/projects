@@ -1,9 +1,15 @@
-import { allComponents } from '../src/sim/connectivity';
-import { MAT } from '../src/sim/materials';
-import { makeBuilding } from '../src/sim/levels/kit';
-const specs: any[] = [
-  { w: 80, d: 60, floors: 2, wall: MAT.brick, lining: MAT.plaster, roof: 'gable', partitions: true, lamps: true },
-  { w: 120, d: 90, floors: 3, wall: MAT.concrete, slab: MAT.concrete, roof: 'flat', frame: MAT.concrete, doors: 'ns', doorW: 28, doorH: 26 },
-  { w: 60, d: 50, floors: 1, wall: MAT.wood, roof: 'gable', roofMat: MAT.wood, wallT: 1, doors: 'e' },
-];
-for (const s of specs) { const g = makeBuilding(s); const c = allComponents(g).sort((a, b) => b.indices.length - a.indices.length); console.log(g.sx, g.sy, g.sz, g.count, c.slice(0, 6).map((k) => `${k.indices.length}@[${k.min}]-[${k.max}]pal${g.data[k.indices[0]] >> 3}`).join('  ')); }
+import { Sim, initPhysics } from '../src/sim/sim';
+import { harbor } from '../src/sim/levels/harbor';
+await initPhysics();
+const sim = new Sim(1);
+const t = performance.now();
+const info = harbor.build(sim);
+console.log('build ms', (performance.now() - t).toFixed(0), 'bodies', sim.bodies.size, 'rss', (process.memoryUsage().rss / 1e6).toFixed(0));
+let vox = 0, dyn = 0; for (const b of sim.bodies.values()) { vox += b.grid.count; if (b.dynamic) dyn++; }
+console.log('voxels', vox, 'dynamic', dyn, 'spawn', info.spawn);
+let mx = 0, tot = 0;
+for (let i = 0; i < 300; i++) { const s = performance.now(); sim.step(); const d = performance.now() - s; mx = Math.max(mx, d); tot += d; }
+console.log('300 steps avg', (tot / 300).toFixed(2), 'max', mx.toFixed(1));
+let awake = 0, split = 0; for (const b of sim.bodies.values()) { if (b.dynamic && !b.rb.isSleeping()) awake++; if (b.kind === 'debris') split++; }
+console.log('awake', awake, 'debris bodies (should be 0)', split);
+for (const b of sim.bodies.values()) if (b.kind === 'debris') console.log('  debris from', b.user.fromBody, [...sim.bodies.values()].find((x) => x.id === b.user.fromBody)?.name, b.grid.count);
