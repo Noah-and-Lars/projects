@@ -14,8 +14,8 @@ export class WaterSurface {
         THREE.UniformsLib.fog,
         {
           uTime: { value: 0 },
-          uDeep: { value: new THREE.Color(0x0b2a3c) },
-          uShallow: { value: new THREE.Color(0x2c6f7f) },
+          uDeep: { value: new THREE.Color(0x0a3a4c) },
+          uShallow: { value: new THREE.Color(0x1f7a8a) },
           uSky: { value: new THREE.Color(0xa9cbe8) },
           uSunDir: { value: new THREE.Vector3(0.4, 0.6, 0.4) },
           uSunCol: { value: new THREE.Color(0xfff0d0) },
@@ -53,10 +53,11 @@ export class WaterSurface {
           vec3 V = normalize(cameraPosition - vWorld);
           float fres = pow(1.0 - max(dot(V, nrm), 0.0), 4.0);
           vec3 base = mix(uDeep, uShallow, smoothstep(0.35, 0.75, w0));
-          vec3 col = mix(base, uSky, clamp(0.12 + fres * 0.85, 0.0, 1.0));
+          float skyL = dot(uSky, vec3(0.3, 0.5, 0.2));
+          vec3 col = mix(base * (0.35 + 0.9 * skyL), uSky, clamp(0.03 + fres * 0.6, 0.0, 0.55));
           vec3 H = normalize(V + normalize(uSunDir));
-          col += uSunCol * pow(max(dot(nrm, H), 0.0), 220.0) * 1.6;
-          gl_FragColor = vec4(col, mix(0.78, 0.96, fres));
+          col += uSunCol * pow(max(dot(nrm, H), 0.0), 220.0) * 2.5;
+          gl_FragColor = vec4(col, mix(0.86, 0.97, fres));
           #include <tonemapping_fragment>
           #include <colorspace_fragment>
           #include <fog_fragment>
