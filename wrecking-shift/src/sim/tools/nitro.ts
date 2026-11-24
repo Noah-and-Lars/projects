@@ -43,7 +43,7 @@ export class Nitro extends Tool {
 
   override save(): any { return this.placed.filter((n) => !n.body.removed).map(saveSticky); }
   override load(ctx: ToolContext, data: any): void {
-    for (const d of data ?? []) { const s = loadSticky(ctx.sim, d, 3); if (s) this.placed.push({ ...s, v: { x: 0, y: 0, z: 0 } }); }
+    for (const d of data ?? []) { const s = loadSticky(ctx.sim, d, 3); if (s) { const lv = s.body.rb.linvel(); this.placed.push({ ...s, v: { x: lv.x, y: lv.y, z: lv.z } }); } }
   }
 
   override tick(ctx: ToolContext): void {

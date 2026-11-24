@@ -44,7 +44,7 @@ export class Bomb extends Tool {
   override save(): any { return this.live.filter((c) => !c.body.removed).map((c) => ({ s: saveSticky(c.stick), left: c.at - this.saveTick, size: c.size })); }
   override load(ctx: ToolContext, data: any): void {
     for (const d of data ?? []) {
-      const stick = loadSticky(ctx.sim, d.s, 2);
+      const stick = loadSticky(ctx.sim, d.s, 4);
       if (stick) this.live.push({ body: stick.body, at: ctx.sim.tick + Math.max(1, d.left), size: d.size, pos: stick.body.center(), stick });
     }
   }

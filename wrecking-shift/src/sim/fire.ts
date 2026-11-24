@@ -149,6 +149,12 @@ export class FireSystem implements FireApi, SimSystem {
       if (s !== undefined) this.kill(s);
     });
     sim.onSplit.push((parent, child, off) => this.handleSplit(parent, child, off));
+    // a removed body's rigid body is freed: its fires must die before anyone queries their position
+    sim.onBodyRemoved.push((b) => {
+      if (this.n === 0) return;
+      for (let s = 0; s < this.hw; s++) if (this.alive[s] && this.sb[s] === b) this.kill(s);
+      this.tf.delete(b.id);
+    });
     sim.onExplosion.push((pos, size) => {
       this.igniteNear(pos, size * 1.3, Math.ceil(2 + size * 3));
     });
@@ -752,6 +758,7 @@ export class FireSystem implements FireApi, SimSystem {
   /** refresh the cached world centre of a slot if its body moved this tick */
   private refreshPos(s: number): void {
     const b = this.sb[s]!;
+    if (b.removed) return;
     if (!b.dynamic) return; // static bodies never move (cache computed at ignition)
     const a = this.xf(b);
     this.rotate(a, (this.sx[s] + 0.5) * VOXEL, (this.sy[s] + 0.5) * VOXEL, (this.sz[s] + 0.5) * VOXEL, false);

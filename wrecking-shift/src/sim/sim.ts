@@ -130,6 +130,10 @@ export class Sim {
   /** voxel removal listeners (fire, missions, ...) */
   onRemoved: ((body: VoxelBody, x: number, y: number, z: number, pal: number) => void)[] = [];
   onBodyAdded: ((body: VoxelBody) => void)[] = [];
+  /** called just before a body's rigid body is destroyed (drop references to it) */
+  onBodyRemoved: ((body: VoxelBody) => void)[] = [];
+  /** impact events of the most recent physics step (systems read these on the next tick; `out` may already be drained) */
+  lastImpacts: { pos: V3; force: number; a: VoxelBody | null; b: VoxelBody | null }[] = [];
   /** an island was split off: voxel (x,y,z) of `child` was voxel (x+off[0], y+off[1], z+off[2]) of `parent` */
   onSplit: ((parent: VoxelBody, child: VoxelBody, off: [number, number, number]) => void)[] = [];
   /** explosion listeners (fire ignition, player damage, AI hearing ...) */
@@ -218,6 +222,7 @@ export class Sim {
 
   removeBody(body: VoxelBody): void {
     if (body.removed) return;
+    for (const f of this.onBodyRemoved) f(body);
     body.removed = true;
     this.byCollider.delete(body.col.handle);
     this.world.removeRigidBody(body.rb);
@@ -584,7 +589,7 @@ export class Sim {
       const v = vadd(lin, vcross(ang, vsub(cc, pcom)));
       const nb = this.addBody(child, wpos, {
         dynamic: true,
-        kind: parent.kind === 'vehicle' ? 'debris' : parent.kind === 'world' ? 'debris' : parent.kind,
+        kind: 'debris',
         rot: parent.rb.rotation(),
         linvel: v,
         angvel: ang,
@@ -705,6 +710,7 @@ export class Sim {
     this.flushChain();
     this.processEdits();
     this.world.step(this.events);
+    this.lastImpacts.length = 0;
     let impacts: { pos: V3; J: number; dv: number }[] | null = null;
     this.events.drainContactForceEvents((ev) => {
       const a = this.byCollider.get(ev.collider1()) ?? null;
@@ -730,6 +736,7 @@ export class Sim {
         }
       }
       this.out.push({ type: 'impact', pos, force: f, a, b });
+      this.lastImpacts.push({ pos, force: f, a, b });
     });
     if (impacts) this.applyImpacts(impacts);
     this.events.drainCollisionEvents(() => {});

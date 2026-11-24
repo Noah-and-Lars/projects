@@ -108,7 +108,7 @@ export class DroneSystem implements SimSystem {
 
   private hear(pos: V3, size: number): void {
     for (const d of this.drones) {
-      if (d.state === 'dead') continue;
+      if (d.state === 'dead' || d.body.removed) continue;
       const dist = vdist(d.pos, pos);
       const stunR = 4 + size * 3;
       if (dist < stunR) this.setStunned(d, 4 * Math.min(1, 1.2 - dist / stunR));

@@ -161,7 +161,7 @@ export class Vehicle {
   private readonly queryGroups = groups(GROUP_VEHICLE, GROUP_ALL & ~GROUP_PLAYER);
 
   constructor(readonly sim: Sim, bp: VehicleBlueprint, body: VoxelBody) {
-    this.id = ++vehicleSerial;
+    this.id = body.id;
     this.spec = bp.spec;
     this.body = body;
     this.name = bp.name;
@@ -654,7 +654,7 @@ export class VehicleSystem implements SimSystem {
   /** blast wave damage: closer than ~2.5 x size to the chassis box hurts (on top of the carved voxels) */
   blast(pos: V3, size: number): void {
     for (const v of this.list) {
-      if (v.removed) continue;
+      if (v.removed || v.body.removed) continue;
       const l = v.body.toLocal(pos);
       const g = v.body.grid;
       const d = Math.hypot(Math.max(0, -l.x, l.x - g.sx), Math.max(0, -l.y, l.y - g.sy), Math.max(0, -l.z, l.z - g.sz)) * VOXEL;
@@ -677,14 +677,12 @@ export class VehicleSystem implements SimSystem {
 
   /** hard contacts of vehicles (from the core 'impact' events of the previous tick) -> vehicle:crash */
   private scanImpacts(sim: Sim): void {
-    if (sim.out !== this.outRef) { this.outRef = sim.out; this.outIdx = 0; }
-    const out = sim.out;
+    const out = sim.lastImpacts;
     const n = out.length;
-    for (let i = this.outIdx; i < n; i++) {
+    for (let i = 0; i < n; i++) {
       const e = out[i];
-      if (e.type !== 'impact') continue;
       const v = this.byBody(e.a) ?? this.byBody(e.b);
-      if (!v || v.removed) continue;
+      if (!v || v.removed || v.body.removed) continue;
       const force = clamp(e.force / (v.mass * 140), 0, 1);
       if (force < 0.08) continue;
       const last = this.lastImpactTick.get(v.id) ?? -999;
@@ -693,6 +691,5 @@ export class VehicleSystem implements SimSystem {
       sim.out.push({ type: 'custom', name: 'vehicle:crash', data: { name: v.name, pos: e.pos, force } });
       if (force > 0.5) v.addWear((force - 0.5) * 0.08);
     }
-    this.outIdx = sim.out.length;
   }
 }

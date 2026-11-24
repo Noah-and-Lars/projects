@@ -41,7 +41,7 @@ export async function shot(page, name) {
   fs.mkdirSync(outDir, { recursive: true });
   await page.evaluate(() => window.__game.render());
   const file = path.join(outDir, name + '.png');
-  await page.screenshot({ path: file });
+  await page.screenshot({ path: file, timeout: 180000 });
   return file;
 }
 

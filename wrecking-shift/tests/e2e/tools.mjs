@@ -123,6 +123,8 @@ export async function runToolTests(url, test) {
   });
 
   await test('tools: grab lifts a crate', async () => {
+    // loose chunks from the earlier hammer test would be grabbed instead of the crate: clear them
+    await ev(() => { const s = window.__game.sim; for (const b of [...s.bodies.values()]) if (b.user.chip) s.removeBody(b); });
     await ev(() => { window.__t.at(0.9, -2.0, [1.2, 0.3, -3.6]); window.__game.selectTool('pistol'); });
     const y0 = await ev(() => { const b = [...window.__game.sim.bodies.values()].find((b) => b.name === 'crate' && b.grid.count > 300 && b.rb.worldCom().y < 0.6); window.__t.grabbed = b; return b.rb.worldCom().y; });
     await ev(() => { window.__t.aim(...Object.values(window.__t.grabbed.center())); window.__game.buttons(4); window.__game.step(3); window.__game.player.pitch = 0.0; window.__game.step(40); });

@@ -149,6 +149,11 @@ export class MissionModule implements GameModule {
       this.def = def;
       this.applyLook(game);
       this.mission = new Mission(def, { sim: game.sim, level: game.level, player: game.player, fireCount: () => game.fire.count() });
+      // loot must survive the chaos: a destroyed required item would make the job unwinnable
+      for (const b of game.sim.bodies.values()) {
+        if (!b.dynamic) continue;
+        for (const t of b.tags) if (t.startsWith('target:') || t.startsWith('valuable:')) { b.indestructible = true; b.impactProof = true; b.noSplit = true; break; }
+      }
       game.infiniteAmmo = false;
       this.progress.applyToBelt(game.belt, this.baseAmmo, { mission: def });
     } else if (p?.sandbox) {
