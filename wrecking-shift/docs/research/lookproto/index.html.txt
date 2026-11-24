@@ -1,0 +1,4 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Voxel look prototype</title></head><body>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js"}}</script>
+<script type="module" src="./src/main.js"></script>
+</body></html>
