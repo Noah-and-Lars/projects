@@ -115,7 +115,9 @@ function mansion(sim: Sim, wx: number, wz: number, gy: number, m: Marks): void {
   shell(g, 4, 3, 4, 76, 34, 66, 5, concFn); // vault walls 0.5 m
   box(g, 9, 29, 9, 71, 34, 61, concFn);    // vault ceiling (+ the floor slab above)
   clear(g, 71, 3, 29, 76, 25, 41);          // vault doorway (east wall) ...
-  box(g, 72, 3, 29, 74, 25, 41, flat(MAT.steel, 1)); // ... closed by a steel slab
+  // ... closed by an old armoured door of riveted plate (painted metal: a blowtorch, shotgun or pipe bomb gets
+  // through it; with a steel slab the vault could only be opened with tools unlocked after this mission)
+  box(g, 72, 3, 29, 74, 25, 41, flat(MAT.paintedmetal, 1));
   box(g, 74, 12, 33, 75, 16, 37, pal(MAT.paintedmetal, 0)); // hand wheel
   for (const z0 of [12, 30, 48]) { // steel racks inside the vault
     box(g, 9, 3, z0, 13, 26, z0 + 10, flat(MAT.steel, 2));

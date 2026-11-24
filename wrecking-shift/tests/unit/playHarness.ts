@@ -259,6 +259,7 @@ export class Run {
         if (jumpCd > 0) jumpCd--;
         else if (sinceBest > 20 && p.grounded) { p.input.jump = true; jumpCd = 40; sinceBest = 0; }
         this.tick();
+        if (process.env.WALK_LOG && i % 15 === 0) this.log('walk', k, roundV(p.pos), 'hp', p.health.toFixed(2), p.grounded ? 'g' : 'air', 'vy', p.vel.y.toFixed(1));
       }
     }
     this.stop();
@@ -308,7 +309,14 @@ export class Run {
       p.pitch += (-0.35 - p.pitch) * 0.2;
       this.tick();
     }
-    this.walk(route, { pitch: -0.35, sprint: false, turnRate: 0.05, ...o });
+    const t0 = this.mission.tick;
+    let k = 0;
+    for (const wp of route) {
+      this.walk([wp], { pitch: -0.35, sprint: false, turnRate: 0.05, ...o, r: o.rMid ?? 0.7 });
+      if (process.env.PLAY_LOG) this.log(`carry wp${k++}`, roundV(this.player.pos), 'body', body.removed ? 'GONE' : roundV(body.center()), this.belt.grab.body === body ? 'held' : 'DROPPED', 'hp', this.player.health.toFixed(2), 'fires', this.fire.count(), this.fire.positions(3).map((q) => roundV(q)));
+      if (this.belt.grab.body !== body) break;
+    }
+    void t0;
     if (this.belt.grab.body !== body) throw new Error(`${this.def.id}: dropped ${body.name} on the way at ${JSON.stringify(roundV(this.player.pos))}, it is at ${body.removed ? 'removed' : JSON.stringify(roundV(body.center()))}`);
     if (throwAt) {
       this.aim(throwAt);

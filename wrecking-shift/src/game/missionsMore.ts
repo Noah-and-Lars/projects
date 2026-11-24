@@ -41,8 +41,8 @@ export const cellarDoor: MissionDef = {
   brief:
     'Lucian Vane bought Kestrel Ridge with money that was half mine. The half I can prove is in his cellar vault: ' +
     'a gold figure he calls "the retirement plan" and the server with the real books.\n\n' +
-    'The vault is half a metre of concrete with a steel door. A hammer will not do it. Whatever does it will be heard, ' +
-    'so open it LAST — everything in there is wired, and from the first tremor you have seventy-five seconds to be ' +
+    'The vault is half a metre of concrete behind an old armoured door of riveted plate. A hammer will not do it. Whatever does it will be heard, ' +
+    'so open it LAST — everything in there is wired, and from the first tremor you have fifty seconds to be ' +
     'back at the van by the lake.\n\n' +
     'It is a long way down from the house. Plan how you are getting off that hill before you light the fuse.',
   objectives: [
@@ -50,7 +50,7 @@ export const cellarDoor: MissionDef = {
     { kind: 'collect', id: 'books', title: 'Take the books server from the vault' },
     { kind: 'collect', id: 'deed', title: 'Take the deed box from the study', required: false },
   ],
-  alarmSeconds: 75,
+  alarmSeconds: 50,
   reward: { cash: 2000 },
   unlockAfter: ['lights-out'],
   setup(sim, lv) {
@@ -76,13 +76,13 @@ export const privateView: MissionDef = {
     'Mr Vane\'s glass gallery holds six pieces insured through my office for considerably more than they are worth. ' +
     'If they were to be stolen — professionally, tonight — everyone would be happier, me in particular.\n\n' +
     'The gallery is all glass, which is good news for a person with a hammer. Its pressure alarm is wired to the ' +
-    'centre plinth; once it trips you have a minute.\n\n' +
+    'centre plinth; once it trips, Ridge Security is thirty-five seconds up the lake road.\n\n' +
     'Bring at least four. All six and I will remember you fondly.',
   objectives: [
     { kind: 'collect', id: 'art', target: 'art', count: 4, title: 'Steal four pieces from the gallery' },
     { kind: 'collect', id: 'art6', target: 'art', count: 6, title: 'Steal all six', required: false },
   ],
-  alarmSeconds: 60,
+  alarmSeconds: 35,
   reward: { cash: 1500 },
   unlockAfter: ['paper-trail'],
   setup(sim, lv) {

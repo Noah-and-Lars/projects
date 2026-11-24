@@ -10,7 +10,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { initPhysics } from '../../src/sim/sim';
-import { Run, careerScore, v3 } from './playHarness';
+import { Run, careerScore, hdist, roundV, v3 } from './playHarness';
 
 beforeAll(async () => { await initPhysics(); });
 
@@ -23,6 +23,7 @@ afterAll(() => {
 
 function finish(r: Run, expectLeft: [number, number] | null = [8, 25]) {
   r.log(r.summary());
+  if (r.mission.phase !== 'success') console.log('NOT DONE: player', roundV(r.player.pos), 'seated', r.player.seated, 'escape', roundV(r.mission.escapePos()), 'escapeOpen', r.mission.escapeOpen, JSON.stringify(r.mission.objectives().map((o) => [o.id, o.done])));
   expect(r.mission.phase, r.mission.failReason || 'mission did not end').toBe('success');
   const res = r.mission.result!;
   results.push({ id: r.def.id, score: res.score, left: res.timeLeft, time: res.time, tools: [...r.used].join(','), career: r.score });
@@ -148,3 +149,68 @@ describe('Gullwick Harbour playthroughs', () => {
   }, T);
 });
 
+describe('Kestrel Ridge playthroughs', () => {
+  it('private-view: six pieces off the plinths (alarm on the first), out of the glass door, down the road to the van', () => {
+    const r = new Run('private-view');
+    const art = r.tagged('target:art').sort((a, b) => a.center().x - b.center().x);
+    // west to east; stand 1.2 m south (+z) of each piece, on the gallery floor
+    const floor = 6.95;
+    const order = [...art];
+    r.tp(v3(order[0].center().x, floor, order[0].center().z + 1.25));
+    for (const a of order) {
+      const c = a.center();
+      r.walk(v3(c.x, floor, c.z + 1.25), { r: 0.3 });
+      r.take(a);
+    }
+    expect(r.phase).toBe('alarm');
+    r.walk([v3(-35.3, floor, 2.5), v3(-35.3, floor, 5.0), v3(-24, 6.9, 5.5), v3(-12, 6.9, 8.5), v3(-9, 6.9, 9.6), v3(25, 1.3, 19.3), v3(40, 1.3, 22), r.mission.escapePos()], { r: 2.5 });
+    r.clockOut();
+    finish(r);
+  }, T);
+  it('cellar-door: blowtorch a hatch in the vault door while planning, crawl in, hatchback down the switchback to the van', () => {
+    const r = new Run('cellar-door');
+    const mansion = r.bodies((b) => b.name === 'mansion')[0];
+    // planning: the deed box in the study (unalarmed bonus)
+    const [deed] = r.tagged('target:deed');
+    r.tp(v3(deed.center().x - 1.2, 16.4, deed.center().z));
+    r.take(deed);
+    // planning: cut a 0.9 x 1.3 m hatch into the armoured vault door (crouched, 0.85 m from it)
+    r.select('blowtorch');
+    r.tp(v3(-11.9, 9.7, -39.5));
+    r.player.input.crouch = true; r.step(10);
+    const pts: [number, number][] = [];
+    for (let y = 9.65; y <= 10.95; y += 0.1) pts.push([-39.95, y]);
+    for (let z = -39.95; z <= -39.05; z += 0.1) pts.push([z, 10.95]);
+    for (let y = 10.95; y >= 9.65; y -= 0.1) pts.push([-39.05, y]);
+    for (let z = -39.05; z >= -39.95; z -= 0.1) pts.push([z, 9.7]);
+    r.lmb = true;
+    for (const [z, y] of pts) {
+      for (let k = 0; k < 40; k++) {
+        r.aim(v3(-12.75, y, z));
+        r.tick();
+        const h = r.sim.raycast(r.player.eye, r.player.forward, 1.6);
+        if (!h || h.body !== mansion || h.point.x < -12.85) break;
+      }
+    }
+    r.lmb = false; r.step(60);
+    expect(r.phase).toBe('planning');
+    // crawl in, take both (the idol is wired: alarm)
+    r.walk([v3(-14.4, 9.7, -39.5)], { crouch: true });
+    r.player.input.crouch = false; r.step(10);
+    const [books] = r.tagged('target:books'), [plan] = r.tagged('target:plan');
+    r.take(books, v3(-14.2, 9.7, -39.2));
+    r.take(plan, v3(-14.9, 9.7, -39.3));
+    expect(r.phase).toBe('alarm');
+    // out through the hatch, cellar, stairs, hall, front door
+    r.walk([v3(-14.2, 9.7, -39.5), v3(-11.3, 9.7, -39.5)], { crouch: true });
+    r.player.input.crouch = false;
+    r.walk([v3(-10.6, 9.7, -37.6), v3(-6.2, 9.7, -37.6), v3(-5.8, 9.7, -39.45), v3(-4.6, 9.7, -39.45), v3(-2, 9.7, -39.5), v3(0.25, 9.7, -39.5), v3(0.25, 13.1, -32.5), v3(-1, 13.1, -30.8), v3(-5.4, 13.1, -30.8), v3(-5.4, 13.1, -32.45), v3(-6.6, 13.1, -32.45), v3(-8.5, 13.1, -32.45), v3(-8.5, 13.1, -27), v3(-8.5, 13.1, -25), v3(8.3, 13.1, -22.5)], { rMid: 0.45 });
+    const car = r.vehicle('hatchback', r.player.pos);
+    r.enter(car);
+    const st = r.drive([v3(11, 13, -24.5), v3(17, 13, -25.5), v3(23, 13, -23.5), v3(24.5, 13, -20), v3(21.5, 13, -16.5), v3(14, 11.5, -13.6), v3(4, 10, -8.7),
+      v3(-12, 6.8, -3), v3(-17, 6.8, -1.5), v3(-19.5, 6.8, 1.5), v3(-19, 6.8, 5.5), v3(-15.5, 6.8, 9), v3(-10, 6.8, 9), v3(10, 4, 15), v3(25, 1.2, 19.2), v3(31, 1.2, 21), v3(40, 1.2, 22.4), v3(46.3, 1.2, 22.9)], { max: 60 * 60, r: 1.2 });
+    r.log('drive', st);
+    r.step(30);
+    finish(r);
+  }, T);
+});
