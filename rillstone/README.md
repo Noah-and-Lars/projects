@@ -48,7 +48,7 @@ in `tools/package.json`, or if the file grows past 8 MB.
 ## Controls
 
 Click the game to capture the mouse (Pointer Lock). Every key can be rebound
-in Settings → Keys; bindings and settings are saved in `localStorage`.
+in Settings → Controls; bindings and settings are saved in `localStorage`.
 
 Holding G is precision placement: R/T/Y turn the held item 45° per press
 (Ctrl turns it back), the scroll wheel sets how far away the drop ring can
@@ -198,8 +198,21 @@ they used to.
     Delete (which asks first).
   - **Backups:** with "Show backups" ticked, each slot's save-before-last
     appears and can be loaded.
-  - **Pause menu:** Resume, Save, Saves, Settings, Co-op, Return to claim
-    post, Save and quit to title, and Quit without saving (click twice).
+  - **Pause menu:** a sidebar of big buttons, each with its icon: Resume,
+    Save and quit to title, Save, Saves, Settings, Co-op, How to play, Photo
+    mode, Return to claim post, Call nearest vehicle, and Quit without
+    saving (click twice). The HUD steps back while it's open.
+    - **Photo mode** hides the menu and HUD for a clean screenshot; any key
+      or click brings the menu back.
+    - **Call nearest vehicle** parks your nearest vehicle that nobody is
+      driving 5 m in front of you.
+  - **Settings** opens beside the sidebar (from the title too).
+    - **Tabs:** Graphics (quality, field of view, head-bob), Controls (a key
+      table with a second key for each action), Audio and Gameplay
+      (sensitivity, invert, sprint toggle, captions, tidy up).
+    - **Saving changes:** changes wait until **Apply and save**.
+      **Restore defaults** resets the tab you're on, and Back with unsaved
+      changes asks once before throwing them away.
   - **Co-op page:**
     - set your name, host your world (from the title, host your newest
       save) or join with a 5-letter code;

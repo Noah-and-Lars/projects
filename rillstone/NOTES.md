@@ -1329,3 +1329,31 @@ so far:
   - water flows, and the brackets sit on the ground;
   - a save round-trip keeps the route;
   - undo takes back a mount, then cancels.
+
+### Pause menu and settings layout
+
+- **What was asked:** the player sent a screenshot of the menu layout they
+  wanted. We matched its structure:
+  - a sidebar of large buttons, each with an icon on the right;
+  - a settings card beside the sidebar, with a title tag and four tabs in a
+    2 × 2 grid;
+  - a key table (key, second key, action);
+  - Restore defaults and Apply and save.
+- **Look:** the art is our own (cream enamel, teal, brass rivets, our
+  icons), not the reference's look, per the brief's originality rule.
+- **Settings are drafted:** `openSettings` copies the settings; the controls
+  edit the copy; `apply()` writes it back, saves and calls
+  `onSettingsChanged`. `restore()` resets only the current tab's keys.
+  Closing with changes needs a second click (or `closeSettings(true)`).
+- **New pause items:** How to play (opens the guide), Photo mode, and Call
+  nearest vehicle (host only; teleports the nearest undriven, non-tram
+  vehicle 5 m ahead).
+- **HUD while paused:** `body.paused` hides the HUD while paused, except
+  toasts.
+- **Tests:**
+  - `--shots` rebinds through the Controls tab and checks the binding is a
+    draft until Apply and save;
+  - it checks that Restore defaults puts it back;
+  - it checks that every pause button has an icon, that Call nearest
+    vehicle parks the truck nearby, and that photo mode hides and restores
+    the menu.

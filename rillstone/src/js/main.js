@@ -246,17 +246,41 @@ async function boot() {
     // Pause menu (BUILD_BRIEF 6; laid out after the usual sandbox flow: save,
     // the saves page, settings, then the ways out).
     items: [
-      { label: 'Save', onclick: () => quickSave() },
-      { label: 'Saves', onclick: () => openSavesPage() },
-      { label: 'Settings', onclick: () => menu.openSettings() },
-      { label: 'Co-op', onclick: () => openCoop() },
-      { label: 'Return to claim post', onclick: () => { if (vehicles.driving) exitVehicle(); const s = spawnPoint(); teleport(s.x, height(s.x, s.z) + 1, s.z, s.yaw); play(); } },
-      { label: 'Save and quit to title', secondary: true, onclick: async () => { if (!coop.isGuest() && state.slot) await saveTo(state.slot, true); location.reload(); } },
-      { label: 'Quit without saving', secondary: true, danger: true, confirm: 'Click again to quit without saving', onclick: () => location.reload() },
+      { label: 'Save and quit to title', icon: 'exit', onclick: async () => { if (!coop.isGuest() && state.slot) await saveTo(state.slot, true); location.reload(); } },
+      { label: 'Save', icon: 'save', onclick: () => quickSave() },
+      { label: 'Saves', icon: 'saves', onclick: () => openSavesPage() },
+      { label: 'Settings', icon: 'settings', onclick: () => menu.openSettings() },
+      { label: 'Co-op', icon: 'coop', onclick: () => openCoop() },
+      { label: 'How to play', icon: 'help', onclick: () => { play(); guide.open(); } },
+      { label: 'Photo mode', icon: 'camera', onclick: () => photoMode() },
+      { label: 'Return to claim post', icon: 'post', onclick: () => { if (vehicles.driving) exitVehicle(); const s = spawnPoint(); teleport(s.x, height(s.x, s.z) + 1, s.z, s.yaw); play(); } },
+      { label: 'Call nearest vehicle', icon: 'truck', onclick: () => { if (callNearestVehicle()) play(); } },
+      { label: 'Quit without saving', icon: 'quit', secondary: true, danger: true, confirm: 'Click again to quit without saving', onclick: () => location.reload() },
     ],
     pauseInfo: () => [state.saveName || 'Unsaved claim', state.slot ? `slot ${state.slot}` : 'no slot', `day ${state.day}`, `played ${playTime(state.playTime)}`].join(' · '),
   });
   menuRef = menu;
+  // Photo mode: the menu and HUD hide so the view is clean for a screenshot;
+  // any key or click brings the menu back.
+  function photoMode() {
+    menu.showPause(false); hud.show(false); hands.setVisible(false); state.photo = true;
+    const done = (e) => { e.preventDefault?.(); removeEventListener('keydown', done, true); removeEventListener('mousedown', done, true); state.photo = false; hud.show(true); hands.setVisible(true); menu.showPause(true); };
+    setTimeout(() => { addEventListener('keydown', done, true); addEventListener('mousedown', done, true); }, 250);
+    hud.toast('Photo mode: press any key or click to come back');
+  }
+  // Bring the nearest vehicle nobody is driving to just in front of you.
+  function callNearestVehicle() {
+    if (coop.isGuest()) { hud.toast('In co-op the host calls vehicles (or use the Wagon Shed)', 'err'); return false; }
+    const p = player.cur; let best = null, bd = Infinity;
+    for (const v of vehicles.list.values()) {
+      if (v.def.kinematic || v.id === vehicles.driving || vehicles.remoteDrivers.has(v.id)) continue;
+      const q = v.group.position, d = Math.hypot(q.x - p.x, q.z - p.z); if (d < bd) { bd = d; best = v; }
+    }
+    if (!best) { hud.toast('You have no vehicle to call', 'err'); return false; }
+    const fx2 = -Math.sin(player.yaw), fz2 = -Math.cos(player.yaw), x = p.x + fx2 * 5, z = p.z + fz2 * 5;
+    vehicles.teleport(best.id, [x, machines.groundY(x, z, p.y) + 0.9, z], player.yaw + Math.PI / 2);
+    hud.toast(`Your ${best.def.name} is here`); return true;
+  }
   function play() {
     if (panels.open) panels.close();
     state.mode = 'play'; state.playing = true;
@@ -373,19 +397,19 @@ async function boot() {
   function refreshTitle() {
     // The plain menu at once; Continue and the slot count once the saves are read.
     menu.setTitleItems([
-      { label: 'New game', primary: true, onclick: () => openSavesPage('new') },
-      { label: 'Saves', onclick: () => openSavesPage() },
-      { label: 'Co-op', sub: 'Host or join a friend', onclick: () => openCoop() },
-      { label: 'Settings', onclick: () => menu.openSettings() },
+      { label: 'New game', icon: 'new', primary: true, onclick: () => openSavesPage('new') },
+      { label: 'Saves', icon: 'saves', onclick: () => openSavesPage() },
+      { label: 'Co-op', icon: 'coop', sub: 'Host or join a friend', onclick: () => openCoop() },
+      { label: 'Settings', icon: 'settings', onclick: () => menu.openSettings() },
     ]);
     return saves.list().then((list) => {
       const latest = list.filter(m => !m.empty).sort((a, b) => b.savedAt - a.savedAt)[0];
       const items2 = [];
-      if (latest) items2.push({ label: 'Continue', sub: `${latest.name || `Claim ${latest.slot}`} · day ${latest.day} · ${ago(latest.savedAt)}`, primary: true, onclick: () => loadSlot(latest.slot) });
-      items2.push({ label: 'New game', primary: !latest, onclick: () => openSavesPage('new') });
-      items2.push({ label: 'Saves', sub: `${list.filter(m => !m.empty).length} of ${list.length} slots used`, onclick: () => openSavesPage() });
-      items2.push({ label: 'Co-op', sub: 'Host or join a friend', onclick: () => openCoop() });
-      items2.push({ label: 'Settings', onclick: () => menu.openSettings() });
+      if (latest) items2.push({ label: 'Continue', icon: 'cont', sub: `${latest.name || `Claim ${latest.slot}`} · day ${latest.day} · ${ago(latest.savedAt)}`, primary: true, onclick: () => loadSlot(latest.slot) });
+      items2.push({ label: 'New game', icon: 'new', primary: !latest, onclick: () => openSavesPage('new') });
+      items2.push({ label: 'Saves', icon: 'saves', sub: `${list.filter(m => !m.empty).length} of ${list.length} slots used`, onclick: () => openSavesPage() });
+      items2.push({ label: 'Co-op', icon: 'coop', sub: 'Host or join a friend', onclick: () => openCoop() });
+      items2.push({ label: 'Settings', icon: 'settings', onclick: () => menu.openSettings() });
       menu.setTitleItems(items2);
     });
   }

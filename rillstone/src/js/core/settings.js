@@ -12,7 +12,7 @@ export const ACTION_LABELS = {
   pickup: 'Pick up', drop: 'Drop / place', use: 'Use tool', secondary: 'Secondary', rotX: 'Rotate (pitch)', rotY: 'Rotate (yaw)', rotZ: 'Rotate (roll)',
   swap: 'Quick-swap tool', vehicle: 'Enter / exit vehicle', unflip: 'Unflip vehicle (hold)', guide: 'Look-up guide', map: 'Map / journal', lantern: 'Lantern', fly: 'Fly (sandbox games)', debug: 'Debug overlay',
 };
-const DEFAULTS = {
+export const DEFAULTS = {
   fov: 75, sensitivity: 1, invertY: false, sprintToggle: false, headBob: false, graphics: 'high',
   volume: { master: 0.8, music: 0.5, ambience: 0.7, machines: 0.8, water: 0.7, ui: 0.8 },
   captions: false, binds: DEFAULT_BINDS,

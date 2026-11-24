@@ -1337,14 +1337,21 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     await p.evaluate(() => { __rill.menu.showPause(true); __rill.menu.openSettings(); });
     await p.waitForTimeout(200);
     await p.screenshot({ path: `${out}/settings.png` });
-    await p.click('text=Keys', { timeout: 120000 }); await p.waitForTimeout(100);
+    await p.click('#scr-settings .tab:has-text("Controls")', { timeout: 120000 }); await p.waitForTimeout(100);
     // Rebind "pick up" to KeyU through the UI and check it took.
     await p.click('button.key[data-act="pickup"][data-i="0"]', { timeout: 120000 });
     await p.keyboard.press('KeyU');
+    const drafted = await p.evaluate(() => __rill.settings.binds.pickup[0]);
+    await p.click('#scr-settings button:has-text("Apply and save")', { timeout: 120000 });
     const bound = await p.evaluate(() => __rill.settings.binds.pickup[0]);
-    check(bound === 'KeyU', `rebinding pick up -> ${bound}`);
+    check(drafted !== 'KeyU' && bound === 'KeyU', `rebinding pick up -> ${bound} (held as a draft until Apply and save)`);
     await p.screenshot({ path: `${out}/settings-keys.png` });
-    await p.click('text=Reset to defaults', { timeout: 120000 });
+    await p.click('#scr-settings button:has-text("Restore defaults")', { timeout: 120000 });
+    await p.click('#scr-settings button:has-text("Apply and save")', { timeout: 120000 });
+    const restored = await p.evaluate(() => __rill.settings.binds.pickup[0]);
+    check(restored === 'KeyE', `Restore defaults + Apply and save put pick up back on ${restored}`);
+    await p.evaluate(() => { __rill.menu.showPause(true); __rill.menu.openSettings(); });
+    await p.waitForTimeout(150); await p.screenshot({ path: `${out}/pause-settings.png` });
     await p.evaluate(() => { __rill.menu.closeSettings(); __rill.menu.showPause(false); });
     // Menu flows. A panel opened from the pause menu (Co-op) sits on top and
     // closing it brings the pause menu back. The Saves page: save into a free
@@ -1376,13 +1383,32 @@ async function shot(p, name, { x, y, z, yaw = 0, pitch = 0, t = 0.5, fly = true 
     // Very low graphics: 0.6x resolution, no shadows or bloom, a nearer view
     // and fewer trees; back to High restores it all.
     const vl = await p.evaluate(async () => {
-      const R = __rill, set = (g) => { R.menu.openSettings(); [...document.querySelectorAll('#scr-settings .tab')].find(t => t.textContent === 'General')?.click(); const sel = document.querySelector('#scr-settings select'); sel.value = g; sel.dispatchEvent(new Event('change')); R.menu.closeSettings(); R.menu.showPause(false); };
+      const R = __rill, set = (g) => { R.menu.openSettings(); [...document.querySelectorAll('#scr-settings .tab')].find(t => t.textContent === 'Graphics')?.click(); const sel = document.querySelector('#scr-settings select'); sel.value = g; sel.dispatchEvent(new Event('change')); R.menu.applySettings(); R.menu.closeSettings(); R.menu.showPause(false); };
       const trees0 = R.flora.pine.count; set('verylow'); await R.frames(2);
       const v = { px: R.view.renderer.getPixelRatio(), shadows: R.view.renderer.shadowMap.enabled, bloom: R.view.bloom, far: R.view.camera.far, trees: R.flora.pine.count };
       set('high'); await R.frames(2);
       return { ...v, trees0, back: R.flora.pine.count === trees0 && R.view.renderer.shadowMap.enabled };
     });
     check(vl.px === 0.6 && !vl.shadows && !vl.bloom && vl.far < 1000 && vl.trees < vl.trees0 * 0.5 && vl.back, `very low graphics: ${vl.px}x resolution, no shadows or bloom, view ${vl.far} m, ${vl.trees} of ${vl.trees0} trees; High restores it`);
+    // Pause menu extras: Call nearest vehicle brings the truck in front of
+    // you; Photo mode hides the menu and HUD until a key is pressed.
+    const extra = await p.evaluate(async () => {
+      const R = __rill, wait = (ms) => new Promise(r => setTimeout(r, ms));
+      const btn = (label) => [...document.querySelectorAll('#scr-pause .menu-btn')].find(b => b.querySelector('b')?.textContent === label);
+      const icons = [...document.querySelectorAll('#scr-pause .menu-btn')].every(b => b.querySelector('svg.mico'));
+      R.state.mode = 'pause'; R.state.playing = true; R.menu.showPause(true);
+      btn('Call nearest vehicle').click(); await wait(300); await R.frames(20);
+      const c = R.view.camera.position;
+      const near = Math.min(...[...R.vehicles.list.values()].filter(k => !k.def.kinematic).map(v => Math.hypot(v.group.position.x - c.x, v.group.position.z - c.z)));
+      R.state.mode = 'pause'; R.menu.showPause(true);
+      btn('Photo mode').click(); await wait(400);
+      const hidden = !R.menu.pauseShown && document.getElementById('hud').classList.contains('hidden');
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyK', bubbles: true })); await wait(100);
+      const back = R.menu.pauseShown;
+      R.menu.showPause(false); R.state.mode = 'play';
+      return { icons, near: +near.toFixed(1), hidden, back, driving: R.vehicles.driving, toasts: [...document.querySelectorAll('#toasts > *')].map(t => t.textContent).slice(-3), n: R.vehicles.list.size, mode: R.state.mode, noRender: R.state.noRender };
+    });
+    check(extra.icons && extra.near < 8 && extra.hidden && extra.back, `pause menu: every button has its icon; Call nearest vehicle parked the truck ${extra.near} m away; Photo mode hid the menu and HUD until a key was pressed${extra.near < 8 ? '' : ' ' + JSON.stringify(extra)}`);
     errs.push(...fresh.errs);
   }
   check(errs.length === 0, 'no console errors' + (errs.length ? ': ' + errs.slice(0, 5).join(' | ') : ''));
