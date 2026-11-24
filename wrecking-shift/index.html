@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wrecking Shift</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #101418; overflow: hidden; font-family: system-ui, sans-serif; color: #fff; }
+      #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+      #ui { position: fixed; inset: 0; pointer-events: none; }
+      #crosshair { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,.85); box-shadow: 0 0 2px #000; }
+      #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; letter-spacing: .1em; }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <div id="ui"><div id="crosshair"></div></div>
+    <div id="boot">LOADING…</div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
