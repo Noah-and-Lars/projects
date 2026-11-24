@@ -9,6 +9,8 @@ import type { VoxelGrid } from './voxels';
  *
  *  - anchored mode (static bodies): `anchorY >= 0` => voxels with y <= anchorY are anchors.
  *    The search of a group stops as soon as it is anchored.
+ *  - keep mode: `keepIndex >= 0` => that single voxel is the only anchor (vehicles: the piece
+ *    holding the frame voxel stays the body, everything cut off becomes debris).
  *  - free mode (dynamic bodies): `anchorY < 0`. The search stops when a single live group is
  *    left (that one stays "the body"); every exhausted group is a detached island.
  */
@@ -40,7 +42,7 @@ interface Group {
   dead: boolean;
 }
 
-export function findIslands(grid: VoxelGrid, seeds: ArrayLike<number>, anchorY: number): Island[] {
+export function findIslands(grid: VoxelGrid, seeds: ArrayLike<number>, anchorY: number, keepIndex = -1): Island[] {
   const { sx, sy, sz, data } = grid;
   const n = data.length;
   ensureScratch(n);
@@ -49,7 +51,9 @@ export function findIslands(grid: VoxelGrid, seeds: ArrayLike<number>, anchorY: 
   const label = scratch;
   const groups: Group[] = [];
   const sxy = sx * sy;
-  const anchorLimit = anchorY >= 0 ? (anchorY + 1) * sx : -1; // (i % sxy) < anchorLimit <=> y <= anchorY
+  // keepIndex: a single voxel acting as the only anchor ("the piece containing this voxel stays the body")
+  const keep = keepIndex >= 0 && data[keepIndex] ? keepIndex : -1;
+  const anchorLimit = keep >= 0 ? 0 : anchorY >= 0 ? (anchorY + 1) * sx : -1; // (i % sxy) < anchorLimit <=> y <= anchorY
 
   const find = (g: number): number => {
     while (groups[g].parent !== g) {
@@ -64,7 +68,7 @@ export function findIslands(grid: VoxelGrid, seeds: ArrayLike<number>, anchorY: 
     if (!data[i] || label[i] >= myBase) continue;
     const gi = groups.length;
     label[i] = myBase + gi;
-    const anchored = anchorLimit >= 0 && i % sxy < anchorLimit;
+    const anchored = (anchorLimit >= 0 && i % sxy < anchorLimit) || i === keep;
     groups.push({ parent: gi, anchored, stacks: [[i]], members: [[i]], size: 1, dead: false });
   }
   base = myBase + groups.length + 1;
@@ -83,7 +87,7 @@ export function findIslands(grid: VoxelGrid, seeds: ArrayLike<number>, anchorY: 
       stack.push(j);
       mem.push(j);
       root.size++;
-      if (anchorLimit >= 0 && j % sxy < anchorLimit) root.anchored = true;
+      if ((anchorLimit >= 0 && j % sxy < anchorLimit) || j === keep) root.anchored = true;
       return root;
     }
     const other = find(l - myBase);

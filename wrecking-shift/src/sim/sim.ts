@@ -1,7 +1,7 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { VoxelBody, type BodyKind } from './body';
 import { findIslands, type Island } from './connectivity';
-import { MATERIALS, PAL_HARDNESS, VOXEL, matOf, scorch as scorchPal } from './materials';
+import { MATERIALS, PAL_EXPLOSIVE, PAL_HARDNESS, VOXEL, matOf, scorch as scorchPal } from './materials';
 import { Rng, hash3 } from './rng';
 import { QID, qrot, vadd, vcross, vlen, vscale, vsub, type Quat, type V3 } from './vec';
 import { VoxelGrid, computeMassProps } from './voxels';
@@ -115,6 +115,12 @@ export class Sim {
   /** voxel removal listeners (fire, missions, ...) */
   onRemoved: ((body: VoxelBody, x: number, y: number, z: number, pal: number) => void)[] = [];
   onBodyAdded: ((body: VoxelBody) => void)[] = [];
+  /** an island was split off: voxel (x,y,z) of `child` was voxel (x+off[0], y+off[1], z+off[2]) of `parent` */
+  onSplit: ((parent: VoxelBody, child: VoxelBody, off: [number, number, number]) => void)[] = [];
+  /** explosion listeners (fire ignition, player damage, AI hearing ...) */
+  onExplosion: ((pos: V3, size: number) => void)[] = [];
+  /** the player character, if any (set by Player) */
+  player: { eye: V3; damage(amount: number, cause?: string): void; vel: V3 } | null = null;
   /** contact force threshold reporting */
   impactThreshold = 4000;
 
@@ -219,8 +225,33 @@ export class Sim {
     if (z < sz - 1 && d[i + sxy]) s.push(i + sxy);
     this.editQueue.add(body);
     if (body.dynamic) body.massDirty = true;
+    if (PAL_EXPLOSIVE[p] > 0) this.queueChain(body, x, y, z, PAL_EXPLOSIVE[p]);
     if (notify) for (const f of this.onRemoved) f(body, x, y, z, p);
     return p;
+  }
+
+  /** explosive voxels broken this tick are merged into one delayed explosion per body */
+  private chain = new Map<number, { body: VoxelBody; x: number; y: number; z: number; n: number; size: number }>();
+  private queueChain(body: VoxelBody, x: number, y: number, z: number, size: number): void {
+    const w = body.toWorld({ x: x + 0.5, y: y + 0.5, z: z + 0.5 });
+    const c = this.chain.get(body.id);
+    if (c) { c.x += w.x; c.y += w.y; c.z += w.z; c.n++; }
+    else this.chain.set(body.id, { body, x: w.x, y: w.y, z: w.z, n: 1, size });
+  }
+  private flushChain(): void {
+    if (this.chain.size === 0) return;
+    for (const c of this.chain.values()) {
+      const pos = { x: c.x / c.n, y: c.y / c.n, z: c.z / c.n };
+      const container = !c.body.removed && c.body.tags.has('explosive');
+      // loose crumbs of explosive material just fizzle; containers and big lumps blow up
+      if (!container && c.n < 12) continue;
+      if (container) {
+        for (const b of [...this.bodies.values()]) if (b.user.fromBody === c.body.id) this.removeBody(b);
+        this.removeBody(c.body);
+      }
+      this.explodeLater(pos, c.size * (container ? 1 : Math.min(1, 0.5 + c.n / 80)), 4 + this.rng.int(5));
+    }
+    this.chain.clear();
   }
 
   /** set a voxel to a palette value (adding or recolouring). Does not run connectivity. */
@@ -344,7 +375,7 @@ export class Sim {
       const seeds = body.pendingSeeds;
       body.pendingSeeds = [];
       if (seeds.length && !body.noSplit && (body.dynamic || body.anchorBottom)) {
-        const islands = findIslands(body.grid, seeds, body.dynamic ? -1 : 0);
+        const islands = findIslands(body.grid, seeds, body.dynamic ? -1 : 0, body.dynamic ? body.keepIndex : -1);
         if (islands.length) this.splitIslands(body, islands);
       }
       if (body.removed) continue;
@@ -402,6 +433,7 @@ export class Sim {
       });
       nb.user.fromBody = parent.id;
       for (const t of parent.tags) if (t.startsWith('inherit:')) nb.tags.add(t);
+      for (const f of this.onSplit) f(parent, nb, [x0, y0, z0]);
       this.out.push({ type: 'split', parent, child: nb });
     }
     if (g.count === 0) { this.removeBody(parent); return; }
@@ -475,6 +507,22 @@ export class Sim {
       const I = m * b.radius * b.radius * 0.15;
       b.rb.applyTorqueImpulse({ x: (this.rng.next() - 0.5) * spin * I, y: (this.rng.next() - 0.5) * spin * I, z: (this.rng.next() - 0.5) * spin * I }, true);
     }
+    // player: damage + knockback (line of sight halves nothing yet; distance based)
+    const pl = this.player;
+    if (pl) {
+      const d = vsub(pl.eye, pos);
+      const dist = vlen(d);
+      const R2 = size * 3.0;
+      if (dist < R2) {
+        const f = 1 - dist / R2;
+        const blocked = this.raycast(pos, vscale(d, 1 / Math.max(dist, 1e-3)), Math.max(0, dist - 0.4));
+        const k = blocked ? 0.35 : 1;
+        pl.damage(f * f * 1.1 * k * Math.min(1.5, size), 'explosion');
+        const push = f * 9 * k;
+        pl.vel.x += (d.x / Math.max(dist, 0.3)) * push; pl.vel.y += 2.5 * f * k + (d.y / Math.max(dist, 0.3)) * push * 0.5; pl.vel.z += (d.z / Math.max(dist, 0.3)) * push;
+      }
+    }
+    for (const f of this.onExplosion) f(pos, size);
     this.out.push({ type: 'explosion', pos, size });
   }
 
@@ -495,6 +543,7 @@ export class Sim {
       }
     }
     for (const s of this.systems) s.update(this);
+    this.flushChain();
     this.processEdits();
     this.world.step(this.events);
     this.events.drainContactForceEvents((ev) => {

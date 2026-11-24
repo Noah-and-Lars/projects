@@ -75,6 +75,7 @@ export class Player {
     this.ctrl.setMinSlopeSlideAngle((40 * Math.PI) / 180);
     this.ctrl.setApplyImpulsesToDynamicBodies(true);
     this.ctrl.setCharacterMass(80);
+    sim.player = this;
   }
 
   private makeCollider(h: number): RAPIER.Collider {

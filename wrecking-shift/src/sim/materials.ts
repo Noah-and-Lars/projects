@@ -101,6 +101,8 @@ export const PAL_FLAMMABILITY = new Float32Array(256);
 export const PAL_RGB = new Float32Array(256 * 3);
 export const PAL_EMISSIVE = new Float32Array(256);
 export const PAL_GLASS = new Uint8Array(256);
+/** explosion size when a voxel of this palette index is broken (0 = inert) */
+export const PAL_EXPLOSIVE = new Float32Array(256);
 
 export let SPRAY_COLOR = 0xf2e530;
 
@@ -113,6 +115,7 @@ function buildPalette() {
     PAL_FLAMMABILITY[p] = s >= SHADE_SCORCH ? m.flammability * 0.5 : m.flammability;
     PAL_EMISSIVE[p] = s >= SHADE_SCORCH ? 0 : m.emissive ?? 0;
     PAL_GLASS[p] = m.glass ? 1 : 0;
+    PAL_EXPLOSIVE[p] = m.explosive ?? 0;
     let r = ((m.color >> 16) & 255) / 255;
     let g = ((m.color >> 8) & 255) / 255;
     let b = (m.color & 255) / 255;

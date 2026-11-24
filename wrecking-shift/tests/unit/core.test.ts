@@ -94,6 +94,35 @@ describe('sim', () => {
     expect(Math.hypot(v.x, v.y, v.z)).toBeLessThan(0.5);
   });
 
+  it('explosive barrel chain-reacts when shot', async () => {
+    const { barrel } = await import('../../src/sim/levels/testyard');
+    const sim = new Sim(3);
+    slab(sim);
+    const b1 = barrel(sim, 0, 0.05, 0);
+    const b2 = barrel(sim, 0.9, 0.05, 0);
+    let booms = 0;
+    sim.onExplosion.push(() => booms++);
+    for (let i = 0; i < 30; i++) sim.step();
+    sim.carve({ x: 0.3, y: 0.5, z: 0.3 }, 0.15, 0.1, 0, {});
+    for (let i = 0; i < 90; i++) sim.step();
+    expect(booms).toBe(2);
+    expect(b1.removed && b2.removed).toBe(true);
+  });
+
+  it('keepIndex decides which piece stays the body', () => {
+    const sim = new Sim(1);
+    slab(sim);
+    const g = new VoxelGrid(30, 4, 4);
+    g.fill(0, 0, 0, 30, 4, 4, pal(MAT.wood));
+    const b = sim.addBody(g, { x: 0, y: 2, z: 0 }, { dynamic: true });
+    b.keepIndex = g.idx(1, 1, 1); // the short end is "the body"
+    for (let y = 0; y < 4; y++) for (let z = 0; z < 4; z++) sim.removeVoxel(b, 5, y, z);
+    sim.processEdits();
+    expect(b.removed).toBe(false);
+    expect(b.grid.count).toBe(5 * 16);
+    expect(sim.bodies.size).toBe(3);
+  });
+
   it('explosion throws debris and is deterministic', () => {
     const run = () => {
       const sim = new Sim(7);

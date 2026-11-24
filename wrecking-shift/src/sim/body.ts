@@ -20,6 +20,8 @@ export class VoxelBody {
   anchorBottom = true;
   /** never split this body into islands (still carvable) */
   noSplit = false;
+  /** dynamic bodies: voxel index that defines "the body" when it splits (-1 = whichever piece is found last) */
+  keepIndex = -1;
   /** cannot be carved at all */
   indestructible = false;
   /** carve plain holes only (terrain) */
