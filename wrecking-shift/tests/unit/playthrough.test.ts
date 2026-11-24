@@ -265,3 +265,84 @@ describe('Kestrel Ridge playthroughs', () => {
     finish(r, null);
   }, T);
 });
+
+describe('Brackwater Works playthroughs', () => {
+  it('long-drop: bombs round the chimney shaft just above the plinth, back to the van', () => {
+    const r = new Run('long-drop');
+    const top = () => r.mission.objectives()[0];
+    const chim = r.tagged('destroy:chimney')[0];
+    const c = v3(10, 1.7, -27);
+    const H = 5.1; // on the round shaft, 0.7 m above the square plinth
+    r.select('bomb');
+    const N = 6;
+    for (let k = 0; k < N; k++) {
+      const a = (k / N) * Math.PI * 2 + 0.3;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      r.tp(v3(c.x + ca * 3.4, 1.7, c.z + sa * 3.4));
+      r.aim(v3(c.x + ca * 1.55, H, c.z + sa * 1.55));
+      r.click();
+      r.tp(v3(c.x + ca * 12, 1.7, c.z + sa * 12));
+      r.wait(4);
+      r.log('bomb', k, top().detail, 'chimney', chim.removed ? 'gone' : chim.grid.count, 'hp', r.player.health.toFixed(2));
+    }
+    r.wait(4);
+    // finish the cut with the shotgun: shoot the biggest piece of brickwork left in the weakest band
+    r.select('shotgun');
+    for (let shot = 0; shot < 12 && !top().done && !chim.removed; shot++) {
+      let bestY = 30, bestN = 1e9;
+      for (let y = 30; y < 42; y++) { let n = 0; for (let z = 0; z < chim.grid.sz; z++) for (let x = 0; x < chim.grid.sx; x++) if (chim.grid.get(x, y, z)) n++; if (n < bestN) { bestN = n; bestY = y; } }
+      // angle sectors of what is left in that band
+      const sec = new Array(12).fill(0).map(() => ({ n: 0, x: 0, y: 0, z: 0 }));
+      for (let y = bestY - 1; y <= bestY + 1; y++) for (let z = 0; z < chim.grid.sz; z++) for (let x = 0; x < chim.grid.sx; x++) {
+        if (!chim.grid.get(x, y, z)) continue;
+        const w = chim.toWorld({ x: x + 0.5, y: y + 0.5, z: z + 0.5 });
+        const k = Math.floor(((Math.atan2(w.z - c.z, w.x - c.x) + Math.PI) / (2 * Math.PI)) * 12) % 12;
+        sec[k].n++; sec[k].x += w.x; sec[k].y += w.y; sec[k].z += w.z;
+      }
+      const s0 = sec.reduce((a, b) => (b.n > a.n ? b : a));
+      if (!s0.n) break;
+      const p = v3(s0.x / s0.n, s0.y / s0.n, s0.z / s0.n);
+      const dx = p.x - c.x, dz = p.z - c.z, l = Math.hypot(dx, dz) || 1;
+      r.tp(v3(c.x + (dx / l) * 3.6, 1.7, c.z + (dz / l) * 3.6));
+      r.aim(p);
+      r.click();
+      r.step(50);
+      r.log('shot', shot, 'band', bestY, bestN, top().detail);
+    }
+    r.wait(4);
+    if (process.env.PLAY_LOG) {
+      const out: string[] = [];
+      for (let y = 26; y < 50; y++) { let n = 0; for (let z = 0; z < chim.grid.sz; z++) for (let x = 0; x < chim.grid.sx; x++) if (chim.grid.get(x, y, z)) n++; out.push(`${y}:${n}`); }
+      console.log('chimney layers', out.join(' '));
+    }
+    expect(top().done).toBe(true);
+    expect(r.player.dead).toBe(false);
+    // no alarm on this job: back to the van at the gate
+    const e = r.mission.escapePos();
+    r.tp(v3(e.x + 1.5, 1.7, e.z + 1.8));
+    r.clockOut();
+    finish(r, null);
+  }, T);
+  it('payday: machine parts while planning, cash box (alarm), across the works to the office top floor, van', () => {
+    const r = new Run('payday');
+    const [parts] = r.tagged('target:parts'), [cash] = r.tagged('target:cash'), [server] = r.tagged('target:payroll');
+    // planning: the unalarmed "machine parts" on the loading dock
+    r.tp(v3(parts.center().x - 1.2, 2.95, parts.center().z));
+    r.take(parts);
+    // the cash box just inside the boiler house's south door
+    r.tp(v3(22.0, 1.7, -35.0));
+    r.take(cash);
+    expect(r.phase).toBe('alarm');
+    // office (origin -60, -15): ground floor along under lane B, lane A up to floor 1, lane B up to floor 2
+    const up = [v3(-50.5, 1.7, -5.5), v3(-46.0, 1.7, -5.5), v3(-46.0, 1.7, -12.6), v3(-47.55, 1.7, -12.6), v3(-47.55, 5.1, -6.5), v3(-46.0, 5.1, -6.5), v3(-46.0, 8.5, -12.6)];
+    // floor 2: stair-core door -> office 3 -> corridor -> office 1 (payroll)
+    const f2 = [v3(-47.6, 8.5, -12.85), v3(-49.5, 8.5, -12.85), v3(-49.85, 8.5, -10.2), v3(-49.85, 8.5, -8.4), v3(-53, 8.5, -8.4), v3(-53, 8.5, -6.45), v3(-55, 8.5, -6.45), v3(-57.65, 8.5, -8.4), v3(-57.65, 8.5, -10.0)];
+    r.walk([v3(13.5, 1.7, -31), v3(13.5, 1.7, -18), v3(12.5, 1.7, -15), v3(5, 1.7, -6), v3(-20, 1.7, 1), v3(-54.4, 1.7, 0.5), v3(-54.4, 1.7, -2.4), v3(-54.4, 1.7, -5), ...up,
+      ...f2], { rMid: 0.45 });
+    r.take(server);
+    r.walk([...f2.slice(0, -1).reverse(), ...up.slice().reverse(), v3(-54.4, 1.7, -5), v3(-54.4, 1.7, -2.4), v3(-56.5, 1.7, 1.2)], { rMid: 0.45 });
+    r.clockOut();
+    finish(r);
+  }, T);
+});
+

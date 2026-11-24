@@ -336,7 +336,9 @@ function office(sim: Sim, wx: number, wz: number, gy: number, m: Marks): void {
   for (let f = 0; f < NF; f++) {
     part(f, 'x', 116, 3, D - 3, [16, 90]);
     part(f, 'z', 56, 3, 116, f === 0 ? [30, 80] : [18, 58, 96]);
-    if (f > 0) { part(f, 'x', 40, 3, 56, []); part(f, 'x', 78, 3, 56, []); part(f, 'x', 58, 58, D - 3, []); }
+    // the corridor wall at x 58 has a door: without it the west corridor and office 1 (records / payroll on the top
+    // floor) were sealed rooms
+    if (f > 0) { part(f, 'x', 40, 3, 56, []); part(f, 'x', 78, 3, 56, []); part(f, 'x', 58, 58, D - 3, [80]); }
   }
   // stairs: f0 lane A (+z), f1 lane B (-z), f2 lane A (+z) to the roof
   const step = flat(MAT.concrete, 3);

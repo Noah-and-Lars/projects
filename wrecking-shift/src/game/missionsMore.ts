@@ -142,7 +142,9 @@ export const longDrop: MissionDef = {
     { kind: 'destroy', id: 'boiler', title: 'Wreck 35% of the boiler house', percent: 35, required: false },
   ],
   reward: { cash: 1700 },
-  unlockAfter: ['lights-out'],
+  // also after Dead Weight: felling a 0.3 m brick shaft takes the sticky bombs (career 700); with only pipe bombs
+  // (career 540 after Lights Out) the chimney could not be brought down (tests/unit/playthrough.test.ts)
+  unlockAfter: ['lights-out', 'dead-weight'],
   setup(sim, lv) {
     escapeVan(sim, lv, Math.PI / 2);
     tagBodies(sim, (b) => b.tags.has('chimney'), 'destroy:chimney');
@@ -162,14 +164,14 @@ export const payday: MissionDef = {
     'The Works has "restructured" our wages into the manager\'s safe three Fridays running.\n\n' +
     'The payroll server is on the top floor of the office block. The cash box sits in the boiler house because he ' +
     'thinks nobody would look there. The third thing is a crate on the loading dock across the canal marked ' +
-    'MACHINE PARTS, which rattles like champagne. All alarmed; one minute once you touch any of them.\n\n' +
+    'MACHINE PARTS, which rattles like champagne. The server and the cash box are alarmed; forty-five seconds once you touch either.\n\n' +
     'Two bridges cross that canal. You might think about how many should still be standing when Works Security drives in.',
   objectives: [
     { kind: 'collect', id: 'payroll', title: 'Take the payroll server (office, top floor)' },
     { kind: 'collect', id: 'cash', title: 'Take the cash box (boiler house)' },
     { kind: 'collect', id: 'parts', title: 'Take the "machine parts" (loading dock)', required: false },
   ],
-  alarmSeconds: 60,
+  alarmSeconds: 45,
   fireAlarm: 250,
   reward: { cash: 2200 },
   unlockAfter: ['dead-weight'],
