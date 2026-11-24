@@ -96,6 +96,21 @@ export function buildTerrain(sim: Sim, o: TerrainOptions): Terrain {
     for (let ix = -1; ix <= W; ix++)
       hv[(ix + 1) + (W + 2) * (iz + 1)] = Math.round(hm.height(o.x0 + (ix + 0.5) * VOXEL, o.z0 + (iz + 0.5) * VOXEL) / VOXEL);
   const SOIL = 5;
+  // coarse (16x16 voxel) block minimum heights: the hollow underside of the shell is flat per block,
+  // so it meshes into a handful of quads instead of mirroring every bump of the surface
+  const CB = 16;
+  const cw = Math.ceil(W / CB) + 2, cd = Math.ceil(D / CB) + 2;
+  const cmin = new Int16Array(cw * cd).fill(32767);
+  for (let iz = -1; iz <= D; iz++)
+    for (let ix = -1; ix <= W; ix++) {
+      const h = H(ix, iz);
+      // a column also lowers its neighbouring blocks when it sits on a block edge (keeps side walls closed)
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+        const c = (Math.floor((ix + dx) / CB) + 1) + cw * (Math.floor((iz + dz) / CB) + 1);
+        if (h < cmin[c]) cmin[c] = h;
+      }
+    }
+  const CMIN = (ix: number, iz: number) => cmin[(Math.floor(ix / CB) + 1) + cw * (Math.floor(iz / CB) + 1)];
   const bodies: VoxelBody[] = [];
   const wl = o.waterLevel ?? null;
   for (let tz = 0; tz < o.tilesZ; tz++)
@@ -121,15 +136,17 @@ export function buildTerrain(sim: Sim, o: TerrainOptions): Terrain {
             else surf = wl !== null && h * VOXEL < wl + 0.25 ? MAT.sand : slope > 1.6 ? MAT.rock : MAT.grass;
           }
           const top = Math.min(sy, h - base); // exclusive
-          const bottom = Math.max(0, nmin - SOIL - 2 - base);
+          const bottom = Math.max(0, Math.min(nmin, CMIN(ix, iz)) - SOIL - 2 - base);
           const soilFrom = top - 1 - SOIL;
           const soilMat = surf === MAT.sand ? MAT.sand : surf === MAT.rock || surf === MAT.asphalt || surf === MAT.concrete ? MAT.rock : MAT.dirt;
+          const shadeTop = Math.min(4, (noise2(ix * 0.045, iz * 0.045, seed + 40) * 5) | 0);
           const col = x + T * sy * z;
           for (let y = bottom; y < top; y++) {
             let p: number;
-            if (y === top - 1) p = pal(surf, (hash3(ix >> 1, 0, iz >> 1, seed) * 5) | 0);
-            else if (y >= soilFrom && soilMat !== MAT.rock) p = pal(soilMat, (hash3(ix >> 2, y, iz >> 2, seed + 1) * 5) | 0);
-            else p = pal(MAT.bedrock, (hash3(ix >> 2, y >> 1, iz >> 2, seed + 2) * 5) | 0);
+            // large uniform colour patches (the renderer adds per-voxel grain) keep greedy quads big
+            if (y === top - 1) p = pal(surf, shadeTop);
+            else if (y >= soilFrom && soilMat !== MAT.rock) p = pal(soilMat, 2);
+            else p = pal(MAT.bedrock, 2);
             d[col + T * y] = p;
           }
         }
