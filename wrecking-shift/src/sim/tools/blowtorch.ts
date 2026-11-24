@@ -1,6 +1,5 @@
 import { MAT, PAL_FLAMMABILITY, isScorched, matOf, scorch } from '../materials';
 import type { VoxelBody } from '../body';
-import { DT } from '../sim';
 import type { V3 } from '../vec';
 import { Tool, type ToolContext, type ToolInput } from './tool';
 import { emit } from './util';
@@ -27,6 +26,8 @@ export class Blowtorch extends Tool {
   override maxAmmo = 20 * 60;
   range = 1.6;
   radius = 0.15;
+  /** FireApi.heat() units per tick (0.06: wood lights in ~0.6 s with the fire CA) */
+  heatRate = 0.06;
   private heat = new Map<number, number>();
   private lastUse = -999;
   private on = false;
@@ -56,7 +57,7 @@ export class Blowtorch extends Tool {
     else if (sim.tick % 6 === 0) emit(sim, 'tool:torch', { pos, on: true, hit: !!hit });
     if (sim.tick - this.lastUse > 30) this.heat.clear();
     this.lastUse = sim.tick;
-    if (hit) ctx.fire?.heat(hit.point, DT * 2);
+    if (hit) ctx.fire?.heat(hit.point, this.heatRate);
     // the flame is the ray segment up to just inside the surface: voxels within `radius` of it
     // heat up. Once the centre melts the ray passes through the hole and keeps widening it.
     const tip = hit ? hit.dist + 0.05 : this.range;
