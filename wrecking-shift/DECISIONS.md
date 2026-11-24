@@ -27,3 +27,18 @@
   percussion + stabs + noise riser driven by `tension`). Chord choices are our own, no existing melody is used.
 - **Loops** (fire, engine, torch, heli, alarm, ambient) are refreshed by TTL (`engine.touchLoop`) instead of explicit stop calls,
   so a module that stops sending data silences them within ~0.5 s.
+- **Impact damage**: Rapier contact manifolds for voxel shapes give no usable world contact points/impulses (checked
+  experimentally), so impulse = contact-force-event force × dt, and the contact point is estimated by a voxel raycast from
+  the lighter body's centre of mass along the force direction. Damage only when the velocity change exceeds 2.2 m/s, so
+  resting stacks never grind themselves down. Radii scale with the cube root of the impact energy (tuned by feel).
+- **Structural crush check** (our answer to "buildings stand on one voxel"): per y-layer of a static body, weight above
+  vs. summed compressive capacity of the layer's voxels (per-material strength in MPa, gameplay-tuned). An overloaded
+  layer and a small band around it are pulverised; connectivity then drops the structure and impact damage breaks it.
+  Cheap (per-layer sums maintained incrementally) and predictable for players: thick supports hold, slivers do not.
+- **Terrain** = heightmap voxelised into 25.6 m tiles: 1 surface voxel + 0.5 m diggable soil + unbreakable bedrock shell,
+  hollow underneath with a flat underside per 16×16 block (keeps Rapier voxel count and mesh quads low). Terrain tiles
+  never split or fracture. Measured: 36 tiles (153 m square) build in ~7 s in Node on the busy container.
+- **Water** is a plane at `level.waterLevel`; buoyancy by submerged fraction of an equivalent box, drag, splashes.
+  Player swims; 12 s of breath.
+- **Explosive material**: breaking voxels of the `explosive` material queues one delayed explosion per container
+  (chain reactions); loose crumbs under 12 voxels fizzle.
