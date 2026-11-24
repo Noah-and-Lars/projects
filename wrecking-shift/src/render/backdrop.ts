@@ -92,14 +92,14 @@ export function buildBackdropGeometry(inp: BackdropInput): THREE.BufferGeometry 
   for (let i = 0; i < n; i++) {
     const p = ps[i];
     const u = p.u;
-    const amp = 9 + 28 * noise1(u / 70, seed);
+    const amp = 5 + 20 * noise1(u / 70, seed);
     const shore = 55 + 80 * noise1(u / 110, seed + 3);
     const e = landRaw[i] ? edge[i] : seaFloor;
     for (let j = 0; j < nr; j++) {
       const d = RINGS[j];
       const ripple = 0.55 + 0.45 * noise1(u / 23 + d / 31, seed + 7);
-      const hLand = e - 0.12 + amp * smooth(0, 75, d) * ripple + (d > 0 ? 1.5 * noise1(u / 9 + d, seed + 11) * smooth(0, 12, d) : 0);
-      const hWater = d < shore ? seaFloor : seaFloor + (amp * 0.85 + 4) * smooth(shore, shore + 55, d) * ripple;
+      const hLand = e - 0.12 + amp * smooth(4, 130, d) * ripple + (d > 0 ? 1.5 * noise1(u / 9 + d, seed + 11) * smooth(0, 12, d) : 0);
+      const hWater = d < shore ? seaFloor : seaFloor + (amp * 1.1 + 5) * smooth(shore, shore + 70, d) * ripple;
       const l = land[i];
       let h = hWater + (hLand - hWater) * l;
       if (j === 0 && landRaw[i]) h = edge[i] - 0.12; // flush with the terrain edge

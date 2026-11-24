@@ -53,8 +53,9 @@ export function createAtmosModule(): GameModule {
     // stays in the scene once created (intensity 0 when off): changing the light count recompiles every shader
     spot = new THREE.SpotLight(FLASH.color, 0, FLASH.distance, FLASH.angle, FLASH.penumbra, FLASH.decay);
     spot.castShadow = false;
-    spot.position.set(0.14, -0.1, 0.05);
-    spot.target.position.set(0.02, -0.05, -1);
+    // just above the eye, outside the cone of the view model (hand at ~43° off-axis) so it does not blow out
+    spot.position.set(0, 0.05, 0);
+    spot.target.position.set(0, -0.04, -1);
     cam.add(spot, spot.target);
     return spot;
   }
