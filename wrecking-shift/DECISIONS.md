@@ -185,3 +185,50 @@
   - `pine`: the trunk now reaches the top tier. The upper tiers were joined only through the trunk and floated.
   - `tree`, `pine` and `rock` now drop noise islands that are not connected to the bottom layer (`dropFloating` in kit2.ts).
   - Fuel `tank`: the explosive core now starts on the bottom plate. It used to float 1 voxel above it.
+
+## Mission playthroughs and Kestrel Ridge roads (QA pass)
+Scripted, deterministic playthroughs of all 11 big-map missions live in `tests/unit/playthrough.test.ts` (harness:
+`tests/unit/playHarness.ts`), the road test in `tests/unit/ridgeRoads.test.ts`, one browser run per big map in
+`tests/e2e/playthrough.mjs`. Every change below was made because a run showed the mission or road could not be done.
+- **Career score of a "typical" player** (guess, needed to decide which tools a mission may assume): the player has
+  finished exactly the missions in the `unlockAfter` closure plus Housewarming, each with its required objectives, the
+  client bonus and 10 s left on the clock (missions with an alarm). No optional objectives, no cash upgrades. This is
+  deliberately conservative: real careers are higher. `careerScore()` in the harness computes it from the live data.
+- **Target of 8-25 s left for the scripted run** (guess): the scripts walk optimal lines with perfect aim, so a human
+  needs more time; 8 s is the floor so a slightly slower human still makes it, 25 s the ceiling so it stays tense.
+  `alarmSeconds` were tuned to this (briefs that quoted the old numbers were updated).
+- **Demolition targets need a weak point the career's tools can reach.** Measured: 6 sticky bombs on the 0.3 m brick
+  lighthouse drum leave >150 voxels in every layer (ring not cut); the 0.4 m rock watchtower needs ~20 bombs; 6 bombs +
+  6 pipe bombs remove only ~10 % of the concrete pump house; pipe bombs bounce off the steel vault door without a dent.
+  Fixes stay in the fiction: timber shoring band at the foot of the lighthouse (restoration works), a timber lookout on
+  the watchtower above head height, an "old armoured door of riveted plate" (painted metal: blowtorch / shotgun / pipe
+  bombs work) on the vault, and a 6 % "hole" instead of 40 % for the pump house. The chimney (Long Drop) is felled by
+  6 bombs placed on the round shaft just above the plinth, so the mission now also requires Dead Weight (career 760).
+- **Alarm wiring is per target id**, so Dead Weight's unalarmed pump-house strongbox got its own id and objective (the
+  brief said it was unalarmed, the data made it alarmed).
+- **Drones count as an alarm source** for `Mission.hasAlarm`: Night Watch has no alarm boxes, only drones, so it never
+  gave a time bonus (nor the "silent job" bonus) even though a drone sighting starts the countdown.
+- **Roads (RoadHeightmap)** now apply in order like pads (a later road overrides an earlier one inside its half
+  width). Nearest-road-only left a vertical step along the line where the nearest road changes (1.4 m at the switchback
+  junction). The switchback leaves the shore lane flat for 6 m before climbing, the hairpin radius grew from ~4 m to
+  ~5.8 m (the van's turning radius at walking pace), a street lamp standing in the carriageway at the top was moved.
+- **Vehicle suspension**: compression damping 4.4 > relaxation 2.3 for all prefabs (was 3.0 / 4.0). With slow rebound
+  every 0.1 m voxel step of a 15 % grade pumped the chassis down until it scraped and stopped dead at 8-9 m/s
+  (reproduced on a synthetic slope). `tests/unit/vehicle.test.ts` (speed ranges, settling, braking) is unchanged.
+- **Loader bucket raised 0.2 m** (floor 0.45 m above the ground): with 2.3 m of overhang it dug into any grade above
+  ~10 %. **Terrain is excluded from vehicle ramming**: voxel risers of a slope looked like walls to the ram probes.
+- **Rapier `setVoxel` panic during splits of small dynamic bodies** ("unreachable", reproduced in a lighthouse bomb
+  run): such bodies now get their collider rebuilt instead of per-voxel `setVoxel` (cheap below 20k voxels). Root
+  cause inside Rapier 0.21 not found. `combineVoxelStates` between terrain tiles was tried for the vehicle problem and
+  changed nothing, so it was not kept.
+- **Player fall speed**: while the controller is held up (not "grounded" on a ledge / prop) the vertical speed no
+  longer grows without limit; it used to reach -30 m/s and the eventual landing killed the player with fall damage.
+- **Fire visitors and removed bodies**: fires of a body removed by a chain explosion lived until their next fire update;
+  the renderer visiting them read the removed rigid body and Rapier aborted (browser crash in Controlled Burn).
+- **Level layout fixes**: warehouse mezzanine stairs rose away from the office door (unreachable mezzanine); building
+  stair openings started too late (head hit the slab); the Brackwater office's west corridor + office 1 were sealed
+  rooms (door added); the Kestrel greenhouse door was 0.9 m off the footbridge deck, behind its railing end.
+- **Not fixed (noted)**: `VehicleSystem.scanImpacts` reads impact events from `sim.out`, but the game drains `sim.out`
+  after every step, before the next step's systems run, so contact-force crashes never wear vehicles in the real game
+  (ramming damage still works). Fixing it would suddenly make vehicles take crash damage everywhere; left for a
+  deliberate decision.
