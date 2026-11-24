@@ -153,7 +153,7 @@ export class MissionModule implements GameModule {
   fixedUpdate(game: Game): void {
     const m = this.mission;
     if (!m) return;
-    m.update({ interact: game.controlsEnabled && game.pendingKeys.has('KeyE') });
+    m.update({ interact: game.controlsEnabled && game.pendingKeys.has('KeyE'), vehicleBody: game.ext.vehicles?.current?.body ?? null });
     this.updatePrompt(game);
     if (m.ended && !this.reported && m.result) {
       this.reported = true;

@@ -240,6 +240,22 @@ describe('mission state machine', () => {
     expect(maxScore(baseDef())).toBe(250 + 120);
   });
 
+  it('escape van: the escape point follows the body tagged escape; driving it counts as escaping', () => {
+    const w = world();
+    const vg = new VoxelGrid(20, 12, 40); vg.fill(0, 0, 0, 20, 12, 40, pal(MAT.paintedmetal));
+    const van = w.sim.addBody(vg, { x: 6, y: 0.05, z: -9 }, { dynamic: true, kind: 'vehicle', name: 'Van', tags: ['escape'] });
+    const m = new Mission(baseDef({ objectives: [{ kind: 'collect', id: 'b', title: 'B' }] }), { sim: w.sim, level: w.lv, player: w.player });
+    const e = m.escapePos();
+    expect(Math.hypot(e.x - 7, e.z + 7)).toBeLessThan(0.2);
+    tick(m, 5);
+    take(m, w.player, w.b);
+    expect(m.escapeOpen).toBe(true);
+    m.update({ interact: false, vehicleBody: null });
+    expect(m.phase).toBe('planning');
+    m.update({ interact: false, vehicleBody: van });
+    expect(m.phase).toBe('success');
+  });
+
   it('missions without alarm sources have no timer and no time bonus', () => {
     const w = world();
     const def = baseDef({ objectives: [{ kind: 'reach', id: 'r', title: 'Reach the dock', zone: { marker: 'dock', radius: 1.5 } }] });

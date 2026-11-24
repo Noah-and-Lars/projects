@@ -40,7 +40,8 @@
  * Phases: 'planning' (no time pressure, quicksave allowed) -> 'alarm' (countdown) -> 'success' | 'failed'.
  * Missions without alarm boxes, fireAlarm or demolitionSensor have no timer at all.
  * Escape: once every REQUIRED objective is done the escape point opens; press E within
- * `escape.radius` (default 3 m) of it, or sit in the vehicle tagged `escape` -> success.
+ * `escape.radius` (default 3 m) of it, or sit in the vehicle tagged `escape` (MissionInput.vehicleBody, or
+ * player.seated within the radius of it) -> success.
  *
  * Events pushed to `sim.out` as `{ type: 'custom', name, data }` (HUD + audio listen to these):
  *   mission:start {id}            mission:alarm {seconds, cause}     mission:second {left}
@@ -198,6 +199,8 @@ export interface MissionContext {
 export interface MissionInput {
   /** interact key (E) pressed this tick */
   interact: boolean;
+  /** body of the vehicle the player is driving (game.ext.vehicles.current.body), if any */
+  vehicleBody?: VoxelBody | null;
 }
 
 // ------------------------------------------------------------------------------------------ constants
@@ -479,8 +482,9 @@ export class Mission {
     if (this.escapeOpen) {
       const near = this.atEscape();
       if (near && !this.focus) this.focus = { kind: 'escape', name: 'escape' };
-      const seatedInEscape = p.seated && near && bodiesWithTag(this.sim, 'escape').length > 0;
-      if (near && ((input.interact && !used) || seatedInEscape)) this.succeed();
+      const vb = input.vehicleBody;
+      const seatedInEscape = (p.seated && near && bodiesWithTag(this.sim, 'escape').length > 0) || (!!vb && !vb.removed && vb.tags.has('escape'));
+      if (seatedInEscape || (near && input.interact && !used)) this.succeed();
     }
   }
 

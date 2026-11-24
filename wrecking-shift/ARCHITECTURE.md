@@ -48,6 +48,14 @@ tests/unit/     Vitest (Node)         tests/e2e/   Playwright smoke tests agains
 - Verify library APIs against the installed `.d.ts` (`node_modules/@dimforge/rapier3d-compat/dist/**/*.d.ts`,
   `node_modules/three/src`) instead of guessing; three r187 removed/changed things (e.g. PCFSoftShadowMap is gone).
 
+## Missions, HUD, menus, progression
+- `src/sim/mission.ts` - deterministic heist state machine (`Mission`, `MissionDef`); **its header is the level/mission
+  authoring guide** (tags, markers, zones, events). Props: `src/sim/missionProps.ts`. Registry: `src/game/missions.ts`.
+- `src/game/missionModule.ts` publishes `game.ext.mission` (start / startSandbox / restart / quit / serialize / restore /
+  onEnd), `game.ext.progress` (src/game/progress.ts: save, ranks, unlocks, upgrades) and `game.ext.settings`.
+- `src/game/uiModule.ts` + `src/game/ui/*` - DOM HUD/menus/map; publishes `game.ext.hud.setPrompt(text|null, prio, source)`
+  and `game.ext.ui` (= `window.__game.ui` in tests). URL: `?mission=<id>`, `?sandbox=<levelId>`, no params = title menu.
+
 ## Testing (must stay green)
 - `npx tsc --noEmit` — typecheck.  `npx vitest run` — unit/sim tests in Node (see tests/unit/core.test.ts for the pattern).
 - `npx vite build && node tests/e2e/run.mjs` — headless Chromium (SwiftShader, slow but correct) against `dist/`.

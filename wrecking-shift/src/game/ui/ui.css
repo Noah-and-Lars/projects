@@ -63,7 +63,7 @@
 .ws-toast.alarm { border-color: var(--red); background: rgba(110, 12, 6, .92); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .ws-toast.good { border-color: var(--green); }
 .ws-toast.out { opacity: 0; transition: opacity .4s; }
-@keyframes ws-in { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ws-in { from { transform: translateY(-6px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 .ws-debug { font: 11px/1.35 ui-monospace, Menlo, Consolas, monospace; background: rgba(0,0,0,.65); padding: 4px 7px; white-space: pre; border-radius: 2px; }
 

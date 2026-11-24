@@ -56,6 +56,8 @@ export class UiModule implements GameModule, MenuHost {
   private orbit = 0.6;
   private prevStride = 0;
   private bobAmp = 0;
+  /** time the pause menu was opened by losing pointer lock (ignore the Esc that caused it) */
+  private lockPauseAt = 0;
 
   init(game: Game): void {
     this.game = game;
@@ -81,7 +83,10 @@ export class UiModule implements GameModule, MenuHost {
     window.addEventListener('keydown', (e) => this.onKey(e), true);
     document.addEventListener('pointerlockchange', () => {
       if (document.pointerLockElement || game.testMode) return;
-      if (this.session === 'play' && !this.menus.name && this.endTimer < 0 && !this.api?.current?.ended) this.open('pause');
+      if (this.session === 'play' && !this.menus.name && this.endTimer < 0 && !this.api?.current?.ended) {
+        this.lockPauseAt = performance.now();
+        this.open('pause');
+      }
     });
   }
 
@@ -175,6 +180,7 @@ export class UiModule implements GameModule, MenuHost {
       return;
     }
     if (e.code === 'Escape') {
+      if (performance.now() - this.lockPauseAt < 250) return;
       const n = this.menus.name;
       if (n) { if (n !== 'main' && n !== 'success' && n !== 'fail') this.back(); }
       else if (this.map.open) this.map.setOpen(this.game, false);
