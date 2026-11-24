@@ -82,8 +82,9 @@ function factoryHall(sim: Sim, wx: number, wz: number, gy: number, open: 'e' | '
   for (let t = 0; t < 5; t++) {
     const z0 = t * 50;
     for (let dz = 0; dz < 50; dz++) {
-      const y = H + Math.floor(dz * 0.5);
-      box(g, 0, y, z0 + dz, W, y + 2, z0 + dz + 1, sheetFn);
+      // terraced slope (rise 6 every 12): far fewer AO-broken quads than a 1:2 voxel staircase
+      const y = H + 6 * Math.min(3, Math.floor(dz / 12)) + (dz >= 48 ? 6 : 0);
+      box(g, 0, dz % 12 === 0 && dz > 0 ? y - 6 : y, z0 + dz, W, y + 2, z0 + dz + 1, flat(MAT.sheetmetal, 1 + (t % 3)));
       box(g, wallX, H, z0 + dz, wallX + T, y, z0 + dz + 1, brickFn); // gable infill on the closed side
     }
     if (t < 4) box(g, 0, H, z0 + 49, W, H + 25, z0 + 50, pal(MAT.glass, 2));
@@ -161,9 +162,9 @@ function silos(sim: Sim, wx: number, wz: number, gy: number, m: Marks): void {
     box(g, sx - 24, 0, cz - 24, sx + 24, 3, cz + 24, concFn);
     for (const [lx, lz] of [[-15, -15], [12, -15], [-15, 12], [12, 12]]) box(g, sx + lx, 3, cz + lz, sx + lx + 3, 58, cz + lz + 3, steel);
     for (const yy of [20, 40]) { box(g, sx - 15, yy, cz - 15, sx + 15, yy + 1, cz - 14, steel); box(g, sx - 15, yy, cz + 14, sx + 15, yy + 1, cz + 15, steel); box(g, sx - 15, yy, cz - 15, sx - 14, yy + 1, cz + 15, steel); box(g, sx + 14, yy, cz - 15, sx + 15, yy + 1, cz + 15, steel); }
-    for (let k = 0; k < 16; k++) cylinderY(g, sx, cz, 5 + k * 1.1, 40 + k, 41 + k, sheetFn, 2); // hopper cone
-    cylinderY(g, sx, cz, R, 56, 132, i % 2 ? sheetFn : shaded(MAT.paintedmetal, 10, i), 1);
-    for (let k = 0; k < 8; k++) cylinderY(g, sx, cz, R - k * 2.6, 132 + k, 133 + k, sheetFn, 3); // roof cone
+    for (let k = 0; k < 16; k++) cylinderY(g, sx, cz, 5 + k * 1.1, 40 + k, 41 + k, flat(MAT.sheetmetal, 1), 2); // hopper cone
+    cylinderY(g, sx, cz, R, 56, 132, i % 2 ? flat(MAT.sheetmetal, 2) : flat(MAT.whitepaint, 2), 1);
+    for (let k = 0; k < 8; k++) cylinderY(g, sx, cz, R - k * 2.6, 132 + k, 133 + k, flat(MAT.sheetmetal, 3), 3); // roof cone
     box(g, sx - 3, 132, cz - 3, sx + 3, TOPY - 3, cz + 3, steel); // hatch stub carrying the catwalk
   }
   // catwalk across the silo tops

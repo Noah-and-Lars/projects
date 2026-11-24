@@ -76,7 +76,7 @@ type Marks = Record<string, V3>;
 const brickFn: PalFn = (x, y, z) => { const row = (y / 6) | 0; return pal(MAT.brick, (hash3(((x + z + (row % 2) * 8) / 16) | 0, row, 0, 4) * 4) | 0); };
 const concFn = shaded(MAT.concrete, 10, 2);
 const plastFn = shaded(MAT.plaster, 16, 3);
-const woodFloor = planks(MAT.wood, 4, 6);
+const woodFloor = planks(MAT.wood, 4, 6, 'z'); // stripes along one axis only: each plank is one greedy quad
 
 // ------------------------------------------------------------------ mansion
 
@@ -187,10 +187,11 @@ function mansion(sim: Sim, wx: number, wz: number, gy: number, m: Marks): void {
 
   // --- roof: hip roof in tiles on the concrete slab, two chimney stacks
   const tile = shaded(MAT.tile, 12, 5);
+  // terraced hip roof (rise 4 every 8): big flat terraces keep the greedy mesher's quad count low
   for (let i = 0; ; i++) {
-    const ins = 2 * i, y = L[3] + i;
-    if (D - 2 * ins <= 10) { box(g, ins, y, ins, W - ins, y + 2, D - ins, tile); break; }
-    shell(g, ins, y, ins, W - ins, y + 1, D - ins, 4, tile);
+    const ins = 8 * i, y = L[3] + 4 * i;
+    if (D - 2 * ins <= 24) { box(g, ins, y, ins, W - ins, y + 4, D - ins, tile); break; }
+    shell(g, ins, y, ins, W - ins, y + 4, D - ins, 10, tile);
   }
   box(g, 180, L[2], 30, 190, SY - 6, 44, brickFn);
   box(g, 0, SY - 8, 96, 12, SY - 6, 114, flat(MAT.concrete, 1)); box(g, 180, SY - 8, 30, 190, SY - 6, 44, flat(MAT.concrete, 1));
