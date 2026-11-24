@@ -49,7 +49,7 @@ export function brickHouse(sim: Sim, wx: number, wz: number, seed = 1) {
   box(g, 50, 3, 30, 66, 4, 44, 0);
   for (const [x, z] of [[50, 30], [65, 30], [50, 43], [65, 43]]) box(g, x, 3, z, x + 1, 10, z + 1, pal(MAT.wood, 0));
   box(g, 50, 10, 30, 66, 11, 44, planks(MAT.wood, 2, 9));
-  box(g, 38, wallH - 5, 28, 42, wallH - 3, 32, pal(MAT.lamp));
+  box(g, 40, wallH - 5, 28, 44, wallH - 3, 32, pal(MAT.lamp)); // hangs from the beam at x 42-44
   return sim.addBody(g, { x: wx, y: 0, z: wz }, { name: 'house' });
 }
 

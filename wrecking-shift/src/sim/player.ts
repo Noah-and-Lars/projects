@@ -207,6 +207,11 @@ export class Player {
       this.vel.y = -1.0;
     } else if (this.vel.y > 0 && m.y < desired.y * 0.5) {
       this.vel.y = 0; // bumped head
+    } else if (this.vel.y < -2 && m.y > desired.y * 0.5) {
+      // falling but held up (resting on an edge / a prop the controller does not report as ground): keep the
+      // speed we actually move at. It used to grow without limit, and the eventual "landing" at -30 m/s killed
+      // the player with fall damage after a small hop onto a chair.
+      this.vel.y = Math.max(this.vel.y, m.y / DT - 1);
     }
     // horizontal blocked -> kill that velocity component so we don't stick-accelerate
     if (Math.abs(desired.x) > 1e-5 && Math.abs(m.x) < Math.abs(desired.x) * 0.2) this.vel.x *= 0.5;

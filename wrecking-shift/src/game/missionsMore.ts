@@ -41,8 +41,8 @@ export const cellarDoor: MissionDef = {
   brief:
     'Lucian Vane bought Kestrel Ridge with money that was half mine. The half I can prove is in his cellar vault: ' +
     'a gold figure he calls "the retirement plan" and the server with the real books.\n\n' +
-    'The vault is half a metre of concrete with a steel door. A hammer will not do it. Whatever does it will be heard, ' +
-    'so open it LAST — everything in there is wired, and from the first tremor you have seventy-five seconds to be ' +
+    'The vault is half a metre of concrete behind an old armoured door of riveted plate. A hammer will not do it. Whatever does it will be heard, ' +
+    'so open it LAST — everything in there is wired, and from the first tremor you have fifty seconds to be ' +
     'back at the van by the lake.\n\n' +
     'It is a long way down from the house. Plan how you are getting off that hill before you light the fuse.',
   objectives: [
@@ -50,7 +50,7 @@ export const cellarDoor: MissionDef = {
     { kind: 'collect', id: 'books', title: 'Take the books server from the vault' },
     { kind: 'collect', id: 'deed', title: 'Take the deed box from the study', required: false },
   ],
-  alarmSeconds: 75,
+  alarmSeconds: 50,
   reward: { cash: 2000 },
   unlockAfter: ['lights-out'],
   setup(sim, lv) {
@@ -59,7 +59,7 @@ export const cellarDoor: MissionDef = {
     serverBox(sim, at(lv, 'vault', 0.5, 0.12, 0.3), 'books', 'Books Server');
     wallAlarm(sim, lv, 'vault', 'plan');
     serverBox(sim, at(lv, 'mansion_study', 0.4, 0.12, 0.4), 'deed', 'Deed Box');
-    valuable(sim, at(lv, 'wine_cellar', 0.5, 0.12, 0.5), 'bottle', 300, 'Château Vane 1961');
+    valuable(sim, at(lv, 'wine_cellar', -0.8, 0.12, -0.6), 'bottle', 300, 'Château Vane 1961');
     valuable(sim, at(lv, 'mansion_bedroom', 0.3, 0.12, 0.3), 'watch', 450, 'Vane\'s Chronometer');
     valuable(sim, at(lv, 'mansion_attic', 0.3, 0.12, 0.3), 'trophy', 180, 'Regional Snooker Cup');
     valuable(sim, at(lv, 'gazebo', 0.3, 0.12, 0), 'coins', 90, 'Jar of Casino Chips');
@@ -76,13 +76,13 @@ export const privateView: MissionDef = {
     'Mr Vane\'s glass gallery holds six pieces insured through my office for considerably more than they are worth. ' +
     'If they were to be stolen — professionally, tonight — everyone would be happier, me in particular.\n\n' +
     'The gallery is all glass, which is good news for a person with a hammer. Its pressure alarm is wired to the ' +
-    'centre plinth; once it trips you have a minute.\n\n' +
+    'centre plinth; once it trips, Ridge Security is thirty-five seconds up the lake road.\n\n' +
     'Bring at least four. All six and I will remember you fondly.',
   objectives: [
     { kind: 'collect', id: 'art', target: 'art', count: 4, title: 'Steal four pieces from the gallery' },
     { kind: 'collect', id: 'art6', target: 'art', count: 6, title: 'Steal all six', required: false },
   ],
-  alarmSeconds: 60,
+  alarmSeconds: 35,
   reward: { cash: 1500 },
   unlockAfter: ['paper-trail'],
   setup(sim, lv) {
@@ -104,8 +104,9 @@ export const towerDown: MissionDef = {
   title: 'Spoiling the View',
   client: 'Cornelius Ash, Ash Coastal Developments',
   brief:
-    'Vane\'s stone watchtower stands exactly where my funicular needs to go, and he will not sell.\n\n' +
-    'Take it down to four metres. And since you are up there — his boathouse is on my side of the old survey line. ' +
+    'Vane\'s watchtower stands exactly where my funicular needs to go, and he will not sell.\n\n' +
+    'Take it down to four metres. Only the bottom storey is stone; the lookout on top is an old timber frame, which ' +
+    'should make it a short afternoon. And since you are up there — his boathouse is on my side of the old survey line. ' +
     'Sixty per cent of it gone would settle the boundary nicely. It is wood. I am told wood burns.',
   objectives: [
     { kind: 'demolish', id: 'tower', title: 'Demolish the watchtower (nothing above 4 m)', height: 0 },
@@ -141,7 +142,9 @@ export const longDrop: MissionDef = {
     { kind: 'destroy', id: 'boiler', title: 'Wreck 35% of the boiler house', percent: 35, required: false },
   ],
   reward: { cash: 1700 },
-  unlockAfter: ['lights-out'],
+  // also after Dead Weight: felling a 0.3 m brick shaft takes the sticky bombs (career 700); with only pipe bombs
+  // (career 540 after Lights Out) the chimney could not be brought down (tests/unit/playthrough.test.ts)
+  unlockAfter: ['lights-out', 'dead-weight'],
   setup(sim, lv) {
     escapeVan(sim, lv, Math.PI / 2);
     tagBodies(sim, (b) => b.tags.has('chimney'), 'destroy:chimney');
@@ -161,27 +164,27 @@ export const payday: MissionDef = {
     'The Works has "restructured" our wages into the manager\'s safe three Fridays running.\n\n' +
     'The payroll server is on the top floor of the office block. The cash box sits in the boiler house because he ' +
     'thinks nobody would look there. The third thing is a crate on the loading dock across the canal marked ' +
-    'MACHINE PARTS, which rattles like champagne. All alarmed; one minute once you touch any of them.\n\n' +
+    'MACHINE PARTS, which rattles like champagne. The server and the cash box are alarmed; forty-five seconds once you touch either.\n\n' +
     'Two bridges cross that canal. You might think about how many should still be standing when Works Security drives in.',
   objectives: [
     { kind: 'collect', id: 'payroll', title: 'Take the payroll server (office, top floor)' },
     { kind: 'collect', id: 'cash', title: 'Take the cash box (boiler house)' },
     { kind: 'collect', id: 'parts', title: 'Take the "machine parts" (loading dock)', required: false },
   ],
-  alarmSeconds: 60,
+  alarmSeconds: 45,
   fireAlarm: 250,
   reward: { cash: 2200 },
   unlockAfter: ['dead-weight'],
   setup(sim, lv) {
     escapeVan(sim, lv, Math.PI / 2);
-    serverBox(sim, at(lv, 'office_top', 0.5, 0.12, 0.5), 'payroll', 'Payroll Server');
+    serverBox(sim, at(lv, 'office_top', -0.6, 0.12, 0.5), 'payroll', 'Payroll Server');
     wallAlarm(sim, lv, 'office_top', 'payroll');
     goldIdol(sim, at(lv, 'boiler_house', 0.6, 0.12, 0.6), 'cash', 'Cash Box');
     wallAlarm(sim, lv, 'boiler_house', 'cash');
     paintCan(sim, at(lv, 'dock', 0.4, 0.12, 0.4), 'parts', '"Machine Parts"');
     valuable(sim, at(lv, 'office_lobby', 0.5, 0.12, 0.5), 'coins', 70, 'Vending Machine Float');
     valuable(sim, at(lv, 'silo_catwalk', 0.2, 0.12, 0), 'watch', 320, 'Foreman\'s Lost Watch');
-    valuable(sim, at(lv, 'gantry_top', 0, 0.12, 0), 'trophy', 240, 'Crane Driver of the Year 1987');
+    valuable(sim, at(lv, 'gantry_top', 0, 0.12, 1.2), 'trophy', 240, 'Crane Driver of the Year 1987');
     const p = at(lv, 'parking');
     hatchback(sim, p.x, p.y, p.z, 0);
   },
@@ -203,7 +206,7 @@ export const bundFire: MissionDef = {
     { kind: 'destroy', id: 'halls', title: 'Destroy 50% of the factory halls', percent: 50, required: false },
     { kind: 'deliver', id: 'wagon', target: 'spool', count: 1, title: 'Roll a cable spool into the canal', zone: { water: true }, required: false },
   ],
-  alarmSeconds: 45,
+  alarmSeconds: 35,
   reward: { cash: 2600 },
   unlockAfter: ['long-drop', 'payday'],
   setup(sim, lv) {

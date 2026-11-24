@@ -10,8 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
-    "test:e2e": "node tests/e2e/run.mjs && node tests/e2e/fire.mjs && node tests/e2e/quicksave.mjs && node tests/e2e/modes.mjs",
-    "test": "tsc --noEmit && vitest run && vite build && node tests/e2e/run.mjs && node tests/e2e/fire.mjs && node tests/e2e/quicksave.mjs && node tests/e2e/modes.mjs"
+    "test:e2e": "node tests/e2e/run.mjs && node tests/e2e/fire.mjs && node tests/e2e/quicksave.mjs && node tests/e2e/modes.mjs && node tests/e2e/playthrough.mjs",
+    "test": "tsc --noEmit && vitest run && vite build && node tests/e2e/run.mjs && node tests/e2e/fire.mjs && node tests/e2e/quicksave.mjs && node tests/e2e/modes.mjs && node tests/e2e/playthrough.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",

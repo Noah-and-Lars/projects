@@ -41,6 +41,8 @@ Two independent review passes (simulation; app/render/UI) reported 20 defects; a
 tests in `tests/unit/regressions.test.ts`. The worst: a crash when a burning body was removed, vehicles never taking
 collision damage in the real game loop, and the physics world leaking on every level load (~47 MB per harbour load).
 A third pass over the lighting shaders and level generators is recorded below if it found anything.
+`npm test`: typecheck, 212 unit/sim tests in Node (incl. 11 mission playthroughs, ~2.5 min), build, headless-browser tests (boot, audio, 14 tools, missions/UI,
+vehicles, lighting incl. GPU-vs-CPU ray check, fire, quicksave, one mission played through per big map). All green at the last commit.
 
 ## Known issues / not verified
 - **Never run on a real GPU.** The container renders in software, so frame rate, the medium/high tiers' cost and the
@@ -55,8 +57,45 @@ A third pass over the lighting shaders and level generators is recorded below if
   the player's crouch state or pending chain explosions.
 - Glass is opaque-ish from inside vehicles (hood camera instead of a true driver view); the Kestrel Ridge pool is
   empty (one water level per map); roads on Kestrel Ridge are steep (13–17%) and untested with vehicles.
+- All 11 missions on the three big maps are played start to finish by scripted runs (see "Mission playthroughs");
+  the scripts are optimal players, so real difficulty for humans is still unmeasured.
+- Level load takes ~5 s on the big maps (no progress bar, just "LOADING…").
+- Quickload does not restore fires, thrown/placed explosives in flight, or drone alert state.
+- Glass is opaque-ish from inside vehicles (hood camera instead of a true driver view); the Kestrel Ridge pool is
+  empty (one water level per map). Kestrel Ridge roads (15-16 %) are driven up and down by van, hatchback and loader
+  in `tests/unit/ridgeRoads.test.ts`.
+- Vehicle contact-force crash wear never applies in the real game (impact events are drained before the vehicle
+  system reads them); see DECISIONS.md.
+- The map edges are abrupt: terrain simply ends at the water plane.
 - A 5-hour account usage limit paused all work from ~13:10 to 16:20 UTC; nothing was lost.
 - Nothing was blocked by approval prompts.
+
+## Mission playthroughs
+`tests/unit/playthrough.test.ts` (harness `tests/unit/playHarness.ts`) plays every big-map mission with the tools of a
+"typical" career at that point (prerequisite chain + Housewarming, required objectives + 10 s left, no upgrades).
+Teleports only while planning; after the alarm everything is controller input, real tools and real driving.
+Browser runs (one per map): `tests/e2e/playthrough.mjs` (Paper Trail, Private View, Controlled Burn).
+
+| mission | career | tools / means | time left | score | changed to make it completable / tense |
+|---|---|---|---|---|---|
+| paper-trail | 220 | none (E), on foot | 18.2 s | 286 | warehouse mezzanine stairs rebuilt (rose away from the door); building stair openings widened; alarm 60→45 s |
+| lights-out | 440 | sledge | no alarm | 100 | timber shoring band at the lighthouse foot (brick drum not fellable with 440-career tools) |
+| dead-weight | 440 | grab/carry (RMB), on foot | 17.4 s | 234 | pump-house box got its own target id (was alarmed against the brief); alarm 75→50 s |
+| depot-clearance | 760 | bomb, pistol | 15.0 s | 230 | pump house 40 % → 6 % (concrete: ~10 % max with all explosives); alarm 50→30 s |
+| night-watch | 980 | none, on foot (drone spots you) | 24.2 s | 148 | drones count as an alarm source (time bonus); alarm 60→45 s |
+| private-view | 440 | none, on foot | 17.7 s | 184 | alarm 60→35 s |
+| cellar-door | 540 | blowtorch, hatchback down the switchback | 16.8 s | 282 | vault door is riveted plate (blowtorchable); alarm 75→50 s; Ridge roads/vehicles fixed (below) |
+| tower-down | 760 | bomb | no alarm | 100 | watchtower above head height is timber (rock needed ~20 bombs) |
+| long-drop | 760 | bomb | no alarm | 100 | now also unlocks after Dead Weight (needs bombs) |
+| payday | 660 | none, on foot | 12.7 s | 274 | door in the office's top-floor corridor wall (office 1 was sealed); alarm 60→45 s |
+| bund-fire | 1080 | pistol | 16.2 s | 132 | alarm 45→35 s |
+
+Kestrel Ridge roads (`tests/unit/ridgeRoads.test.ts`, lot → forecourt, turn round, back): van up 33 s (grade top
+35 km/h, mean 21), hatchback 27 s (37 / 26), loader 41 s (23 / 14); down 20-26 s. Fixes: road junction without a
+1.4 m cliff, flat start of the switchback, wider hairpin, lamp out of the carriageway, suspension damping, raised
+loader bucket, terrain excluded from ramming. Crashes found and fixed on the way: Rapier `setVoxel` panic on small
+debris splits, fire visitors reading removed bodies (browser crash in Controlled Burn), unlimited fall speed while
+standing on a ledge (death by fall damage after a hop).
 
 ## Rendering
 Lighting / look upgrade (see `src/render/*`, research recipe `docs/research/08-lighting-look.md`). Reference screenshots: `docs/look/`.

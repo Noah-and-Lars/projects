@@ -19,6 +19,14 @@ function lighthouse(sim: Sim, x: number, y: number, z: number) {
   const stripes = (xx: number, yy: number, zz: number) => (((yy / 30) | 0) % 2 ? bricks(MAT.brick, 3)(xx, yy, zz) : pal(MAT.whitepaint, (hash3(xx >> 1, yy >> 1, zz >> 1) * 5) | 0));
   cylinderY(g, c, c, R, 0, Hh, stripes, 3);
   cylinderY(g, c, c, R, 0, 3, shaded(MAT.concrete, 3, 2));
+  // the listed lighthouse is being restored: a 1 m band of the drum just above the plinth is timber shoring
+  // (wood, flammable) while the brickwork is repointed. It is the tower's weak point (mission "Lights Out").
+  // Tested: 6 bombs on the brick ring leave >150 voxels per layer standing, so a pure brick drum could not be
+  // felled with the tools a player has at that point of the career.
+  for (let yy = 6; yy < 16; yy++) for (let zz = 0; zz < S; zz++) for (let xx = 0; xx < S; xx++) {
+    if (!g.get(xx, yy, zz) || Math.hypot(xx + 0.5 - c, zz + 0.5 - c) < R - 3.01) continue;
+    g.set(xx, yy, zz, (((xx + zz) >> 1) & 1) ? pal(MAT.wood, 1) : pal(MAT.wood, 3));
+  }
   // door
   clear(g, c - 5, 3, 0, c + 5, 24, 10);
   // spiral stairs: wooden treads from the wall toward a central post
@@ -80,9 +88,12 @@ function warehouse(sim: Sim, x: number, z: number, w = 200, d = 130, name = 'war
   box(g, 2, my + 2, d - mz, mx, my + 26, d - mz + 1, shaded(MAT.plaster, 6, 2)); box(g, mx - 1, my + 2, d - mz, mx, my + 26, d - 2, shaded(MAT.plaster, 6, 2));
   clear(g, mx - 1, my + 2, d - 22, mx, my + 22, d - 13); // office door
   box(g, 14, my + 10, d - mz, 40, my + 20, d - mz + 1, pal(MAT.glass, 2));
-  for (let i = 0; i < my / 2; i++) box(g, mx + i * 3, Math.max(3, 3 + i * 2 - 2), d - 13, mx + i * 3 + 3, 3 + i * 2 + 2, d - 3, planks(MAT.wood, 3, 8));
+  // stairs up to the office door: they rise toward the mezzanine (low end at the east, top step level with the
+  // mezzanine floor right outside the door). They used to rise away from it and ended in mid-air.
+  const n = my / 2;
+  for (let i = 0; i < n; i++) { const sx = mx + (n - 1 - i) * 3; box(g, sx, Math.max(3, 2 * i), d - 23, sx + 3, 2 * i + 4, d - 12, planks(MAT.wood, 3, 8)); }
   // hanging lamps
-  for (let cx = 40; cx < w; cx += 60) box(g, cx, H - 5, (d >> 1) - 2, cx + 4, H - 2, (d >> 1) + 2, pal(MAT.lamp));
+  for (let cx = 40; cx < w; cx += 40) box(g, cx, H - 5, (d >> 1) - 2, cx + 4, H - 2, (d >> 1) + 2, pal(MAT.lamp));
   g.recount();
   return sim.addBody(g, { x, y: G - 0.2, z }, { name });
 }

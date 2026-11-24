@@ -360,7 +360,9 @@ export class Mission {
     this.fireCount = ctx.fireCount ?? (() => 0);
     this.alarmTicks = this.alarmSecondsTotal * TICKS;
     this.bind();
-    this.hasAlarm = this.alarmBoxes.length > 0 || def.fireAlarm != null || def.demolitionSensor != null;
+    // security drones (sim.ext.drones, spawned in setup) raise the alarm when they spot the player
+    const drones = ctx.sim.ext.drones?.drones as unknown[] | undefined;
+    this.hasAlarm = this.alarmBoxes.length > 0 || def.fireAlarm != null || def.demolitionSensor != null || !!drones?.length;
     this.removedHook = (b) => { if (this.phase === 'planning' && b.kind !== 'debris') this.removedVoxels++; };
     this.sim.onRemoved.push(this.removedHook);
     this.sim.out.push({ type: 'custom', name: 'mission:start', data: { id: def.id } });

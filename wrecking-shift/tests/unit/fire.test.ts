@@ -88,6 +88,22 @@ describe('fire', () => {
     expect(far.grid.count).toBe(400);
   });
 
+  it('visiting fires of a body removed this tick does not touch its rigid body (Rapier would abort)', () => {
+    const { sim, fire } = world();
+    const g = new VoxelGrid(6, 6, 6);
+    g.fill(0, 0, 0, 6, 6, 6, pal(MAT.wood));
+    const crate = sim.addBody(g, { x: 0, y: 0.1, z: 0 }, { dynamic: true });
+    run(sim, 5);
+    expect(fire.ignite(crate, 2, 5, 2)).toBe(true);
+    run(sim, 2);
+    sim.removeBody(crate); // e.g. a fuel container removed by its own chain explosion
+    let n = 0;
+    expect(() => { fire.forEachFire(() => { n++; }); fire.positions(10); }).not.toThrow();
+    run(sim, 12);
+    expect(fire.count()).toBe(0);
+    void n;
+  });
+
   it('respects the global cap', () => {
     const { sim, fire } = world(4);
     fire.maxFires = 300;

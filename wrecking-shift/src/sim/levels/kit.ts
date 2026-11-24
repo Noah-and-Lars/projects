@@ -7,6 +7,9 @@ import { qyaw } from '../vec';
 import { VoxelGrid } from '../voxels';
 import { dropFloating } from './kit2';
 
+/** static scenery must sit on the 0.1 m voxel grid: the lighting volume stamps bodies at whole voxels */
+const onGrid = (v: number) => Math.round(v * 10) / 10;
+
 /** ------------------------------------------------------------------ buildings */
 
 export interface BuildingSpec {
@@ -139,9 +142,10 @@ export function makeBuilding(s: BuildingSpec): VoxelGrid {
       const len = steps * run;
       const zs = f % 2 === 0 ? tt + 6 : Math.min(d - tt - 6, tt + 6 + len);
       const dir = f % 2 === 0 ? 1 : -1;
-      // opening in the slab above
+      // opening in the slab above the whole flight: a 1.8 m player (radius 0.3) hit his head on the slab when
+      // the opening started after step 4, and the stairs could not be climbed.
       const za = Math.min(zs, zs + dir * len), zb = Math.max(zs, zs + dir * len);
-      clear(g, x0, y0 + fh - 2, Math.max(tt, za + (dir > 0 ? 12 : 0)), x1, y0 + fh, Math.min(d - tt, zb - (dir > 0 ? 0 : 12)));
+      clear(g, x0, y0 + fh - 2, Math.max(tt, za), x1, y0 + fh, Math.min(d - tt, zb));
       for (let i = 0; i < steps; i++) {
         const z = zs + dir * i * run;
         const zz0 = Math.min(z, z + dir * run), zz1 = Math.max(z, z + dir * run);
@@ -188,7 +192,7 @@ export function tree(sim: Sim, x: number, y: number, z: number, seed = 0, scale 
   cylinderY(g, c, c, 2.0 * scale + 0.3, trunk - 4, trunk + R - 3, shaded(MAT.wood, 2, seed));
   dropFloating(g);
   g.recount();
-  return sim.addBody(g, { x: x - c * 0.1, y: y - 0.3, z: z - c * 0.1 }, { name: 'tree' });
+  return sim.addBody(g, { x: onGrid(x - c * 0.1), y: onGrid(y - 0.3), z: onGrid(z - c * 0.1) }, { name: 'tree' });
 }
 
 export function pine(sim: Sim, x: number, y: number, z: number, seed = 0): VoxelBody {
@@ -202,7 +206,7 @@ export function pine(sim: Sim, x: number, y: number, z: number, seed = 0): Voxel
   }
   dropFloating(g);
   g.recount();
-  return sim.addBody(g, { x: x - 1.5, y: y - 0.3, z: z - 1.5 }, { name: 'pine' });
+  return sim.addBody(g, { x: onGrid(x - 1.5), y: onGrid(y - 0.3), z: onGrid(z - 1.5) }, { name: 'pine' });
 }
 
 export function rock(sim: Sim, x: number, y: number, z: number, r = 10, seed = 0): VoxelBody {
@@ -210,7 +214,7 @@ export function rock(sim: Sim, x: number, y: number, z: number, r = 10, seed = 0
   sphere(g, r + 1, 2, r + 1, r, shaded(MAT.rock, 3, seed), 0.35, seed);
   dropFloating(g);
   g.recount();
-  return sim.addBody(g, { x: x - r * 0.1, y: y - 0.3, z: z - r * 0.1 }, { name: 'rock' });
+  return sim.addBody(g, { x: onGrid(x - r * 0.1), y: onGrid(y - 0.3), z: onGrid(z - r * 0.1) }, { name: 'rock' });
 }
 
 /** straight fence / wall segment along x (yaw 0) or z (yaw 90deg) */

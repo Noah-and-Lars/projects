@@ -143,12 +143,29 @@ export class RoadHeightmap extends Heightmap {
     }
     return best;
   }
+  /**
+   * Roads apply in order like pads: a later road overrides earlier ones inside its half width and blends over
+   * its `blend` band. (Taking only the nearest road left a vertical step along the line where the nearest road
+   * changes: on Kestrel Ridge the switchback leaving the shore lane grew a 1.4 m cliff across the carriageway
+   * that stopped every vehicle; tests/unit/ridgeRoads.test.ts.)
+   */
   override height(x: number, z: number): number {
-    const h = super.height(x, z);
-    const r = this.nearestRoad(x, z);
-    if (!r || r.d >= r.road.half + r.road.blend) return h;
-    const t = smoothstep(r.road.half, r.road.half + r.road.blend, r.d);
-    return r.y + (h - r.y) * t;
+    let h = super.height(x, z);
+    for (const road of this.roads) {
+      if (x < road.x0 || x > road.x1 || z < road.z0 || z > road.z1) continue;
+      let d = Infinity, y = 0;
+      for (let i = 0; i + 1 < road.pts.length; i++) {
+        const a = road.pts[i], b = road.pts[i + 1];
+        const ex = b.x - a.x, ez = b.z - a.z;
+        const l2 = ex * ex + ez * ez || 1;
+        const t = Math.max(0, Math.min(1, ((x - a.x) * ex + (z - a.z) * ez) / l2));
+        const di = Math.hypot(x - a.x - ex * t, z - a.z - ez * t);
+        if (di < d) { d = di; y = a.y + (b.y - a.y) * t; }
+      }
+      if (d >= road.half + road.blend) continue;
+      h = y + (h - y) * smoothstep(road.half, road.half + road.blend, d);
+    }
+    return h;
   }
   override padSurface(x: number, z: number): number | undefined {
     const s = super.padSurface(x, z);
