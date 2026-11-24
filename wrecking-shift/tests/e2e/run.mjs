@@ -33,6 +33,8 @@ await test('boot + spawn + screenshot', async () => {
   await browser.close();
 });
 
+await (await import('./audio.mjs')).default({ url, test });
+
 srv.close();
 if (failed) { console.log(failed + ' e2e test(s) failed'); process.exit(1); }
 console.log('e2e ok');

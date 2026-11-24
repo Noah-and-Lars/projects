@@ -15,3 +15,15 @@
 - **Player** uses Rapier's kinematic character controller with a *cylinder* (experiment: capsule fails to auto-step 0.2 m
   voxel stairs, cylinder climbs them).
 - **Raycasts for tools** use our own DDA through voxel grids (need voxel coords + material, and determinism).
+
+## Audio (src/audio, src/game/audioModule.ts)
+- **Guesses (no spec in the research docs):** size-class thresholds (carve: <40 / <400 / more voxels; impact force: <15k / <60k /
+  more; sim reports impacts from 4000), 0.75 m footstep length, 6 m indoor probe range, 32-voice cap, per-category token buckets
+  (see `CATEGORY_LIMITS` in engine.ts). All are tunables, not measured against playtests.
+- **Voice limiter clock** is wall-clock (`performance.now`), not `ctx.currentTime`, so a suspended/never-running context
+  cannot make the limiter fill up forever.
+- **Context creation** only on a user gesture (pointerdown/mousedown/keydown/touchstart/click) or `game.ext.audio.ensure()`.
+- **Music** is rule-based (hash-randomised sparse arpeggio over a 4-chord minor progression; heist cue = bass pulse + noise
+  percussion + stabs + noise riser driven by `tension`). Chord choices are our own, no existing melody is used.
+- **Loops** (fire, engine, torch, heli, alarm, ambient) are refreshed by TTL (`engine.touchLoop`) instead of explicit stop calls,
+  so a module that stops sending data silences them within ~0.5 s.
