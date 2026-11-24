@@ -17,16 +17,16 @@ export interface RankDef { name: string; score: number; tools: string[] }
 /** career ranks: total score needed and the tools that unlock with it */
 export const RANKS: RankDef[] = [
   { name: 'Day Labourer', score: 0, tools: ['sledge', 'spray', 'extinguisher'] },
-  { name: 'Hired Hand', score: 150, tools: ['blowtorch'] },
-  { name: 'Night Shifter', score: 300, tools: ['shotgun'] },
-  { name: 'Load Bearer', score: 500, tools: ['plank'] },
-  { name: 'Wall Botherer', score: 750, tools: ['pipebomb'] },
-  { name: 'Site Menace', score: 1000, tools: ['pistol'] },
-  { name: 'Foreman of Ruin', score: 1300, tools: ['bomb'] },
-  { name: 'Structural Concern', score: 1700, tools: ['cable'] },
-  { name: 'Harbour Legend', score: 2200, tools: ['rocket'] },
-  { name: 'Shift Boss', score: 2800, tools: ['nitro'] },
-  { name: 'Gullmouth\'s Problem', score: 3600, tools: [] },
+  { name: 'Hired Hand', score: 100, tools: ['blowtorch', 'leafblower'] },
+  { name: 'Night Shifter', score: 200, tools: ['shotgun'] },
+  { name: 'Load Bearer', score: 300, tools: ['plank'] },
+  { name: 'Wall Botherer', score: 400, tools: ['pipebomb'] },
+  { name: 'Site Menace', score: 550, tools: ['pistol'] },
+  { name: 'Foreman of Ruin', score: 700, tools: ['bomb'] },
+  { name: 'Structural Concern', score: 900, tools: ['cable', 'rifle'] },
+  { name: 'Harbour Legend', score: 1150, tools: ['rocket'] },
+  { name: 'Shift Boss', score: 1400, tools: ['nitro'] },
+  { name: 'Gullmouth\'s Problem', score: 2200, tools: [] },
 ];
 
 /** display names for tools that may not exist yet in the belt (the belt's own `tool.name` wins) */

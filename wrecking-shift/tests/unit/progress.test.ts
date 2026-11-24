@@ -43,8 +43,8 @@ describe('progress', () => {
     expect(p.isToolUnlocked('blowtorch')).toBe(false);
     expect(p.isToolUnlocked('some-future-tool')).toBe(true);
     const o = p.recordResult(result('housewarming', 320, 400));
-    expect(o.newTools).toEqual(['blowtorch', 'shotgun']);
-    expect(o.rankAfter).toBe(2);
+    expect(o.newTools).toEqual(['blowtorch', 'leafblower', 'shotgun', 'plank']);
+    expect(o.rankAfter).toBe(3);
     expect(p.cash).toBe(400);
     // worse replay keeps best; failure pays nothing
     p.recordResult(result('housewarming', 100, 50));

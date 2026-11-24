@@ -52,7 +52,7 @@ export const cellarDoor: MissionDef = {
   ],
   alarmSeconds: 75,
   reward: { cash: 2000 },
-  unlockAfter: ['paper-trail'],
+  unlockAfter: ['lights-out'],
   setup(sim, lv) {
     escapeVan(sim, lv, -Math.PI / 2);
     goldIdol(sim, at(lv, 'vault', -0.5, 0.12, 0), 'plan', 'The Retirement Plan');
