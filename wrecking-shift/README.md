@@ -30,6 +30,7 @@ URL parameters: `?mission=<id>` (e.g. `paper-trail`), `?sandbox=<level>` (`harbo
 | 1–0, mouse wheel, Q | select tool |
 | E | interact: take targets/valuables, enter/exit vehicles, clock out at the escape van |
 | Tab | map · F3 debug overlay · Esc pause |
+| F, P | flashlight · photo mode (free camera, HUD hidden) |
 | F5 / F9 | quicksave / quickload (saving only while planning — not once the alarm runs) |
 | Driving | W/S throttle & brake/reverse, A/D steer, Space handbrake, V camera, R flip |
 
@@ -37,7 +38,9 @@ URL parameters: `?mission=<id>` (e.g. `paper-trail`), `?sandbox=<level>` (`harbo
 - **Missions**: heists with wired alarm boxes and a countdown, demolition, sink-it-in-the-harbour, destroy-N%,
   a drone-guarded night job. Optional targets and hidden valuables pay extra.
 - **Progression**: score → rank → tool unlocks; cash → ammo upgrades. Saved in localStorage.
-- **Sandbox**: any map, all tools, infinite ammo.
+- **Sandbox**: any map, all tools, infinite ammo, choice of time of day and weather.
+- **Challenges**: Rubble Rush (destroy as much as you can in 90 s) and Snatch Sprint (grab loot crates and get out
+  in 60 s) on any big map.
 - **Tools**: sledgehammer, spray can, extinguisher, blowtorch, handgun, shotgun, planks, cable, pipe bomb, bomb,
   rocket launcher, nitro canister, rifle, leaf blower.
 - **Vehicles**: hatchback, van, wheel loader.

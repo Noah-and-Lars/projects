@@ -28,12 +28,19 @@ physics WebAssembly and pointer lock is unverified — if it shows "Failed to st
 - M10 Content — done: 4 levels (test yard, Gullwick Harbour, Kestrel Ridge, Brackwater Works), 13 missions across
   heist / demolition / sink-in-water / destroy-% / drone-guarded types, sandbox, ranks + tool unlocks, cash upgrades,
   localStorage save.
-- M11 Extras — partly: security drones (watcher/gunner, die only in water), water buoyancy + swimming/drowning,
-  rain/snow particles (no level uses them yet). Not done: photo mode, challenge modes, wet-road physics.
+- M11 Extras — done: security drones (watcher/gunner, die only in water), water buoyancy + swimming/drowning,
+  two challenge modes (Rubble Rush, Snatch Sprint), photo mode (P), time-of-day and rain/snow pickers, flashlight (F),
+  backdrop hills + soft map boundary. Not done: wet-road physics, any mission that uses rain/snow.
 
 ## Tests
-`npm test`: typecheck, 194 unit/sim tests in Node, build, headless-browser tests (boot, audio, 14 tools, missions/UI,
-vehicles, lighting incl. GPU-vs-CPU ray check, fire, quicksave). All green at the last commit.
+`npm test`: typecheck (with unused-code checks), 209 unit/sim tests in Node, build, headless-browser tests (boot,
+audio, 14 tools, missions/UI, vehicles, lighting incl. GPU-vs-CPU ray check, fire, quicksave, challenge/photo modes).
+
+## Code review (after the first build)
+Two independent review passes (simulation; app/render/UI) reported 20 defects; all were fixed, with regression
+tests in `tests/unit/regressions.test.ts`. The worst: a crash when a burning body was removed, vehicles never taking
+collision damage in the real game loop, and the physics world leaking on every level load (~47 MB per harbour load).
+A third pass over the lighting shaders and level generators is recorded below if it found anything.
 
 ## Known issues / not verified
 - **Never run on a real GPU.** The container renders in software, so frame rate, the medium/high tiers' cost and the
@@ -43,11 +50,11 @@ vehicles, lighting incl. GPU-vs-CPU ray check, fire, quicksave). All green at th
 - The 9 missions on the three big maps are only tested for "props rest where placed, nothing trips on its own";
   none has been played start to finish (the two test-yard missions are completed in tests). Some may be too hard
   or too easy with the tools unlocked at that point.
-- Level load takes ~5 s on the big maps (no progress bar, just "LOADING…").
-- Quickload does not restore fires, thrown/placed explosives in flight, or drone alert state.
+- Level load takes ~5 s on the big maps (progress bar; the build step itself still blocks for a few seconds).
+- Quickload restores bodies, tools, planks/cables, placed charges, rockets, fires (fuel restarts) and drones, but not
+  the player's crouch state or pending chain explosions.
 - Glass is opaque-ish from inside vehicles (hood camera instead of a true driver view); the Kestrel Ridge pool is
   empty (one water level per map); roads on Kestrel Ridge are steep (13–17%) and untested with vehicles.
-- The map edges are abrupt: terrain simply ends at the water plane.
 - A 5-hour account usage limit paused all work from ~13:10 to 16:20 UTC; nothing was lost.
 - Nothing was blocked by approval prompts.
 

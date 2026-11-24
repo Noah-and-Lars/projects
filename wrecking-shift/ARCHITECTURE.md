@@ -18,12 +18,16 @@ src/sim/        deterministic simulation — pure TS, runs in Node, fixed 60 Hz 
   player.ts     first-person character (Rapier kinematic controller), health / damage()
   build.ts      voxel authoring helpers       levels/   level generators (LevelDef.build(sim) -> LevelInfo)
   tools/        Tool base class + ToolBelt + one file per tool      fire.ts  FireApi
-src/render/     three.js presentation: renderer.ts (tiers, time of day, frame), bodyViews.ts (chunk meshes per body),
-                particles.ts, worldMaterial.ts (+ trace.glsl.ts: traced sun / AO), occupancy.ts + worldOccupancy.ts (pure
-                CPU world volume) + volumes.ts (3D textures), sky.ts, lamps.ts, post.ts (bloom / tone map / FXAA)
-src/game/       app glue: game.ts (main loop, GameModule), modules.ts (module registry), levels.ts (level registry),
-                input.ts, ui/ (DOM HUD + menus)
-src/audio/      WebAudio (procedural)
+                also: water.ts, drones.ts, vehicle.ts + prefabs/, mission.ts + missionProps.ts, challenge.ts,
+                snapshot.ts (quicksave), grab.ts
+src/render/     three.js presentation: renderer.ts, bodyViews.ts (chunk meshes per body), worldMaterial.ts + trace.glsl.ts
+                (traced sun / voxel AO), occupancy.ts + worldOccupancy.ts + volumes.ts (world occupancy volume),
+                sky.ts, lamps.ts, post.ts, particles.ts, fireFx.ts, toolFx.ts, viewModel.ts, vehicleFx.ts, water.ts,
+                backdrop.ts, lookModule.ts
+src/game/       app glue: game.ts (main loop, GameModule, level loading, quicksave), modules.ts (module registry),
+                levels.ts (level registry), missions*.ts (mission definitions), progress.ts (save data), input.ts,
+                one *Module.ts per feature, ui/ (DOM HUD + menus + map)
+src/audio/      WebAudio (procedural): engine.ts, bank.ts, director.ts (events -> sounds), music.ts
 tests/unit/     Vitest (Node)         tests/e2e/   Playwright smoke tests against dist/ (run.mjs + harness.mjs)
 ```
 
