@@ -58,6 +58,8 @@ export interface VehicleSpec {
   antiRoll: number;
   /** first-person eye, chassis-local metres */
   seat: V3;
+  /** first-person 'hood' camera, chassis-local metres (in front of the windshield, above the bonnet) */
+  hoodCam: V3;
   /** chase camera distance / height above the centre of mass */
   camDist: number;
   camHeight: number;
@@ -100,6 +102,9 @@ const HARD_RMAX = [0.75, 0.58, 0.35, 0];
 /** below this health the engine smokes, below DEAD_HEALTH it dies */
 export const SMOKE_HEALTH = 0.3;
 export const DEAD_HEALTH = 0.12;
+/** engine-bay fraction below which the engine smokes / dies */
+export const SMOKE_ENGINE = 0.55;
+export const DEAD_ENGINE = 0.25;
 
 let vehicleSerial = 0;
 
@@ -120,8 +125,12 @@ export class Vehicle {
   engineOn = false;
   /** player sits inside (set by the game module) */
   seated = false;
-  /** 0..1 fraction of the vital voxels (frame + engine bay) left */
+  /** 0..1: 0.7 x fraction of vital voxels (frame + engine bay) left + 0.3 x fraction of all voxels left */
   health = 1;
+  /** 0..1 fraction of the engine bay left */
+  engineHealth = 1;
+  /** accumulated non-voxel damage (blast waves, hard crashes) subtracted from health */
+  wear = 0;
   dead = false;
   /** engine flooded (COM under water) */
   drowned = false;
@@ -200,6 +209,8 @@ export class Vehicle {
   localToWorld(p: V3): V3 { return this.body.toWorld({ x: p.x / VOXEL, y: p.y / VOXEL, z: p.z / VOXEL }); }
   /** world position of the first-person eye */
   seatWorld(): V3 { return this.localToWorld(this.spec.seat); }
+  /** world position of the hood camera */
+  hoodCamWorld(): V3 { return this.localToWorld(this.spec.hoodCam); }
   /** upright = up.y (1 upright, 0 on its side, -1 on its roof) */
   get upright(): number { return this.up.y; }
 
@@ -309,9 +320,9 @@ export class Vehicle {
     this.grounded = g;
     if (g >= 2 && s.antiRoll > 0) this.antiRoll(fwd, up);
     this.detectSkid(sim, lin, fwd, g, hb, brake);
-    if (this.health < SMOKE_HEALTH && sim.tick - this.lastSmokeTick >= 12) {
+    if (this.smoking && sim.tick - this.lastSmokeTick >= 12) {
       this.lastSmokeTick = sim.tick;
-      sim.out.push({ type: 'custom', name: 'vehicle:smoke', data: { name: this.name, pos: this.localToWorld(s.engine), amount: clamp(1 - this.health / SMOKE_HEALTH, 0.1, 1) } });
+      sim.out.push({ type: 'custom', name: 'vehicle:smoke', data: { name: this.name, pos: this.localToWorld(s.engine), amount: this.smokeAmount } });
     }
   }
 
@@ -350,18 +361,36 @@ export class Vehicle {
 
   updateHealth(): void {
     const d = this.body.grid.data;
-    let alive = 0;
-    for (let i = 0; i < this.frame.length; i++) if (d[this.frame[i]]) alive++;
-    for (let i = 0; i < this.engineBay.length; i++) if (d[this.engineBay[i]]) alive++;
+    let fr = 0, en = 0;
+    for (let i = 0; i < this.frame.length; i++) if (d[this.frame[i]]) fr++;
+    for (let i = 0; i < this.engineBay.length; i++) if (d[this.engineBay[i]]) en++;
     this.lastHealthCount = this.body.grid.count;
-    this.health = alive / this.vitalTotal;
+    this.engineHealth = en / Math.max(1, this.engineBay.length);
+    const vital = (fr + en) / this.vitalTotal;
+    const hull = Math.min(1, this.body.grid.count / Math.max(1, this.body.initialCount));
+    // vital voxels (frame + engine bay) dominate; any lost panel still counts a little
+    this.health = Math.max(0, 0.7 * vital + 0.3 * hull - this.wear);
     // the keep voxel was destroyed: pick another surviving frame voxel
     const b = this.body;
     if (b.keepIndex < 0 || !d[b.keepIndex]) {
       b.keepIndex = -1;
       for (let i = 0; i < this.frame.length; i++) if (d[this.frame[i]]) { b.keepIndex = this.frame[i]; break; }
     }
-    if (!this.dead && this.health < DEAD_HEALTH) this.kill();
+    if (!this.dead && (this.health < DEAD_HEALTH || this.engineHealth < DEAD_ENGINE)) this.kill();
+  }
+
+  /** engine smokes */
+  get smoking(): boolean { return !this.removed && !this.drowned && (this.health < SMOKE_HEALTH || this.engineHealth < SMOKE_ENGINE); }
+  /** 0..1 smoke intensity */
+  get smokeAmount(): number {
+    return clamp(Math.max(1 - this.health / SMOKE_HEALTH, (SMOKE_ENGINE - this.engineHealth) / (SMOKE_ENGINE - DEAD_ENGINE)), 0.15, 1);
+  }
+
+  /** non-voxel damage (0..1 of full health) */
+  addWear(amount: number): void {
+    if (amount <= 0 || this.removed) return;
+    this.wear = Math.min(1, this.wear + amount);
+    this.updateHealth();
   }
 
   kill(): void {
@@ -484,7 +513,7 @@ export class Vehicle {
           // distance along dir to the plane through the first hit
           const den = vdot(dir, first.normal);
           d = den < -0.2 ? vdot({ x: first.point.x - o.x, y: first.point.y - o.y, z: first.point.z - o.z }, first.normal) / den : first.dist;
-          if (d < 0 || d > len + 0.3) continue;
+          if (d < 0 || d > len + 6) continue;
         }
         // underside probes carve a bit lower so no stub is left for the belly to snag on
         const c = { x: o.x + dir.x * (d + 0.12), y: o.y + dir.y * (d + 0.12) - (probes[k].low ? 0.2 : 0), z: o.z + dir.z * (d + 0.12) };
@@ -511,6 +540,7 @@ export class Vehicle {
       // an obstacle that did not give way puts all the energy into our own front
       const rs = clamp((worst - 7) * (removedCount < 50 ? 0.034 : 0.022), 0, 0.4);
       this.damageSelf(selfPoint, rs * 1.3, rs, 0);
+      if (removedCount < 50) this.addWear(clamp((worst - 9) * 0.012, 0, 0.25));
     }
     if (worst > 4 && sim.tick - this.lastCrashTick >= 10) {
       this.lastCrashTick = sim.tick;
@@ -577,9 +607,11 @@ export class VehicleSystem implements SimSystem {
   static of(sim: Sim): VehicleSystem {
     let s = systems.get(sim);
     if (!s) {
-      s = new VehicleSystem();
+      const sys = new VehicleSystem();
+      s = sys;
       systems.set(sim, s);
       sim.systems.push(s);
+      sim.onExplosion.push((pos, size) => sys.blast(pos, size));
     }
     return s;
   }
@@ -606,6 +638,19 @@ export class VehicleSystem implements SimSystem {
     body.user.vehicle = v;
     this.list.push(v);
     return v;
+  }
+
+  /** blast wave damage: closer than ~2.5 x size to the chassis box hurts (on top of the carved voxels) */
+  blast(pos: V3, size: number): void {
+    for (const v of this.list) {
+      if (v.removed) continue;
+      const l = v.body.toLocal(pos);
+      const g = v.body.grid;
+      const d = Math.hypot(Math.max(0, -l.x, l.x - g.sx), Math.max(0, -l.y, l.y - g.sy), Math.max(0, -l.z, l.z - g.sz)) * VOXEL;
+      const R = size * 2.5;
+      if (d >= R) continue;
+      v.addWear(size * 0.18 * (1 - d / R));
+    }
   }
 
   /** the vehicle owning a body, if any */
@@ -635,6 +680,7 @@ export class VehicleSystem implements SimSystem {
       if (sim.tick - last < 10) continue;
       this.lastImpactTick.set(v.id, sim.tick);
       sim.out.push({ type: 'custom', name: 'vehicle:crash', data: { name: v.name, pos: e.pos, force } });
+      if (force > 0.5) v.addWear((force - 0.5) * 0.08);
     }
     this.outIdx = sim.out.length;
   }

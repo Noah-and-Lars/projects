@@ -128,7 +128,7 @@ export function hatchbackBlueprint(opts: VehicleOpts = {}): VehicleBlueprint {
     frictionSlip: 1.9, sideFriction: 1.0,
     engineForce: 6500, brake: 40, handbrake: 70,
     topSpeed: 30, reverseSpeed: 8, maxSteer: 0.6, steerFalloff: 11, antiRoll: 4.5,
-    seat: { x: 1.15, y: 1.06, z: 1.6 }, camDist: 5.6, camHeight: 1.7,
+    seat: { x: 1.15, y: 1.06, z: 1.6 }, hoodCam: { x: 0.8, y: 0.98, z: 3.05 }, camDist: 5.6, camHeight: 1.7,
     ramPush: 0, ramMinSpeed: 3, engine: { x: 0.8, y: 0.6, z: 3.4 },
   };
   return b.finish(opts.name ?? 'hatchback', spec, 1150, [1, 1, 28, 15, 7, 40], [4, 0, 20]);
@@ -204,7 +204,7 @@ export function vanBlueprint(opts: VehicleOpts = {}): VehicleBlueprint {
     frictionSlip: 1.6, sideFriction: 1.0,
     engineForce: 9000, brake: 80, handbrake: 140,
     topSpeed: 21, reverseSpeed: 7, maxSteer: 0.55, steerFalloff: 9, antiRoll: 5,
-    seat: { x: 1.4, y: 1.6, z: 3.85 }, camDist: 7.2, camHeight: 2.3,
+    seat: { x: 1.4, y: 1.6, z: 3.85 }, hoodCam: { x: 0.95, y: 1.3, z: 4.75 }, camDist: 7.2, camHeight: 2.3,
     ramPush: 0, ramMinSpeed: 3, engine: { x: 0.95, y: 0.8, z: 4.6 },
   };
   return b.finish(opts.name ?? 'van', spec, 2300, [1, 2, 42, 18, 10, 50], [4, 0, 24]);
@@ -266,7 +266,7 @@ export function loaderBlueprint(opts: VehicleOpts = {}): VehicleBlueprint {
     frictionSlip: 1.5, sideFriction: 1.0,
     engineForce: 21000, brake: 260, handbrake: 400,
     topSpeed: 8.5, reverseSpeed: 5, maxSteer: 0.5, steerFalloff: 8, antiRoll: 4,
-    seat: { x: 1.2, y: 1.95, z: 2.3 }, camDist: 9, camHeight: 3.2,
+    seat: { x: 1.2, y: 1.95, z: 2.3 }, hoodCam: { x: 1.2, y: 1.95, z: 3.35 }, camDist: 9, camHeight: 3.2,
     ramPush: 3.5, ramMinSpeed: 1.2, engine: { x: 1.2, y: 1.6, z: 0.8 },
   };
   return b.finish(opts.name ?? 'loader', spec, 7500, [5, 6, 2, 19, 15, 16], [12, 3, 24]);
