@@ -54,6 +54,7 @@ is ~19 px at 5 m, ~5 px at 20 m, ~1 px at 100 m: individual cubes read clearly w
 | Connectivity | 6-neighbour, no load | 6-neighbour + our crush check (thin supports fail) | — | kept (own design, documented in DECISIONS) |
 | Hammer chunk knock-out | not in the reference (only disconnection) | 2–3-voxel chunks knocked out of the hole | — | kept (own feel), fewer floaters now |
 | Anti-aliasing | TAA | FXAA (medium), MSAA 4× + FXAA (high) | terrace edges crawl when moving | **not changed** (see §4) |
+| Dig floor | deep diggable earth | 0.5 m of dirt over a near-black unbreakable layer | craters look like holes into the void | layer recoloured as earth, pit AO less dark (diggable depth unchanged) |
 | Detail textures (grime/rust) | per-shape tiles | none | big surfaces a bit clean | not done |
 
 ## 3. The ground glitch (part of this pass)

@@ -299,3 +299,9 @@ Scripted, deterministic playthroughs of all 11 big-map missions live in `tests/u
   carves exact spheres; raggedness comes from overlapping hits. Our crack-seam fracture of blasts is kept (own design).
 - **Bricks** are 3 × 1 voxels, staggered by one voxel per course (were 4 × 2): real-brick scale at 10 cm voxels.
   Costs ~3-4 % more quads on the big maps (harbor 372 k → 384 k).
+- **Dig floor ("the ground shows below the map")**: measured, the terrain never opens (crater floors hit the
+  unbreakable layer 0.5 m down, also on tile seams; `tests/unit/dig.test.ts`). It *looked* open: that layer was
+  near-black grey and a shaded pit rendered at about (16,16,20). The `bedrock` material is now compacted earth
+  (0x7a5e42, audio group dirt), and the cone AO density boost is 1.6 instead of 2.5 (a 3 m wide, 1.4 m deep pit sees
+  about half the sky; the cones reported ~15 %). Interiors stay dark (look test: inside floor luma 74 vs 134 outside).
+  Not done: a deeper diggable soil layer (≈ +6 M voxels on the big maps).

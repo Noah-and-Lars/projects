@@ -111,7 +111,7 @@ float vxFaceAO(vec3 pv, vec3 n) {
 #define VX_CONE_STEPS 6
 #endif
 #ifndef VX_CONE_K
-#define VX_CONE_K 2.5
+#define VX_CONE_K 1.6
 #endif
 float vxConeAO(vec3 pv, vec3 n) {
   vec3 an = abs(n);

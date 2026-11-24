@@ -55,7 +55,9 @@ const defs: Omit<MaterialDef, 'id'>[] = [
   /* 9 */ { name: 'sheetmetal', hardness: Hardness.Medium, density: 1100, flammability: 0, burnTime: 0, audio: 'metal', color: 0x8d99a3, variance: 0.06 },
   /* 10 */ { name: 'steel', hardness: Hardness.Hard, density: 3000, flammability: 0, burnTime: 0, audio: 'metal', color: 0x4d555e, variance: 0.05, strength: 30 },
   /* 11 */ { name: 'rock', hardness: Hardness.Hard, density: 2300, flammability: 0, burnTime: 0, audio: 'masonry', color: 0x77736c, variance: 0.12 },
-  /* 12 */ { name: 'bedrock', hardness: Hardness.Unbreakable, density: 3000, flammability: 0, burnTime: 0, audio: 'masonry', color: 0x4a4744, variance: 0.08 },
+  // the unbreakable floor of every dig (0.5 m under the surface): compacted dark earth. It was near-black grey, so
+  // every crater floor looked like a hole into the void under the map
+  /* 12 */ { name: 'bedrock', hardness: Hardness.Unbreakable, density: 3000, flammability: 0, burnTime: 0, audio: 'dirt', color: 0x7a5e42, variance: 0.12 },
   /* 13 */ { name: 'asphalt', hardness: Hardness.Hard, density: 2000, flammability: 0, burnTime: 0, audio: 'masonry', color: 0x3c3d41, variance: 0.06 },
   /* 14 */ { name: 'leaves', hardness: Hardness.Soft, density: 150, flammability: 0.8, burnTime: 25, audio: 'foliage', color: 0x3f7d3a, variance: 0.2, strength: 0.05 },
   /* 15 */ { name: 'fabric', hardness: Hardness.Soft, density: 200, flammability: 0.8, burnTime: 35, audio: 'foliage', color: 0x3d6fb0, variance: 0.06 },

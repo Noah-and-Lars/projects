@@ -33,6 +33,11 @@ probe `tests/e2e/stillprobe.mjs [maps] [tiers] [frames]` writes diff masks.
 - Crash fix found by the playthroughs after these changes: Rapier `setVoxel` panics on small sparse dynamic bodies;
   those now rebuild their collider once per step.
 
+**"Destroying the ground shows below the map":** the terrain was never actually open (crater floors are the
+unbreakable layer 0.5 m down, also on tile seams; `tests/unit/dig.test.ts`), but that layer was near-black, so every
+crater looked like a hole into the void. It is now compacted earth, and pits are lit more realistically (the cone AO
+over-darkened them).
+
 **What to try:** stand still on Kestrel Ridge or Gullwick Harbour and watch the distant ground (should be perfectly
 still); hammer a wooden wall up close (chips, hole rim, the chunk on the floor); bomb a brick wall (soot gradient).
 
@@ -69,7 +74,7 @@ the container renders with SwiftShader.
   backdrop hills + soft map boundary. Not done: wet-road physics, any mission that uses rain/snow.
 
 ## Tests
-`npm test`: typecheck (with unused-code checks), 226 unit/sim tests in Node (incl. 11 scripted mission playthroughs
+`npm test`: typecheck (with unused-code checks), 227 unit/sim tests in Node (incl. 11 scripted mission playthroughs
 and a vehicle road test, ~3 min), build, headless-browser tests (boot, audio, 14 tools, missions/UI, vehicles,
 lighting incl. GPU-vs-CPU ray check, fire, quicksave, challenge/photo modes, one mission played through per big map).
 
