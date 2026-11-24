@@ -67,6 +67,17 @@ tests/unit/     Vitest (Node)         tests/e2e/   Playwright smoke tests agains
 - Playwright + Chromium are preinstalled (`require('playwright')`); do **not** run `playwright install`.
 - Add tests for what you build (unit tests for sim logic; an e2e check + screenshot for anything visible).
 
+## Challenges, photo mode, time/weather, map edges
+- `src/sim/challenge.ts` - deterministic challenge rules ("Rubble Rush" timed wrecking, "Snatch Sprint" grab + clock out),
+  crate spot picker, `challenge:*` events (header documents them). `src/game/challengeModule.ts` publishes `game.ext.challenge`
+  (start(mode, levelId) / restart / current / active / best / lastResult / onEnd / expire). Only one of mission / sandbox /
+  challenge is active: a level load the module did not ask for drops the challenge. UI: `src/game/ui/challengeUi.ts`
+  (menus `challenges`, `chresult`, HUD panel), styles in `ui/extras.css`. Best scores: `Progress.challengeRecord/recordChallenge`.
+- `src/game/photoModule.ts` - `game.ext.photo` (P / pause button; free camera via `cameraOverride`, sim paused, HUD hidden).
+- `src/game/atmosModule.ts` - `game.ext.atmos` (time of day + weather choice for sandbox / challenges, `flashlight` on F).
+- `src/game/edgeModule.ts` + `src/render/backdrop.ts` - far hills ring outside `level.bounds`, fog fitted to the level size,
+  soft boundary (`game.ext.edge`). `MissionDef.timeOfDay` / `weather` are applied by the mission module.
+
 ## Rendering notes (see DECISIONS.md "Rendering / look")
 - `renderer.setQuality('low'|'medium'|'high')`, `setTimeOfDay('day'|'sunset'|'overcast'|'night')`, `setResolutionScale(0.5..1)`,
   `pendingChunks()`, `stats()`, `patchMaterial(mat)`. Old members (`scene`, `camera`, `three`, `chips`, `sun`, `hemi`, `bodies`,
