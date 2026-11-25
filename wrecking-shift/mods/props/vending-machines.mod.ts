@@ -26,7 +26,7 @@ export default defineMod({
     {
       id: 'drinks-cooler', name: 'Drinks cooler', group: 'Shop',
       spawn: (sim, pos, yaw) => place(sim, vox(8, 19, 7, (g) => {
-        shell(g, 0, 0, 0, 8, 19, 7, 1, pal(MAT.whitepaint, 2));
+        shell(g, 0, 0, 0, 8, 19, 7, 1, pal(MAT.sheetmetal, 2));
         box(g, 0, 0, 0, 8, 2, 7, pal(MAT.sheetmetal, 0));
         box(g, 0, 18, 0, 8, 19, 7, pal(MAT.paintedmetal, 1));
         box(g, 1, 17, 1, 7, 18, 6, pal(MAT.lamp, 0));

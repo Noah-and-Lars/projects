@@ -3,7 +3,7 @@ import { MAT, box, defineMod, pal, vox } from '../../src/mods/kit';
 import { placeLocal } from './_util';
 
 const tile = () => vox(6, 12, 2, (g) => {
-  box(g, 0, 0, 0, 6, 12, 2, pal(MAT.whitepaint, 2));
+  box(g, 0, 0, 0, 6, 12, 2, pal(MAT.marble, 2));
   box(g, 0, 6, 0, 6, 7, 2, pal(MAT.rubber, 1));
   // pips on both faces
   for (const [x, y] of [[1, 2], [4, 4], [2, 9], [4, 10], [1, 10]]) { g.set(x, y, 0, pal(MAT.rubber, 0)); g.set(x, y, 1, pal(MAT.rubber, 0)); }

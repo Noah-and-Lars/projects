@@ -5,7 +5,7 @@ import { lathe, placeLocal } from './_util';
 /** a skittle profile, scaled up 2x so it reads at voxel scale (0.8 m tall) */
 const pin = () => vox(4, 8, 4, (g) => {
   const r = [1.4, 1.8, 2, 2, 1.6, 1.0, 1.3, 1.1];
-  lathe(g, 2, 2, 0, 8, (y) => r[y], (_x, y) => (y === 5 ? pal(MAT.plastic, 2) : pal(MAT.whitepaint, 3)));
+  lathe(g, 2, 2, 0, 8, (y) => r[y], (_x, y) => (y === 5 ? pal(MAT.plastic, 2) : pal(MAT.marble, 3)));
 });
 
 const ball = (r: number) => vox(r * 2, r * 2, r * 2, (g) => {

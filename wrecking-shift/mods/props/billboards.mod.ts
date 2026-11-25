@@ -35,7 +35,7 @@ export default defineMod({
           box(g, 0, y, z, 6, y + 1, z + 1, y > 2 && y < 8 ? pal(MAT.char, 1) : pal(MAT.wood, 1));
           box(g, 0, y, 5 - z, 6, y + 1, 6 - z, y > 2 && y < 8 ? pal(MAT.char, 1) : pal(MAT.wood, 1));
         }
-        box(g, 1, 5, 0, 5, 6, 1, pal(MAT.whitepaint, 3));
+        box(g, 1, 5, 0, 5, 6, 1, pal(MAT.plaster, 3));
       }), pos, yaw, 'a-frame sign'),
     },
   ],
