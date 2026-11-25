@@ -99,7 +99,8 @@ export function createAtmosModule(): GameModule {
     },
     frameUpdate(g) {
       const photo = !!g.ext.photo?.active;
-      if (g.input.hit('KeyF') && (photo || (!g.paused && g.controlsEnabled))) toggle();
+      // F lowers the bucket while driving a loader
+      if (g.input.hit('KeyF') && (photo || (!g.paused && g.controlsEnabled && !g.ext.vehicles?.current?.arm))) toggle();
     },
   };
 }

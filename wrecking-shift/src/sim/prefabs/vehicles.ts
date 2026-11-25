@@ -48,6 +48,18 @@ export class Blue {
   }
 }
 
+/** smallest grid holding every voxel of `g`, and its corner in g's coords (arm bodies) */
+export function crop(g: VoxelGrid): { grid: VoxelGrid; offset: [number, number, number] } {
+  let x0 = g.sx, y0 = g.sy, z0 = g.sz, x1 = -1, y1 = -1, z1 = -1;
+  for (let z = 0; z < g.sz; z++) for (let y = 0; y < g.sy; y++) for (let x = 0; x < g.sx; x++) if (g.get(x, y, z)) {
+    x0 = Math.min(x0, x); y0 = Math.min(y0, y); z0 = Math.min(z0, z); x1 = Math.max(x1, x); y1 = Math.max(y1, y); z1 = Math.max(z1, z);
+  }
+  const out = new VoxelGrid(x1 - x0 + 1, y1 - y0 + 1, z1 - z0 + 1);
+  for (let z = z0; z <= z1; z++) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) out.set(x - x0, y - y0, z - z0, g.get(x, y, z));
+  out.recount();
+  return { grid: out, offset: [x0, y0, z0] };
+}
+
 /** windshield / rear-window rows: 2 voxels deep so consecutive slanted rows stay face-connected */
 export function slant(b: Blue, x0: number, x1: number, y0: number, y1: number, zAt: (y: number) => number, p: PalFn | number): void {
   for (let y = y0; y < y1; y++) { const z = zAt(y); b.box(x0, y, z, x1, y + 1, z + 2, p); }
@@ -247,17 +259,21 @@ export function loaderBlueprint(opts: VehicleOpts = {}): VehicleBlueprint {
   b.box(4, 25, 15, 20, 27, 33, paint);
   b.box(8, 7, 20, 16, 10, 25, flat(MAT.fabric, 1)); b.box(8, 7, 18, 16, 17, 20, flat(MAT.fabric, 2));
   b.box(11, 7, 28, 13, 13, 29, flat(MAT.steel, 0)); b.box(10, 13, 27, 14, 14, 29, flat(MAT.rubber, 1));
-  // front chassis + lift arms
+  // front chassis with the arm hinge blocks
   b.box(7, 6, 32, 17, 10, 45, paint);
-  b.box(5, 6, 32, 7, 11, 50, steel); b.box(17, 6, 32, 19, 11, 50, steel);
-  // bucket (steel: only explosives dent it), carried 0.2 m higher than it used to be: with its floor 0.25 m above
-  // the ground and 2.3 m ahead of the front axle it dug into every grade steeper than ~10 % and stopped the loader
+  b.box(7, 7, 32, 8, 10, 36, steel); b.box(16, 7, 32, 17, 10, 36, steel);
+  // lift arms + bucket: a separate body on a motorised hinge (VehicleSpec.arm), drawn in chassis grid coords.
+  // Bucket steel (only explosives dent it); at angle 0 it is carried 0.2 m higher than it used to be: with its
+  // floor 0.25 m above the ground and 2.3 m ahead of the front axle it dug into every grade steeper than ~10 %.
+  const a = new Blue(SX, SY, SZ);
+  a.box(5, 6, 32, 7, 11, 50, steel); a.box(17, 6, 32, 19, 11, 50, steel);
+  a.box(7, 8, 41, 17, 10, 43, steel); // cross tube
   const BY = 3;
-  b.box(0, BY, 49, 24, BY + 14, 51, steel); // back plate
-  b.box(0, BY, 51, 24, BY + 2, 60, steel); // floor
-  for (const x of [0, 23]) for (let z = 51; z < 60; z++) b.box(x, BY + 2, z, x + 1, BY + 14 - (z - 51), z + 1, steel);
-  b.box(0, BY, 58, 24, BY + 3, 60, flat(MAT.steel, 0)); // cutting edge
-  b.box(2, BY + 13, 50, 6, BY + 14, 51, flat(MAT.lamp)); b.box(18, BY + 13, 50, 22, BY + 14, 51, flat(MAT.lamp));
+  a.box(0, BY, 49, 24, BY + 14, 51, steel); // back plate
+  a.box(0, BY, 51, 24, BY + 2, 60, steel); // floor
+  for (const x of [0, 23]) for (let z = 51; z < 60; z++) a.box(x, BY + 2, z, x + 1, BY + 14 - (z - 51), z + 1, steel);
+  a.box(0, BY, 58, 24, BY + 3, 60, flat(MAT.steel, 0)); // cutting edge
+  a.box(2, BY + 13, 50, 6, BY + 14, 51, flat(MAT.lamp)); a.box(18, BY + 13, 50, 22, BY + 14, 51, flat(MAT.lamp));
   const axles = [11, 37];
   const r = 0.6, clearance = 0.15, k = 45;
   const sag = 9.81 / (4 * k), susp = 0.15;
@@ -274,8 +290,12 @@ export function loaderBlueprint(opts: VehicleOpts = {}): VehicleBlueprint {
     topSpeed: 8.5, reverseSpeed: 5, maxSteer: 0.5, steerFalloff: 8, antiRoll: 4,
     seat: { x: 1.2, y: 1.95, z: 2.3 }, hoodCam: { x: 1.2, y: 1.95, z: 3.35 }, camDist: 9, camHeight: 3.2,
     ramPush: 3.5, ramMinSpeed: 1.2, engine: { x: 1.2, y: 1.6, z: 0.8 },
+    // hinge at the front of the chassis, 0.85 m up; -0.2 rad puts the cutting edge on the ground, 0.9 rad lifts it ~2 m
+    arm: { pivot: { x: 1.2, y: 0.85, z: 3.35 }, min: -0.2, max: 0.9, speed: 0.55, mass: 700, stiffness: 600000, damping: 90000, maxTorque: 160000 },
   };
-  return b.finish(opts.name ?? 'loader', spec, 7500, [5, 6, 2, 19, 15, 16], [12, 3, 24]);
+  const bp = b.finish(opts.name ?? 'loader', spec, 6800, [5, 6, 2, 19, 15, 16], [12, 3, 24]);
+  bp.arm = crop(a.g);
+  return bp;
 }
 
 // ---------------------------------------------------------------------------------------------- spawning
@@ -311,7 +331,10 @@ export function adoptVehicle(sim: Sim, body: import('../body').VoxelBody): Vehic
   body.rb.setLinearDamping(0.05);
   body.rb.setAngularDamping(0.4);
   body.noFracture = true;
-  const v = new Vehicle(sim, bp, body);
+  let arm: import('../body').VoxelBody | null = null;
+  if (bp.spec.arm) for (const b of sim.bodies.values()) if (!b.removed && b.tags.has('arm-of:' + body.id)) { arm = b; break; }
+  if (arm) { arm.rb.setAngularDamping(0.4); }
+  const v = new Vehicle(sim, bp, body, arm);
   body.user.vehicle = v;
   VehicleSystem.of(sim).list.push(v);
   return v;

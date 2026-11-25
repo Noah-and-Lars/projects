@@ -2,7 +2,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import type { VoxelBody } from './body';
 import { MATERIALS, PAL_DENSITY, PAL_HARDNESS, VOXEL } from './materials';
 import { DT, GROUP_ALL, GROUP_PLAYER, GROUP_VEHICLE, groups, type RayHit, type Sim, type SimEvent, type SimSystem } from './sim';
-import { clamp, qrot, qyaw, vcross, vdot, type Quat, type V3 } from './vec';
+import { clamp, qconj, qmul, qrot, qyaw, vcross, vdot, type Quat, type V3 } from './vec';
 import type { VoxelGrid } from './voxels';
 
 /**
@@ -68,6 +68,29 @@ export interface VehicleSpec {
   ramMinSpeed: number;
   /** engine (smoke) position, chassis-local metres */
   engine: V3;
+  /** hinged, motor-driven arm (loader bucket): a second voxel body on a revolute joint. Optional. */
+  arm?: ArmSpec;
+}
+
+/**
+ * Hinged arm (e.g. loader lift arms + bucket). Built as its own dynamic voxel body (kind 'vehicle', tags
+ * 'vehicle-arm' + 'arm-of:<chassis id>') joined to the chassis by a Rapier revolute joint about the chassis X
+ * axis with a position motor. Angle 0 = the pose it was authored in; positive = front end up.
+ */
+export interface ArmSpec {
+  /** hinge point, chassis-local metres */
+  pivot: V3;
+  /** joint limits (rad) */
+  min: number;
+  max: number;
+  /** raise / lower rate (rad/s) at full input */
+  speed: number;
+  /** arm body mass (kg) */
+  mass: number;
+  /** motor spring (N·m/rad), damping (N·m·s/rad) and torque cap (N·m) */
+  stiffness: number;
+  damping: number;
+  maxTorque: number;
 }
 
 export interface VehicleBlueprint {
@@ -82,6 +105,8 @@ export interface VehicleBlueprint {
   engineBay: number[];
   /** preferred keep voxel (grid coords) */
   keep: [number, number, number];
+  /** arm body grid and its corner in chassis voxel coords (when spec.arm is set) */
+  arm?: { grid: VoxelGrid; offset: [number, number, number] };
 }
 
 export interface VehicleInput {
@@ -90,6 +115,8 @@ export interface VehicleInput {
   /** -1..1: D = +1 (right) */
   steer: number;
   handbrake: boolean;
+  /** -1..1: arm (bucket) lower / raise; ignored by vehicles without an arm */
+  arm?: number;
 }
 
 const UP: V3 = { x: 0, y: 1, z: 0 };
@@ -109,6 +136,78 @@ export const DEAD_ENGINE = 0.25;
 
 /** ramming probe origin (voxel coords); `low` = underside band */
 interface Probe extends V3 { low: boolean; edge: boolean }
+/** a body that rams: the chassis, or the arm */
+interface RamPart { body: VoxelBody; fwd: Probe[]; back: Probe[]; tick: number; count: number; lastSelfDamageTick: number }
+
+/** the motorised hinge of a vehicle arm (see ArmSpec) */
+export class VehicleArm {
+  /** motor target angle (rad) */
+  target: number;
+  private sentTarget = NaN;
+  constructor(readonly spec: ArmSpec, readonly body: VoxelBody, readonly joint: RAPIER.RevoluteImpulseJoint, target: number) {
+    this.target = clamp(target, spec.min, spec.max);
+  }
+  /** current hinge angle (rad, + = raised), from the relative rotation of arm and chassis about the chassis X axis */
+  angle(chassis: VoxelBody): number {
+    const q = qmul(qconj(chassis.rb.rotation()), this.body.rb.rotation());
+    let a = -2 * Math.atan2(q.x, q.w);
+    if (a > Math.PI) a -= 2 * Math.PI; else if (a < -Math.PI) a += 2 * Math.PI;
+    return a;
+  }
+  /** move the target with the driver input and drive the motor */
+  update(chassis: VoxelBody, input: number): void {
+    const s = this.spec;
+    if (input) {
+      const a = this.angle(chassis);
+      // never let the target run far ahead of a blocked arm (it would snap when the obstacle goes)
+      this.target = clamp(clamp(this.target + clamp(input, -1, 1) * s.speed * DT, a - 0.3, a + 0.3), s.min, s.max);
+      this.body.rb.wakeUp();
+    }
+    if (this.target !== this.sentTarget && this.joint.isValid()) {
+      this.joint.configureMotorPosition(this.target, s.stiffness, s.damping);
+      this.sentTarget = this.target;
+    }
+    this.body.user.armTarget = this.target;
+  }
+
+  /**
+   * Scoop assist. A voxel cutting edge is a 0.1 m step, and a loose box pushed by a step only slides along the
+   * ground, so with the bucket lowered and the vehicle creeping forward, loose things right at the lip are lifted
+   * over it into the bucket (velocity nudged up and back). Deterministic; only runs near the lowest angle.
+   */
+  scoop(sim: Sim, chassis: VoxelBody, speed: number): void {
+    if (speed < 0.15 || speed > 4 || this.angle(chassis) > this.spec.min + 0.12) return;
+    const g = this.body.grid;
+    const lip = this.body.toWorld({ x: g.sx / 2, y: 1, z: g.sz });
+    const lin = chassis.rb.linvel();
+    const fwd = qrot(chassis.rb.rotation(), { x: 0, y: 0, z: 1 });
+    for (const b of sim.bodiesNear(lip, 2.2)) {
+      if (!b.dynamic || b.removed || b.kind === 'vehicle' || b.mass > 2500 || b.mass <= 0) continue;
+      const l = this.body.toLocal(b.center());
+      const half = Math.max(b.grid.sx, b.grid.sz) / 2;
+      // centre just in front of / over the lip, low (not already up in the bucket), within the bucket width
+      if (l.x < -1 || l.x > g.sx + 1 || l.z < g.sz - 4 || l.z > g.sz + half + 3 || l.y > 6 + b.grid.sy / 2) continue;
+      const v = b.rb.linvel();
+      b.rb.setLinvel({ x: lin.x - fwd.x * 0.9, y: Math.max(v.y, 1.7), z: lin.z - fwd.z * 0.9 }, true);
+    }
+  }
+}
+
+/** create the arm joint between a chassis and its arm body (spawn and quickload) */
+function attachArm(sim: Sim, chassis: VoxelBody, arm: VoxelBody, s: ArmSpec, target: number): VehicleArm {
+  const pw = chassis.toWorld({ x: s.pivot.x / VOXEL, y: s.pivot.y / VOXEL, z: s.pivot.z / VOXEL });
+  const local = (b: VoxelBody) => { const t = b.rb.translation(); return qrot(qconj(b.rb.rotation()), { x: pw.x - t.x, y: pw.y - t.y, z: pw.z - t.z }); };
+  // axis -X: a positive angle lifts the front (+Z) end
+  const data = RAPIER.JointData.revolute(local(chassis), local(arm), { x: -1, y: 0, z: 0 });
+  const joint = sim.world.createImpulseJoint(data, chassis.rb, arm.rb, true) as RAPIER.RevoluteImpulseJoint;
+  joint.setContactsEnabled(false);
+  joint.setLimits(s.min, s.max);
+  joint.configureMotorModel(RAPIER.MotorModel.ForceBased);
+  joint.setMotorMaxForce(s.maxTorque);
+  arm.noSplit = true;
+  arm.noFracture = true;
+  return new VehicleArm(s, arm, joint, target);
+}
 
 export class Vehicle {
   readonly id: number;
@@ -147,19 +246,18 @@ export class Vehicle {
   private frame: Int32Array;
   private engineBay: Int32Array;
   private vitalTotal: number;
-  private probesFwd: Probe[] = [];
-  private probesBack: Probe[] = [];
-  private probeTick = -999;
-  private probeCount = -1;
+  /** hinged arm (loader bucket), or null */
+  readonly arm: VehicleArm | null = null;
+  private main: RamPart;
+  private armPart: RamPart | null = null;
   private lastCrashTick = -999;
   private lastSkidTick = -999;
   private lastSmokeTick = -999;
-  private lastSelfDamageTick = -999;
   private lastHealthCount = -1;
   private pred: (c: RAPIER.Collider) => boolean;
   private readonly queryGroups = groups(GROUP_VEHICLE, GROUP_ALL & ~GROUP_PLAYER);
 
-  constructor(readonly sim: Sim, bp: VehicleBlueprint, body: VoxelBody) {
+  constructor(readonly sim: Sim, bp: VehicleBlueprint, body: VoxelBody, armBody: VoxelBody | null = null) {
     this.id = body.id;
     this.spec = bp.spec;
     this.body = body;
@@ -187,7 +285,15 @@ export class Vehicle {
     }
     this.ctrl = ctrl;
     this.wheelLost = s.wheels.map(() => false);
-    this.pred = (c) => c.handle !== this.body.col.handle;
+    this.main = { body, fwd: [], back: [], tick: -999, count: -1, lastSelfDamageTick: -999 };
+    if (s.arm && armBody && !armBody.removed) {
+      const t = armBody.user.armTarget;
+      this.arm = attachArm(sim, body, armBody, s.arm, typeof t === 'number' && isFinite(t) ? t : 0);
+      armBody.user.vehicle = this;
+      this.armPart = { body: armBody, fwd: [], back: [], tick: -999, count: -1, lastSelfDamageTick: -999 };
+    }
+    const armCol = this.arm ? this.arm.body.col.handle : -1;
+    this.pred = (c) => c.handle !== this.body.col.handle && c.handle !== armCol;
     this.updateHealth();
   }
 
@@ -309,7 +415,17 @@ export class Vehicle {
     if (drive !== 0 || inp.steer !== 0) rb.wakeUp();
 
     // ---- ramming (before the wheels so the impulse is part of this tick)
-    if (absV > Math.min(3, s.ramMinSpeed) && planar > 0.5) this.ram(sim, lin, planar, inp.throttle);
+    if (absV > Math.min(3, s.ramMinSpeed) && planar > 0.5) {
+      this.ram(sim, this.main, lin, planar, inp.throttle);
+      // the arm leads when going forward (the bucket is the front of a loader)
+      const ap = this.armPart;
+      if (ap && this.speed > 0 && !ap.body.removed) this.ram(sim, ap, lin, planar, inp.throttle);
+    }
+    // ---- arm (hydraulics keep holding with the engine off; only a running engine moves it)
+    if (this.arm) {
+      if (this.arm.body.removed || !this.arm.joint.isValid()) { (this as { arm: VehicleArm | null }).arm = null; this.armPart = null; }
+      else { this.arm.update(body, live ? inp.arm ?? 0 : 0); if (live) this.arm.scoop(sim, body, this.speed); }
+    }
 
     ctrl.updateVehicle(DT, undefined, this.queryGroups, this.pred);
 
@@ -423,8 +539,8 @@ export class Vehicle {
   }
 
   /** bumper probe origins (voxel coords, just inside the outermost voxel of a column) */
-  private refreshProbes(): void {
-    const g = this.body.grid;
+  private refreshProbes(part: RamPart): void {
+    const g = part.body.grid;
     const fwd: Probe[] = [], back: Probe[] = [];
     // one probe per 3x3 band of (x, y) columns at the outermost voxel of that band, so every protruding
     // part (corners, bucket edges, mirrors) leads the carve and nothing snags on the edge of the hole
@@ -451,24 +567,24 @@ export class Vehicle {
     const byEdge = (a: Probe, b: Probe) => Number(b.edge) - Number(a.edge);
     fwd.sort(byEdge);
     back.sort(byEdge);
-    this.probesFwd = fwd;
-    this.probesBack = back;
-    this.probeCount = g.count;
-    this.probeTick = this.sim.tick;
+    part.fwd = fwd;
+    part.back = back;
+    part.count = g.count;
+    part.tick = this.sim.tick;
   }
 
   /**
    * Ramming: probe ahead of the moving bumper; carve the obstacle with radii from the impact severity,
    * slow the vehicle by the momentum given to the removed matter, and crumple our own bumper a bit.
    */
-  private ram(sim: Sim, lin: V3, planar: number, throttle: number): void {
-    const body = this.body;
-    if (this.probeCount !== body.grid.count && sim.tick - this.probeTick > 20) this.refreshProbes();
-    if (this.probeCount < 0) this.refreshProbes();
+  private ram(sim: Sim, part: RamPart, lin: V3, planar: number, throttle: number): void {
+    const body = part.body;
+    if (part.count !== body.grid.count && sim.tick - part.tick > 20) this.refreshProbes(part);
+    if (part.count < 0) this.refreshProbes(part);
     const dir = { x: lin.x / planar, y: lin.y / planar, z: lin.z / planar };
-    const probes = this.speed >= 0 ? this.probesFwd : this.probesBack;
+    const probes = this.speed >= 0 ? part.fwd : part.back;
     const len = 0.35 + planar * DT * 2;
-    const m = body.mass;
+    const m = this.body.mass + (part === this.main ? 0 : body.mass);
     const massF = Math.cbrt(m / 1500);
     const pushing = (throttle > 0.5 && this.speed > 0) || (throttle < -0.5 && this.speed < 0) ? this.spec.ramPush : 0;
     const self = body;
@@ -544,14 +660,14 @@ export class Vehicle {
     if (removedMass > 0) {
       const vAlong = Math.max(0, vdot(lin, dir));
       const J = Math.min(m * vAlong * 0.3, removedMass * vAlong * RAM_MOMENTUM);
-      body.rb.applyImpulse({ x: -dir.x * J, y: -dir.y * J, z: -dir.z * J }, true);
+      this.body.rb.applyImpulse({ x: -dir.x * J, y: -dir.y * J, z: -dir.z * J }, true);
     }
     // our own bumper crumples (rate limited)
-    if (selfPoint && worst > 7 && sim.tick - this.lastSelfDamageTick >= 8) {
-      this.lastSelfDamageTick = sim.tick;
+    if (selfPoint && worst > 7 && sim.tick - part.lastSelfDamageTick >= 8) {
+      part.lastSelfDamageTick = sim.tick;
       // an obstacle that did not give way puts all the energy into our own front
       const rs = clamp((worst - 7) * (removedCount < 50 ? 0.034 : 0.022), 0, 0.4);
-      this.damageSelf(selfPoint, rs * 1.3, rs, 0);
+      this.damageSelf(selfPoint, rs * 1.3, rs, 0, body);
       if (removedCount < 50) this.addWear(clamp((worst - 9) * 0.012, 0, 0.25));
     }
     if (worst > 4 && sim.tick - this.lastCrashTick >= 10) {
@@ -561,8 +677,7 @@ export class Vehicle {
   }
 
   /** remove voxels of this vehicle only, by hardness radius (bumper crumple) */
-  damageSelf(center: V3, rSoft: number, rMed: number, rHard: number): number {
-    const body = this.body;
+  damageSelf(center: V3, rSoft: number, rMed: number, rHard: number, body: VoxelBody = this.body): number {
     const g = body.grid;
     const lc = body.toLocal(center);
     const rad = [rSoft / VOXEL, rMed / VOXEL, rHard / VOXEL, 0];
@@ -644,7 +759,19 @@ export class VehicleSystem implements SimSystem {
     const [kx, ky, kz] = bp.keep;
     body.keepIndex = g.data[g.idx(kx, ky, kz)] ? g.idx(kx, ky, kz) : bp.frame[0] ?? -1;
     body.noFracture = true;
-    const v = new Vehicle(sim, bp, body);
+    let armBody: VoxelBody | null = null;
+    if (bp.arm && bp.spec.arm) {
+      // the arm body starts in its authored pose (angle 0), corner at its offset in the chassis grid
+      const ag = bp.arm.grid;
+      let araw = 0;
+      for (let i = 0; i < ag.data.length; i++) if (ag.data[i]) araw += PAL_DENSITY[ag.data[i]] * VOXEL ** 3;
+      const [ox, oy, oz] = bp.arm.offset;
+      armBody = sim.addBody(ag, body.toWorld({ x: ox, y: oy, z: oz }), {
+        dynamic: true, kind: 'vehicle', rot, name: bp.name + ' arm', tags: ['vehicle-arm', 'arm-of:' + body.id], massScale: bp.spec.arm.mass / Math.max(1, araw),
+      });
+      armBody.rb.setAngularDamping(0.4);
+    }
+    const v = new Vehicle(sim, bp, body, armBody);
     body.user.vehicle = v;
     this.list.push(v);
     return v;
