@@ -66,6 +66,8 @@
 .plist .tag.req { background: #f2b13433; color: #f2b134; }
 .dot-on { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); flex: none; }
 .on-now { color: var(--accent-2) !important; font-weight: 700; }
+.dot-on.sb { background: #f5b942; box-shadow: 0 0 8px #f5b942; }
+.on-now.sb { color: #f5b942 !important; }
 .plist .un { flex: none; min-width: 20px; padding: 1px 6px; border-radius: 999px; background: var(--accent-2); color: #04211b; font-size: 11px; font-weight: 800; text-align: center; }
 .plist .none, .plist .more { cursor: default; color: var(--muted); font-size: 13px; padding: 14px 8px; display: block; }
 .plist .more { cursor: pointer; text-align: center; color: var(--text); text-decoration: underline; }
@@ -187,7 +189,7 @@
   </div>
 </main>
 
-<script src="games.js?v=290"></script>
+<script src="games.js?v=291"></script>
 <script src="account.js?v=45"></script>
 <script src="assistant.js?v=7"></script>
 <script src="console.js?v=6"></script>
@@ -221,6 +223,9 @@ const seenOf = k => { const p = players.find(x => lc(x[0]) === k); return p ? p[
 const ago = ts => { const d = (Date.now() - ts) / 1000; return d < 60 ? 'now' : d < 3600 ? Math.floor(d / 60) + 'm' : d < 86400 ? Math.floor(d / 3600) + 'h' : Math.floor(d / 86400) + 'd'; };
 
 let online = {};           // lower-case name -> game id, from the arcade's presence channel
+let standby = {};          // lower-case name -> true when they're online but their tab is in the background (2026-11-25)
+// what to show after a name that's online: Standby when every page of theirs is in a background tab
+const onStatus = n => standby[lc(n)] ? 'Standby' : where(online[lc(n)]);
 const where = g => g === 'home' || g === 'players' || g === 'chat' ? (g === 'chat' ? 'In the Global chat' : 'Online') : 'Playing ' + ((GAMES.find(x => x.id === g) || {}).title || 'a game');
 let players = [];          // [[name, created, hasScores], ...]
 let soc = null;            // { f, c, b } for the signed-in player
@@ -243,8 +248,8 @@ function item(n, sub, extra) {
   tx.append(el('b', '', n));
   if (sub) tx.append(el('small', '', sub));
   li.append(avatar(n), tx);
-  if (online[lc(n)] && tx.lastChild.tagName === 'SMALL') { tx.lastChild.textContent = where(online[lc(n)]); tx.lastChild.className = 'on-now'; }
-  if (online[lc(n)]) { const d = el('span', 'dot-on'); d.title = 'Online now'; li.append(d); }
+  if (online[lc(n)] && tx.lastChild.tagName === 'SMALL') { tx.lastChild.textContent = onStatus(n); tx.lastChild.className = standby[lc(n)] ? 'on-now sb' : 'on-now'; }
+  if (online[lc(n)]) { const d = el('span', standby[lc(n)] ? 'dot-on sb' : 'dot-on'); d.title = standby[lc(n)] ? 'Standby: online, but not on the tab right now' : 'Online now'; li.append(d); }
   if (extra) li.append(extra);
   return li;
 }
@@ -357,7 +362,7 @@ function openProfile(n) {
 function drawProfile(box, r) {
   const k = lc(r.n), mine = k === lc(myName()), head = el('div', 'prof-head'), t = el('div');
   const st = el('p', '', [joined(r.c), mine ? 'This is you' : ''].filter(Boolean).join(' · '));
-  if (online[k]) { const o = el('span', 'on-now', ' · ● ' + where(online[k])); st.append(o); }
+  if (online[k]) { const o = el('span', standby[k] ? 'on-now sb' : 'on-now', ' · ● ' + onStatus(r.n)); if (standby[k]) o.title = 'Online, but not on the tab right now'; st.append(o); }
   else if (r.seen && !mine) st.append(document.createTextNode(' · ' + lastOn(r.seen)));
   const h1 = el('h1', '', r.n), tag = window.profileTag && profileTag(r.n); if (tag) h1.append(tag);
   t.append(h1, st);
@@ -694,7 +699,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && dm
 
 ArcadeOnline.start('players');
 let onT = 0;
-ArcadeOnline.onNames(n => { online = n; clearTimeout(onT); onT = setTimeout(() => { renderList(); }, 300); });
+ArcadeOnline.onNames((n, sb) => { online = n; standby = sb || {}; clearTimeout(onT); onT = setTimeout(() => { renderList(); }, 300); });
 loadPlayers().then(route);
 loadSocial();
 // signing in or out while the page is open

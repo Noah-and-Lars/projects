@@ -423,6 +423,8 @@ window.COMING_SOON = [
 ];
 
 window.NEWS = [
+  { date: '2026-11-25', href: 'players.html', imgs: ['news/players-standby.jpg'], headline: 'New: Standby', text: "Players tab: when someone switches to another tab or app, they now show as Standby (with an orange dot) instead of Online or the game they're playing. They still count towards the players online, and it goes back to normal as soon as they come back to the tab.",
+    post: "🟠 New on The Arcade: STANDBY!\n\n👀 Switched to another tab? You now show as Standby on the Players page, with an orange dot\n🎮 Still counted in the players online\n↩️ Back to Online (or the game you're on) the moment you come back" },
   { date: '2026-11-25', href: 'players.html', imgs: ['news/players-sort.jpg'], headline: 'Sort the Players list', text: 'Players tab: a new menu next to the player count sorts everyone by Last online, Newest joined or Name. It starts on Last online (people online now at the top) and remembers what you pick. The All, Friends, Requests and Chats buttons are fixed too: they were squashed and off-centre, now they line up evenly.' },
   { date: '2026-11-24', game: 'mile-zero', imgs: ['mile-zero/news/1.3.1-custom-shirt.jpg', 'mile-zero/news/1.3.1-convoy-shirt.jpg'], headline: 'Mile Zero Beta 1.3.1: put your own picture on your shirt', text: "Mile Zero Beta 1.3.1: custom shirts. In Character, press Add a picture and choose any image (JPEG, PNG, WebP, GIF and more). It's printed in the middle of a black tee, stretched wider or shorter to fit the shirt, and your convoy sees it too. Settings has Other players' shirt pictures (Show or Hide).",
     post: "👕 Mile Zero Beta 1.3.1: CUSTOM SHIRTS!\n\n🖼️ Character > Add a picture: any image (JPEG, PNG, WebP, GIF...)\n⬛ It goes on the middle of a black tee, stretched to fit\n🚗 Your convoy sees it too\n⚙️ Don't want to see other people's? Settings > Other players' shirt pictures" },
@@ -800,7 +802,7 @@ window.ArcadeOnline = (() => {
   const LIB = 'rt.js?v=7'; // the arcade's realtime client (Cloudflare), a drop-in for supabase-js
   const CAP = 200; // counts show as "200+" from here
   const SETTLE = 2500; // ms a new count has to hold before it's shown, so quick page changes don't flicker
-  let counts = null, started = false, timer = 0, client = null, settled = false, names = {};
+  let counts = null, started = false, timer = 0, client = null, settled = false, names = {}, standby = {};
   const nameListeners = [];
   // the online account's name goes with the presence, so the Players page can show who's online
   const acctName = () => { const a = readSave('arcade-acct', true); return a && a.token && typeof a.name === 'string' ? a.name : ''; };
@@ -834,19 +836,27 @@ window.ArcadeOnline = (() => {
         try {
           opened(window.supabase.createClient());
           const ch = client.channel('online:arcade', { config: { presence: { key: browserId() } } });
+          // what this page tells the others; sb: 1 while the tab is hidden (shown as Standby on the Players page)
+          let joined = false;
+          const track = () => { const p = { game: where }; if (acctName()) p.n = acctName(); if (document.hidden) p.sb = 1; ch.track(p).catch(() => emit(null)); };
+          document.addEventListener('visibilitychange', () => { if (joined) track(); });
           ch.on('presence', { event: 'sync' }, () => {
             // one entry per browser; if it has several pages open, count it on a game over the home page
             const state = ch.presenceState(), byGame = {};
             names = {}; // signed-in players online now: lower-case name -> the game they're on (for the Players page)
-            for (const k in state) for (const m of state[k]) if (typeof m.n === 'string' && /^[A-Za-z0-9_]{3,16}$/.test(m.n)) { const l = m.n.toLowerCase(); if (!names[l] || names[l] === 'home') names[l] = m.game || 'home'; }
-            for (const f of nameListeners) try { f(names); } catch (e) {}
+            // 2026-11-25 Standby: a page whose tab is hidden sends sb: 1. A player is on standby only when every one
+            // of their pages is hidden; they still count as online everywhere.
+            const awake = {}; standby = {};
+            for (const k in state) for (const m of state[k]) if (typeof m.n === 'string' && /^[A-Za-z0-9_]{3,16}$/.test(m.n)) { const l = m.n.toLowerCase(); if (!names[l] || names[l] === 'home') names[l] = m.game || 'home'; if (!m.sb) awake[l] = 1; }
+            for (const l in names) if (!awake[l]) standby[l] = true;
+            for (const f of nameListeners) try { f(names, standby); } catch (e) {}
             for (const k in state) {
               const gs = state[k].map(m => m.game || 'home'), g = gs.find(x => x !== 'home') || 'home';
               byGame[g] = (byGame[g] || 0) + 1;
             }
             emit({ total: Object.keys(state).length, byGame, full: Object.keys(state).length >= CAP });
           }).subscribe(status => {
-            if (status === 'SUBSCRIBED') ch.track(acctName() ? { game: where, n: acctName() } : { game: where }).catch(() => emit(null));
+            if (status === 'SUBSCRIBED') { joined = true; track(); }
             else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') emit(null);
           });
         } catch (e) { emit(null); if (!settled) opened(null); }
@@ -864,7 +874,10 @@ window.ArcadeOnline = (() => {
     // (the global chat opens its own channel on it). Call start() first.
     ready(f) { if (settled) f(client); else waiting.push(f); },
     // Calls f({ lowerName: game }) for the signed-in players online now, on every change
-    onNames(f) { nameListeners.push(f); f(names); },
+    // (second argument: { lowerName: true } for the ones on standby, their tab in the background)
+    onNames(f) { nameListeners.push(f); f(names, standby); },
+    // true when this signed-in player is online but every page of theirs is in a background tab
+    standby(name) { return !!standby[String(name || '').toLowerCase()]; },
   };
 })();
 
