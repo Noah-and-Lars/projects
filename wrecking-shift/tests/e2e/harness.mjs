@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 let playwright;
 try { playwright = require('playwright'); } catch { playwright = require('/opt/node-tools/node_modules/playwright'); }
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../dist');
+const root = process.env.WS_DIST ? path.resolve(process.env.WS_DIST) : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../dist');
 export const outDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'out');
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.png': 'image/png', '.json': 'application/json', '.svg': 'image/svg+xml' };
 

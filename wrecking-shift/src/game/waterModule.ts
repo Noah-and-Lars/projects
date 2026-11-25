@@ -42,6 +42,7 @@ export function createWaterModule(): GameModule {
         const r = game.renderer;
         const bg = r.scene.fog instanceof THREE.Fog || r.scene.fog instanceof THREE.FogExp2 ? r.scene.fog.color : undefined;
         sunTo.copy(r.sun.position).sub(r.sun.target.position).normalize();
+        water.setSimple(r.performanceMode);
         water.update(dt, r.camera, bg, sunTo, r.sun.color);
       }
       if (tint) {

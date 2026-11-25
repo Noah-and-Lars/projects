@@ -16,8 +16,8 @@ export interface Projectile {
  * so it never tunnels). Explodes (size 1.3) on impact or after 6 s.
  */
 export class RocketLauncher extends Tool {
-  readonly id = 'rocket';
-  readonly name = 'Rocket Launcher';
+  readonly id: string = 'rocket';
+  readonly name: string = 'Rocket Launcher';
   override hint = 'LMB fire';
   override ammo = 6;
   override maxAmmo = 6;

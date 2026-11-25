@@ -1,3 +1,4 @@
+import { lookOf } from '../sim/tools/tool';
 /**
  * AudioDirector: maps sim events / game state to engine calls. Depends only on the small structural
  * interfaces below, so it is unit-tested in Node with a recording mock engine.
@@ -136,7 +137,7 @@ export class AudioDirector {
         break;
       case 'tool:clang': this.play('tool.clang', { pos: d.pos, refDist: 8, gain: 0.9 }); break;
       case 'tool:shot': {
-        const t = ['shotgun', 'pistol', 'rifle', 'rocket'].includes(d.tool) ? d.tool : 'pistol';
+        const lt = lookOf(d.tool), t = ['shotgun', 'pistol', 'rifle', 'rocket'].includes(lt) ? lt : 'pistol';
         this.play('tool.shot.' + t, { pos: d.pos, refDist: 22, priority: 4, gain: 0.9, category: 'shot' });
         break;
       }

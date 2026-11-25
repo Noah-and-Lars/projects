@@ -23,8 +23,15 @@ export function createTools(): Tool[] {
     new Rifle(), new LeafBlower(),
   ];
 }
+/** extra tools from enabled mods (set by src/game/modsModule.ts); appended after the built-in set */
+let extraTools: (() => Tool)[] = [];
+export function setExtraTools(makers: (() => Tool)[]): void { extraTools = makers.slice(); }
 export function createBelt(): ToolBelt {
-  return new ToolBelt(createTools());
+  const tools = createTools();
+  for (const make of extraTools) {
+    try { const t = make(); if (!tools.some((o) => o.id === t.id)) tools.push(t); } catch (e) { console.warn('[mods] tool', e); }
+  }
+  return new ToolBelt(tools);
 }
 export * from './tool';
 export { Blowtorch, Bomb, Cable, Extinguisher, LeafBlower, Nitro, PipeBomb, Pistol, Plank, Rifle, RocketLauncher, Shotgun, Sledge, Spray };

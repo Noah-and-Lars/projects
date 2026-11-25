@@ -45,6 +45,8 @@ await vehicleTests(url, test);
 await runLookTests(url, test);
 await (await import('./still.mjs')).runStillTests(url, test);
 await (await import('./diag.mjs')).runDiagTests(url, test);
+await (await import('./perf.mjs')).runPerfTests(url, test);
+await (await import('./mods.mjs')).runModsTests(url, test);
 
 srv.close();
 if (failed) { console.log(failed + ' e2e test(s) failed'); process.exit(1); }

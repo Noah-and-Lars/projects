@@ -15,7 +15,7 @@ export interface VehicleOpts {
 }
 
 /** authoring helper: grid + bookkeeping of the frame (steel) and engine bay */
-class Blue {
+export class Blue {
   readonly g: VoxelGrid;
   private frameBoxes: number[][] = [];
   constructor(sx: number, sy: number, sz: number) { this.g = new VoxelGrid(sx, sy, sz); }
@@ -49,11 +49,11 @@ class Blue {
 }
 
 /** windshield / rear-window rows: 2 voxels deep so consecutive slanted rows stay face-connected */
-function slant(b: Blue, x0: number, x1: number, y0: number, y1: number, zAt: (y: number) => number, p: PalFn | number): void {
+export function slant(b: Blue, x0: number, x1: number, y0: number, y1: number, zAt: (y: number) => number, p: PalFn | number): void {
   for (let y = y0; y < y1; y++) { const z = zAt(y); b.box(x0, y, z, x1, y + 1, z + 2, p); }
 }
 
-function wheels(r: number, width: number, hpY: number, xs: [number, number], axles: { z: number; steer: number; drive: boolean; handbrake: boolean }[]): WheelDef[] {
+export function wheels(r: number, width: number, hpY: number, xs: [number, number], axles: { z: number; steer: number; drive: boolean; handbrake: boolean }[]): WheelDef[] {
   const out: WheelDef[] = [];
   for (const a of axles) for (const x of xs) out.push({ x, y: hpY, z: a.z, radius: r, width, steer: a.steer, drive: a.drive, handbrake: a.handbrake });
   return out;

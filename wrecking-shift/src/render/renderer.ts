@@ -8,6 +8,7 @@ import { ChipParticles } from './particles';
 import { PostFX } from './post';
 import { SKY_PRESETS, Sky, type SkyPreset, type TimeOfDay } from './sky';
 import { gpuTrace } from './traceDebug';
+import { lookOf } from '../sim/tools/tool';
 import { VoxelVolumes } from './volumes';
 import { disposeVoxelMaterials, makeLookShared, makeVoxelMaterials, patchForeignMaterial, type LookConfig, type VoxelMaterials } from './worldMaterial';
 
@@ -38,6 +39,17 @@ const TIERS: Record<Quality, Tier> = {
   medium: { volumes: true, sunTaps: 1, sunSteps: 192, coneMax: 32, coneSteps: 5, pointShadows: true, shadowSize: 1024, shadowExtent: 14, bloom: true, msaa: 0, fxaa: true, taa: true, lamps: 6 },
   high: { volumes: true, sunTaps: 4, sunSteps: 320, coneMax: 96, coneSteps: 8, pointShadows: true, shadowSize: 2048, shadowExtent: 18, bloom: true, msaa: 4, fxaa: true, taa: true, lamps: 8 },
 };
+
+/**
+ * Performance mode (Settings -> Performance mode, `renderer.setPerformanceMode`): the low tier tuned for weak
+ * integrated GPUs. Cost per pixel is what limits those GPUs, so: device pixel ratio 1, scene at a reduced (adaptive)
+ * resolution composited at that resolution and upscaled with a light sharpening pass, a 1024 shadow map over a
+ * smaller area refreshed every second frame, two lamp lights, and a shorter draw distance (the far plane culls
+ * chunk meshes behind the fog, which saves draw calls on the CPU too). See DECISIONS.md "Performance mode".
+ */
+const LITE: Partial<Tier> = { shadowSize: 1024, shadowExtent: 22, bloom: false, msaa: 0, fxaa: true, taa: false, lamps: 2 };
+/** far plane / fog limit in performance mode (m) */
+export const LITE_DRAW_DISTANCE = 170;
 
 const _v = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3();
 
@@ -82,6 +94,7 @@ export class Renderer {
   private fallbackPending = false;
   private volumesFailed = false;
   private adopted = new Set<THREE.Material>();
+  private lite = false;
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.three = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
@@ -124,15 +137,33 @@ export class Renderer {
   setQuality(q: Quality): void {
     if (!TIERS[q]) return;
     this.requested = q;
-    this.effective = this.volumesFailed && q !== 'low' ? 'low' : q;
-    if (this.sim && !!this.volumes !== TIERS[this.effective].volumes) this.bindSim(this.sim);
+    this.effective = (this.volumesFailed || this.lite) && q !== 'low' ? 'low' : q;
+    if (this.sim && !!this.volumes !== this.tier().volumes) this.bindSim(this.sim);
     else this.applyLook();
   }
 
-  /** scene resolution relative to the canvas (0.5 .. 1); traced lighting cost is linear in pixels */
   /** switch temporal anti-aliasing on / off (medium and high tiers) */
   setTAA(on: boolean): void { this.taa = on; this.applyLook(); }
 
+  /** performance mode on? (see LITE) */
+  get performanceMode(): boolean { return this.lite; }
+  /** far plane in metres (fog is kept inside it) */
+  get drawDistance(): number { return this.camera.far; }
+
+  /** low-end profile (see LITE); keeps the requested quality to return to when switched off */
+  setPerformanceMode(on: boolean): void {
+    if (on === this.lite) return;
+    this.lite = on;
+    this.basePixelRatio = on ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+    this.three.setPixelRatio(this.post.supported ? this.basePixelRatio : this.basePixelRatio * this.resScale);
+    this.camera.far = on ? LITE_DRAW_DISTANCE : 600;
+    this.camera.updateProjectionMatrix();
+    this.post.configure({ sharpen: on ? 0.6 : 0, lowRes: on });
+    this.resize();
+    this.setQuality(this.requested);
+  }
+
+  /** scene resolution relative to the canvas (0.5 .. 1); traced lighting cost is linear in pixels */
   setResolutionScale(s: number): void {
     this.resScale = Math.max(0.5, Math.min(1, s || 1));
     if (this.post.supported) this.post.configure({ scale: this.resScale });
@@ -179,6 +210,7 @@ export class Renderer {
     const v = this.volumes;
     return {
       quality: this.requested, effectiveQuality: this.effective, timeOfDay: this.tod, resolutionScale: this.resScale,
+      performanceMode: this.lite, pixelRatio: this.three.getPixelRatio(), drawDistance: this.camera.far, shadowMapSize: this.sun.shadow.mapSize.x,
       post: this.post.supported, renderSize: this.post.renderSize,
       quads: this.bodies.stats.quads, remeshed: this.bodies.stats.remeshed, pendingChunks: this.pendingChunks(),
       drawCalls: this.three.info.render.calls, triangles: this.three.info.render.triangles,
@@ -252,7 +284,7 @@ export class Renderer {
       } else if (e.type === 'custom' && e.name === 'tool:impact') {
         this.shake = Math.max(this.shake, e.data.power ?? 0.3);
         this.kick(-(e.data.kick ?? 1.2));
-      } else if (e.type === 'custom' && e.name === 'tool:swing' && e.data.tool === 'sledge') {
+      } else if (e.type === 'custom' && e.name === 'tool:swing' && lookOf(e.data.tool) === 'sledge') {
         this.kick(0.35);
       } else if (e.type === 'crumb') {
         this.chips.burst(e.pos, e.pal, Math.min(10, e.count + 2), 2);
@@ -278,14 +310,23 @@ export class Renderer {
     this.placeSun();
     this.sky.uniforms.uTime.value = this.time;
     if (this.adoptForeignMaterials && (this.frame % 20 === 1 || fullSync)) this.adoptScene();
+    // performance mode: the sun shadow map (dynamic objects + world within ~22 m) is refreshed every second frame
+    const sm = this.three.shadowMap;
+    sm.autoUpdate = !this.lite || fullSync || (this.frame & 1) === 0 || !this.sun.shadow.map;
     if (this.post.supported) this.post.render(this.scene, this.camera, this.preset.exposure, fullSync);
     else { this.three.setRenderTarget(null); this.three.render(this.scene, this.camera); }
   }
 
   // ------------------------------------------------------------------ internals
 
-  private makeConfig(): LookConfig {
+  /** settings of the tier in use (performance mode overrides a few) */
+  private tier(): Tier {
     const t = TIERS[this.effective];
+    return this.lite ? { ...t, ...LITE } : t;
+  }
+
+  private makeConfig(): LookConfig {
+    const t = this.tier();
     const vol = t.volumes && !!this.volumes;
     return { volumes: vol, tracedSun: vol, sunTaps: t.sunTaps, sunSteps: t.sunSteps, coneAO: vol && t.coneMax > 0, coneMax: t.coneMax, coneSteps: t.coneSteps, pointShadows: vol && t.pointShadows };
   }
@@ -296,7 +337,7 @@ export class Renderer {
     this.volumes?.dispose();
     this.volumes = null;
     this.look.uBits.value = null; this.look.uDens.value = null;
-    const tier = TIERS[this.effective];
+    const tier = this.tier();
     if (tier.volumes) {
       const b = this.level?.bounds ?? { min: { x: -100, y: -10, z: -100 }, max: { x: 100, y: 60, z: 100 } };
       const v = VoxelVolumes.create(this.three, sim, b, this.maxVolumeBytes, this.level?.spawn);
@@ -308,14 +349,14 @@ export class Renderer {
         this.look.uInvVoxel.value = u.uInvVoxel.value;
       } else { this.volumesFailed = true; this.effective = 'low'; }
     }
-    this.lamps.build(sim, TIERS[this.effective].lamps);
+    this.lamps.build(sim, this.tier().lamps);
     this.post.resetHistory();
     this.applyLook();
   }
 
   /** materials, shadow setup and post options for the effective tier */
   private applyLook(): void {
-    const tier = TIERS[this.effective];
+    const tier = this.tier();
     const cfg = this.makeConfig();
     const changed = JSON.stringify(cfg) !== JSON.stringify(this.cfg);
     this.cfg = cfg;
@@ -357,7 +398,7 @@ export class Renderer {
 
   /** shadow frustum follows the camera, snapped to shadow texels (in light space) to avoid shimmer */
   private placeSun(): void {
-    const tier = TIERS[this.effective];
+    const tier = this.tier();
     const d = this.sunDir;
     _r.set(0, 1, 0).cross(d).normalize();
     _u.copy(d).cross(_r).normalize();

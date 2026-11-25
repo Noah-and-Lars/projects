@@ -4,8 +4,8 @@ import { emit } from './util';
 
 /** Spray can: paints surface voxels near the aimed point (route marking). Unlimited, recolouring only. */
 export class Spray extends Tool {
-  readonly id = 'spray';
-  readonly name = 'Spray Can';
+  readonly id: string = 'spray';
+  readonly name: string = 'Spray Can';
   override hint = 'LMB paint';
   range = 3;
   /** paint radius at point-blank (m); widens a little with distance */

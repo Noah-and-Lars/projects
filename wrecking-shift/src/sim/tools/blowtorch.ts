@@ -19,8 +19,8 @@ const MELT = new Map<number, number>([
  * Heats the fire system so flammables catch fire. Fuel in ticks (20 s base).
  */
 export class Blowtorch extends Tool {
-  readonly id = 'blowtorch';
-  readonly name = 'Blowtorch';
+  readonly id: string = 'blowtorch';
+  readonly name: string = 'Blowtorch';
   override hint = 'LMB hold to cut';
   override ammo = 20 * 60;
   override maxAmmo = 20 * 60;

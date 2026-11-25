@@ -5,8 +5,9 @@ import { RANKS, TOOL_NAMES, UPGRADES, type Progress, type SettingsData } from '.
 import { isRequired, maxScore, pointsOf, type MissionDef } from '../../sim/mission';
 import { el, esc, money } from './dom';
 import { atmosControls, chResultHtml, challengesHtml, handleExtraClick } from './challengeUi';
+import { handleModsClick, handleModsInput, modeInfoHtml, modeResultHtml, modsHtml, spawnHtml } from './modsUi';
 
-export type MenuName = 'main' | 'missions' | 'briefing' | 'sandbox' | 'shop' | 'settings' | 'controls' | 'diag' | 'pause' | 'success' | 'fail' | 'challenges' | 'chresult';
+export type MenuName = 'main' | 'missions' | 'briefing' | 'sandbox' | 'shop' | 'settings' | 'controls' | 'diag' | 'pause' | 'success' | 'fail' | 'challenges' | 'chresult' | 'mods' | 'modeinfo' | 'moderesult' | 'spawn';
 
 /** what the menus need from the UI module */
 export interface MenuHost {
@@ -26,7 +27,7 @@ export interface MenuHost {
 const CONTROLS: [string, string][] = [
   ['W A S D', 'Move'], ['Mouse', 'Look'], ['Space', 'Jump'], ['Shift', 'Sprint'], ['Ctrl / C', 'Crouch'],
   ['LMB', 'Use tool'], ['RMB', 'Grab / alt fire'], ['1 – 0 / Q / wheel', 'Select tool'], ['E', 'Take / interact / enter'],
-  ['Tab', 'Site map'], ['Esc', 'Pause'], ['F', 'Flashlight'], ['P', 'Photo mode'], ['F3', 'Debug info'], ['F4', 'Camera readout'],
+  ['Tab', 'Site map'], ['Esc', 'Pause'], ['F', 'Flashlight'], ['P', 'Photo mode'], ['F3', 'Debug info'], ['F4', 'Camera readout'], ['B', 'Spawn menu (sandbox)'], ['F7', 'Performance mode (when suggested)'],
 ];
 
 /** Full-screen menus (title, job board, briefing, shop, settings, pause, end screens). Plain DOM. */
@@ -69,6 +70,10 @@ export class Menus {
       case 'fail': return this.failHtml();
       case 'challenges': return challengesHtml(this.host);
       case 'chresult': return chResultHtml(this.host);
+      case 'mods': return modsHtml(this.host);
+      case 'modeinfo': return modeInfoHtml(this.host, arg);
+      case 'moderesult': return modeResultHtml(this.host);
+      case 'spawn': return spawnHtml(this.host);
     }
   }
 
@@ -99,9 +104,15 @@ export class Menus {
       `<button class="ws-btn" data-act="open" data-id="challenges">Challenges</button>` +
       `<button class="ws-btn" data-act="open" data-id="sandbox">Sandbox</button>` +
       `<button class="ws-btn" data-act="open" data-id="shop">Tools &amp; upgrades</button>` +
+      `<button class="ws-btn" data-act="open" data-id="mods">Mods${this.modCount()}</button>` +
       `<button class="ws-btn" data-act="open" data-id="settings">Settings</button>` +
       `<button class="ws-btn" data-act="open" data-id="controls">Controls</button>` +
       `</nav></div>${this.rankCard()}<div class="ws-version">Wrecking Shift · prototype</div></div>`;
+  }
+
+  private modCount(): string {
+    const m = this.host.game.ext.mods;
+    return m ? ` <small class="ws-modbadge">${m.state.count()} on</small>` : '';
   }
 
   private missionsHtml(): string {
@@ -159,7 +170,9 @@ export class Menus {
   }
 
   private sandboxHtml(): string {
-    const cards = Object.values(LEVELS).map((l) => `<button class="ws-card" data-act="sbx" data-id="${esc(l.id)}"><div class="t"><span>${esc(l.title)}</span></div><div class="s">All tools · infinite ammo · no alarms</div></button>`).join('');
+    const modMaps: string[] = this.host.game.ext.mods?.enabledMaps() ?? [];
+    const allMods = new Set<string>(this.host.game.ext.mods?.all.flatMap((m: any) => (m.maps ?? []).map((l: any) => l.id)) ?? []);
+    const cards = Object.values(LEVELS).filter((l) => !allMods.has(l.id) || modMaps.includes(l.id)).map((l) => `<button class="ws-card" data-act="sbx" data-id="${esc(l.id)}"><div class="t"><span>${esc(l.title)}</span></div><div class="s">${allMods.has(l.id) ? `Mod map · ${esc((l as any).blurb ?? 'sandbox')}` : 'All tools · infinite ammo · no alarms'}</div></button>`).join('');
     return this.win('Sandbox', `<p class="ws-note">Free demolition. Upgrades you bought apply here too.</p>${atmosControls(this.host.game)}<div class="ws-list">${cards}</div>`,
       '<button class="ws-btn" data-act="back">Back</button>', { cls: 'mid', tag: 'Free shift' });
   }
@@ -208,8 +221,12 @@ export class Menus {
       range('masterVolume', 'Master volume', 0, 1, 0.01, pct) +
       range('musicVolume', 'Music volume', 0, 1, 0.01, pct) +
       range('sfxVolume', 'Effects volume', 0, 1, 0.01, pct) +
-      `<label>Graphics quality</label><span class="ws-seg">${q}</span><span></span>` +
-      `</div>`,
+      `</div><div class="ws-sec" style="margin-top:.7em">Graphics</div><div class="ws-form">` +
+      `<label>Graphics quality</label><span class="ws-seg${s.perfMode ? ' ws-dim' : ''}">${q}</span><span></span>` +
+      check('perfMode', '<b>Performance mode</b> (low-end laptops)') +
+      `</div><p class="ws-note" style="margin:.3em 0 0">${s.perfMode
+        ? 'Performance mode is on: tuned low graphics, adaptive resolution with sharpening, shorter draw distance and lighter effects. Gameplay is unchanged.'
+        : 'Laggy on a laptop or integrated graphics? Turn on Performance mode: it lowers resolution and effects automatically but keeps all gameplay.'}</p>`,
       '<button class="ws-btn" data-act="open" data-id="diag">Diagnostics</button><button class="ws-btn" data-act="reset-settings">Defaults</button><button class="ws-btn pri" data-act="back">Done</button>', { cls: 'mid', tag: 'Options' });
   }
 
@@ -246,6 +263,8 @@ export class Menus {
       `<button class="ws-btn" data-act="qsave"${canSave ? '' : ' disabled'}>Quicksave</button>` +
       `<button class="ws-btn" data-act="qload"${canLoad && qs ? '' : ' disabled'}>Quickload</button>` +
       `<button class="ws-btn" data-act="photo">Photo mode (P)</button>` +
+      (api.sandbox && game.ext.mods ? `<button class="ws-btn" data-act="open" data-id="spawn">Spawn menu (B)</button>` : '') +
+      `<button class="ws-btn" data-act="open" data-id="mods">Mods</button>` +
       `<button class="ws-btn" data-act="open" data-id="settings">Settings</button>` +
       `<button class="ws-btn" data-act="open" data-id="controls">Controls</button>` +
       `<button class="ws-btn" data-act="quit">Quit to title</button></nav>` +
@@ -318,6 +337,7 @@ export class Menus {
       case 'resume': h.close(); break;
       case 'restart': case 'retry': {
         if (act === 'restart' && h.game.ext.challenge?.active) { h.game.ext.challenge.restart(); h.close(); break; }
+        if (act === 'restart' && h.game.ext.mods?.mode) { h.game.ext.mods.restartMode(); h.close(); break; }
         const id = h.api.def?.id ?? (act === 'retry' ? h.api.lastResult?.missionId : undefined);
         if (id) h.startMission(id);
         else { h.api.restart(); h.close(); }
@@ -330,17 +350,18 @@ export class Menus {
       case 'seg': h.progress.settings.set(t.dataset.key as any, t.dataset.val as any); this.refresh(); break;
       case 'dseg': h.game.ext.diag?.set(t.dataset.key, Number(t.dataset.val)); this.refresh(); break;
       case 'reset-diag': h.game.ext.diag?.reset(); this.refresh(); break;
-      default: handleExtraClick(h, act, t, () => this.refresh());
+      default: if (!handleModsClick(h, act, t, () => this.refresh())) handleExtraClick(h, act, t, () => this.refresh());
     }
   }
 
   private onInput(e: Event): void {
     const inp = e.target as HTMLInputElement;
     if (inp.dataset.diag) { this.host.game.ext.diag?.set(inp.dataset.diag, inp.checked); return; }
+    if (handleModsInput(this.host, inp, () => this.refresh())) return;
     const key = inp.dataset.key as keyof SettingsData | undefined;
     if (!key) return;
     const s = this.host.progress.settings;
-    if (inp.type === 'checkbox') s.set(key, inp.checked as any);
+    if (inp.type === 'checkbox') { s.set(key, inp.checked as any); if (key === 'perfMode') this.refresh(); }
     else {
       s.set(key, Number(inp.value) as any);
       const out = inp.nextElementSibling as HTMLOutputElement | null;

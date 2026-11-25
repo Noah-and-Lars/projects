@@ -9,8 +9,8 @@ import { emit } from './util';
  * soft / medium material. Hard material stops it (guns never break hard).
  */
 export class Rifle extends Tool {
-  readonly id = 'rifle';
-  readonly name = 'Rifle';
+  readonly id: string = 'rifle';
+  readonly name: string = 'Rifle';
   override hint = 'LMB shoot (penetrates)';
   override ammo = 6;
   override maxAmmo = 6;

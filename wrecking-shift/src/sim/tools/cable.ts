@@ -22,8 +22,8 @@ export interface Rope {
  * constraint, no collision). Removed when an anchor voxel is destroyed or either body disappears.
  */
 export class Cable extends TwoPointTool {
-  readonly id = 'cable';
-  readonly name = 'Cable';
+  readonly id: string = 'cable';
+  readonly name: string = 'Cable';
   override hint = 'LMB first point, LMB second point';
   override ammo = 6;
   override maxAmmo = 6;

@@ -197,6 +197,7 @@
 .ws-form input[type=checkbox] { width: 1.1em; height: 1.1em; accent-color: #f5c518; pointer-events: auto; justify-self: start; }
 .ws-seg { justify-self: start; display: inline-flex; border: 1px solid rgba(255,255,255,.15); border-radius: 2px; overflow: hidden; }
 .ws-seg button { font: inherit; font-size: .85em; font-weight: 700; text-transform: uppercase; background: #222830; color: var(--text); border: 0; padding: .25em .7em; cursor: pointer; pointer-events: auto; }
+.ws-seg.ws-dim { opacity: .45; }
 .ws-seg button.on { background: var(--hz); color: var(--ink); }
 
 /* shop */

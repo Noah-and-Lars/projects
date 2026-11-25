@@ -132,26 +132,40 @@ const TAA_OUT = /* glsl */ `
 varying vec2 vUv; uniform sampler2D tSrc;
 void main() { vec3 c = texture2D(tSrc, vUv).rgb; gl_FragColor = vec4(c / max(1.0 - max(c.r, max(c.g, c.b)), 1e-3), 1.0); }`;
 
-// compact FXAA (luma in alpha), after Timothy Lottes' FXAA 3 "console" variant
+// compact FXAA (luma in alpha), after Timothy Lottes' FXAA 3 "console" variant; optional contrast-adaptive sharpening
+// (after AMD's CAS idea: a negative 4-neighbour lobe whose weight shrinks where the neighbourhood is already
+// contrasty) that restores edge crispness when the scene was rendered at a reduced resolution and upscaled here
 const FXAA = /* glsl */ `
-varying vec2 vUv; uniform sampler2D tSrc; uniform vec2 uTexel;
-void main() {
-  #ifdef USE_FXAA
+varying vec2 vUv; uniform sampler2D tSrc; uniform vec2 uTexel; uniform float uSharpen;
+vec3 aa() {
   vec4 m = texture2D(tSrc, vUv);
+  #ifdef USE_FXAA
   float lNW = texture2D(tSrc, vUv + uTexel * vec2(-1.0, -1.0)).a, lNE = texture2D(tSrc, vUv + uTexel * vec2(1.0, -1.0)).a;
   float lSW = texture2D(tSrc, vUv + uTexel * vec2(-1.0, 1.0)).a, lSE = texture2D(tSrc, vUv + uTexel * vec2(1.0, 1.0)).a;
   float lM = m.a;
   float lMin = min(lM, min(min(lNW, lNE), min(lSW, lSE))), lMax = max(lM, max(max(lNW, lNE), max(lSW, lSE)));
-  if (lMax - lMin < max(0.04, lMax * 0.125)) { gl_FragColor = vec4(m.rgb, 1.0); return; }
+  if (lMax - lMin < max(0.04, lMax * 0.125)) return m.rgb;
   vec2 dir = vec2(-((lNW + lNE) - (lSW + lSE)), (lNW + lSW) - (lNE + lSE));
   float reduce = max((lNW + lNE + lSW + lSE) * 0.03125, 1.0 / 128.0);
   dir = clamp(dir / (min(abs(dir.x), abs(dir.y)) + reduce), vec2(-8.0), vec2(8.0)) * uTexel;
   vec4 a = 0.5 * (texture2D(tSrc, vUv + dir * (1.0 / 3.0 - 0.5)) + texture2D(tSrc, vUv + dir * (2.0 / 3.0 - 0.5)));
   vec4 b = a * 0.5 + 0.25 * (texture2D(tSrc, vUv - dir * 0.5) + texture2D(tSrc, vUv + dir * 0.5));
-  gl_FragColor = vec4((b.a < lMin || b.a > lMax) ? a.rgb : b.rgb, 1.0);
+  return (b.a < lMin || b.a > lMax) ? a.rgb : b.rgb;
   #else
-  gl_FragColor = vec4(texture2D(tSrc, vUv).rgb, 1.0);
+  return m.rgb;
   #endif
+}
+void main() {
+  vec3 c = aa();
+  #ifdef USE_SHARPEN
+  vec3 n = texture2D(tSrc, vUv + vec2(0.0, -uTexel.y)).rgb, s = texture2D(tSrc, vUv + vec2(0.0, uTexel.y)).rgb;
+  vec3 e = texture2D(tSrc, vUv + vec2(uTexel.x, 0.0)).rgb, w = texture2D(tSrc, vUv + vec2(-uTexel.x, 0.0)).rgb;
+  vec3 mn = min(c, min(min(n, s), min(e, w))), mx = max(c, max(max(n, s), max(e, w)));
+  vec3 amp = sqrt(clamp(min(mn, 1.0 - mx) / max(mx, vec3(1e-3)), 0.0, 1.0));
+  vec3 wt = -amp * uSharpen * 0.2; // 0 .. -0.2 per neighbour
+  c = clamp((c + wt * (n + s + e + w)) / (1.0 + 4.0 * wt), 0.0, 1.0);
+  #endif
+  gl_FragColor = vec4(c, 1.0);
 }`;
 
 export interface PostOptions {
@@ -163,6 +177,10 @@ export interface PostOptions {
   scale: number;
   /** temporal anti-aliasing (forces samples = 0) */
   taa: boolean;
+  /** contrast-adaptive sharpening strength in the final pass (0 = off) */
+  sharpen: number;
+  /** tone-map / grade / FXAA at the scene resolution too (cheaper at scale < 1; the final pass upscales) */
+  lowRes: boolean;
 }
 
 // Halton(2, 3) sub-pixel offsets in [-0.5, 0.5)
@@ -177,7 +195,7 @@ const BLOOM_LEVELS = 5;
 export class PostFX {
   /** false if the GPU cannot render to half-float targets (then the renderer draws straight to the canvas) */
   readonly supported: boolean;
-  readonly options: PostOptions = { samples: 0, bloom: true, fxaa: true, scale: 1, taa: false };
+  readonly options: PostOptions = { samples: 0, bloom: true, fxaa: true, scale: 1, taa: false, sharpen: 0, lowRes: false };
   bloomStrength = 0.4;
   bloomThreshold = 1.1;
   vignette = 0.28;
@@ -223,7 +241,7 @@ export class PostFX {
       tScene: tex(), tBloom: tex(), uBloom: { value: 0.4 }, uVignette: { value: 0.3 }, uContrast: { value: 1 }, uSaturationOut: { value: 1 },
       toneMappingExposure: { value: 1 },
     });
-    this.mFxaa = mk(FXAA, { tSrc: tex(), uTexel: { value: new THREE.Vector2() } });
+    this.mFxaa = mk(FXAA, { tSrc: tex(), uTexel: { value: new THREE.Vector2() }, uSharpen: { value: 0 } });
     this.mTaa = mk(TAA, { tCur: tex(), tHist: tex(), tDepth: tex(), uInvVP: { value: new THREE.Matrix4() }, uPrevVP: { value: new THREE.Matrix4() }, uCamPos: { value: new THREE.Vector3() }, uPrevCamPos: { value: new THREE.Vector3() }, uTexel: { value: new THREE.Vector2() }, uBlend: { value: 1 }, uBlendStill: { value: 1 } });
     this.mTaaOut = mk(TAA_OUT, { tSrc: tex() });
     this.quad = new THREE.Mesh(geo, this.mPre);
@@ -240,7 +258,7 @@ export class PostFX {
     const p = this.options;
     const next = { ...p, ...o };
     next.scale = Math.max(0.25, Math.min(1, next.scale));
-    if (next.samples !== p.samples || next.scale !== p.scale || next.bloom !== p.bloom || next.taa !== p.taa) this.dirty = true;
+    if (next.samples !== p.samples || next.scale !== p.scale || next.bloom !== p.bloom || next.taa !== p.taa || next.lowRes !== p.lowRes) this.dirty = true;
     Object.assign(p, next);
   }
 
@@ -267,7 +285,8 @@ export class PostFX {
         type: THREE.HalfFloatType, format: THREE.RGBAFormat, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false,
       }));
     }
-    this.ldr = new THREE.WebGLRenderTarget(this.w, this.h, {
+    const lw = o.lowRes ? sw : this.w, lh = o.lowRes ? sh : this.h;
+    this.ldr = new THREE.WebGLRenderTarget(lw, lh, {
       type: THREE.UnsignedByteType, format: THREE.RGBAFormat, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false,
     });
     if (o.bloom) {
@@ -371,8 +390,13 @@ export class PostFX {
     u.uContrast.value = this.contrast; u.uSaturationOut.value = this.saturation;
     u.toneMappingExposure.value = exposure;
     this.pass(this.mComp, ldr);
-    const wantFxaa = fxaa ? 1 : undefined;
-    if ((this.mFxaa.defines?.USE_FXAA as number | undefined) !== wantFxaa) { this.mFxaa.defines = fxaa ? { USE_FXAA: 1 } : {}; this.mFxaa.needsUpdate = true; }
+    const sharpen = this.options.sharpen > 0;
+    const d = this.mFxaa.defines ?? {};
+    if (!!d.USE_FXAA !== fxaa || !!d.USE_SHARPEN !== sharpen) {
+      this.mFxaa.defines = { ...(fxaa ? { USE_FXAA: 1 } : {}), ...(sharpen ? { USE_SHARPEN: 1 } : {}) };
+      this.mFxaa.needsUpdate = true;
+    }
+    this.mFxaa.uniforms.uSharpen.value = this.options.sharpen;
     this.mFxaa.uniforms.tSrc.value = ldr.texture;
     this.mFxaa.uniforms.uTexel.value.set(1 / ldr.width, 1 / ldr.height);
     this.pass(this.mFxaa, null);

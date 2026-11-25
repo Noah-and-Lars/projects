@@ -16,8 +16,8 @@ export function bombGrid(): VoxelGrid {
 
 /** Placed sticky charge: 3 s timer with beeps each second, explosion size 1.6. */
 export class Bomb extends Tool {
-  readonly id = 'bomb';
-  readonly name = 'Bomb';
+  readonly id: string = 'bomb';
+  readonly name: string = 'Bomb';
   override hint = 'LMB place';
   override ammo = 6;
   override maxAmmo = 6;

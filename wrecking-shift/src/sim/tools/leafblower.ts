@@ -4,8 +4,8 @@ import { emit } from './util';
 
 /** Leaf blower: unlimited, pushes light dynamic bodies (debris) in a cone in front of the player. Breaks nothing. */
 export class LeafBlower extends Tool {
-  readonly id = 'leafblower';
-  readonly name = 'Leaf Blower';
+  readonly id: string = 'leafblower';
+  readonly name: string = 'Leaf Blower';
   override hint = 'LMB blow debris';
   range = 6;
   /** cos of the cone half-angle (~25°) */

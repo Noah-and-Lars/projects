@@ -48,6 +48,8 @@ export abstract class Tool {
   anim = 0;
   /** continuous tools (spray, foam, torch): true while working this tick */
   active = false;
+  /** built-in tool id whose view model / sounds / effects this tool uses (mod tools) */
+  look?: string;
   /** short HUD hint, e.g. "LMB swing" */
   hint = '';
   /** ammo shown by the HUD ('' = unlimited). Blowtorch overrides (seconds of fuel). */
@@ -83,6 +85,14 @@ export abstract class Tool {
   }
 }
 
+/**
+ * Mod tools reuse a built-in tool's presentation (view model, sounds, muzzle flash, previews): `look` names it.
+ * `lookOf(id)` maps any tool id to the built-in id to present it as (registered when a belt is created).
+ */
+const LOOKS = new Map<string, string>();
+export function registerLook(id: string, look: string): void { LOOKS.set(id, look); }
+export const lookOf = (id: string): string => LOOKS.get(id) ?? id;
+
 const IDLE: ToolInput = Object.freeze(emptyToolInput());
 
 export class ToolBelt {
@@ -90,7 +100,7 @@ export class ToolBelt {
   index = 0;
   /** RMB grab / carry / throw (works with every tool) */
   readonly grab = new Grabber();
-  constructor(tools: Tool[]) { this.tools = tools; }
+  constructor(tools: Tool[]) { this.tools = tools; for (const t of tools) if (t.look) registerLook(t.id, t.look); }
   get current(): Tool { return this.tools[this.index]; }
   byId(id: string): Tool | undefined { return this.tools.find((t) => t.id === id); }
 

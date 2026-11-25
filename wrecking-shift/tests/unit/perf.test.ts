@@ -87,3 +87,39 @@ describe.skipIf(!bench)('render CPU benchmarks', () => {
     console.log(`  3 m edit box (30^3 voxels) update: ${u.toFixed(2)} ms`);
   });
 });
+
+describe.skipIf(!bench)('performance mode CPU caps', () => {
+  it('heavy demolition: sim tick cost with normal vs performance-mode caps', async () => {
+    const { harbor } = await import('../../src/sim/levels/harbor');
+    const { FireSystem } = await import('../../src/sim/fire');
+    const { PERF_CAPS } = await import('../../src/game/perfModule');
+    const { ChipParticles } = await import('../../src/render/particles');
+    for (const [name, caps] of Object.entries(PERF_CAPS)) {
+      const sim = new Sim(7);
+      const fire = new FireSystem(sim);
+      sim.systems.push(fire);
+      const info = harbor.build(sim);
+      sim.maxDebris = caps.maxDebris; fire.maxFires = caps.maxFires;
+      sim.step();
+      const s = info.spawn;
+      // a run of big blasts around the spawn + fires, like a sandbox player going wild
+      for (let i = 0; i < 40; i++) {
+        const a = i * 0.7, r = 6 + (i % 7) * 3;
+        sim.explode({ x: s.x + Math.cos(a) * r, y: s.y + 1 + (i % 4), z: s.z + Math.sin(a) * r }, 1.6 + (i % 3) * 0.5);
+        fire.igniteNear({ x: s.x + Math.cos(a) * r, y: s.y + 1, z: s.z + Math.sin(a) * r }, 2, 8);
+        sim.step();
+      }
+      let tot = 0, mx = 0;
+      const N = 300;
+      for (let i = 0; i < N; i++) { const t = performance.now(); sim.step(); const d = performance.now() - t; tot += d; mx = Math.max(mx, d); }
+      let debris = 0; for (const b of sim.bodies.values()) if (b.kind === 'debris') debris++;
+      // chips: a full particle buffer updated every frame
+      const chips = new ChipParticles();
+      chips.limit = caps.chips;
+      for (let i = 0; i < caps.chips; i++) chips.spawn({ x: s.x, y: s.y + 2, z: s.z }, { x: Math.random(), y: 2, z: Math.random() }, 10, 0.03, 5);
+      const cms = best(20, () => chips.update(1 / 60, sim, 1));
+      console.log(`${name}: sim tick avg ${(tot / N).toFixed(2)} ms, max ${mx.toFixed(1)} ms, debris bodies ${debris}, fires ${fire.count()}; chips update ${cms.toFixed(2)} ms / frame (${caps.chips}); substeps/frame <= ${caps.substeps}, mesh budget ${caps.budgetMs} ms`);
+      sim.dispose();
+    }
+  });
+});

@@ -119,7 +119,7 @@ export class UiModule implements GameModule, MenuHost {
   open(name: MenuName, arg = ''): void {
     if (this.map.open) this.map.setOpen(this.game, false);
     if (name === 'main') { this.stack = []; this.session = 'menu'; }
-    if (name === 'success' || name === 'fail' || name === 'chresult') this.stack = [];
+    if (name === 'success' || name === 'fail' || name === 'chresult' || name === 'moderesult') this.stack = [];
     this.stack.push({ name, arg });
     this.menus.render(name, arg);
     this.applyMenuState(true);
@@ -181,10 +181,16 @@ export class UiModule implements GameModule, MenuHost {
       if (this.session === 'play' && !this.menus.name && this.endTimer < 0) this.map.setOpen(this.game, !this.map.open);
       return;
     }
+    if (e.code === 'KeyB' && this.session === 'play' && this.endTimer < 0 && !this.map.open && !this.game.ext.photo?.active) {
+      // sandbox spawn menu (mods); B again closes it
+      if (this.menus.name === 'spawn') { this.close(); return; }
+      if (!this.menus.name && this.game.ext.mods?.canSpawn()) { this.open('spawn'); return; }
+    }
     if (e.code === 'Escape') {
       if (performance.now() - this.lockPauseAt < 250) return;
       const n = this.menus.name;
-      if (n) { if (n !== 'main' && n !== 'success' && n !== 'fail' && n !== 'chresult') this.back(); }
+      if (n === 'spawn') { this.close(); return; }
+      if (n) { if (n !== 'main' && n !== 'success' && n !== 'fail' && n !== 'chresult' && n !== 'moderesult') this.back(); }
       else if (this.map.open) this.map.setOpen(this.game, false);
       else if (this.session === 'play' && this.endTimer < 0) this.open('pause');
     }

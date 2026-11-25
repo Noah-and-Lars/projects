@@ -13,6 +13,8 @@ import { createAtmosModule } from './atmosModule';
 import { createEdgeModule } from './edgeModule';
 import { createPhotoModule } from './photoModule';
 import { createLookModule } from '../render/lookModule';
+import { createPerfModule } from './perfModule';
+import { createModsModule } from './modsModule';
 
 /**
  * Module registry. Each feature adds ONE import and ONE entry here.
@@ -28,7 +30,9 @@ export function createModules(): GameModule[] {
     createAudioModule(),
     vehicleModule(),
     new MissionModule(),
+    createPerfModule(), // after missions: reads game.ext.settings (published by the mission module)
     new ChallengeModule(), // after missions: a load without a pending challenge drops it
+    createModsModule(), // after missions + challenges: unlocks mod tools, runs mod game modes
     createAtmosModule(), // after mission + challenge: applies the sandbox / challenge time + weather choice
     createEdgeModule(),
     createQuicksaveModule(),

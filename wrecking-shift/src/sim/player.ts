@@ -28,6 +28,8 @@ export class Player {
   yaw = 0;
   pitch = 0;
   vel: V3 = { x: 0, y: 0, z: 0 };
+  /** gravity multiplier (rule-tweak mods) */
+  gravityScale = 1;
   grounded = false;
   crouching = false;
   height = PLAYER_HEIGHT;
@@ -179,7 +181,7 @@ export class Player {
       if (inp.jump) this.vel.y = 2.6;
       this.vel.x *= 0.96; this.vel.z *= 0.96;
     } else {
-      this.vel.y -= 9.81 * 1.6 * DT; // slightly heavy gravity feels snappier
+      this.vel.y -= 9.81 * 1.6 * this.gravityScale * DT; // slightly heavy gravity feels snappier
       if (this.grounded) this.airTime = 0; else this.airTime += DT;
       if (inp.jump && !this.jumpHeld && this.airTime < 0.12) {
         this.vel.y = this.jumpSpeed * (this.crouching ? 0.8 : 1);

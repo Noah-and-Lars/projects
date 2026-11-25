@@ -338,3 +338,31 @@ Scripted, deterministic playthroughs of all 11 big-map missions live in `tests/u
   ramps linearly to exactly 0 within ~0.25 s; roll is exactly 0 then. My earlier checks missed it because they never
   walked before standing and the readout ignored roll; the F4 readout now compares the final camera matrix and
   `tests/e2e/still.mjs` has a walk-then-stop case with head bob on (fails on the old code).
+
+## Performance mode (low-end laptops) — 2026-11-25
+Settings → Graphics → **Performance mode (low-end laptops)** (`settings.perfMode`, `src/game/perfModule.ts`,
+`renderer.setPerformanceMode`). Chosen by construction because the container has no GPU (SwiftShader only):
+- **Pixels are the bottleneck of integrated GPUs**, so the biggest wins are per-pixel: device pixel ratio capped to 1
+  (a 2x laptop screen draws 4x fewer pixels), the scene at 75 % resolution (adaptive 50-85 %: -0.1 when the 1 s frame
+  average is above 1/28 s, +0.05 after 3 s below 1/50 s), tone map / grade / FXAA at that reduced size too, and one
+  final upscale pass with contrast-adaptive sharpening (5 fetches / output pixel) so edges stay crisp.
+- **Low tier, tuned:** no lighting volumes (medium = up to ~250 texture fetches per world pixel, low = shadow-map PCF
+  only), no bloom (5-level pyramid) and no TAA (3 history targets + a 9-tap pass). Kept: baked voxel AO, the sun
+  shadow map (1024 instead of 2048, ±22 m instead of ±34 m, refreshed every second frame — it holds dynamic objects
+  and nearby world, one frame of lag is not visible), two lamp point lights instead of three (every forward-lit
+  pixel loops over them). Screenshots `tests/e2e/out/perf-03-harbor.png` vs `perf-04-harbor-normal.png`: same scene,
+  very close look.
+- **Draw distance 170 m** with the fog closed in front of it: the far plane culls 1.6 m chunk meshes behind the fog
+  (fewer draw calls is a CPU win on slow laptops too). The overhead map and photo mode get the full 600 m back.
+- **Water:** simple shader (2 noise lookups instead of 15 per pixel).
+- **CPU caps** (measured, `BENCH=1 npx vitest run tests/unit/perf.test.ts -t "performance mode"`, harbour, 40 blasts
+  + fires, 300 ticks): sim tick 7.0 ms avg / 22 ms max -> 5.65 ms / 14.9 ms; the fire cap (1200 -> 450 burning
+  voxels) is most of it. Debris cap 260 -> 110 bodies (only matters in extreme scenes), chunk meshing 4 ms per frame
+  instead of 8, chip particles 3000 -> 900 (also fewer instances drawn), **at most 2 physics ticks per frame**: a CPU
+  that cannot keep up gets slow motion instead of a spiral of ever longer frames.
+- Gameplay is untouched (same tools, damage, physics rules, missions).
+- **Auto-suggestion:** with the mode off, when the frame rate stays below 24 fps for ~12 s of play (not in menus,
+  photo mode, or the first 6 s after a load) a small banner offers it once per session (F7 / Turn on / Not now /
+  Don't ask again, remembered as `settings.perfHintOff`). Not forced: a guess about what players accept.
+- Guess: the exact thresholds (24 fps, 28-50 fps band, 170 m) are not measured on real laptops; they are the usual
+  console-style targets (30 fps floor) and the fog distances of the overcast preset.

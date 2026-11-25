@@ -24,6 +24,16 @@ export class ChipParticles {
   private m = new THREE.Matrix4();
   private col = new THREE.Color();
   alive = 0;
+  private cap = MAX;
+  /** chips alive at most (performance mode lowers it); also the number of instances drawn */
+  get limit(): number { return this.cap; }
+  set limit(n: number) {
+    n = Math.max(64, Math.min(MAX, Math.floor(n)));
+    if (n === this.cap) return;
+    if (n < this.cap) { const z = new THREE.Matrix4().makeScale(0, 0, 0); for (let i = n; i < this.cap; i++) { this.life[i] = 0; this.mesh.setMatrixAt(i, z); } }
+    this.cap = n; this.head = this.head % n; this.mesh.count = n;
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
 
   constructor() {
     const geo = new THREE.BoxGeometry(1, 1, 1);
@@ -40,7 +50,7 @@ export class ChipParticles {
 
   spawn(p: V3, v: V3, pal: number, size = 0.1, life = 2.5): void {
     const i = this.head;
-    this.head = (this.head + 1) % MAX;
+    this.head = (this.head + 1) % this.cap;
     this.px[i * 3] = p.x; this.px[i * 3 + 1] = p.y; this.px[i * 3 + 2] = p.z;
     this.pv[i * 3] = v.x; this.pv[i * 3 + 1] = v.y; this.pv[i * 3 + 2] = v.z;
     this.life[i] = life; this.size[i] = size; this.rest[i] = 0;
@@ -74,7 +84,7 @@ export class ChipParticles {
   update(dt: number, sim: Sim, frame: number): void {
     let alive = 0;
     const m = this.m;
-    for (let i = 0; i < MAX; i++) {
+    for (let i = 0, n = this.cap; i < n; i++) {
       if (this.life[i] <= 0) continue;
       this.life[i] -= dt;
       const o = i * 3;

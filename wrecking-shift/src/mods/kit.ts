@@ -1,0 +1,280 @@
+/**
+ * Authoring helpers for mods (see mods/README.md). Everything here is deterministic sim code.
+ *   props : vox() + place() — build a VoxelGrid with a callback and drop it at a bottom-centre point
+ *   maps  : siteMap() — ground (flat or hilly) + bounds + sky in one call, your build() adds the content
+ *   modes : rule templates (wreckQuota, checkpoints, collect, survive, demolish, topple) returning ModeRules
+ */
+import type { VoxelBody } from '../sim/body';
+import { MAT } from '../sim/materials';
+import { Heightmap, buildTerrain, fbm2 } from '../sim/levels/terrain';
+import { groundTile } from '../sim/levels/testyard';
+import type { LevelInfo } from '../sim/levels/types';
+import { Rng } from '../sim/rng';
+import { DT, type Sim } from '../sim/sim';
+import { qrot, qyaw, type V3 } from '../sim/vec';
+import { VoxelGrid } from '../sim/voxels';
+import type { MapDef, ModContext, ModeRules, ModeStatus } from './api';
+
+export * from '../sim/build';
+export { MAT, pal } from '../sim/materials';
+export { VoxelGrid } from '../sim/voxels';
+export { carBlueprint, type CarParams } from './vehicleKit';
+export { defineMod } from './api';
+export * as levelKit from '../sim/levels/kit';
+
+// ------------------------------------------------------------------------------------------------ props
+
+/** new grid filled by `fill` (voxel coords, 0.1 m) */
+export function vox(sx: number, sy: number, sz: number, fill: (g: VoxelGrid) => void): VoxelGrid {
+  const g = new VoxelGrid(sx, sy, sz);
+  fill(g);
+  g.recount();
+  return g;
+}
+
+/**
+ * Add a grid with its bottom centre at `pos`, rotated by `yaw` (player convention). Dynamic prop by default;
+ * `static: true` anchors it to the world (its bottom layer is the anchor).
+ */
+export function place(sim: Sim, g: VoxelGrid, pos: V3, yaw: number, name: string, opts: { static?: boolean; tags?: string[] } = {}): VoxelBody {
+  g.recount();
+  const rot = qyaw(yaw);
+  const half = qrot(rot, { x: (g.sx * 0.1) / 2, y: 0, z: (g.sz * 0.1) / 2 });
+  const corner = { x: pos.x - half.x, y: pos.y, z: pos.z - half.z };
+  const b = sim.addBody(g, corner, { dynamic: !opts.static, kind: opts.static ? 'world' : 'prop', name, rot, tags: opts.tags });
+  if (opts.tags?.includes('explosive')) b.tags.add('explosive');
+  return b;
+}
+
+// ------------------------------------------------------------------------------------------------ maps
+
+export interface SiteOptions {
+  id: string;
+  title: string;
+  blurb?: string;
+  /** half size of the square site in metres (multiple of 12.8; default 25.6 -> 51.2 m square) */
+  half?: number;
+  /** ground surface material */
+  ground?: number;
+  /** rolling hills: amplitude in metres (0 = flat tiles, fastest) */
+  hills?: number;
+  sky?: LevelInfo['sky'];
+  weather?: LevelInfo['weather'];
+  water?: number | null;
+  spawn?: V3;
+  spawnYaw?: number;
+  seed?: number;
+  /** build the content; `h(x, z)` = ground height at a point */
+  build(sim: Sim, rng: Rng, h: (x: number, z: number) => number, info: LevelInfo): void;
+}
+
+/** a square sandbox site: ground + bounds + sky; `o.build` places buildings, props, vehicles */
+export function siteMap(o: SiteOptions): MapDef {
+  return {
+    id: o.id, title: o.title, blurb: o.blurb,
+    build(sim: Sim): LevelInfo {
+      const half = o.half ?? 25.6;
+      const T = 25.6;
+      const n = Math.max(1, Math.round((half * 2) / T));
+      const x0 = -n * T / 2;
+      let h: (x: number, z: number) => number = () => 0;
+      if (o.hills && o.hills > 0) {
+        const amp = o.hills, seed = o.seed ?? 3;
+        const hm = new Heightmap((x, z) => amp * (fbm2(x * 0.02, z * 0.02, seed, 3) - 0.35));
+        // flat pad around the spawn so the player starts on level ground
+        const sp = o.spawn ?? { x: 0, y: 0, z: 0 };
+        hm.addPad(sp.x - 4, sp.z - 4, sp.x + 4, sp.z + 4, 0, 6);
+        const t = buildTerrain(sim, { x0, z0: x0, tilesX: n, tilesZ: n, heightmap: hm, waterLevel: o.water ?? null, seed, surface: o.ground != null ? () => o.ground! : undefined });
+        h = (x, z) => t.heightAt(x, z);
+      } else {
+        for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) groundTile(sim, x0 + i * T, x0 + j * T, 256, 256, o.ground ?? MAT.grass);
+      }
+      const ext = (n * T) / 2;
+      const spawn = o.spawn ?? { x: 0, y: 0.05, z: 0 };
+      const info: LevelInfo = {
+        name: o.title,
+        spawn: { x: spawn.x, y: Math.max(spawn.y, h(spawn.x, spawn.z) + 0.05), z: spawn.z },
+        spawnYaw: o.spawnYaw ?? 0,
+        bounds: { min: { x: -ext, y: -8, z: -ext }, max: { x: ext, y: 48, z: ext } },
+        waterLevel: o.water ?? null,
+        sunDir: { x: -0.45, y: -0.75, z: -0.5 },
+        sky: o.sky ?? 'day',
+        weather: o.weather ?? null,
+        markers: { escape: { x: spawn.x, y: 0, z: spawn.z + 1.5 }, heli_start: { x: -ext - 40, y: 32, z: ext + 40 } },
+      };
+      o.build(sim, new Rng(o.seed ?? 7), h, info);
+      return info;
+    },
+  };
+}
+
+// ------------------------------------------------------------------------------------------------ modes
+
+const TICKS = Math.round(1 / DT);
+
+/** shared clock / score bookkeeping for rule templates */
+abstract class BaseRules implements ModeRules {
+  score = 0;
+  ticks = 0;
+  ended = false;
+  won = false;
+  text = '';
+  constructor(readonly seconds: number | null) {}
+  get timeLeft(): number | null { return this.seconds == null ? null : Math.max(0, this.seconds - this.ticks / TICKS); }
+  abstract start(ctx: ModContext): void;
+  tick(ctx: ModContext): void {
+    if (this.ended) return;
+    this.ticks++;
+    if (ctx.player.dead) { this.finish(false, 'Knocked out'); return; }
+    this.step(ctx);
+    if (!this.ended && this.seconds != null && this.ticks >= this.seconds * TICKS) this.timeUp(ctx);
+  }
+  protected abstract step(ctx: ModContext): void;
+  protected timeUp(_ctx: ModContext): void { this.finish(false, 'Time is up'); }
+  protected finish(won: boolean, text: string): void { if (this.ended) return; this.ended = true; this.won = won; this.text = text; }
+  status(): ModeStatus { return { text: this.text, score: Math.round(this.score), timeLeft: this.timeLeft, ended: this.ended, won: this.won }; }
+}
+
+/** break `target` voxels of buildings / props / terrain within the time */
+export function wreckQuota(o: { seconds: number; target: number; label?: string; filter?: (b: VoxelBody) => boolean }): ModeRules {
+  return new (class extends BaseRules {
+    private hook = (b: VoxelBody) => { if (!this.ended && (b.kind === 'world' || b.kind === 'prop') && (!o.filter || o.filter(b))) this.score++; };
+    start(ctx: ModContext) { ctx.sim.onRemoved.push(this.hook); this.text = `${o.label ?? 'Break'} ${o.target} voxels`; }
+    step(ctx: ModContext) {
+      this.text = `${o.label ?? 'Wrecked'} ${Math.round(this.score)} / ${o.target}`;
+      if (this.score >= o.target) { this.finish(true, `Quota met: ${Math.round(this.score)} voxels`); this.unhook(ctx); }
+    }
+    protected override timeUp(ctx: ModContext) { this.unhook(ctx); this.finish(false, `Time up at ${Math.round(this.score)} / ${o.target}`); }
+    private unhook(ctx: ModContext) { const i = ctx.sim.onRemoved.indexOf(this.hook); if (i >= 0) ctx.sim.onRemoved.splice(i, 1); }
+  })(o.seconds);
+}
+
+/** reach the points in order (on foot or driving) */
+export function checkpoints(o: { points: V3[]; seconds: number; radius?: number }): ModeRules {
+  return new (class extends BaseRules {
+    next = 0;
+    start() { this.text = `Checkpoint 1 / ${o.points.length}`; }
+    step(ctx: ModContext) {
+      const p = o.points[this.next], q = ctx.player.pos;
+      const r = o.radius ?? 3;
+      if (Math.hypot(p.x - q.x, p.z - q.z) < r && Math.abs(p.y - q.y) < 4) {
+        this.next++; this.score += 100 + Math.round(this.timeLeft ?? 0);
+        ctx.sim.out.push({ type: 'custom', name: 'mode:checkpoint', data: { index: this.next } });
+        if (this.next >= o.points.length) { this.finish(true, 'Finish!'); return; }
+      }
+      const d = o.points[this.next];
+      this.text = `Checkpoint ${this.next + 1} / ${o.points.length} — ${Math.round(Math.hypot(d.x - q.x, d.z - q.z))} m`;
+    }
+  })(o.seconds);
+}
+
+/** pick up glowing tokens by walking into them (spawned at `spots`) */
+export function collect(o: { spots: V3[]; seconds: number; name?: string; spawn: (sim: Sim, p: V3, i: number) => VoxelBody }): ModeRules {
+  return new (class extends BaseRules {
+    items: { body: VoxelBody; taken: boolean }[] = [];
+    start(ctx: ModContext) { this.items = o.spots.map((p, i) => ({ body: o.spawn(ctx.sim, p, i), taken: false })); this.text = `${o.name ?? 'Tokens'} 0 / ${o.spots.length}`; }
+    step(ctx: ModContext) {
+      const q = ctx.player.pos;
+      let got = 0;
+      for (const it of this.items) {
+        if (!it.taken) {
+          const b = it.body;
+          const t = b.removed ? null : b.rb.translation();
+          if (t) {
+            const c = { x: t.x + b.grid.sx * 0.05, y: t.y, z: t.z + b.grid.sz * 0.05 };
+            if (Math.hypot(c.x - q.x, c.z - q.z) < 1.4 && Math.abs(c.y - q.y) < 2.2) {
+              it.taken = true; this.score += 100; ctx.sim.removeBody(b);
+              ctx.sim.out.push({ type: 'custom', name: 'mode:pickup', data: {} });
+            }
+          } else { it.taken = true; } // destroyed tokens are lost (no points)
+        }
+        if (it.taken) got++;
+      }
+      this.text = `${o.name ?? 'Tokens'} ${Math.round(this.score / 100)} / ${o.spots.length}`;
+      if (got === this.items.length) { this.score += Math.round((this.timeLeft ?? 0) * 10); this.finish(this.score > 0, 'All collected'); }
+    }
+  })(o.seconds);
+}
+
+/** stay alive while `hazard` runs every tick */
+export function survive(o: { seconds: number; hazard: (ctx: ModContext, t: number) => void; label?: string }): ModeRules {
+  return new (class extends BaseRules {
+    start() { this.text = o.label ?? 'Survive'; }
+    step(ctx: ModContext) { o.hazard(ctx, this.ticks); this.score = Math.floor(this.ticks / TICKS) * 10; this.text = `${o.label ?? 'Survive'} — ${Math.ceil(this.timeLeft ?? 0)} s`; }
+    protected override timeUp() { this.finish(true, 'Survived!'); }
+  })(o.seconds);
+}
+
+/** destroy `fraction` of the voxels of bodies tagged `tag` */
+export function demolish(o: { tag: string; fraction: number; seconds: number; label?: string }): ModeRules {
+  return new (class extends BaseRules {
+    total = 0; gone = 0;
+    private hook = (b: VoxelBody) => { if (b.tags.has(o.tag) || b.tags.has(o.tag + ':piece')) this.gone++; };
+    start(ctx: ModContext) {
+      for (const b of ctx.sim.bodies.values()) if (b.tags.has(o.tag)) this.total += b.grid.count;
+      ctx.sim.onRemoved.push(this.hook);
+    }
+    step(ctx: ModContext) {
+      // pieces that fall off a tagged body count as demolished
+      let left = 0;
+      for (const b of ctx.sim.bodies.values()) if (b.tags.has(o.tag) && !b.dynamic) left += b.grid.count;
+      const frac = this.total ? 1 - left / this.total : 1;
+      this.score = Math.round(frac * 1000);
+      this.text = `${o.label ?? 'Demolish'} ${Math.round(frac * 100)} % / ${Math.round(o.fraction * 100)} %`;
+      if (frac >= o.fraction) { this.score += Math.round((this.timeLeft ?? 0) * 5); this.finish(true, 'Demolished!'); const i = ctx.sim.onRemoved.indexOf(this.hook); if (i >= 0) ctx.sim.onRemoved.splice(i, 1); }
+    }
+  })(o.seconds);
+}
+
+/** knock every body tagged `tag` over / off its base (its highest point drops below `below` m, or it is gone) */
+export function topple(o: { tag: string; below: number; seconds: number; label?: string }): ModeRules {
+  return new (class extends BaseRules {
+    total = 0;
+    start(ctx: ModContext) { for (const b of ctx.sim.bodies.values()) if (b.tags.has(o.tag)) this.total++; }
+    step(ctx: ModContext) {
+      let standing = 0;
+      for (const b of ctx.sim.bodies.values()) {
+        if (!b.tags.has(o.tag) || b.removed) continue;
+        const t = b.rb.translation();
+        // top of the body's box in world space, roughly: centre of mass height + half height when upright
+        const up = b.toWorld({ x: b.grid.sx / 2, y: b.grid.sy, z: b.grid.sz / 2 });
+        if (up.y > o.below && t.y > o.below - 5) standing++;
+      }
+      const down = this.total - standing;
+      this.score = down * 100;
+      this.text = `${o.label ?? 'Knocked over'} ${down} / ${this.total}`;
+      if (this.total > 0 && standing === 0) { this.score += Math.round((this.timeLeft ?? 0) * 10); this.finish(true, 'All down!'); }
+    }
+  })(o.seconds);
+}
+
+/** deterministic ring of points around a centre (for checkpoint / collect layouts) */
+export function ring(c: V3, r: number, n: number, y = 0, phase = 0): V3[] {
+  const out: V3[] = [];
+  for (let i = 0; i < n; i++) { const a = phase + (i / n) * Math.PI * 2; out.push({ x: c.x + Math.cos(a) * r, y, z: c.z + Math.sin(a) * r }); }
+  return out;
+}
+
+// ------------------------------------------------------------------------------------------------ tools
+
+import type { Tool } from '../sim/tools/tool';
+import type { ToolDef } from './api';
+export * as tools from '../sim/tools';
+
+/**
+ * A tool that is a tuned variant of a built-in one: `variant(Shotgun, { id: 'x', name: 'X', pellets: 16 })`.
+ * It looks and sounds like the base tool (`look`), with your numbers.
+ */
+export function variant<T extends Tool>(Base: new () => T, o: { id: string; name: string; hint?: string } & Partial<Omit<T, 'id' | 'name'>>): ToolDef {
+  return {
+    id: o.id,
+    create: () => {
+      const t = new Base();
+      const look = t.look ?? t.id;
+      Object.assign(t, o);
+      t.look = look;
+      if (o.maxAmmo != null && o.ammo == null) t.ammo = o.maxAmmo;
+      return t;
+    },
+  };
+}

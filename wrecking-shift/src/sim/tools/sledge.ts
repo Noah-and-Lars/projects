@@ -6,8 +6,8 @@ import { emit } from './util';
  * hard materials (brick, dirt, sheet metal, concrete) just clang. Hold LMB to keep swinging.
  */
 export class Sledge extends Tool {
-  readonly id = 'sledge';
-  readonly name = 'Sledgehammer';
+  readonly id: string = 'sledge';
+  readonly name: string = 'Sledgehammer';
   override hint = 'LMB swing';
   reach = 2.6;
   /** full swing length in ticks; the head lands at `impactTick` */

@@ -1,0 +1,36 @@
+/* Mods menu, spawn menu, mod game mode HUD panel (src/game/ui/modsUi.ts, src/game/modsModule.ts) */
+.ws-modbar { display: flex; gap: .5em; align-items: center; flex-wrap: wrap; margin-bottom: .5em; }
+.ws-modtabs { flex-wrap: wrap; }
+.ws-modtabs button small { opacity: .65; font-weight: 600; }
+.ws-modsearch { flex: 1 1 10em; min-width: 8em; font: inherit; font-size: .85em; padding: .25em .5em; background: #0d1014; color: var(--text); border: 1px solid var(--line); border-radius: 2px; pointer-events: auto; }
+.ws-modlist { display: flex; flex-direction: column; gap: 4px; }
+.ws-mod { display: flex; gap: .6em; align-items: flex-start; padding: .4em .55em; background: rgba(255,255,255,.03); border: 1px solid var(--line); border-left: 3px solid #3a424b; border-radius: 2px; }
+.ws-mod.on { border-left-color: var(--hz); }
+.ws-mod .sw input { width: 1.15em; height: 1.15em; accent-color: #f5c518; pointer-events: auto; margin: .15em 0 0; }
+.ws-mod .info { flex: 1; min-width: 0; }
+.ws-mod .nm { font-weight: 800; font-size: .92em; }
+.ws-mod .cat { font-size: .68em; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; margin-left: .4em; }
+.ws-mod .ds { font-size: .82em; color: #c9cfd5; }
+.ws-mod .meta { font-size: .7em; color: var(--muted); margin-top: .1em; }
+.ws-mod .acts { display: flex; gap: .35em; flex-wrap: wrap; margin-top: .3em; }
+.ws-btn.sm { font-size: .72em; padding: .2em .6em; }
+.ws-modcount { margin-right: auto; font-size: .8em; color: var(--muted); align-self: center; }
+.ws-modnote { margin: 0 0 .5em; }
+.ws-modbadge { font-size: .7em; opacity: .7; font-weight: 600; }
+.ws-rules { margin: 0 0 .6em; padding-left: 1.2em; font-size: .9em; line-height: 1.45; }
+.ws-moderes { text-align: center; padding: .6em 0; }
+.ws-moderes .big { font-size: 1.6em; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; }
+.ws-moderes.won .big { color: var(--hz); }
+.ws-moderes .sc { margin-top: .4em; font-size: 1.1em; }
+.ws-spawngrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5em, 1fr)); gap: 5px; margin: .5em 0; }
+.ws-spawn { display: flex; flex-direction: column; align-items: flex-start; gap: .1em; text-align: left; font: inherit; padding: .4em .55em; background: #1c2229; color: var(--text); border: 1px solid var(--line); border-left: 3px solid #6c8; border-radius: 2px; cursor: pointer; pointer-events: auto; }
+.ws-spawn.vehicle { border-left-color: var(--hz); }
+.ws-spawn:hover { background: #252d36; }
+.ws-spawn .k { font-size: .62em; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; }
+.ws-spawn .nm { font-weight: 800; font-size: .86em; }
+.ws-spawn .md { font-size: .68em; color: var(--muted); }
+.ws-modepanel { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); min-width: 14em; max-width: calc(100vw - 32px); background: var(--panel); border-top: 3px solid var(--hz); padding: .35em .75em .45em; border-radius: 2px; text-align: center; font-size: .9em; }
+.ws-modepanel .ttl { font-size: .7em; text-transform: uppercase; letter-spacing: .12em; color: var(--hz); font-weight: 800; }
+.ws-modepanel .row { display: flex; gap: .8em; justify-content: center; align-items: baseline; font-weight: 700; }
+.ws-modepanel .clk { font-variant-numeric: tabular-nums; font-size: 1.2em; color: var(--hz); }
+.ws-modepanel .sc { font-size: .8em; color: var(--muted); }

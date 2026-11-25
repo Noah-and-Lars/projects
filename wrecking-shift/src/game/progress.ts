@@ -72,9 +72,14 @@ export interface SettingsData {
   musicVolume: number;
   sfxVolume: number;
   quality: Quality;
+  /** performance mode for low-end laptops (src/game/perfModule.ts) */
+  perfMode: boolean;
+  /** "don't suggest performance mode again" */
+  perfHintOff: boolean;
 }
 export const DEFAULT_SETTINGS: SettingsData = {
   sensitivity: 1, invertY: false, fov: 80, headBob: true, masterVolume: 0.8, musicVolume: 0.6, sfxVolume: 0.9, quality: 'medium',
+  perfMode: false, perfHintOff: false,
 };
 
 function sanitizeSettings(raw: any): SettingsData {
@@ -88,6 +93,8 @@ function sanitizeSettings(raw: any): SettingsData {
   s.sfxVolume = num(raw.sfxVolume, 0, 1, s.sfxVolume);
   if (typeof raw.invertY === 'boolean') s.invertY = raw.invertY;
   if (typeof raw.headBob === 'boolean') s.headBob = raw.headBob;
+  if (typeof raw.perfMode === 'boolean') s.perfMode = raw.perfMode;
+  if (typeof raw.perfHintOff === 'boolean') s.perfHintOff = raw.perfHintOff;
   if (raw.quality === 'low' || raw.quality === 'medium' || raw.quality === 'high') s.quality = raw.quality;
   return s;
 }
@@ -105,6 +112,8 @@ export class Settings implements SettingsData {
   musicVolume = DEFAULT_SETTINGS.musicVolume;
   sfxVolume = DEFAULT_SETTINGS.sfxVolume;
   quality: Quality = DEFAULT_SETTINGS.quality;
+  perfMode = DEFAULT_SETTINGS.perfMode;
+  perfHintOff = DEFAULT_SETTINGS.perfHintOff;
   private listeners: ((s: Settings, key: keyof SettingsData | null) => void)[] = [];
   constructor(data: SettingsData, private persist: () => void) { Object.assign(this, data); }
 
@@ -125,8 +134,8 @@ export class Settings implements SettingsData {
     for (const l of this.listeners) l(this, null);
   }
   toJSON(): SettingsData {
-    const { sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality } = this;
-    return { sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality };
+    const { sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality, perfMode, perfHintOff } = this;
+    return { sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality, perfMode, perfHintOff };
   }
 }
 

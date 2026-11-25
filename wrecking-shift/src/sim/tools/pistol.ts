@@ -4,8 +4,8 @@ import { emit } from './util';
 
 /** Precise long-range handgun. Breaks soft + medium (brick, sheet metal), never hard. Detonates barrels / nitro. */
 export class Pistol extends Tool {
-  readonly id = 'pistol';
-  readonly name = 'Handgun';
+  readonly id: string = 'pistol';
+  readonly name: string = 'Handgun';
   override hint = 'LMB shoot';
   override ammo = 18;
   override maxAmmo = 18;

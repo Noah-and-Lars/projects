@@ -5,8 +5,8 @@ import { emit } from './util';
 
 /** 8 pellets with spread and damage falloff; range 20 m. Breaks soft + medium, never hard. */
 export class Shotgun extends Tool {
-  readonly id = 'shotgun';
-  readonly name = 'Shotgun';
+  readonly id: string = 'shotgun';
+  readonly name: string = 'Shotgun';
   override hint = 'LMB shoot';
   override ammo = 12;
   override maxAmmo = 12;

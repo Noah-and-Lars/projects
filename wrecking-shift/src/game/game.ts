@@ -71,6 +71,9 @@ export class Game {
   viewBob = { y: 0, roll: 0 };
   /** debug switch (`?bob=0`): ignore head bob / roll */
   noViewBob = false;
+  /** most fixed ticks run per rendered frame; when the CPU cannot keep up the game slows down instead of spiralling
+   *  (performance mode lowers it to 2) */
+  maxSubsteps = 3;
   /** seconds of hit-stop left (sim frozen, rendering continues) */
   hitStop = 0;
   private toolInput: ToolInput = emptyToolInput();
@@ -307,8 +310,9 @@ export class Game {
     else if (!this.paused) {
       this.acc += dt;
       let n = 0;
-      while (this.acc >= DT && n < 3) { this.fixedStep(); this.acc -= DT; n++; }
-      if (n === 3) this.acc = 0;
+      const cap = this.maxSubsteps;
+      while (this.acc >= DT && n < cap) { this.fixedStep(); this.acc -= DT; n++; }
+      if (n === cap) this.acc = 0;
     }
     for (const m of this.modules) m.frameUpdate?.(this, dt);
     this.input.endFrame();

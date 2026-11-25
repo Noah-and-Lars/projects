@@ -31,8 +31,8 @@ export function pipeGrid(): VoxelGrid {
  * Breaking the pipe (shooting it) sets it off early.
  */
 export class PipeBomb extends Tool {
-  readonly id = 'pipebomb';
-  readonly name = 'Pipe Bomb';
+  readonly id: string = 'pipebomb';
+  readonly name: string = 'Pipe Bomb';
   override hint = 'LMB throw';
   override ammo = 6;
   override maxAmmo = 6;

@@ -41,8 +41,8 @@ export function plankGrid(n: number, seed = 0): VoxelGrid {
  * when the end voxel (on either side) is destroyed, the partner body disappears, or it is torn apart.
  */
 export class Plank extends TwoPointTool {
-  readonly id = 'plank';
-  readonly name = 'Plank';
+  readonly id: string = 'plank';
+  readonly name: string = 'Plank';
   override hint = 'LMB first point, LMB second point';
   override ammo = 8;
   override maxAmmo = 8;

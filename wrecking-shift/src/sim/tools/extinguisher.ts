@@ -4,8 +4,8 @@ import { emit } from './util';
 
 /** Unlimited foam: cone of short rays that put out fires where they land. */
 export class Extinguisher extends Tool {
-  readonly id = 'extinguisher';
-  readonly name = 'Extinguisher';
+  readonly id: string = 'extinguisher';
+  readonly name: string = 'Extinguisher';
   override hint = 'LMB foam';
   range = 5;
   rays = 6;

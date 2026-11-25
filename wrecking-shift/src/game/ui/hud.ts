@@ -83,12 +83,21 @@ export class Hud {
     show(this.tools, toolsOn);
     if (toolsOn) {
       let html = '';
+      // many tools (mods): show a window of 15 slots around the selected one
+      const shown = game.belt.tools.map((t, i) => (t.unlocked ? i : -1)).filter((i) => i >= 0);
+      const MAXS = Math.max(6, Math.min(15, Math.floor(((typeof innerWidth === "number" ? innerWidth : 1280) - 16) / 44)));
+      let win = shown;
+      if (shown.length > MAXS) {
+        const k = Math.max(0, shown.indexOf(game.belt.index));
+        const a = Math.min(Math.max(0, k - (MAXS >> 1)), shown.length - MAXS);
+        win = shown.slice(a, a + MAXS);
+      }
       game.belt.tools.forEach((t, i) => {
-        if (!t.unlocked) return;
+        if (!t.unlocked || !win.includes(i)) return;
         const inf = t.ammo === Infinity || game.infiniteAmmo;
         const am = inf ? '∞' : String(Math.max(0, Math.floor(t.ammo)));
         const cls = 'ws-slot' + (i === game.belt.index ? ' sel' : '') + (!inf && t.ammo <= 0 ? ' empty' : '');
-        html += `<div class="${cls}"><span class="n">${(i + 1) % 10}</span><span class="nm">${esc(t.name || TOOL_NAMES[t.id] || t.id)}</span><span class="am">${am}</span></div>`;
+        html += `<div class="${cls}"><span class="n">${i < 10 ? (i + 1) % 10 : '·'}</span><span class="nm">${esc(t.name || TOOL_NAMES[t.id] || t.id)}</span><span class="am">${am}</span></div>`;
       });
       setHtml(this.tools, html);
     }

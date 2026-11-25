@@ -18,8 +18,8 @@ export function nitroGrid(): VoxelGrid {
  * Also goes off on a hard knock once it has come loose.
  */
 export class Nitro extends Tool {
-  readonly id = 'nitro';
-  readonly name = 'Nitro Canister';
+  readonly id: string = 'nitro';
+  readonly name: string = 'Nitro Canister';
   override hint = 'LMB place, shoot to detonate';
   override ammo = 4;
   override maxAmmo = 4;

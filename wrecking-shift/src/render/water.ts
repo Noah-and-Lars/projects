@@ -46,9 +46,17 @@ export class WaterSurface {
         }
         void main() {
           vec2 p = vWorld.xz;
+          #ifdef SIMPLE_WATER
+          // performance mode: one noise layer + analytic ripples (2 noise lookups instead of 15)
+          float t = uTime;
+          float w0 = n(p * 0.35 + vec2(t * 0.35, t * 0.22));
+          vec3 nrm = normalize(vec3(0.12 * sin(p.x * 1.7 + t * 1.3) + 0.08 * sin(p.y * 2.3 - t), 0.55,
+                                    0.12 * sin(p.y * 1.5 + t * 1.1) + 0.08 * sin((p.x + p.y) * 2.1 + t * 0.7) + 0.1 * (n(p * 0.9 - t * 0.4) - 0.5)));
+          #else
           float e = 0.15;
           float w0 = waves(p);
           vec3 nrm = normalize(vec3(waves(p - vec2(e, 0.0)) - waves(p + vec2(e, 0.0)), 0.55, waves(p - vec2(0.0, e)) - waves(p + vec2(0.0, e))));
+          #endif
           // chunky look: quantise the ripple shading a little
           vec3 V = normalize(cameraPosition - vWorld);
           float fres = pow(1.0 - max(dot(V, nrm), 0.0), 4.0);
@@ -79,6 +87,12 @@ export class WaterSurface {
     if (sky) u.uSky.value.copy(sky);
     if (sunDirToLight) u.uSunDir.value.copy(sunDirToLight);
     if (sunCol) u.uSunCol.value.copy(sunCol);
+  }
+  /** cheaper shader (performance mode) */
+  setSimple(on: boolean): void {
+    if (!!this.mat.defines?.SIMPLE_WATER === on) return;
+    this.mat.defines = on ? { SIMPLE_WATER: 1 } : {};
+    this.mat.needsUpdate = true;
   }
   dispose(): void { this.mesh.geometry.dispose(); this.mat.dispose(); }
 }

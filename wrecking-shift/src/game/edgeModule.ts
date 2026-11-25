@@ -71,6 +71,8 @@ export function createEdgeModule(): GameModule {
       const preset = SKY_PRESETS[game.renderer.timeOfDay];
       if (fog && preset && !game.ext.ui?.state?.().mapOpen) {
         const f = fogForBounds(game.level.bounds, preset);
+        // performance mode draws less far: the fog must be opaque before the far plane cuts the world off
+        if (game.renderer.performanceMode) { f.far = Math.min(f.far, game.renderer.drawDistance * 0.94); f.near = Math.min(f.near, f.far * 0.3); }
         if (fog.far !== f.far || fog.near !== f.near) { fog.far = f.far; fog.near = f.near; }
       }
       const root: HTMLElement | undefined = game.ext.hud?.root;

@@ -6,6 +6,7 @@ import type { SimEvent } from '../sim/sim';
 import type { Blowtorch, Cable, PipeBomb, Plank, RocketLauncher } from '../sim/tools';
 import type { Preview } from '../sim/tools/twopoint';
 import type { V3 } from '../sim/vec';
+import { lookOf } from '../sim/tools/tool';
 import type { Game, GameModule } from './game';
 
 /**
@@ -74,16 +75,17 @@ export class ToolsModule implements GameModule {
         case 'tool:shot': {
           if (!d.dir || d.source) break; // not the player's own tool (drones, tests)
           const m = this.muzzleWorld();
-          const big = d.tool === 'shotgun' || d.tool === 'rifle' ? 1.6 : d.tool === 'rocket' ? 2 : 1;
+          const dt0 = lookOf(d.tool);
+          const big = dt0 === 'shotgun' || dt0 === 'rifle' ? 1.6 : dt0 === 'rocket' ? 2 : 1;
           this.muzzle.flash(m, 6 * big);
-          this.flashUntil = game.sim.time + (d.tool === 'rocket' ? 0.08 : 0.04);
+          this.flashUntil = game.sim.time + (dt0 === 'rocket' ? 0.08 : 0.04);
           this.flashMesh.scale.setScalar(0.05 * big);
-          const n = d.tool === 'rocket' ? 18 : 5 * big;
+          const n = dt0 === 'rocket' ? 18 : 5 * big;
           for (let i = 0; i < n; i++) {
             const s = 0.6 + Math.random();
             this.puffs.spawn(m, { x: d.dir.x * s + rnd(0.4), y: d.dir.y * s + rnd(0.4) + 0.2, z: d.dir.z * s + rnd(0.4) }, 0xb8b4ac, 0.03, 0.5 + Math.random() * 0.5, 0.25, -0.2, 1.5);
           }
-          if (d.tool === 'rocket') for (let i = 0; i < 14; i++) {
+          if (dt0 === 'rocket') for (let i = 0; i < 14; i++) {
             // back-blast
             this.puffs.spawn(m, { x: -d.dir.x * 3 + rnd(1), y: -d.dir.y * 3 + rnd(1), z: -d.dir.z * 3 + rnd(1) }, 0x9a958c, 0.08, 0.8 + Math.random() * 0.6, 0.6, -0.3, 2);
           }
@@ -141,32 +143,31 @@ export class ToolsModule implements GameModule {
     const tool = belt.current;
     const visible = !game.cameraOverride && !p.seated && !p.dead && game.toolsEnabled && game.controlsEnabled;
     this.vm.update({
-      toolId: tool.id, anim: tool.anim, active: tool.active, ammo: game.infiniteAmmo ? Infinity : tool.ammo,
+      toolId: lookOf(tool.id), anim: tool.anim, active: tool.active, ammo: game.infiniteAmmo ? Infinity : tool.ammo,
       speed: Math.hypot(p.vel.x, p.vel.z), stride: p.stride, yaw: p.yaw, pitch: p.pitch,
       visible, grabbing: belt.grab.holding, grounded: p.grounded, simTime: sim.time,
     }, dt);
 
     // ropes
     this.ropes.begin();
-    const cable = belt.byId('cable') as Cable | undefined;
-    if (cable) for (const r of cable.ends()) this.ropes.rope(r.a, r.b, r.length, 0.035, r.taut ? 0x2c2118 : 0x4a3520);
+    const ofLook = <T>(id: string) => belt.tools.filter((t) => lookOf(t.id) === id) as unknown as T[];
+    for (const cable of ofLook<Cable>('cable')) for (const r of cable.ends()) this.ropes.rope(r.a, r.b, r.length, 0.035, r.taut ? 0x2c2118 : 0x4a3520);
     this.ropes.end();
 
     // placement previews (only for the selected tool)
     this.previews.begin();
-    if (visible && (tool.id === 'plank' || tool.id === 'cable')) {
+    if (visible && (lookOf(tool.id) === 'plank' || lookOf(tool.id) === 'cable')) {
       const pv = (tool as Plank | Cable).preview as Preview | null;
       if (pv) {
         const col = pv.valid ? 0x5cff7a : 0xff4a3a;
-        if (tool.id === 'plank') this.previews.add(pv.a, pv.b, 0.3, 0.1, col, { x: 0, y: 1, z: 0 });
+        if (lookOf(tool.id) === 'plank') this.previews.add(pv.a, pv.b, 0.3, 0.1, col, { x: 0, y: 1, z: 0 });
         else this.previews.add(pv.a, pv.b, 0.03, 0.03, col);
       }
     }
     this.previews.end();
 
     // rockets + smoke trails
-    const rl = belt.byId('rocket') as RocketLauncher | undefined;
-    const proj = rl ? rl.projectiles : [];
+    const proj = ofLook<RocketLauncher>('rocket').flatMap((rl) => rl.projectiles);
     this.rockets.sync(proj);
     for (const r of proj) {
       const sp = Math.hypot(r.vel.x, r.vel.y, r.vel.z) || 1;
@@ -177,11 +178,10 @@ export class ToolsModule implements GameModule {
     }
 
     // pipe bomb fuses fizzle
-    const pb = belt.byId('pipebomb') as PipeBomb | undefined;
-    if (pb) for (const c of pb.live) if (Math.random() < 0.7) this.sparks.spawn(c.pos, { x: rnd(1.5), y: 0.5 + Math.random() * 1.5, z: rnd(1.5) }, 0xffc040, 0.012, 0.25, 0, 6);
+    for (const pb of ofLook<PipeBomb>('pipebomb')) for (const c of pb.live) if (Math.random() < 0.7) this.sparks.spawn(c.pos, { x: rnd(1.5), y: 0.5 + Math.random() * 1.5, z: rnd(1.5) }, 0xffc040, 0.012, 0.25, 0, 6);
 
     // blowtorch flame on the surface
-    if (tool.id === 'blowtorch' && tool.active && visible) {
+    if (lookOf(tool.id) === 'blowtorch' && tool.active && visible) {
       const bt = tool as Blowtorch;
       const hit = sim.raycast(p.eye, p.forward, bt.range);
       const at = hit ? hit.point : null;
