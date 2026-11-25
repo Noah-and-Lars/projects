@@ -145,11 +145,11 @@ describe('vehicle driving', () => {
   });
 });
 
-function wallSetup(id: string, mat: 'brick' | 'concrete', thick: number, kmh: number) {
+function wallSetup(id: string, mat: 'brick' | 'concrete' | 'rock', thick: number, kmh: number) {
   const sim = new Sim(1);
   ground(sim);
   const g = new VoxelGrid(60, 30, thick);
-  g.fill(0, 0, 0, 60, 30, thick, mat === 'brick' ? bricks(MAT.brick) : shaded(MAT.concrete, 3));
+  g.fill(0, 0, 0, 60, 30, thick, mat === 'brick' ? bricks(MAT.brick) : shaded(mat === 'rock' ? MAT.rock : MAT.concrete, 3));
   const wall = sim.addBody(g, { x: -3, y: 0, z: 0 }, { name: 'wall' });
   const face = thick * 0.1;
   const v = spawnVehicle(sim, id, 0, 0, face + 12, 0);
@@ -178,8 +178,8 @@ describe('ramming', () => {
     expect(customs(sim, 'vehicle:crash').length).toBeGreaterThan(0);
   });
 
-  it('van at 50 km/h is stopped by a thick concrete wall without making a hole', () => {
-    const { sim, v, g, face } = wallSetup('van', 'concrete', 8, 50);
+  it('van at 50 km/h is stopped by a thick rock wall without making a hole', () => {
+    const { sim, v, g, face } = wallSetup('van', 'rock', 8, 50);
     const n0 = g.count;
     v.input.throttle = 0.3;
     steps(sim, 150);

@@ -56,7 +56,12 @@ export async function runModsTests(url, test) {
     // a mod map from the Sandbox list
     await page.evaluate(() => window.__game.ui.openMenu('sandbox'));
     const mapId = await page.evaluate(() => window.__game.game.ext.mods.enabledMaps()[0]);
-    assert(mapId && await page.isVisible(`[data-act=sbx][data-id="${mapId}"]`), 'mod map in the sandbox list');
+    assert(mapId && await page.isVisible(`[data-act=sbxsel][data-id="${mapId}"]`), 'mod map in the sandbox list');
+    await page.click(`[data-act=sbxsel][data-id="${mapId}"]`);
+    // 3D preview of the selected map before loading it
+    await page.waitForFunction((id) => { const p = window.__game.game.ext.mapPreview; return p && p.id === id && p.data; }, mapId, { timeout: 60000 });
+    await page.evaluate(() => window.__game.game.ext.mapPreview.renderNow());
+    await shot(page, 'mods-05b-map-preview');
     await page.click(`[data-act=sbx][data-id="${mapId}"]`);
     await page.evaluate(() => window.__game.step(10));
     assert((await page.evaluate(() => window.__game.game.levelId)) === mapId, 'mod map loaded');

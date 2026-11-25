@@ -465,3 +465,22 @@ Gaps 3 / 4 / 8 / Top-10 #5, #8, #9, #10 of `docs/research/10-gap-analysis.md`, b
   `.ws-menu`, left/right adjust a focused slider, A clicks, B / Start = Esc. Guess: "standard" mapping layout (the
   W3C one every modern browser reports for Xbox / PlayStation pads); non-standard pads may have other indices.
   Not done: on-screen button glyphs and a gamepad column on the Controls page (another branch is rebuilding that page).
+
+## Concrete, big maps, map previews — 2026-11-25 (user feedback)
+- **Concrete is medium, not hard** ("some materials on structures are indestructible, I think it's the concrete").
+  The genre reference's material table puts concrete with brick and weak metal (breaks with guns, shotgun, rifle,
+  vehicles, explosives; not the sledge) — see docs/research/teardown-report.md §material table and 03-physics.md.
+  It was Hard here, so only explosives touched it, in a small radius, and walls felt indestructible. Its structural
+  strength stays at the old hard value (12 MPa) so concrete floors/pillars do not start collapsing under load.
+  Rock, asphalt, steel stay hard; bedrock stays unbreakable. All playthroughs still pass. Tests updated: pistol and
+  rifle now break concrete (and still not steel / rock); the van ramming test uses a rock wall.
+- **Big maps**: `compositeMap` (src/mods/kit.ts) lays existing flat sites on a grid with asphalt roads between them;
+  each site is built through `offsetSim` (shifts every body, routes vehicles to the real vehicle system). Two big
+  maps: *Gullmouth County* (9 sites, 256 m, ~7 s build in Node, 33 M voxels) and *Hollin Borough* (9 town blocks,
+  173 m, ~3 s). Their ground is 0.4 m thick (craters stop 0.3 m down) instead of 0.8 m: halves the voxel count.
+  Guess: composites rather than a new hand-made 250 m map — they reuse the 13 sites already authored and tested.
+  Load time on a real GPU is unmeasured (24 s in the software-rendered container, which includes all meshing).
+- **3D map preview** (src/render/mapPreview.ts): selecting a map in Sandbox shows a slowly orbiting voxel model
+  before loading. The map's builder runs against a capture stand-in for the Sim (no physics), grids are downsampled
+  to 0.3–0.8 m cells, greedy-meshed and merged; a separate small WebGL renderer draws it; cached per map. Building a
+  preview takes 0.3–3 s (shown as "Building preview…").

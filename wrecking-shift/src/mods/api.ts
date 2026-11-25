@@ -74,6 +74,8 @@ export interface VehicleModDef {
 export interface MapDef extends LevelDef {
   /** one line for the sandbox card */
   blurb?: string;
+  /** set by siteMap: size + ground, so compositeMap can lay sites side by side */
+  site?: { half: number; ground: number; flat: boolean };
 }
 
 /** state a running mode shows on the HUD */

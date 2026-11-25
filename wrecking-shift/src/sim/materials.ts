@@ -51,7 +51,7 @@ const defs: Omit<MaterialDef, 'id'>[] = [
   /* 5 */ { name: 'glass', hardness: Hardness.Soft, density: 500, flammability: 0, burnTime: 0, audio: 'glass', color: 0x9fd4e0, variance: 0.04, glass: true, strength: 0.25 },
   /* 6 */ { name: 'plastic', hardness: Hardness.Soft, density: 350, flammability: 0.45, burnTime: 50, audio: 'plastic', color: 0xd8483a, variance: 0.05 },
   /* 7 */ { name: 'brick', hardness: Hardness.Medium, density: 1500, flammability: 0, burnTime: 0, audio: 'masonry', color: 0xa9503a, variance: 0.13 },
-  /* 8 */ { name: 'concrete', hardness: Hardness.Hard, density: 2000, flammability: 0, burnTime: 0, audio: 'masonry', color: 0x9a9a96, variance: 0.06 },
+  /* 8 */ { name: 'concrete', hardness: Hardness.Medium, density: 2000, flammability: 0, burnTime: 0, audio: 'masonry', color: 0x9a9a96, variance: 0.06, strength: 12 },
   /* 9 */ { name: 'sheetmetal', hardness: Hardness.Medium, density: 1100, flammability: 0, burnTime: 0, audio: 'metal', color: 0x8d99a3, variance: 0.06 },
   /* 10 */ { name: 'steel', hardness: Hardness.Hard, density: 3000, flammability: 0, burnTime: 0, audio: 'metal', color: 0x4d555e, variance: 0.05, strength: 30 },
   /* 11 */ { name: 'rock', hardness: Hardness.Hard, density: 2300, flammability: 0, burnTime: 0, audio: 'masonry', color: 0x77736c, variance: 0.12 },

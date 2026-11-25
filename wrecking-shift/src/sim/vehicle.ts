@@ -730,6 +730,9 @@ export class VehicleSystem implements SimSystem {
 
   /** the vehicle system of a sim (created + registered on first use) */
   static of(sim: Sim): VehicleSystem {
+    // map preview capture (src/render/mapPreview.ts): records vehicle grids without physics
+    const cap = (sim as any).previewVehicles as VehicleSystem | undefined;
+    if (cap) return cap;
     let s = systems.get(sim);
     if (!s) {
       const sys = new VehicleSystem();

@@ -1,5 +1,6 @@
 import type { Game } from '../game';
 import { LEVELS } from '../levels';
+import { mapPreview } from '../../render/mapPreview';
 import type { MissionApi } from '../missionModule';
 import { RANKS, TOOL_NAMES, UPGRADES, type Progress, type SettingsData } from '../progress';
 import { isRequired, maxScore, pointsOf, type MissionDef } from '../../sim/mission';
@@ -55,6 +56,7 @@ export class Menus {
     if (!name) { this.root.innerHTML = ''; return; }
     const html = this.html(name, arg);
     this.root.innerHTML = html;
+    if (name === 'sandbox') this.mountPreview();
     const first = this.root.querySelector<HTMLElement>('.ws-btn.pri') ?? this.root.querySelector<HTMLElement>('.ws-btn');
     try { first?.focus({ preventScroll: true }); } catch { /* ignore */ }
   }
@@ -178,12 +180,42 @@ export class Menus {
       { tag: 'Briefing' });
   }
 
+  private sandboxSel = '';
   private sandboxHtml(): string {
     const modMaps: string[] = this.host.game.ext.mods?.enabledMaps() ?? [];
     const allMods = new Set<string>(this.host.game.ext.mods?.all.flatMap((m: any) => (m.maps ?? []).map((l: any) => l.id)) ?? []);
-    const cards = Object.values(LEVELS).filter((l) => !allMods.has(l.id) || modMaps.includes(l.id)).map((l) => `<button class="ws-card" data-act="sbx" data-id="${esc(l.id)}"><div class="t"><span>${esc(l.title)}</span></div><div class="s">${allMods.has(l.id) ? `Mod map · ${esc((l as any).blurb ?? 'sandbox')}` : 'All tools · infinite ammo · no alarms'}</div></button>`).join('');
-    return this.win('Sandbox', `<p class="ws-note">Free demolition. Upgrades you bought apply here too.</p>${atmosControls(this.host.game)}<div class="ws-list">${cards}</div>`,
-      '<button class="ws-btn" data-act="back">Back</button>', { cls: 'mid', tag: 'Free shift' });
+    const list = Object.values(LEVELS).filter((l) => !allMods.has(l.id) || modMaps.includes(l.id));
+    if (!list.some((l) => l.id === this.sandboxSel)) this.sandboxSel = list[0]?.id ?? '';
+    const blurb = (l: (typeof list)[number]) => allMods.has(l.id) ? `Mod map · ${(l as any).blurb ?? 'sandbox'}` : (l as any).blurb ?? 'All tools · infinite ammo · no alarms';
+    const cards = list.map((l) => `<button class="ws-card${l.id === this.sandboxSel ? ' sel' : ''}" data-act="sbxsel" data-id="${esc(l.id)}"><div class="t"><span>${esc(l.title)}</span></div><div class="s">${esc(blurb(l))}</div></button>`).join('');
+    const sel = LEVELS[this.sandboxSel];
+    const panel = sel ? `<div class="ws-preview"><div class="ws-preview-slot" data-level="${esc(sel.id)}"><span class="ws-preview-status">Building preview…</span></div>` +
+      `<h3>${esc(sel.title)}</h3><div class="ws-note">${esc(blurb(sel))}</div><div class="ws-note ws-preview-size"></div>` +
+      `<button class="ws-btn pri" data-act="sbx" data-id="${esc(sel.id)}">Load ${esc(sel.title)}</button></div>` : '';
+    return this.win('Sandbox', `<p class="ws-note" style="margin-top:0">Free demolition. Pick a map to preview it, then load it. Upgrades you bought apply here too.</p>${atmosControls(this.host.game)}` +
+      `<div class="ws-split ws-sbxsplit"><div class="ws-list">${cards}</div>${panel}</div>`,
+      '<button class="ws-btn" data-act="back">Back</button>', { tag: 'Free shift' });
+  }
+
+  /** attach the 3D map preview to the sandbox menu's preview slot (src/render/mapPreview.ts) */
+  private mountPreview(): void {
+    const slot = this.root.querySelector<HTMLElement>('.ws-preview-slot');
+    if (!slot) return;
+    const def = LEVELS[slot.dataset.level ?? ''];
+    if (!def) return;
+    const p = mapPreview();
+    this.host.game.ext.mapPreview = p;
+    const status = slot.querySelector<HTMLElement>('.ws-preview-status');
+    slot.prepend(p.canvas);
+    p.onStatus = (t) => { if (status) { status.textContent = t; status.style.display = t ? '' : 'none'; } };
+    p.show(def, () => {
+      const d = p.data, size = this.root.querySelector<HTMLElement>('.ws-preview-size');
+      if (d && size && p.id === def.id) {
+        const b = d.info.bounds;
+        size.textContent = `${Math.round(b.max.x - b.min.x)} × ${Math.round(b.max.z - b.min.z)} m${d.info.waterLevel != null ? ' · water' : ''}`;
+      }
+      if (!this.host.game.testMode) p.start();
+    });
   }
 
   private shopHtml(): string {
@@ -345,6 +377,7 @@ export class Menus {
       case 'board': h.quitToMenu(); h.open('missions'); break;
       case 'start': h.startMission(id); break;
       case 'sbx': h.startSandbox(id); break;
+      case 'sbxsel': this.sandboxSel = id; this.refresh(); break;
       case 'buy': if (h.progress.buyUpgrade(id)) this.refresh(); break;
       case 'buypow': if (h.progress.buyPower(id)) this.refresh(); break;
       case 'resume': h.close(); break;

@@ -8,9 +8,11 @@ import type { VoxelBody } from '../sim/body';
 import { MAT } from '../sim/materials';
 import { Heightmap, buildTerrain, fbm2 } from '../sim/levels/terrain';
 import { groundTile } from '../sim/levels/testyard';
+import { shaded } from '../sim/build';
 import type { LevelInfo } from '../sim/levels/types';
 import { Rng } from '../sim/rng';
 import { DT, type Sim } from '../sim/sim';
+import { VehicleSystem } from '../sim/vehicle';
 import { qrot, qyaw, type V3 } from '../sim/vec';
 import { VoxelGrid } from '../sim/voxels';
 import type { MapDef, ModContext, ModeRules, ModeStatus } from './api';
@@ -77,6 +79,7 @@ export interface SiteOptions {
 export function siteMap(o: SiteOptions): MapDef {
   return {
     id: o.id, title: o.title, blurb: o.blurb,
+    site: { half: o.half ?? 25.6, ground: o.ground ?? MAT.grass, flat: !(o.hills && o.hills > 0) && o.water == null },
     build(sim: Sim): LevelInfo {
       const half = o.half ?? 25.6;
       const T = 25.6;
@@ -91,7 +94,8 @@ export function siteMap(o: SiteOptions): MapDef {
         hm.addPad(sp.x - 4, sp.z - 4, sp.x + 4, sp.z + 4, 0, 6);
         const t = buildTerrain(sim, { x0, z0: x0, tilesX: n, tilesZ: n, heightmap: hm, waterLevel: o.water ?? null, seed, surface: o.ground != null ? () => o.ground! : undefined });
         h = (x, z) => t.heightAt(x, z);
-      } else {
+      } else if (!(sim as any).compositeGround) {
+        // (inside compositeMap the composite lays one ground for all sites)
         for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) groundTile(sim, x0 + i * T, x0 + j * T, 256, 256, o.ground ?? MAT.grass);
       }
       const ext = (n * T) / 2;
@@ -109,6 +113,94 @@ export function siteMap(o: SiteOptions): MapDef {
       };
       o.build(sim, new Rng(o.seed ?? 7), h, info);
       return info;
+    },
+  };
+}
+
+// ------------------------------------------------------------------------------------------------ big maps
+
+/**
+ * A Sim seen through an offset: everything a builder adds lands shifted by (dx, dz). Vehicles go to the real
+ * sim's vehicle system (so they are drivable), raycasts are shifted both ways. Build-time only.
+ */
+export function offsetSim(sim: Sim, dx: number, dz: number): Sim {
+  const add = (p: V3): V3 => ({ x: p.x + dx, y: p.y, z: p.z + dz });
+  const vehicles = {
+    spawn: (_s: unknown, bp: any, x: number, y: number, z: number, yaw: number) => VehicleSystem.of(sim).spawn(sim, bp, x + dx, y, z + dz, yaw),
+  };
+  const own: Record<string | symbol, unknown> = {
+    compositeGround: true,
+    previewVehicles: new Proxy(vehicles, { get: (t, k) => (k in t ? (t as any)[k] : (VehicleSystem.of(sim) as any)[k]) }),
+    addBody: (g: VoxelGrid, pos: V3, opts?: any) => sim.addBody(g, add(pos), opts),
+    raycast: (o: V3, d: V3, max: number) => { const h = sim.raycast(add(o), d, max); return h ? { ...h, point: { x: h.point.x - dx, y: h.point.y, z: h.point.z - dz } } : h; },
+  };
+  return new Proxy(sim, {
+    get: (t, k) => (k in own ? own[k] : (t as any)[k]),
+    set: (t, k, v) => { (t as any)[k] = v; return true; },
+  }) as Sim;
+}
+
+export interface CompositeOptions {
+  id: string;
+  title: string;
+  blurb?: string;
+  /** rows of site maps (from siteMap; flat ones), laid out on a grid with roads between them */
+  cells: (MapDef & { site?: { half: number; ground: number; flat: boolean } })[][];
+  /** grid pitch: cell size in metres (default 76.8) and road width (default 12.8) */
+  cell?: number;
+  road?: number;
+  sky?: LevelInfo['sky'];
+  /** extra content (vehicles on the roads...) in world coordinates; `roads` = road centre lines */
+  extra?(sim: Sim, rng: Rng, roads: { x: number[]; z: number[] }): void;
+}
+
+/**
+ * A big map made of several sites: each site is built in its own cell through `offsetSim`, the composite lays the
+ * ground (each cell in its site's ground material) and asphalt roads between the cells.
+ */
+export function compositeMap(o: CompositeOptions): MapDef {
+  return {
+    id: o.id, title: o.title, blurb: o.blurb,
+    build(sim: Sim): LevelInfo {
+      const C = o.cell ?? 76.8, R = o.road ?? 12.8;
+      const rows = o.cells.length, cols = Math.max(...o.cells.map((r) => r.length));
+      const W = cols * C + (cols - 1) * R, D = rows * C + (rows - 1) * R;
+      const x0 = -W / 2, z0 = -D / 2;
+      const tile = (x: number, z: number, w: number, d: number, mat: number) => {
+        // ground in pieces of at most 25.6 m (256 voxels)
+        // thin ground (0.4 m: bedrock, 2 soil, surface) keeps big maps light; craters stop 0.3 m down
+        for (let a = 0; a < w - 1e-6; a += 25.6) for (let b = 0; b < d - 1e-6; b += 25.6) {
+          const nx = Math.round(Math.min(25.6, w - a) * 10), nz = Math.round(Math.min(25.6, d - b) * 10);
+          const g = new VoxelGrid(nx, 4, nz);
+          g.fill(0, 0, 0, nx, 1, nz, shaded(MAT.bedrock, 4));
+          g.fill(0, 1, 0, nx, 3, nz, shaded(MAT.dirt, 2));
+          g.fill(0, 3, 0, nx, 4, nz, shaded(mat, 2, 3));
+          g.recount();
+          const body = sim.addBody(g, { x: x + a, y: -0.4, z: z + b }, { name: 'ground' });
+          body.noFracture = true; body.impactProof = true;
+        }
+      };
+      const roads = { x: [] as number[], z: [] as number[] };
+      for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+        const cx = x0 + i * (C + R), cz = z0 + j * (C + R);
+        const site = o.cells[j][i];
+        tile(cx, cz, C, C, site?.site?.ground ?? MAT.grass);
+        if (site) site.build(offsetSim(sim, cx + C / 2, cz + C / 2));
+      }
+      // roads: vertical strips between columns (full length), horizontal strips between rows (between the strips)
+      for (let i = 1; i < cols; i++) { const x = x0 + i * C + (i - 1) * R; roads.x.push(x + R / 2); tile(x, z0, R, D, MAT.asphalt); }
+      for (let j = 1; j < rows; j++) {
+        const z = z0 + j * C + (j - 1) * R; roads.z.push(z + R / 2);
+        for (let i = 0; i < cols; i++) tile(x0 + i * (C + R), z, C, R, MAT.asphalt);
+      }
+      const spawn = { x: roads.x[Math.floor((roads.x.length - 1) / 2)] ?? 0, y: 0.05, z: roads.z[Math.floor((roads.z.length - 1) / 2)] ?? 0 };
+      o.extra?.(sim, new Rng(17), roads);
+      return {
+        name: o.title, spawn, spawnYaw: 0,
+        bounds: { min: { x: x0, y: -8, z: z0 }, max: { x: x0 + W, y: 56, z: z0 + D } },
+        waterLevel: null, sunDir: { x: -0.45, y: -0.75, z: -0.5 }, sky: o.sky ?? 'day', weather: null,
+        markers: { escape: { x: spawn.x, y: 0, z: spawn.z + 2 }, heli_start: { x: x0 - 40, y: 40, z: z0 + D + 40 } },
+      };
     },
   };
 }

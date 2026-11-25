@@ -70,12 +70,15 @@ describe('tool hardness rules', () => {
     ['sledge cannot break brick', () => new Sledge(), MAT.brick, false],
     ['sledge cannot break sheet metal', () => new Sledge(), MAT.sheetmetal, false],
     ['pistol breaks brick', () => new Pistol(), MAT.brick, true],
-    ['pistol cannot break concrete (hard)', () => new Pistol(), MAT.concrete, false],
+    ['pistol breaks concrete (medium, like the genre reference)', () => new Pistol(), MAT.concrete, true],
+    ['pistol cannot break steel (hard)', () => new Pistol(), MAT.steel, false],
     ['shotgun breaks brick', () => new Shotgun(), MAT.brick, true],
     ['shotgun cannot break steel (hard)', () => new Shotgun(), MAT.steel, false],
     ['pistol cannot break bedrock', () => new Pistol(), MAT.bedrock, false],
     ['rifle breaks brick', () => new Rifle(), MAT.brick, true],
-    ['rifle cannot break concrete', () => new Rifle(), MAT.concrete, false],
+    ['rifle breaks concrete', () => new Rifle(), MAT.concrete, true],
+    ['rifle cannot break rock (hard)', () => new Rifle(), MAT.rock, false],
+    ['sledge cannot break concrete', () => new Sledge(), MAT.concrete, false],
   ];
   for (const [name, make, mat, breaks] of cases) {
     it(name, () => {
