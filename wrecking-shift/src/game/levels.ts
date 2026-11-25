@@ -3,6 +3,7 @@ import { harbor } from '../sim/levels/harbor';
 import { ridge } from '../sim/levels/ridge';
 import { works } from '../sim/levels/works';
 import { testYard } from '../sim/levels/testyard';
+import { city } from '../sim/levels/city';
 
 /** All playable levels by id. */
 export const LEVELS: Record<string, LevelDef> = {
@@ -10,6 +11,7 @@ export const LEVELS: Record<string, LevelDef> = {
   [harbor.id]: harbor,
   [ridge.id]: ridge,
   [works.id]: works,
+  [city.id]: city,
 };
 
 // maps from mods (src/mods/registry.ts): always registered so any id resolves; the Sandbox menu lists the enabled ones

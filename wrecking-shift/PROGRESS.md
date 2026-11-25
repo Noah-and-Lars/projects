@@ -6,6 +6,14 @@ Branch: `teardown-voxel-game`, folder: `wrecking-shift/`. Research: `docs/resear
 (published from `dist/`; it could not be opened from the build container, so whether the artifact sandbox allows the
 physics WebAssembly and pointer lock is unverified — if it shows "Failed to start", run locally: `npm install && npm run dev`).
 
+## Follow-up (2026-11-25, user feedback): city, big maps, map preview, concrete
+- **Corvane City**: a large procedural city (~300 m, 36 blocks, towers / apartments / houses / parks / warehouses,
+  streets with lane markings, lamps, parked cars) — Sandbox → Corvane City. Heavy: ~49 M voxels, slow to load;
+  use Performance mode on laptops. Test: `tests/unit/city.test.ts`; screenshots `tests/e2e/out/city-*.png`.
+- **Big maps** from existing sites: Gullmouth County (256 m) and Hollin Borough (173 m) (`compositeMap`).
+- **3D map preview**: selecting a map in Sandbox shows an orbiting voxel model before you load it.
+- **Concrete** now breaks like the genre reference (guns, vehicles, explosives; not the sledge).
+
 ## Night pass (2026-11-25): performance mode, gap fixes, mods, tool bar
 **Performance mode** — Settings → Graphics → *Performance mode (low-end laptops)* (remembered; `src/game/perfModule.ts`,
 `renderer.setPerformanceMode`). Tuned low tier, DPR 1, adaptive 50–85 % resolution with a contrast-adaptive

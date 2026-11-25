@@ -42,7 +42,9 @@ URL parameters: `?mission=<id>` (e.g. `paper-trail`), `?sandbox=<level>` (`harbo
   a drone-guarded night job. Optional targets and hidden valuables pay extra.
 - **Progression**: score → rank → tool unlocks; cash → ammo upgrades. Saved in localStorage.
 - **Sandbox**: any map (selecting one shows a 3D preview first), all tools, infinite ammo, choice of time of day
-  and weather. Big maps: *Gullmouth County* (≈256 m, nine sites joined by roads) and *Hollin Borough* (≈175 m).
+  and weather. Big maps: **Corvane City** (≈300 m procedural city: downtown towers, apartment blocks, houses, parks,
+  warehouses, streets with parked cars), *Gullmouth County* (≈256 m, nine sites joined by roads) and *Hollin
+  Borough* (≈175 m).
 - **Challenges**: Rubble Rush (destroy as much as you can in 90 s) and Snatch Sprint (grab loot crates and get out
   in 60 s) on any big map.
 - **Tools** (six groups on keys 1–6): sledgehammer, spray can, extinguisher, leaf blower · blowtorch, planks, cable,

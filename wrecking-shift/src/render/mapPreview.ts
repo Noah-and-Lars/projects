@@ -94,7 +94,7 @@ export function buildPreview(def: LevelDef): PreviewData {
   const b = info.bounds;
   const size = Math.max(b.max.x - b.min.x, b.max.z - b.min.z);
   // cell size: keep the triangle count modest on big maps
-  const f = size > 180 ? 8 : size > 110 ? 6 : size > 70 ? 4 : 3;
+  const f = size > 250 ? 10 : size > 180 ? 8 : size > 110 ? 6 : size > 70 ? 4 : 3;
   const pos: number[] = [], nor: number[] = [], col: number[] = [], idx: number[] = [];
   let voxels = 0;
   const v = new THREE.Vector3(), n = new THREE.Vector3(), q = new THREE.Quaternion();

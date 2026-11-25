@@ -484,3 +484,12 @@ Gaps 3 / 4 / 8 / Top-10 #5, #8, #9, #10 of `docs/research/10-gap-analysis.md`, b
   before loading. The map's builder runs against a capture stand-in for the Sim (no physics), grids are downsampled
   to 0.3–0.8 m cells, greedy-meshed and merged; a separate small WebGL renderer draws it; cached per map. Building a
   preview takes 0.3–3 s (shown as "Building preview…").
+- **Large city: Corvane City** (`src/sim/levels/city.ts`, built-in Sandbox map; user: "I mean a large scale city").
+  ~298 x 298 m: 6 x 6 blocks of 38.4 m on a street grid (9.6 m roads with dashed centre lines, paved sidewalks,
+  a ring road). Districts by distance from the centre: downtown 6–8 storey concrete-frame towers + a plaza;
+  middle ring 3–5 storey brick/plaster apartment blocks and parking courtyards; outer ring houses with gardens,
+  hedges and fences; warehouses + containers along the south edge; three parks. Street lamps, ~18 parked cars.
+  Height is capped at 8 storeys because a voxel grid is at most 256 voxels (25.6 m) per axis and stacked grids
+  would float when the lower one is destroyed. Budget: 675 bodies, 49 M voxels, ~14 s to build in Node (about
+  3.5x the harbour); the ground is 0.2 m thick (bedrock + surface). Load time on a real machine is unmeasured
+  (35 s in the software-rendered test container, all meshing included). Performance mode is recommended on laptops.
