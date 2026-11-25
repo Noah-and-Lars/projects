@@ -2,6 +2,7 @@ import type { Game } from '../game';
 import type { Mission } from '../../sim/mission';
 import { clock, el, esc, money, setHtml, show } from './dom';
 import { TOOL_NAMES } from '../progress';
+import { keyOf } from '../keymap';
 
 export type ToastKind = 'info' | 'cash' | 'alarm' | 'good';
 
@@ -69,7 +70,7 @@ export class Hud {
     if (!opts.visible) return;
     const mission: Mission | null = game.ext.mission?.current ?? null;
     const sandbox = !!game.ext.mission?.sandbox;
-    this.updateObjectives(mission);
+    this.updateObjectives(mission, keyOf(game, 'interact'));
     this.updateAlarm(mission, sandbox);
 
     // interaction prompt under the crosshair
@@ -132,7 +133,7 @@ export class Hud {
     }
   }
 
-  private updateObjectives(m: Mission | null): void {
+  private updateObjectives(m: Mission | null, interactKey = 'E'): void {
     show(this.obj, !!m);
     if (!m) return;
     let html = `<h4>${esc(m.def.title)}</h4><ul>`;
@@ -141,7 +142,7 @@ export class Hud {
     }
     html += '</ul>';
     if (m.cash > 0) html += `<div class="cash">Pocketed <b>${money(m.cash)}</b></div>`;
-    if (m.escapeOpen && !m.ended) html += '<div class="esc">▶ Get to the van and clock out (E)</div>';
+    if (m.escapeOpen && !m.ended) html += `<div class="esc">▶ Get to the van and clock out (${esc(interactKey)})</div>`;
     setHtml(this.obj, html);
   }
 
@@ -149,11 +150,13 @@ export class Hud {
     let html = '';
     let urgent = false;
     if (sandbox) html = '<div class="chip"><b>Sandbox</b> · all tools · infinite ammo</div>';
-    else if (m && m.phase === 'alarm') {
+    else if (m && m.phase === 'alarm' && m.alarmUnlimited) {
+      html = '<div class="clock"><small>SECURITY ALERTED</small><span>no limit</span></div>';
+    } else if (m && m.phase === 'alarm') {
       urgent = m.timeLeft <= 10;
       html = `<div class="clock"><small>SECURITY ETA</small><span>${clock(m.timeLeft)}</span></div>`;
     } else if (m && m.phase === 'planning') {
-      html = m.hasAlarm ? `<div class="chip">Planning · alarm <b>${m.alarmSecondsTotal} s</b></div>` : '<div class="chip">No alarm · <b>take your time</b></div>';
+      html = m.hasAlarm ? `<div class="chip">Planning · alarm <b>${m.alarmUnlimited ? 'no limit' : m.alarmSecondsTotal + ' s'}</b></div>` : '<div class="chip">No alarm · <b>take your time</b></div>';
     }
     this.alarm.classList.toggle('urgent', urgent);
     setHtml(this.alarm, html);

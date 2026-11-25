@@ -366,3 +366,55 @@ Settings → Graphics → **Performance mode (low-end laptops)** (`settings.perf
   Don't ask again, remembered as `settings.perfHintOff`). Not forced: a guess about what players accept.
 - Guess: the exact thresholds (24 fps, 28-50 fps band, 170 m) are not measured on real laptops; they are the usual
   console-style targets (30 fps floor) and the fog distances of the overcast preset.
+
+## Assists, target highlight, look-at text, key rebinding, fail-screen quickload, comfort sliders — 2026-11-25
+
+Gap analysis items 1–4 and 7 (+ the brightness / head-bob runners-up). Code: `src/game/assists.ts`, `keymap.ts`,
+`lookNames.ts`, `uxModule.ts`, `src/render/highlight.ts`, `src/game/ui/uxUi.ts` + `ux.css`; small additive hooks in
+`mission.ts` (`MissionContext.assist`, `items()`, `itemFor()`), `player.ts` (`damageScale`), `input.ts` (`remap`),
+`renderer.ts` (`brightness`), `progress.ts`, `menus.ts`, `hud.ts`, `uiModule.ts`. Tests: `tests/unit/ux.test.ts`,
+`tests/e2e/ux.mjs` (screenshots `tests/e2e/out/ux-*.png`).
+
+- **Alarm "No limit"** (the "off" option): the alarm still goes off (security toast, helicopter, quicksave lock, HUD
+  "SECURITY ALERTED · no limit") but its clock never runs out. Guess: "off" meaning "no alarm at all" would also
+  switch off the helicopter and the tension; a clock that never fails you is the gentler reading and keeps the
+  phase logic identical. Other choices: +15 / +30 / +60 s, −10 s (clock never shorter than 5 s).
+- **Scoring unchanged**, with one guard: the time bonus never counts more seconds than the job's normal alarm
+  (`min(base, timeLeft)`), so +60 s / no limit cannot beat an unassisted best. Assisted runs still count for rank
+  and cash (the gap analysis said "do not block rank").
+- **What counts as "assisted"**: any assist away from normal, including the harder ones (−10 s, damage ×1.5) — the
+  tag lists them (`result.assists`, e.g. `['alarm -10 s']`), so "assisted" really means "custom rules". Unlocking
+  all jobs only tags a run when that job was not yet earned the normal way. The saved record keeps
+  `assisted: true` while its best score came from an assisted run (an unassisted new best clears it).
+- **Ammo assist** multiplies every finite mission max ammo after upgrades and mission overrides, rounded up
+  (`Progress.applyToBelt`); sandbox ammo is infinite anyway. **Toughness** is a damage multiplier on the player
+  (`Player.damageScale`, applied in every mode: outside missions you just get up again).
+- **Skip job = "Unlock all jobs"** on the job board (the brief). No skip button on the fail screen: the fail screen
+  already offers Job board, and with every job unlocked the player can pick the next one there.
+- **Key rebinding routes through the Input layer**: each action has a canonical code (its default); `Input` maps
+  physical keys to canonical codes (`KeyMap.canon`), so every existing reader (`input.down('KeyW')`,
+  `pendingKeys.has('KeyE')`, vehicles, photo mode, flashlight, quicksave) follows the bindings with no change, and a
+  parallel branch adding gamepad input does not conflict. A default key whose action was moved is swallowed. Binding
+  a key that another action uses swaps the two (nothing is left unbound); crouch's second default (C) is dropped when
+  crouch is rebound (one stored key per action). Esc / F3 / F4 / F7 / digits are fixed. Arrow keys still drive.
+  The test hook `__game.key(code)` injects canonical codes (unchanged for old tests).
+- **Prompts show the bound key** (mission / challenge prompts, escape toast + objective line, vehicle hints,
+  briefing, pause menu, quicksave hint, fail screen).
+- **Target highlight**: back-face "shell" of the body's own chunk geometry pushed out along normal + centre
+  direction, additive colour (amber required, blue bonus, green valuables), width roughly constant on screen.
+  Within 8 m strength = 0.15 + 0.5·(1 − d/8), 1 when under the crosshair, changing linearly at 3/s so it settles to an
+  exact value — nothing pulses, a still camera stays bit-identical (the still-camera tests run without mission items
+  anyway). Only collect/deliver targets and valuables (not whole buildings of destroy objectives: an outline on a
+  house is noise). Depth-tested (no x-ray: guess, the reference draws outlines through nothing either). Performance
+  mode: at most the 3 nearest items. Hidden in menus' backdrop, photo mode, vehicles.
+- **Look-at line**: after 0.3 s on the same body within 4 m (mission interaction range is 2.5 m; 4 m felt like
+  "within reach" for reading). Mission items use their own names + "Required target" / "Bonus" / "$N"; destroy
+  objective bodies get "Job: knock it down"; level kit bodies get a name and a short joke from `lookNames.ts`
+  (all text original); ground and loose debris say nothing.
+- **First-heist hint**: ~2.5 s into the first job ever played (no mission records yet), only while planning, once
+  per save (`SaveData.hints`).
+- **Fail screen "Back to my save"**: shown when the job's quicksave slot exists (`ext.quicksave.has()`); it is the
+  primary button then, Retry stays next to it.
+- **Brightness** multiplies the sky preset's exposure (0.6–1.6). **Head bob** is now a 0–100 % slider
+  (`headBobAmount`); the old `headBob` flag stays in step (amount > 0) for older saves and readers. The amount only
+  scales the final offset, so standing still still ends at exactly 0.

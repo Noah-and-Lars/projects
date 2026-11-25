@@ -7,6 +7,7 @@ import { GROUP_ALL, GROUP_PLAYER, groups } from '../sim/sim';
 import { qrot, type V3 } from '../sim/vec';
 import { VehicleSystem, type Vehicle } from '../sim/vehicle';
 import type { Game, GameModule, CameraOverride } from './game';
+import { keyOf } from './keymap';
 
 /**
  * Driving: enter / exit vehicles with E, W/S throttle + brake/reverse, A/D steer, Space handbrake,
@@ -114,12 +115,12 @@ export class VehicleModule implements GameModule {
       if (ctl && keys.has('KeyR') && cur.upright < 0.5 && Math.abs(cur.speed) < 2) cur.flip();
       if (ctl && keys.has('KeyE')) { this.exit(); return; }
       this.followSeat();
-      this.hint = cur.canFlip ? 'R  flip vehicle' : '';
+      this.hint = cur.canFlip ? keyOf(game, 'flip') + '  flip vehicle' : '';
       return;
     }
     // on foot: what are we looking at?
     const target = this.lookTarget();
-    this.hint = target ? (target.upright < 0.5 ? 'R  flip ' : 'E  drive ') + target.name : '';
+    this.hint = target ? (target.upright < 0.5 ? keyOf(game, 'flip') + '  flip ' : keyOf(game, 'interact') + '  drive ') + target.name : '';
     if (!ctl || !target) return;
     if (keys.has('KeyE') && target.upright >= 0.5 && !target.dead) this.enter(target);
     else if (keys.has('KeyR') && target.upright < 0.5) target.flip();

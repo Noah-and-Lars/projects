@@ -123,13 +123,14 @@ export function createPhotoModule(): GameModule {
       // capture phase, registered before the UI module: Esc / Tab must not reach the menus while shooting
       window.addEventListener('keydown', (e) => {
         if (e.repeat) return;
+        const code: string = game.ext.keys?.canon(e.code) ?? e.code; // key bindings (src/game/keymap.ts)
         if (active) {
-          if (e.code === 'Escape' || e.code === 'KeyP') { e.preventDefault(); e.stopImmediatePropagation(); exit(); return; }
-          if (e.code === 'Tab' || e.code === 'F3') { e.preventDefault(); e.stopImmediatePropagation(); return; }
+          if (e.code === 'Escape' || code === 'KeyP') { e.preventDefault(); e.stopImmediatePropagation(); exit(); return; }
+          if (code === 'Tab' || e.code === 'F3') { e.preventDefault(); e.stopImmediatePropagation(); return; }
           if (e.code === 'KeyH') { game.ext.photo.hint = !hint; return; }
           return;
         }
-        if (e.code === 'KeyP' && canToggle()) { e.preventDefault(); enter(uiMenu() === 'pause'); }
+        if (code === 'KeyP' && canToggle()) { e.preventDefault(); enter(uiMenu() === 'pause'); }
       }, true);
       // without pointer lock: drag with any mouse button to look, wheel for FOV
       window.addEventListener('mousemove', (e) => { if (active && !game.input.locked && e.buttons) { dragX += e.movementX; dragY += e.movementY; } });
