@@ -240,8 +240,9 @@ export class Game {
     this.prevButtons = b;
     const ctx = this.toolCtx;
     if (ctl && this.toolsEnabled) {
-      for (let i = 0; i < 10; i++) if (this.pendingKeys.has('Digit' + ((i + 1) % 10))) this.belt.select(ctx, i);
-      if (this.pendingKeys.has('KeyQ')) this.belt.cycle(ctx, -1);
+      // number keys 1-6 pick a tool group (again = next tool in it), Q swaps back (docs/research/12-inventory.md)
+      for (let g = 1; g <= 6; g++) if (this.pendingKeys.has('Digit' + g)) this.belt.selectGroup(ctx, g);
+      if (this.pendingKeys.has('KeyQ')) this.belt.swapBack(ctx);
     }
     this.belt.update(ctx, ti, ctl && this.toolsEnabled && !p.seated);
 

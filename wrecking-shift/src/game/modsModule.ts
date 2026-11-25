@@ -76,7 +76,7 @@ export function createModsModule(): GameModule {
   // mod tools: created fresh for every belt (Game.setupWorld -> createBelt)
   const syncTools = () => {
     const makers: (() => Tool)[] = [];
-    for (const m of state.enabled()) for (const t of m.tools ?? []) makers.push(() => t.create());
+    for (const m of state.enabled()) for (const t of m.tools ?? []) makers.push(() => { const tool = t.create(); tool.group = t.group ?? tool.group ?? 6; return tool; });
     setExtraTools(makers);
   };
   syncTools();

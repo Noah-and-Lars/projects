@@ -95,11 +95,13 @@ export interface SettingsData {
   headBobAmount: number;
   /** key binding overrides: action id -> KeyboardEvent.code (src/game/keymap.ts) */
   keys: Record<string, string>;
+  /** tool bar: keep the expanded group view open (default: it opens on switch and fades out) */
+  toolbarExpanded: boolean;
 }
 export const DEFAULT_SETTINGS: SettingsData = {
   sensitivity: 1, invertY: false, fov: 80, headBob: true, masterVolume: 0.8, musicVolume: 0.6, sfxVolume: 0.9, quality: 'medium',
   perfMode: false, perfHintOff: false,
-  assistAlarm: 'normal', assistAmmo: 1, assistToughness: 1, assistJobs: false, brightness: 1, headBobAmount: 1, keys: {},
+  assistAlarm: 'normal', assistAmmo: 1, assistToughness: 1, assistJobs: false, brightness: 1, headBobAmount: 1, keys: {}, toolbarExpanded: false,
 };
 
 function sanitizeSettings(raw: any): SettingsData {
@@ -120,6 +122,7 @@ function sanitizeSettings(raw: any): SettingsData {
   s.assistAmmo = pickOption(raw.assistAmmo, AMMO_OPTIONS, 1);
   s.assistToughness = pickOption(raw.assistToughness, TOUGHNESS_OPTIONS, 1);
   if (typeof raw.assistJobs === 'boolean') s.assistJobs = raw.assistJobs;
+  if (typeof raw.toolbarExpanded === 'boolean') s.toolbarExpanded = raw.toolbarExpanded;
   s.brightness = num(raw.brightness, 0.6, 1.6, 1);
   // older saves only have the headBob switch
   s.headBobAmount = num(raw.headBobAmount, 0, 1, raw.headBob === false ? 0 : 1);
@@ -147,6 +150,7 @@ export class Settings implements SettingsData {
   assistAmmo = DEFAULT_SETTINGS.assistAmmo;
   assistToughness = DEFAULT_SETTINGS.assistToughness;
   assistJobs = DEFAULT_SETTINGS.assistJobs;
+  toolbarExpanded = DEFAULT_SETTINGS.toolbarExpanded;
   brightness = DEFAULT_SETTINGS.brightness;
   headBobAmount = DEFAULT_SETTINGS.headBobAmount;
   keys: Record<string, string> = {};
@@ -175,10 +179,10 @@ export class Settings implements SettingsData {
   }
   toJSON(): SettingsData {
     const { sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality, perfMode, perfHintOff } = this;
-    const { assistAlarm, assistAmmo, assistToughness, assistJobs, brightness, headBobAmount } = this;
+    const { assistAlarm, assistAmmo, assistToughness, assistJobs, brightness, headBobAmount, toolbarExpanded } = this;
     return {
       sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality, perfMode, perfHintOff,
-      assistAlarm, assistAmmo, assistToughness, assistJobs, brightness, headBobAmount, keys: { ...this.keys },
+      assistAlarm, assistAmmo, assistToughness, assistJobs, brightness, headBobAmount, keys: { ...this.keys }, toolbarExpanded,
     };
   }
 }

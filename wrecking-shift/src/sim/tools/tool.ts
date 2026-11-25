@@ -50,6 +50,10 @@ export abstract class Tool {
   active = false;
   /** built-in tool id whose view model / sounds / effects this tool uses (mod tools) */
   look?: string;
+  /** tool group 1..6 = number key (1 Hands, 2 Rigging, 3 Guns, 4 Charges, 5 Job kit, 6 Extras); default by id */
+  group?: number;
+  /** order inside the group (lower first); default: belt order */
+  order?: number;
   /** short HUD hint, e.g. "LMB swing" */
   hint = '';
   /** ammo shown by the HUD ('' = unlimited). Blowtorch overrides (seconds of fuel). */
@@ -95,6 +99,23 @@ export const lookOf = (id: string): string => LOOKS.get(id) ?? id;
 
 const IDLE: ToolInput = Object.freeze(emptyToolInput());
 
+/** tool groups (number keys 1-6) — see docs/research/12-inventory.md */
+export const TOOL_GROUPS: { n: number; name: string }[] = [
+  { n: 1, name: 'Hands' }, { n: 2, name: 'Rigging' }, { n: 3, name: 'Guns' },
+  { n: 4, name: 'Charges' }, { n: 5, name: 'Job kit' }, { n: 6, name: 'Extras' },
+];
+const DEFAULT_GROUP: Record<string, number> = {
+  sledge: 1, spray: 1, extinguisher: 1, leafblower: 1,
+  blowtorch: 2, plank: 2, cable: 2, booster: 2,
+  pistol: 3, shotgun: 3, rifle: 3, rocket: 3,
+  pipebomb: 4, bomb: 4, nitro: 4,
+};
+/** group of a tool: its own `group`, else the built-in table, else 6 (mods / extras) */
+export function groupOf(t: Tool): number {
+  const g = t.group ?? DEFAULT_GROUP[t.id] ?? 6;
+  return g >= 1 && g <= 6 ? Math.floor(g) : 6;
+}
+
 export class ToolBelt {
   tools: Tool[] = [];
   index = 0;
@@ -104,21 +125,72 @@ export class ToolBelt {
   get current(): Tool { return this.tools[this.index]; }
   byId(id: string): Tool | undefined { return this.tools.find((t) => t.id === id); }
 
+  /** previously selected tool (Q swaps back) */
+  previous = -1;
+  /** last tool used in each group (pressing a group key returns to it) */
+  private lastInGroup = new Map<number, number>();
+  /** ticks until the wheel may switch again (trackpads send bursts) */
+  private wheelWait = 0;
+  /** bumped on every switch attempt (the HUD opens the expanded view); `lastGroupKey` = group key pressed (0 = none) */
+  switchSerial = 0;
+  lastGroupKey = 0;
+
   select(ctx: ToolContext, i: number): void {
     if (i < 0 || i >= this.tools.length || i === this.index || !this.tools[i].unlocked) return;
     this.current.onDeselect(ctx);
     this.current.active = false;
+    this.previous = this.index;
     this.index = i;
+    this.lastInGroup.set(groupOf(this.current), i);
     this.current.onSelect(ctx);
+    this.switchSerial++;
     ctx.sim.out.push({ type: 'custom', name: 'tool:select', data: { tool: this.current.id } });
   }
-  cycle(ctx: ToolContext, dir: number): void {
-    const n = this.tools.length;
-    for (let k = 1; k <= n; k++) {
-      const i = (((this.index + dir * k) % n) + n) % n;
-      if (this.tools[i].unlocked) { this.select(ctx, i); return; }
-    }
+
+  /** unlocked tools in display order: by group, then `order`, then belt order */
+  ordered(): number[] {
+    const idx: number[] = [];
+    this.tools.forEach((t, i) => { if (t.unlocked) idx.push(i); });
+    return idx.sort((a, b) => groupOf(this.tools[a]) - groupOf(this.tools[b]) || (this.tools[a].order ?? a) - (this.tools[b].order ?? b) || a - b);
   }
+  /** unlocked tools of group g in display order */
+  inGroup(g: number): number[] { return this.ordered().filter((i) => groupOf(this.tools[i]) === g); }
+
+  /**
+   * Number key: a group other than the current tool's selects the tool last used there (else its first); the
+   * current tool's group steps to the next tool in it (wrapping). Empty group: nothing (the HUD flashes it).
+   */
+  selectGroup(ctx: ToolContext, g: number): boolean {
+    this.lastGroupKey = g;
+    this.switchSerial++;
+    const list = this.inGroup(g);
+    if (list.length === 0) return false;
+    if (this.current.unlocked && groupOf(this.current) === g) {
+      const k = list.indexOf(this.index);
+      this.select(ctx, list[(k + 1) % list.length]);
+    } else {
+      const last = this.lastInGroup.get(g);
+      this.select(ctx, last != null && list.includes(last) ? last : list[0]);
+    }
+    return true;
+  }
+
+  /** wheel: step through every unlocked tool in display order (wrapping) */
+  cycle(ctx: ToolContext, dir: number): void {
+    const list = this.ordered();
+    if (list.length === 0) return;
+    const k = list.indexOf(this.index);
+    const next = k < 0 ? list[0] : list[(((k + (dir > 0 ? 1 : -1)) % list.length) + list.length) % list.length];
+    this.lastGroupKey = 0;
+    this.select(ctx, next);
+  }
+
+  /** Q: back to the previously selected tool */
+  swapBack(ctx: ToolContext): void {
+    if (this.previous >= 0 && this.previous < this.tools.length && this.tools[this.previous].unlocked) { this.lastGroupKey = 0; this.select(ctx, this.previous); }
+    else this.cycle(ctx, -1);
+  }
+
   update(ctx: ToolContext, input: ToolInput, active = true): void {
     for (const t of this.tools) {
       if (t.cooldown > 0) t.cooldown--;
@@ -140,7 +212,8 @@ export class ToolBelt {
       return;
     }
     // mouse wheel cycles tools when not holding anything
-    if (input.scroll && !this.grab.holding) this.cycle(ctx, input.scroll > 0 ? 1 : -1);
+    if (this.wheelWait > 0) this.wheelWait--;
+    if (input.scroll && !this.grab.holding && this.wheelWait === 0) { this.cycle(ctx, input.scroll > 0 ? 1 : -1); this.wheelWait = 3; }
     // no usable tool (e.g. a game mode that allows none): hands only (grab still works)
     if (!this.current.unlocked) return;
     this.current.update(ctx, input);

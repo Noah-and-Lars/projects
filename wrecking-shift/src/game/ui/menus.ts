@@ -235,6 +235,7 @@ export class Menus {
       `<label>Graphics quality</label><span class="ws-seg${s.perfMode ? ' ws-dim' : ''}">${q}</span><span></span>` +
       range('brightness', 'Brightness', 0.6, 1.6, 0.05, pct) +
       check('perfMode', '<b>Performance mode</b> (low-end laptops)') +
+      check('toolbarExpanded', 'Tool bar always expanded') +
       `</div><p class="ws-note" style="margin:.3em 0 0">${s.perfMode
         ? 'Performance mode is on: tuned low graphics, adaptive resolution with sharpening, shorter draw distance and lighter effects. Gameplay is unchanged.'
         : 'Laggy on a laptop or integrated graphics? Turn on Performance mode: it lowers resolution and effects automatically but keeps all gameplay.'}</p>` +

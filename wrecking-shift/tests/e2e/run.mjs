@@ -49,6 +49,7 @@ await (await import('./perf.mjs')).runPerfTests(url, test);
 await (await import('./ux.mjs')).runUxTests(url, test);
 await (await import('./gameplay2.mjs')).runGameplay2Tests(url, test);
 await (await import('./mods.mjs')).runModsTests(url, test);
+await (await import('./inventory.mjs')).runInventoryTests(url, test);
 
 srv.close();
 if (failed) { console.log(failed + ' e2e test(s) failed'); process.exit(1); }

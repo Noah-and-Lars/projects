@@ -34,7 +34,7 @@ export function assistedTag(r: Pick<MissionResult, 'assists'> | null | undefined
 }
 
 const FIXED: [string, string][] = [
-  ['Mouse', 'Look'], ['LMB', 'Use tool'], ['RMB', 'Grab / alt fire'], ['1 – 0 / wheel', 'Select tool'], ['Esc', 'Pause'],
+  ['Mouse', 'Look'], ['LMB', 'Use tool'], ['RMB', 'Grab / alt fire'], ['1 – 6', 'Tool group (again: next in group)'], ['Wheel', 'Next / previous tool'], ['Esc', 'Pause'],
   ['F3', 'Debug info'], ['F4', 'Camera readout'], ['F7', 'Performance mode (when suggested)'],
 ];
 

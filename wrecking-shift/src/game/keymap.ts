@@ -29,7 +29,7 @@ export const ACTIONS: ActionDef[] = [
   { id: 'sprint', label: 'Sprint', defaults: ['ShiftLeft'] },
   { id: 'crouch', label: 'Crouch', defaults: ['ControlLeft', 'KeyC'] },
   { id: 'interact', label: 'Take / use / drive', defaults: ['KeyE'] },
-  { id: 'toolCycle', label: 'Previous tool', defaults: ['KeyQ'] },
+  { id: 'toolCycle', label: 'Swap back to last tool', defaults: ['KeyQ'] },
   { id: 'map', label: 'Site map', defaults: ['Tab'] },
   { id: 'flashlight', label: 'Flashlight', defaults: ['KeyF'] },
   { id: 'photo', label: 'Photo mode', defaults: ['KeyP'] },

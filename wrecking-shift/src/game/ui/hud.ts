@@ -2,6 +2,7 @@ import type { Game } from '../game';
 import type { Mission } from '../../sim/mission';
 import { clock, el, esc, money, setHtml, show } from './dom';
 import { TOOL_NAMES } from '../progress';
+import { TOOL_GROUPS, groupOf, type Tool } from '../../sim/tools/tool';
 import { keyOf } from '../keymap';
 
 export type ToastKind = 'info' | 'cash' | 'alarm' | 'good';
@@ -55,6 +56,65 @@ export class Hud {
   hurt(amount: number): void { this.hurtFlash = Math.min(1, this.hurtFlash + amount * 2.5 + 0.2); }
 
   /** per frame. `inGame` = false hides the whole HUD (menus, map) */
+  // ---------------------------------------------------------------- tool bar (docs/research/12-inventory.md §9)
+  private tbSerial = -1;
+  private tbOpenUntil = 0;
+  private tbKey = 0;
+  private tbKeyUntil = 0;
+
+  /** ammo text + state of a tool: '' for unlimited, custom labels (blowtorch seconds), low / empty flags */
+  private ammoOf(game: Game, t: Tool): { text: string; cls: string } {
+    if (t.ammo === Infinity || game.infiniteAmmo) return { text: '', cls: '' };
+    const text = t.ammoLabel;
+    const low = t.ammo <= 1 || (isFinite(t.maxAmmo) && t.ammo <= t.maxAmmo * 0.2);
+    return { text, cls: t.ammo <= 0 ? ' empty' : low ? ' low' : '' };
+  }
+
+  /**
+   * Compact bar (current tool name + ammo, always on) and the expanded group view: one column per non-empty
+   * group (number key underneath, up to 5 tools, scrolled to keep the selection visible). The expanded view opens on
+   * every switch and fades out 1.5 s after the last one (Settings: "Tool bar always expanded" keeps it open).
+   */
+  private toolbarHtml(game: Game): string {
+    const belt = game.belt;
+    const now = performance.now();
+    if (belt.switchSerial !== this.tbSerial) {
+      if (this.tbSerial >= 0) { this.tbOpenUntil = now + 1500; this.tbKey = belt.lastGroupKey; this.tbKeyUntil = now + 400; }
+      this.tbSerial = belt.switchSerial;
+    }
+    const always = !!game.ext.settings?.toolbarExpanded;
+    const open = always || now < this.tbOpenUntil;
+    const cur = belt.current;
+    const name = (t: Tool) => t.name || TOOL_NAMES[t.id] || t.id;
+    const a = cur.unlocked ? this.ammoOf(game, cur) : { text: '', cls: '' };
+    const compact = cur.unlocked
+      ? `<div class="ws-tcur${a.cls}"><span class="gk">${groupOf(cur)}</span><span class="nm">${esc(name(cur))}</span>${a.text ? `<span class="am">${esc(a.text)}</span>` : ''}</div>`
+      : '<div class="ws-tcur"><span class="nm">Hands</span></div>';
+    let cols = '';
+    if (open) {
+      const order = belt.ordered();
+      for (const G of TOOL_GROUPS) {
+        const list = order.filter((i) => groupOf(belt.tools[i]) === G.n);
+        const flash = this.tbKey === G.n && now < this.tbKeyUntil;
+        if (list.length === 0 && !flash) continue;
+        let win = list;
+        if (list.length > 5) {
+          const k = Math.max(0, list.indexOf(belt.index));
+          const s0 = Math.min(Math.max(0, k - 2), list.length - 5);
+          win = list.slice(s0, s0 + 5);
+        }
+        const rows = win.map((i) => {
+          const t = belt.tools[i];
+          const am = this.ammoOf(game, t);
+          return `<div class="row${i === belt.index ? ' sel' : ''}${am.cls}"><span class="nm">${esc(name(t))}</span>${am.text ? `<span class="am">${esc(am.text)}</span>` : ''}</div>`;
+        }).join('') || '<div class="row none">empty</div>';
+        const more = list.length > 5 ? `<div class="more">${list.length} tools</div>` : '';
+        cols += `<div class="col${list.includes(belt.index) ? ' cur' : ''}"><div class="gh">${esc(G.name)}</div>${more}${rows}<div class="key${flash ? ' hit' : ''}">${G.n}</div></div>`;
+      }
+    }
+    return `<div class="ws-tgroups${open ? ' open' : ''}">${cols}</div>${compact}`;
+  }
+
   update(game: Game, dt: number, opts: { visible: boolean; mapOpen: boolean }): void {
     show(this.root, opts.visible);
     for (const t of this.toasts) {
@@ -82,26 +142,7 @@ export class Hud {
     const veh = game.ext.vehicles?.current;
     const toolsOn = game.toolsEnabled && !p.seated && !veh && !opts.mapOpen;
     show(this.tools, toolsOn);
-    if (toolsOn) {
-      let html = '';
-      // many tools (mods): show a window of 15 slots around the selected one
-      const shown = game.belt.tools.map((t, i) => (t.unlocked ? i : -1)).filter((i) => i >= 0);
-      const MAXS = Math.max(6, Math.min(15, Math.floor(((typeof innerWidth === "number" ? innerWidth : 1280) - 16) / 44)));
-      let win = shown;
-      if (shown.length > MAXS) {
-        const k = Math.max(0, shown.indexOf(game.belt.index));
-        const a = Math.min(Math.max(0, k - (MAXS >> 1)), shown.length - MAXS);
-        win = shown.slice(a, a + MAXS);
-      }
-      game.belt.tools.forEach((t, i) => {
-        if (!t.unlocked || !win.includes(i)) return;
-        const inf = t.ammo === Infinity || game.infiniteAmmo;
-        const am = inf ? '∞' : String(Math.max(0, Math.floor(t.ammo)));
-        const cls = 'ws-slot' + (i === game.belt.index ? ' sel' : '') + (!inf && t.ammo <= 0 ? ' empty' : '');
-        html += `<div class="${cls}"><span class="n">${i < 10 ? (i + 1) % 10 : '·'}</span><span class="nm">${esc(t.name || TOOL_NAMES[t.id] || t.id)}</span><span class="am">${am}</span></div>`;
-      });
-      setHtml(this.tools, html);
-    }
+    if (toolsOn) setHtml(this.tools, this.toolbarHtml(game));
 
     // health
     const hp = p.health;

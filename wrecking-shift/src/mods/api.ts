@@ -58,6 +58,8 @@ export interface PropDef {
 export interface ToolDef {
   /** global tool id (prefix it with the mod id to stay unique) */
   id: string;
+  /** tool group / number key 1..6 (1 Hands, 2 Rigging, 3 Guns, 4 Charges, 5 Job kit, 6 Extras; default 6) */
+  group?: number;
   create(): Tool;
 }
 
