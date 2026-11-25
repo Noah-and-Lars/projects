@@ -12,6 +12,7 @@ import { keyOf } from './keymap';
 /**
  * Driving: enter / exit vehicles with E, W/S throttle + brake/reverse, A/D steer, Space handbrake,
  * V toggles chase / first-person camera, R flips a vehicle that lies on its side or roof.
+ * Vehicles with an arm (the loader bucket): hold R to raise it, F to lower it.
  *
  * Publishes `game.ext.vehicles = { system, list, current, camMode, hint }`.
  */
@@ -111,6 +112,8 @@ export class VehicleModule implements GameModule {
       cur.input.throttle = ctl ? (inp.down('KeyW') || inp.down('ArrowUp') ? 1 : 0) - (inp.down('KeyS') || inp.down('ArrowDown') ? 1 : 0) : 0;
       cur.input.steer = ctl ? (inp.down('KeyD') || inp.down('ArrowRight') ? 1 : 0) - (inp.down('KeyA') || inp.down('ArrowLeft') ? 1 : 0) : 0;
       cur.input.handbrake = ctl && inp.down('Space');
+      // loader bucket: hold R to raise, F to lower (R only flips a vehicle that is on its side)
+      cur.input.arm = ctl && cur.arm && cur.upright >= 0.5 ? (inp.down('KeyR') ? 1 : 0) - (inp.down('KeyF') ? 1 : 0) : 0;
       if (ctl && keys.has('KeyV')) this.camMode = this.camMode === 'chase' ? 'hood' : 'chase';
       if (ctl && keys.has('KeyR') && cur.upright < 0.5 && Math.abs(cur.speed) < 2) cur.flip();
       if (ctl && keys.has('KeyE')) { this.exit(); return; }
@@ -176,7 +179,7 @@ export class VehicleModule implements GameModule {
     if (!v) return;
     this.current = null;
     v.seated = false;
-    v.input.throttle = 0; v.input.steer = 0; v.input.handbrake = false;
+    v.input.throttle = 0; v.input.steer = 0; v.input.handbrake = false; v.input.arm = 0;
     v.stopEngine();
     const spot = v.removed ? null : this.exitSpot(v);
     const p = g.player;
@@ -316,7 +319,7 @@ export class VehicleModule implements GameModule {
     const state = v.drowned ? 'FLOODED' : v.dead ? 'ENGINE DEAD' : v.smoking ? 'ENGINE DAMAGED' : '';
     this.hud.innerHTML = `<div style="font-size:26px">${Math.round(Math.abs(v.speedKmh))}<span style="font-size:12px"> km/h</span></div>` +
       `<div style="opacity:.85">${v.name} · ${hp}%${state ? ' · ' + state : ''}</div>` +
-      `<div style="opacity:.6;font-weight:400">E exit · V camera${v.canFlip ? ' · R flip' : ''}</div>`;
+      `<div style="opacity:.6;font-weight:400">E exit · V camera${v.canFlip ? ' · R flip' : v.arm ? ' · R / F bucket' : ''}</div>`;
   }
 }
 

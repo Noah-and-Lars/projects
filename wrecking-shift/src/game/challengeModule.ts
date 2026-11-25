@@ -99,6 +99,7 @@ export class ChallengeModule implements GameModule {
       t.maxAmmo = b === Infinity ? Infinity : Math.ceil(b * f);
       t.unlocked = true;
     }
+    this.progress?.applyPower(game.belt);
     game.belt.refillAll();
   }
 

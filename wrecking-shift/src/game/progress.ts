@@ -10,6 +10,7 @@ import type { MissionDef, MissionResult } from '../sim/mission';
 import type { ToolBelt } from '../sim/tools/tool';
 import { AMMO_OPTIONS, TOUGHNESS_OPTIONS, isAlarmAssist, pickOption, scaleAmmo, type AlarmAssist } from './assists';
 import { sanitizeKeys } from './keymap';
+import { POWER_UPGRADES, applyPower, powerDef, type PowerDef } from '../sim/tools/power';
 
 export const SAVE_KEY = 'wrecking-shift-save-v1';
 
@@ -21,7 +22,7 @@ export const RANKS: RankDef[] = [
   { name: 'Day Labourer', score: 0, tools: ['sledge', 'spray', 'extinguisher'] },
   { name: 'Hired Hand', score: 100, tools: ['blowtorch', 'leafblower'] },
   { name: 'Night Shifter', score: 200, tools: ['shotgun'] },
-  { name: 'Load Bearer', score: 300, tools: ['plank'] },
+  { name: 'Load Bearer', score: 300, tools: ['plank', 'booster'] },
   { name: 'Wall Botherer', score: 400, tools: ['pipebomb'] },
   { name: 'Site Menace', score: 550, tools: ['pistol'] },
   { name: 'Foreman of Ruin', score: 700, tools: ['bomb'] },
@@ -35,6 +36,7 @@ export const RANKS: RankDef[] = [
 export const TOOL_NAMES: Record<string, string> = {
   sledge: 'Sledgehammer', spray: 'Spray Can', extinguisher: 'Extinguisher', blowtorch: 'Blowtorch', shotgun: 'Shotgun',
   plank: 'Planks', pipebomb: 'Pipe Bomb', pistol: 'Pistol', bomb: 'Bomb', cable: 'Cable', rocket: 'Rocket Launcher', nitro: 'Nitro',
+  booster: 'Booster Can',
 };
 
 export interface UpgradeDef {
@@ -408,6 +410,34 @@ export class Progress {
     return u ? u.step * Math.min(this.upgradeLevel(tool), u.costs.length) : 0;
   }
 
+  // ---------------------------------------------------------------- power upgrades (src/sim/tools/power.ts)
+  // Stored in the same `upgrades` map under dotted ids ('bomb.blast'): old saves simply have level 0.
+
+  powerLevel(id: string): number {
+    const d = powerDef(id);
+    return d ? Math.min(this.data.upgrades[id] ?? 0, d.costs.length) : 0;
+  }
+  nextPowerCost(id: string): number | null {
+    const d = powerDef(id);
+    return d ? d.costs[this.powerLevel(id)] ?? null : null;
+  }
+  canBuyPower(id: string): boolean {
+    const d = powerDef(id), c = this.nextPowerCost(id);
+    return !!d && c != null && this.data.cash >= c && this.isToolUnlocked(d.tool);
+  }
+  buyPower(id: string): boolean {
+    if (!this.canBuyPower(id)) return false;
+    this.data.cash -= this.nextPowerCost(id)!;
+    this.data.upgrades[id] = this.powerLevel(id) + 1;
+    this.save();
+    return true;
+  }
+  powerDefs(): PowerDef[] { return POWER_UPGRADES; }
+  /** set every tool's power stats to the bought levels (level 0 resets to stock) */
+  applyPower(belt: ToolBelt): void {
+    for (const d of POWER_UPGRADES) { const t = belt.byId(d.tool); if (t) applyPower(t, d, this.powerLevel(d.id)); }
+  }
+
   /**
    * Apply career state to a fresh belt. `base` = the tools' default maxAmmo by id (read from a
    * pristine createTools()), because Game.loadLevel carries maxAmmo over between levels.
@@ -430,6 +460,7 @@ export class Progress {
       const i = belt.tools.findIndex((t) => t.unlocked);
       if (i >= 0) belt.index = i;
     }
+    this.applyPower(belt);
     belt.refillAll();
   }
 }

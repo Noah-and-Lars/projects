@@ -560,6 +560,20 @@ export const LOOPS: Record<string, LoopBuilder> = {
     n2.connect(lp).connect(g2).connect(sh.out);
     return { out: sh.out, stop: sh.stop, update: (p) => setLevel(sh.out, ctx, (p.level ?? 0.5) * 0.3) };
   },
+  /** booster can: low rocket roar with a crackle on top */
+  boost(ctx, dest) {
+    const n = noiseSource(ctx, 'brown', ctx.currentTime, 0);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.Q.value = 0.7;
+    const n2 = noiseSource(ctx, 'pink', ctx.currentTime, 0);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1700; bp.Q.value = 0.6;
+    const g2 = ctx.createGain(); g2.gain.value = 0.35;
+    const l1 = lfo(ctx, 13, 0.2, g2.gain, 'square');
+    const l2 = lfo(ctx, 0.8, 150, lp.frequency);
+    const sh = loopShell(ctx, dest, [n, n2, l1, l2]);
+    n.connect(lp).connect(sh.out);
+    n2.connect(bp).connect(g2).connect(sh.out);
+    return { out: sh.out, stop: sh.stop, update: (p) => setLevel(sh.out, ctx, (p.level ?? 0.5) * 0.5) };
+  },
   engine(ctx, dest) {
     const o1 = ctx.createOscillator(); o1.type = 'sawtooth';
     const o2 = ctx.createOscillator(); o2.type = 'square';

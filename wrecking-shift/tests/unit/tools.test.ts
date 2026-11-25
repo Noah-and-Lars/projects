@@ -520,7 +520,7 @@ describe('belt', () => {
   it('selecting emits tool:select and every tool has id / name / hint', () => {
     const w = world();
     const ids = w.belt.tools.map((t) => t.id);
-    expect(ids).toEqual(['sledge', 'spray', 'extinguisher', 'blowtorch', 'pistol', 'shotgun', 'plank', 'cable', 'pipebomb', 'bomb', 'rocket', 'nitro', 'rifle', 'leafblower']);
+    expect(ids).toEqual(['sledge', 'spray', 'extinguisher', 'blowtorch', 'pistol', 'shotgun', 'plank', 'cable', 'pipebomb', 'bomb', 'rocket', 'nitro', 'rifle', 'leafblower', 'booster']);
     for (const t of w.belt.tools) { expect(t.name.length).toBeGreaterThan(2); expect(t.hint.length).toBeGreaterThan(2); }
     w.belt.select(w.ctx, 4);
     expect((custom({ ...w, events: w.sim.drainEvents() }, 'tool:select')[0] as any).data.tool).toBe('pistol');

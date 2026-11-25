@@ -5,6 +5,7 @@ import type { LevelDef, LevelInfo } from '../sim/levels/types';
 import { Player } from '../sim/player';
 import { DT, Sim, initPhysics, type SimEvent } from '../sim/sim';
 import { restoreSim, snapshotSim } from '../sim/snapshot';
+import { carryPower } from '../sim/tools/power';
 import { ToolBelt, createBelt, emptyToolInput, type ToolContext, type ToolInput } from '../sim/tools';
 import { WaterSystem } from '../sim/water';
 import { Input } from './input';
@@ -155,7 +156,7 @@ export class Game {
     this.player.pitch = 0;
     const oldBelt = this.belt;
     this.belt = createBelt();
-    if (oldBelt) for (const t of this.belt.tools) { const o = oldBelt.byId(t.id); if (o) { t.unlocked = o.unlocked; t.maxAmmo = o.maxAmmo; } }
+    if (oldBelt) for (const t of this.belt.tools) { const o = oldBelt.byId(t.id); if (o) { t.unlocked = o.unlocked; t.maxAmmo = o.maxAmmo; carryPower(o, t); } }
     this.belt.refillAll();
     this.cameraOverride = null;
     this.toolsEnabled = true;
@@ -202,7 +203,7 @@ export class Game {
         const t = this.belt.byId(ts.id);
         if (!t) continue;
         const o = oldBelt.byId(ts.id);
-        if (o) { t.unlocked = o.unlocked; t.maxAmmo = o.maxAmmo; }
+        if (o) { t.unlocked = o.unlocked; t.maxAmmo = o.maxAmmo; carryPower(o, t); }
         t.ammo = ts.ammo < 0 ? Infinity : ts.ammo;
         t.load(ctx, ts.state);
       }
@@ -304,6 +305,7 @@ export class Game {
       }
       return;
     }
+    this.input.poll(dt);
     this.gatherInput();
     if (this.paused) { this.pendingKeys.clear(); this.pendingInteract = false; this.pendingScroll = 0; }
     if (this.hitStop > 0) this.hitStop -= dt; // heavy impacts freeze the world for a few frames
