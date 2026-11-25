@@ -16,12 +16,13 @@ export class Input {
   constructor(private el: HTMLElement) {
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
-      this.keys.add(e.code); this.pressed.add(e.code);
-      if (this.locked && ['Tab', 'Space', 'KeyQ', 'KeyE'].includes(e.code)) e.preventDefault();
+      const code = this.remap(e.code);
+      this.keys.add(code); this.pressed.add(code);
+      if (this.locked && ['Tab', 'Space', 'KeyQ', 'KeyE'].includes(code)) e.preventDefault();
       // F5 would reload the page and lose the run (it is quicksave); never let the browser have it or F9
       if (e.code === 'F5' || e.code === 'F9') e.preventDefault();
     });
-    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+    window.addEventListener('keyup', (e) => this.keys.delete(this.remap(e.code)));
     window.addEventListener('blur', () => { this.keys.clear(); this.buttons = 0; });
     el.addEventListener('mousedown', (e) => {
       if (!this.locked) { this.requestLock(); return; }
@@ -41,6 +42,8 @@ export class Input {
     });
   }
   onLockChange?: (locked: boolean) => void;
+  /** key bindings: physical KeyboardEvent.code -> the code the game reads (src/game/keymap.ts; identity by default) */
+  remap: (code: string) => string = (c) => c;
   /** set false while menus are open */
   allowLock = true;
 

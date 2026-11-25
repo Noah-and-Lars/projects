@@ -145,6 +145,9 @@ export class Renderer {
   /** switch temporal anti-aliasing on / off (medium and high tiers) */
   setTAA(on: boolean): void { this.taa = on; this.applyLook(); }
 
+  /** exposure multiplier (Settings -> brightness), 1 = the preset's own exposure */
+  brightness = 1;
+
   /** performance mode on? (see LITE) */
   get performanceMode(): boolean { return this.lite; }
   /** far plane in metres (fog is kept inside it) */
@@ -313,7 +316,7 @@ export class Renderer {
     // performance mode: the sun shadow map (dynamic objects + world within ~22 m) is refreshed every second frame
     const sm = this.three.shadowMap;
     sm.autoUpdate = !this.lite || fullSync || (this.frame & 1) === 0 || !this.sun.shadow.map;
-    if (this.post.supported) this.post.render(this.scene, this.camera, this.preset.exposure, fullSync);
+    if (this.post.supported) this.post.render(this.scene, this.camera, this.preset.exposure * this.brightness, fullSync);
     else { this.three.setRenderTarget(null); this.three.render(this.scene, this.camera); }
   }
 
@@ -393,7 +396,7 @@ export class Renderer {
     this.look.uSkyZenith.value.setRGB(...p.zenith); this.look.uSkyHorizon.value.setRGB(...p.horizon);
     this.lamps.intensity = p.lamp;
     this.post.bloomStrength = p.bloom;
-    this.three.toneMappingExposure = p.exposure;
+    this.three.toneMappingExposure = p.exposure * this.brightness;
   }
 
   /** shadow frustum follows the camera, snapped to shadow texels (in light space) to avoid shimmer */

@@ -20,6 +20,7 @@ import { MapView } from './ui/mapView';
 import { Menus, type MenuHost, type MenuName } from './ui/menus';
 import { money } from './ui/dom';
 import { esc } from './ui/dom';
+import { keyOf } from './keymap';
 
 /** frames between the mission ending and the end screen (fixed ticks) */
 const END_DELAY = 45;
@@ -175,13 +176,14 @@ export class UiModule implements GameModule, MenuHost {
 
   private onKey(e: KeyboardEvent): void {
     if (e.repeat) return;
+    const code: string = this.game.ext.keys?.canon(e.code) ?? e.code; // key bindings (src/game/keymap.ts)
     if (e.code === 'F3') { e.preventDefault(); this.hud.debug = !this.hud.debug; return; }
-    if (e.code === 'Tab') {
+    if (code === 'Tab') {
       e.preventDefault();
       if (this.session === 'play' && !this.menus.name && this.endTimer < 0) this.map.setOpen(this.game, !this.map.open);
       return;
     }
-    if (e.code === 'KeyB' && this.session === 'play' && this.endTimer < 0 && !this.map.open && !this.game.ext.photo?.active) {
+    if (code === 'KeyB' && this.session === 'play' && this.endTimer < 0 && !this.map.open && !this.game.ext.photo?.active) {
       // sandbox spawn menu (mods); B again closes it
       if (this.menus.name === 'spawn') { this.close(); return; }
       if (!this.menus.name && this.game.ext.mods?.canSpawn()) { this.open('spawn'); return; }
@@ -222,7 +224,7 @@ export class UiModule implements GameModule, MenuHost {
         case 'mission:target': this.hud.toast(`<b>${esc(d.title)}</b> secured${d.required ? '' : ' (bonus)'}`, 'good'); break;
         case 'mission:alarm': {
           const why = d.cause === 'fire' ? 'Fire alarm!' : d.cause === 'demolition' ? 'Sensors tripped!' : 'Alarm triggered!';
-          this.hud.toast(`${why} Security in ${d.seconds} s`, 'alarm', 4.5);
+          this.hud.toast(d.unlimited ? `${why} Security is on the way (no time limit)` : `${why} Security in ${d.seconds} s`, 'alarm', 4.5);
           break;
         }
         case 'mission:objective': {
@@ -230,7 +232,7 @@ export class UiModule implements GameModule, MenuHost {
           if (o && o.kind !== 'collect') this.hud.toast(`✔ ${esc(d.title)}`, 'good');
           break;
         }
-        case 'mission:escapeOpen': this.hud.toast('Job done — <b>get to the van</b> and press E', 'good', 5); break;
+        case 'mission:escapeOpen': this.hud.toast(`Job done — <b>get to the van</b> and press ${esc(keyOf(game, 'interact'))}`, 'good', 5); break;
         case 'mission:heli': this.hud.toast('Security helicopter inbound', 'alarm'); break;
         case 'player:hurt': this.hud.hurt(Number(d.amount) || 0.1); break;
       }
@@ -276,8 +278,9 @@ export class UiModule implements GameModule, MenuHost {
     this.bobAmp = this.bobAmp < target ? Math.min(target, this.bobAmp + step) : Math.max(target, this.bobAmp - step);
     if (this.bobAmp === 0) { game.viewBob.y = 0; game.viewBob.roll = 0; return; }
     const ph = p.stride * (Math.PI / 0.75);
-    game.viewBob.y = this.bobAmp * 0.028 * Math.sin(ph * 2);
-    game.viewBob.roll = this.bobAmp * 0.005 * Math.sin(ph);
+    const amt = game.ext.settings?.headBobAmount ?? 1; // Settings -> head bob 0..100 %
+    game.viewBob.y = this.bobAmp * amt * 0.028 * Math.sin(ph * 2);
+    game.viewBob.roll = this.bobAmp * amt * 0.005 * Math.sin(ph);
   }
 
   state(): UiState {

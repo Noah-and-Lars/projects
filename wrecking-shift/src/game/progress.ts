@@ -8,6 +8,8 @@
  */
 import type { MissionDef, MissionResult } from '../sim/mission';
 import type { ToolBelt } from '../sim/tools/tool';
+import { AMMO_OPTIONS, TOUGHNESS_OPTIONS, isAlarmAssist, pickOption, scaleAmmo, type AlarmAssist } from './assists';
+import { sanitizeKeys } from './keymap';
 
 export const SAVE_KEY = 'wrecking-shift-save-v1';
 
@@ -76,10 +78,26 @@ export interface SettingsData {
   perfMode: boolean;
   /** "don't suggest performance mode again" */
   perfHintOff: boolean;
+  // --- assists (src/game/assists.ts) ---
+  assistAlarm: AlarmAssist;
+  /** max ammo multiplier in missions: 1 | 1.5 | 2 */
+  assistAmmo: number;
+  /** damage the player takes: 0.5 | 1 | 1.5 */
+  assistToughness: number;
+  /** every job on the board can be taken */
+  assistJobs: boolean;
+  // --- comfort ---
+  /** exposure multiplier 0.6..1.6 */
+  brightness: number;
+  /** head bob amount 0..1 (`headBob` = amount > 0, kept for older readers) */
+  headBobAmount: number;
+  /** key binding overrides: action id -> KeyboardEvent.code (src/game/keymap.ts) */
+  keys: Record<string, string>;
 }
 export const DEFAULT_SETTINGS: SettingsData = {
   sensitivity: 1, invertY: false, fov: 80, headBob: true, masterVolume: 0.8, musicVolume: 0.6, sfxVolume: 0.9, quality: 'medium',
   perfMode: false, perfHintOff: false,
+  assistAlarm: 'normal', assistAmmo: 1, assistToughness: 1, assistJobs: false, brightness: 1, headBobAmount: 1, keys: {},
 };
 
 function sanitizeSettings(raw: any): SettingsData {
@@ -96,6 +114,15 @@ function sanitizeSettings(raw: any): SettingsData {
   if (typeof raw.perfMode === 'boolean') s.perfMode = raw.perfMode;
   if (typeof raw.perfHintOff === 'boolean') s.perfHintOff = raw.perfHintOff;
   if (raw.quality === 'low' || raw.quality === 'medium' || raw.quality === 'high') s.quality = raw.quality;
+  if (isAlarmAssist(raw.assistAlarm)) s.assistAlarm = raw.assistAlarm;
+  s.assistAmmo = pickOption(raw.assistAmmo, AMMO_OPTIONS, 1);
+  s.assistToughness = pickOption(raw.assistToughness, TOUGHNESS_OPTIONS, 1);
+  if (typeof raw.assistJobs === 'boolean') s.assistJobs = raw.assistJobs;
+  s.brightness = num(raw.brightness, 0.6, 1.6, 1);
+  // older saves only have the headBob switch
+  s.headBobAmount = num(raw.headBobAmount, 0, 1, raw.headBob === false ? 0 : 1);
+  s.headBob = s.headBobAmount > 0;
+  s.keys = sanitizeKeys(raw.keys);
   return s;
 }
 
@@ -114,6 +141,13 @@ export class Settings implements SettingsData {
   quality: Quality = DEFAULT_SETTINGS.quality;
   perfMode = DEFAULT_SETTINGS.perfMode;
   perfHintOff = DEFAULT_SETTINGS.perfHintOff;
+  assistAlarm: AlarmAssist = DEFAULT_SETTINGS.assistAlarm;
+  assistAmmo = DEFAULT_SETTINGS.assistAmmo;
+  assistToughness = DEFAULT_SETTINGS.assistToughness;
+  assistJobs = DEFAULT_SETTINGS.assistJobs;
+  brightness = DEFAULT_SETTINGS.brightness;
+  headBobAmount = DEFAULT_SETTINGS.headBobAmount;
+  keys: Record<string, string> = {};
   private listeners: ((s: Settings, key: keyof SettingsData | null) => void)[] = [];
   constructor(data: SettingsData, private persist: () => void) { Object.assign(this, data); }
 
@@ -123,25 +157,37 @@ export class Settings implements SettingsData {
     return () => { const i = this.listeners.indexOf(cb); if (i >= 0) this.listeners.splice(i, 1); };
   }
   set<K extends keyof SettingsData>(key: K, value: SettingsData[K]): void {
-    const next = sanitizeSettings({ ...this.toJSON(), [key]: value });
+    const cur: any = this.toJSON();
+    // the head-bob switch and the amount slider stay in step
+    if (key === 'headBob') cur.headBobAmount = value ? (this.headBobAmount || 1) : 0;
+    const next = sanitizeSettings({ ...cur, [key]: value, ...(key === 'headBob' ? { headBobAmount: cur.headBobAmount } : {}) });
     (this as any)[key] = next[key];
+    this.headBob = next.headBob; this.headBobAmount = next.headBobAmount;
     this.persist();
     for (const l of this.listeners) l(this, key);
   }
   reset(): void {
-    Object.assign(this, DEFAULT_SETTINGS);
+    Object.assign(this, DEFAULT_SETTINGS, { keys: {} });
     this.persist();
     for (const l of this.listeners) l(this, null);
   }
   toJSON(): SettingsData {
     const { sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality, perfMode, perfHintOff } = this;
-    return { sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality, perfMode, perfHintOff };
+    const { assistAlarm, assistAmmo, assistToughness, assistJobs, brightness, headBobAmount } = this;
+    return {
+      sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality, perfMode, perfHintOff,
+      assistAlarm, assistAmmo, assistToughness, assistJobs, brightness, headBobAmount, keys: { ...this.keys },
+    };
   }
 }
 
 // ------------------------------------------------------------------------------------------ save data
 
-export interface MissionRecord { best: number; completed: boolean; plays: number; bestTime?: number }
+export interface MissionRecord {
+  best: number; completed: boolean; plays: number; bestTime?: number;
+  /** the best score was set with assists on (Settings -> Assists) */
+  assisted?: boolean;
+}
 export interface SaveData {
   v: 1;
   missions: Record<string, MissionRecord>;
@@ -152,6 +198,8 @@ export interface SaveData {
   lastMission?: string;
   /** challenge best scores by `<mode>@<levelId>` (optional: older saves have none) */
   challenges?: Record<string, ChallengeRecord>;
+  /** one-time hints already shown (e.g. 'quicksave') */
+  hints?: string[];
 }
 export interface ChallengeRecord { best: number; stars: number; plays: number }
 export interface StorageLike { getItem(k: string): string | null; setItem(k: string, v: string): void }
@@ -167,6 +215,7 @@ function sanitizeSave(raw: any): SaveData {
       s.missions[id] = {
         best: Math.max(0, Math.floor(Number(r.best) || 0)), completed: !!r.completed, plays: Math.max(0, Math.floor(Number(r.plays) || 0)),
         ...(typeof r.bestTime === 'number' && isFinite(r.bestTime) ? { bestTime: r.bestTime } : {}),
+        ...(r.assisted === true ? { assisted: true } : {}),
       };
     }
   }
@@ -176,6 +225,7 @@ function sanitizeSave(raw: any): SaveData {
   }
   s.settings = sanitizeSettings(raw.settings);
   if (typeof raw.lastMission === 'string') s.lastMission = raw.lastMission;
+  if (Array.isArray(raw.hints)) s.hints = raw.hints.filter((h: any) => typeof h === 'string').slice(0, 50);
   if (raw.challenges && typeof raw.challenges === 'object') {
     s.challenges = {};
     for (const [id, r] of Object.entries<any>(raw.challenges)) {
@@ -269,7 +319,19 @@ export class Progress {
 
   record(id: string): MissionRecord | undefined { return this.data.missions[id]; }
   isMissionUnlocked(def: MissionDef): boolean {
+    return this.settings.assistJobs || this.isMissionEarned(def);
+  }
+  /** unlocked by finishing the jobs it needs (ignores the "unlock all jobs" assist) */
+  isMissionEarned(def: MissionDef): boolean {
     return (def.unlockAfter ?? []).every((id) => this.data.missions[id]?.completed);
+  }
+  /** one-time hints: true the first time a hint id is asked for (and remembers it) */
+  takeHint(id: string): boolean {
+    const h = (this.data.hints ??= []);
+    if (h.includes(id)) return false;
+    h.push(id);
+    this.save();
+    return true;
   }
   hasProgress(): boolean { return Object.keys(this.data.missions).length > 0 || this.data.cash > 0; }
 
@@ -284,7 +346,10 @@ export class Progress {
     let newBest = false;
     if (r.success) {
       rec.completed = true;
-      if (r.score > rec.best) { rec.best = r.score; newBest = true; }
+      if (r.score > rec.best) {
+        rec.best = r.score; newBest = true;
+        if (r.assists?.length) rec.assisted = true; else delete rec.assisted;
+      }
       if (rec.bestTime == null || r.time < rec.bestTime) rec.bestTime = r.time;
       this.data.cash += Math.max(0, Math.floor(r.cash));
     }
@@ -357,6 +422,7 @@ export class Progress {
       const b = base.get(t.id) ?? t.maxAmmo;
       t.maxAmmo = b === Infinity ? Infinity : b + this.ammoBonus(t.id);
       if (over[t.id] != null && isFinite(over[t.id])) t.maxAmmo = Math.max(0, over[t.id]);
+      if (!opts.sandbox) t.maxAmmo = scaleAmmo(t.maxAmmo, this.settings.assistAmmo); // ammo assist
       t.unlocked = opts.sandbox ? true : this.isToolUnlocked(t.id, score) && (!allow || allow.includes(t.id));
     }
     // always keep one usable tool selected

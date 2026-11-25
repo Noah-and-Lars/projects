@@ -170,6 +170,8 @@ export interface MissionResult {
   timeLeft: number | null;
   /** mission duration in seconds */
   time: number;
+  /** assist options that were on (Settings -> Assists); absent = an unassisted run */
+  assists?: string[];
 }
 
 /** what is under the crosshair (for the HUD prompt) */
@@ -196,6 +198,26 @@ export interface MissionContext {
   player: MissionPlayer;
   /** burning voxel count (game.fire.count) */
   fireCount?: () => number;
+  /** assist options (src/game/assists.ts); omit for a normal run */
+  assist?: MissionAssist;
+}
+
+/** assist options that change the heist rules */
+export interface MissionAssist {
+  /** seconds added to (negative: taken from) the alarm clock */
+  alarmDelta?: number;
+  /** the alarm still goes off, but its clock never runs out */
+  alarmUnlimited?: boolean;
+  /** labels recorded on the result (non-empty = assisted run) */
+  tags?: string[];
+}
+
+/** a mission item the player can take (for the HUD highlight / look-at text) */
+export interface MissionItem {
+  bodyId: number;
+  kind: 'required' | 'bonus' | 'valuable';
+  name: string;
+  amount?: number;
 }
 
 export interface MissionInput {
@@ -326,6 +348,7 @@ export class Mission {
   readonly level: LevelInfo;
   readonly player: MissionPlayer;
   private fireCount: () => number;
+  private assist: MissionAssist;
 
   phase: MissionPhase = 'planning';
   /** mission ticks since start */
@@ -358,6 +381,7 @@ export class Mission {
     this.level = ctx.level;
     this.player = ctx.player;
     this.fireCount = ctx.fireCount ?? (() => 0);
+    this.assist = ctx.assist ?? {};
     this.alarmTicks = this.alarmSecondsTotal * TICKS;
     this.bind();
     // security drones (sim.ext.drones, spawned in setup) raise the alarm when they spot the player
@@ -368,7 +392,12 @@ export class Mission {
     this.sim.out.push({ type: 'custom', name: 'mission:start', data: { id: def.id } });
   }
 
-  get alarmSecondsTotal(): number { return this.def.alarmSeconds ?? 60; }
+  /** the job's own alarm length */
+  get alarmSecondsBase(): number { return this.def.alarmSeconds ?? 60; }
+  /** alarm length including the alarm-time assist (never below 5 s) */
+  get alarmSecondsTotal(): number { return Math.max(5, this.alarmSecondsBase + (this.assist.alarmDelta ?? 0)); }
+  /** assist: the alarm clock never runs out */
+  get alarmUnlimited(): boolean { return !!this.assist.alarmUnlimited; }
   /** seconds left on the alarm clock (full length while planning) */
   get timeLeft(): number { return Math.max(0, this.alarmTicks / TICKS); }
   get ended(): boolean { return this.phase === 'success' || this.phase === 'failed'; }
@@ -463,7 +492,8 @@ export class Mission {
     this.updateObjectives();
     if (this.phase === 'planning' && this.hasAlarm) this.checkAlarm();
 
-    if (this.phase === 'alarm') {
+    if (this.phase === 'alarm' && this.alarmUnlimited) this.updateHeli();
+    else if (this.phase === 'alarm') {
       const before = Math.ceil(this.alarmTicks / TICKS);
       this.alarmTicks--;
       const after = Math.ceil(this.alarmTicks / TICKS);
@@ -630,7 +660,7 @@ export class Mission {
     this.phase = 'alarm';
     this.alarmCause = cause;
     this.alarmTicks = this.alarmSecondsTotal * TICKS;
-    this.emit('mission:alarm', { seconds: this.alarmSecondsTotal, cause });
+    this.emit('mission:alarm', { seconds: this.alarmSecondsTotal, cause, ...(this.alarmUnlimited ? { unlimited: true } : {}) });
   }
 
   // ---------------------------------------------------------------- zones / escape
@@ -748,7 +778,8 @@ export class Mission {
     }
     const per = this.def.timeBonusPerSecond ?? 2;
     let timeBonus = 0;
-    if (success && this.hasAlarm) timeBonus = Math.floor(this.alarmCause ? this.timeLeft : this.alarmSecondsTotal) * per;
+    // assists never make the time bonus bigger than the job's normal alarm allows
+    if (success && this.hasAlarm) timeBonus = Math.floor(Math.min(this.alarmSecondsBase, this.alarmCause ? this.timeLeft : this.alarmSecondsTotal)) * per;
     if (timeBonus > 0) { breakdown.push({ label: this.alarmCause ? 'Time left on the clock' : 'Silent job (alarm never tripped)', points: timeBonus }); score += timeBonus; }
     if (success && this.def.reward?.score) { breakdown.push({ label: 'Client bonus', points: this.def.reward.score }); score += this.def.reward.score; }
     const valuables = this.valuables.filter((v) => v.taken).map((v) => ({ name: v.name, amount: v.amount }));
@@ -756,6 +787,7 @@ export class Mission {
     return {
       missionId: this.def.id, success, reason, score: success ? score : 0, breakdown, cash, valuables,
       alarmTriggered: !!this.alarmCause, timeLeft: this.alarmCause ? round2(this.timeLeft) : null, time: round2(this.tick * DT),
+      ...(this.assist.tags?.length ? { assists: [...this.assist.tags] } : {}),
     };
   }
 
@@ -790,6 +822,21 @@ export class Mission {
     }
     for (const a of this.alarmBoxes) if (a.body) out.push({ kind: 'alarm', name: 'Alarm box', pos: a.body.center(), required: false, done: false });
     return out;
+  }
+
+  /** takeable items still in the world: collect / deliver targets (not yet done) and valuables */
+  items(): MissionItem[] {
+    const out: MissionItem[] = [];
+    for (const t of this.targets) {
+      if (!t.body || t.collected || t.delivered) continue;
+      out.push({ bodyId: t.body.id, kind: this.targetRequired(t.tid) ? 'required' : 'bonus', name: t.name });
+    }
+    for (const v of this.valuables) if (v.body && !v.taken) out.push({ bodyId: v.body.id, kind: 'valuable', name: v.name, amount: v.amount });
+    return out;
+  }
+  /** the item a body belongs to (null = not a mission item) */
+  itemFor(body: VoxelBody): MissionItem | null {
+    return this.items().find((i) => i.bodyId === body.id) ?? null;
   }
 
   /** alarm wires: alarm box centre -> wired target centre (cosmetic) */

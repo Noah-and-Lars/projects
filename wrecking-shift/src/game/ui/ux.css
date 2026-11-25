@@ -1,0 +1,24 @@
+/* UX additions: look-at line, assists, key rebinding, assisted tag (src/game/uxModule.ts, ui/uxUi.ts) */
+.ws-look { position: absolute; left: 50%; top: calc(50% + 20px); transform: translateX(-50%); max-width: min(80vw, 520px);
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: .15em .5em; text-align: center;
+  font-size: .85em; color: var(--text); text-shadow: 0 1px 2px #000, 0 0 4px rgba(0,0,0,.8); animation: ws-look-in .2s ease-out; }
+.ws-look.below { top: calc(50% + 48px); }
+.ws-look b { font-weight: 800; letter-spacing: .02em; }
+.ws-look .t { font-size: .8em; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; padding: 0 .35em; border-radius: 2px; text-shadow: none; }
+.ws-look .t.req { background: var(--hz); color: var(--ink); }
+.ws-look .t.bonus { background: var(--blue); color: var(--ink); }
+.ws-look .t.val { background: var(--green); color: var(--ink); }
+.ws-look .ln { flex-basis: 100%; color: #d4d9de; font-style: italic; font-size: .92em; }
+@keyframes ws-look-in { from { opacity: 0; transform: translate(-50%, 3px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+.ws-assisted { display: inline-block; font-size: .72em; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--blue);
+  border: 1px solid currentColor; border-radius: 2px; padding: 0 .4em; margin-left: .4em; vertical-align: middle; }
+
+.ws-bind { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .2em 1.2em; font-size: .88em; }
+.ws-bind > div { display: flex; justify-content: space-between; align-items: center; gap: .6em; border-bottom: 1px solid var(--line); padding: .1em 0; }
+.ws-bind button { font: inherit; font-weight: 800; min-width: 4.5em; color: var(--hz); background: #222830; border: 1px solid rgba(255,255,255,.12);
+  border-radius: 2px; padding: .1em .5em; cursor: pointer; pointer-events: auto; }
+.ws-bind button.moved { border-color: var(--hz); }
+.ws-bind button.wait { background: var(--hz); color: var(--ink); }
+.ws-bind kbd { font: inherit; font-weight: 800; color: var(--muted); white-space: nowrap; }
+@media (max-width: 560px) { .ws-bind { grid-template-columns: 1fr; } }

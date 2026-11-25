@@ -6,6 +6,8 @@ import { isRequired, maxScore, pointsOf, type MissionDef } from '../../sim/missi
 import { el, esc, money } from './dom';
 import { atmosControls, chResultHtml, challengesHtml, handleExtraClick } from './challengeUi';
 import { handleModsClick, handleModsInput, modeInfoHtml, modeResultHtml, modsHtml, spawnHtml } from './modsUi';
+import { assistedTag, assistsHtml, controlsHtml, rebindKey } from './uxUi';
+import { keyOf, type ActionId } from '../keymap';
 
 export type MenuName = 'main' | 'missions' | 'briefing' | 'sandbox' | 'shop' | 'settings' | 'controls' | 'diag' | 'pause' | 'success' | 'fail' | 'challenges' | 'chresult' | 'mods' | 'modeinfo' | 'moderesult' | 'spawn';
 
@@ -24,12 +26,6 @@ export interface MenuHost {
   quitToMenu(): void;
 }
 
-const CONTROLS: [string, string][] = [
-  ['W A S D', 'Move'], ['Mouse', 'Look'], ['Space', 'Jump'], ['Shift', 'Sprint'], ['Ctrl / C', 'Crouch'],
-  ['LMB', 'Use tool'], ['RMB', 'Grab / alt fire'], ['1 – 0 / Q / wheel', 'Select tool'], ['E', 'Take / interact / enter'],
-  ['Tab', 'Site map'], ['Esc', 'Pause'], ['F', 'Flashlight'], ['P', 'Photo mode'], ['F3', 'Debug info'], ['F4', 'Camera readout'], ['B', 'Spawn menu (sandbox)'], ['F7', 'Performance mode (when suggested)'],
-];
-
 /** Full-screen menus (title, job board, briefing, shop, settings, pause, end screens). Plain DOM. */
 export class Menus {
   readonly root = el('div', 'hide');
@@ -40,7 +36,17 @@ export class Menus {
   constructor(private host: MenuHost) {
     this.root.addEventListener('click', (e) => this.onClick(e));
     this.root.addEventListener('input', (e) => this.onInput(e));
+    // Controls page waiting for a new key: take the key before the game / UI handlers see it
+    window.addEventListener('keydown', (e) => {
+      if (this.name !== 'controls' || !this.rebinding) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (e.repeat) return;
+      const r = rebindKey(this.host, this.rebinding, e.code);
+      if (r !== 'ignored') { this.rebinding = null; this.refresh(); }
+    }, true);
   }
+  /** Controls page: action waiting for its new key */
+  rebinding: ActionId | null = null;
 
   render(name: MenuName | null, arg = ''): void {
     this.name = name; this.arg = arg;
@@ -63,7 +69,7 @@ export class Menus {
       case 'sandbox': return this.sandboxHtml();
       case 'shop': return this.shopHtml();
       case 'settings': return this.settingsHtml();
-      case 'controls': return this.controlsHtml();
+      case 'controls': return controlsHtml(this.host, this.rebinding);
       case 'diag': return this.diagHtml();
       case 'pause': return this.pauseHtml();
       case 'success': return this.successHtml();
@@ -129,7 +135,7 @@ export class Menus {
       const rec = progress.record(m.id);
       cards += `<button class="ws-card${m.id === this.selected ? ' sel' : ''}${unlocked ? '' : ' locked'}" data-act="sel" data-id="${esc(m.id)}">` +
         `<div class="t"><span>${unlocked ? '' : '🔒 '}${esc(m.title)}</span>${rec?.completed ? '<span class="ok">✔ DONE</span>' : ''}</div>` +
-        `<div class="s">${esc(m.client)}${rec?.best ? ` · best ${rec.best}` : ''}</div></button>`;
+        `<div class="s">${esc(m.client)}${rec?.best ? ` · best ${rec.best}${rec.assisted ? ' (assisted)' : ''}` : ''}</div></button>`;
     }
     const d = list.find((m) => m.id === this.selected);
     const detail = d ? this.missionDetail(d, false) : '<p class="ws-note">No jobs on the board.</p>';
@@ -157,14 +163,16 @@ export class Menus {
     if (!d) return this.missionsHtml();
     const objs = d.objectives.map((o) => `<li class="${isRequired(o) ? 'req' : 'opt'}">${esc(o.title)}<span class="p">${isRequired(o) ? '' : 'bonus '}+${pointsOf(o)}</span></li>`).join('');
     const alarms: string[] = [];
-    if (d.objectives.some((o) => o.kind === 'collect' || o.kind === 'deliver')) alarms.push(`Alarm boxes: tampering starts a <b>${d.alarmSeconds ?? 60} s</b> countdown`);
+    const st = this.host.progress.settings;
+    const secs = st.assistAlarm === 'off' ? 'no-limit (assist)' : st.assistAlarm === 'normal' ? `${d.alarmSeconds ?? 60} s` : `${Math.max(5, (d.alarmSeconds ?? 60) + Number(st.assistAlarm))} s (assist)`;
+    if (d.objectives.some((o) => o.kind === 'collect' || o.kind === 'deliver')) alarms.push(`Alarm boxes: tampering starts a <b>${secs}</b> countdown`);
     if (d.fireAlarm != null) alarms.push('Fire alarm: big fires call security');
     if (d.demolitionSensor != null) alarms.push('Vibration sensors: heavy demolition trips the alarm');
     const tools = d.tools?.allow ? `<div class="ws-kv"><span>Tools allowed: <b>${esc(d.tools.allow.map((t) => TOOL_NAMES[t] ?? t).join(', '))}</b></span></div>` : '';
     return this.win(esc(d.title), `<div class="ws-grid2"><div class="ws-detail">${this.missionDetail(d, true)}</div>` +
       `<div><div class="ws-sec">Objectives</div><ul class="ws-objlist">${objs}</ul>` +
       `<div class="ws-sec">Security</div><p class="ws-note">${alarms.length ? alarms.join('<br>') : 'None known. Enjoy the quiet.'}</p>${tools}` +
-      `<div class="ws-sec">Plan</div><p class="ws-note">No clock until something trips the alarm. Scout with the map (Tab), prepare your route, then grab and run. Collect everything required, then clock out at the van (E).</p></div></div>`,
+      `<div class="ws-sec">Plan</div><p class="ws-note">No clock until something trips the alarm. Scout with the map (${esc(keyOf(this.host.game, 'map'))}), prepare your route, then grab and run. Collect everything required, then clock out at the van (${esc(keyOf(this.host.game, 'interact'))}).</p></div></div>`,
       `<button class="ws-btn" data-act="back">Back</button><button class="ws-btn pri" data-act="start" data-id="${esc(d.id)}">Start shift</button>`,
       { tag: 'Briefing' });
   }
@@ -217,16 +225,18 @@ export class Menus {
       range('sensitivity', 'Mouse sensitivity', 0.2, 3, 0.05, (v) => v.toFixed(2) + '×') +
       check('invertY', 'Invert mouse Y') +
       range('fov', 'Field of view', 60, 110, 1, (v) => v + '°') +
-      check('headBob', 'Head bob') +
+      range('headBobAmount', 'Head bob', 0, 1, 0.05, pct) +
       range('masterVolume', 'Master volume', 0, 1, 0.01, pct) +
       range('musicVolume', 'Music volume', 0, 1, 0.01, pct) +
       range('sfxVolume', 'Effects volume', 0, 1, 0.01, pct) +
       `</div><div class="ws-sec" style="margin-top:.7em">Graphics</div><div class="ws-form">` +
       `<label>Graphics quality</label><span class="ws-seg${s.perfMode ? ' ws-dim' : ''}">${q}</span><span></span>` +
+      range('brightness', 'Brightness', 0.6, 1.6, 0.05, pct) +
       check('perfMode', '<b>Performance mode</b> (low-end laptops)') +
       `</div><p class="ws-note" style="margin:.3em 0 0">${s.perfMode
         ? 'Performance mode is on: tuned low graphics, adaptive resolution with sharpening, shorter draw distance and lighter effects. Gameplay is unchanged.'
-        : 'Laggy on a laptop or integrated graphics? Turn on Performance mode: it lowers resolution and effects automatically but keeps all gameplay.'}</p>`,
+        : 'Laggy on a laptop or integrated graphics? Turn on Performance mode: it lowers resolution and effects automatically but keeps all gameplay.'}</p>` +
+      assistsHtml(s),
       '<button class="ws-btn" data-act="open" data-id="diag">Diagnostics</button><button class="ws-btn" data-act="reset-settings">Defaults</button><button class="ws-btn pri" data-act="back">Done</button>', { cls: 'mid', tag: 'Options' });
   }
 
@@ -240,12 +250,6 @@ export class Menus {
       : `<label for="ws-d-${it.key}">${esc(it.label)}</label><input id="ws-d-${it.key}" type="checkbox" data-diag="${it.key}"${st[it.key] ? ' checked' : ''}><span></span>`).join('');
     return this.win('Diagnostics', `<p class="ws-note" style="margin:0 0 .6em">If the picture moves while you stand still, turn on the camera readout (F4) and switch one feature off at a time. Changes apply at once and are remembered.</p><div class="ws-form">${rows}</div>`,
       '<button class="ws-btn" data-act="reset-diag">Defaults</button><button class="ws-btn pri" data-act="back">Done</button>', { cls: 'mid', tag: 'Options' });
-  }
-
-  private controlsHtml(): string {
-    const keys = CONTROLS.map(([k, v]) => `<div><span>${esc(v)}</span><kbd>${esc(k)}</kbd></div>`).join('');
-    return this.win('Controls', `<div class="ws-keys">${keys}</div><p class="ws-note" style="margin-top:.7em">Click the game to capture the mouse. Esc releases it and pauses.</p>`,
-      '<button class="ws-btn pri" data-act="back">Back</button>', { cls: 'mid', tag: 'Help' });
   }
 
   private pauseHtml(): string {
@@ -262,8 +266,8 @@ export class Menus {
       `<button class="ws-btn" data-act="restart">${m ? 'Restart job' : ch ? 'Restart run' : 'Restart'}</button>` +
       `<button class="ws-btn" data-act="qsave"${canSave ? '' : ' disabled'}>Quicksave</button>` +
       `<button class="ws-btn" data-act="qload"${canLoad && qs ? '' : ' disabled'}>Quickload</button>` +
-      `<button class="ws-btn" data-act="photo">Photo mode (P)</button>` +
-      (api.sandbox && game.ext.mods ? `<button class="ws-btn" data-act="open" data-id="spawn">Spawn menu (B)</button>` : '') +
+      `<button class="ws-btn" data-act="photo">Photo mode (${esc(keyOf(game, 'photo'))})</button>` +
+      (api.sandbox && game.ext.mods ? `<button class="ws-btn" data-act="open" data-id="spawn">Spawn menu (${esc(keyOf(game, 'spawnMenu'))})</button>` : '') +
       `<button class="ws-btn" data-act="open" data-id="mods">Mods</button>` +
       `<button class="ws-btn" data-act="open" data-id="settings">Settings</button>` +
       `<button class="ws-btn" data-act="open" data-id="controls">Controls</button>` +
@@ -299,7 +303,7 @@ export class Menus {
     const tools = o?.newTools.length ? `<div class="ws-sec">New tools unlocked</div><div class="ws-chips">${o.newTools.map((t) => `<span class="ws-chip">${esc(this.host.game.belt?.byId(t)?.name ?? TOOL_NAMES[t] ?? t)}</span>`).join('')}</div>` : '';
     const best = o?.newBest ? (o.previousBest ? `New best! (was ${o.previousBest})` : 'First clear!') : `Best: ${progress.record(r.missionId)?.best ?? r.score}`;
     const next = this.nextMission();
-    return this.win('Shift complete', `<div class="ws-grid2"><div><div class="ws-sec">${esc(def?.title ?? '')} · ${best}</div><table class="ws-table">${rows}</table></div>` +
+    return this.win('Shift complete', `<div class="ws-grid2"><div><div class="ws-sec">${esc(def?.title ?? '')} · ${best}${assistedTag(r)}</div><table class="ws-table">${rows}</table></div>` +
       `<div><div class="ws-sec">Payout</div><table class="ws-table">${cash}</table>` +
       `<div class="ws-sec" style="margin-top:.6em">${ranked ? 'Promoted!' : 'Rank'} · ${esc(rank.name)}</div><div class="ws-bar"><i style="width:${Math.round(rank.progress * 100)}%"></i></div>` +
       `<div class="ws-note" style="margin-top:.2em">Career ${o?.scoreAfter ?? progress.totalScore()}${rank.next ? ` / ${rank.next.score} for ${esc(rank.next.name)}` : ''}</div>${tools}</div></div>`,
@@ -311,9 +315,14 @@ export class Menus {
   private failHtml(): string {
     const r = this.host.api.lastResult;
     const def = r ? this.host.api.byId(r.missionId) : null;
-    return this.win('Shift failed', `<div class="ws-sec">${esc(def?.title ?? '')}</div><p class="ws-reason">${esc(r?.reason ?? 'The job went sideways.')}</p>` +
-      `<p class="ws-note">Tip: plan the route before you touch anything alarmed — the clock only starts when you do.</p>`,
-      `<button class="ws-btn" data-act="menu">Title</button><button class="ws-btn" data-act="board">Job board</button><button class="ws-btn pri" data-act="retry">Retry</button>`,
+    const qs = this.host.game.ext.quicksave;
+    const canLoad = !!qs?.load && !!qs.has?.() && !!r && this.host.api.current?.def.id === r.missionId;
+    const tip = canLoad ? `You have a save from the planning phase: <b>back to my save</b> puts you there (${esc(keyOf(this.host.game, 'quickload'))} works too).`
+      : `Tip: plan the route before you touch anything alarmed — the clock only starts when you do. ${esc(keyOf(this.host.game, 'quicksave'))} saves while you plan.`;
+    return this.win('Shift failed', `<div class="ws-sec">${esc(def?.title ?? '')}${assistedTag(r)}</div><p class="ws-reason">${esc(r?.reason ?? 'The job went sideways.')}</p>` +
+      `<p class="ws-note">${tip}</p>`,
+      `<button class="ws-btn" data-act="menu">Title</button><button class="ws-btn" data-act="board">Job board</button>` +
+      (canLoad ? `<button class="ws-btn" data-act="retry">Retry</button><button class="ws-btn pri" data-act="qload">Back to my save</button>` : `<button class="ws-btn pri" data-act="retry">Retry</button>`),
       { cls: 'ws-end lose narrow', tag: 'Busted' });
   }
 
@@ -347,6 +356,8 @@ export class Menus {
       case 'qload': h.game.ext.quicksave?.load?.(); h.close(); break;
       case 'quit': case 'menu': h.quitToMenu(); break;
       case 'reset-settings': h.progress.settings.reset(); this.refresh(); break;
+      case 'rebind': this.rebinding = this.rebinding === id ? null : (id as ActionId); this.refresh(); break;
+      case 'reset-keys': this.rebinding = null; h.progress.settings.set('keys', {}); this.refresh(); break;
       case 'seg': h.progress.settings.set(t.dataset.key as any, t.dataset.val as any); this.refresh(); break;
       case 'dseg': h.game.ext.diag?.set(t.dataset.key, Number(t.dataset.val)); this.refresh(); break;
       case 'reset-diag': h.game.ext.diag?.reset(); this.refresh(); break;

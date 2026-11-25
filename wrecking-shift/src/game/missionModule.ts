@@ -13,6 +13,8 @@ import type { Game, GameModule } from './game';
 import { LEVELS } from './levels';
 import { MISSIONS, missionById } from './missions';
 import { Progress, type RecordOutcome } from './progress';
+import { missionAssist } from './assists';
+import { keyOf } from './keymap';
 
 export interface MissionApi {
   /** running mission (null in sandbox / free play) */
@@ -119,7 +121,7 @@ export class MissionModule implements GameModule {
     if (!def) return;
     this.mission?.dispose();
     const g = this.game;
-    this.mission = Mission.fromJSON(def, json, { sim: g.sim, level: g.level, player: g.player, fireCount: () => g.fire.count() });
+    this.mission = Mission.fromJSON(def, json, { sim: g.sim, level: g.level, player: g.player, fireCount: () => g.fire.count(), assist: this.assistFor(def) });
     this.def = def;
     this.reported = this.mission.ended;
   }
@@ -148,7 +150,7 @@ export class MissionModule implements GameModule {
       def.setup?.(game.sim, game.level);
       this.def = def;
       this.applyLook(game);
-      this.mission = new Mission(def, { sim: game.sim, level: game.level, player: game.player, fireCount: () => game.fire.count() });
+      this.mission = new Mission(def, { sim: game.sim, level: game.level, player: game.player, fireCount: () => game.fire.count(), assist: this.assistFor(def) });
       // loot must survive the chaos: a destroyed required item would make the job unwinnable
       for (const b of game.sim.bodies.values()) {
         if (!b.dynamic) continue;
@@ -164,6 +166,11 @@ export class MissionModule implements GameModule {
     }
     // free play (?level= / tests): belt left as the game built it
     game.ext.hud?.setPrompt(null, 0, 'mission');
+  }
+
+  /** assist options from Settings -> Assists (src/game/assists.ts) */
+  private assistFor(def: MissionDef) {
+    return missionAssist(this.progress.settings, !this.progress.isMissionEarned(def));
   }
 
   /** mission look: time of day + weather (the renderer read level.sky before this module ran, so apply it directly) */
@@ -200,9 +207,10 @@ export class MissionModule implements GameModule {
     const f = this.mission?.focus;
     let text: string | null = null;
     if (f && game.controlsEnabled) {
-      if (f.kind === 'target') text = `E — take ${f.name}`;
-      else if (f.kind === 'valuable') text = `E — pocket ${f.name} ($${f.amount})`;
-      else text = 'E — clock out (finish the job)';
+      const k = keyOf(game, 'interact');
+      if (f.kind === 'target') text = `${k} — take ${f.name}`;
+      else if (f.kind === 'valuable') text = `${k} — pocket ${f.name} ($${f.amount})`;
+      else text = `${k} — clock out (finish the job)`;
     }
     hud.setPrompt(text, 10, 'mission');
   }

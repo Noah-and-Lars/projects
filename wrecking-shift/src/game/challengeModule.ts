@@ -10,6 +10,7 @@ import { CHALLENGE_MODES, Challenge, RUBBLE, challengeKey, type ChallengeModeId,
 import type { SimEvent } from '../sim/sim';
 import { createTools } from '../sim/tools';
 import type { Game, GameModule } from './game';
+import { keyOf } from './keymap';
 import type { Progress } from './progress';
 import { ChallengeHud } from './ui/challengeUi';
 
@@ -108,7 +109,8 @@ export class ChallengeModule implements GameModule {
     const hud = game.ext.hud;
     if (hud) {
       const f = c.focus;
-      const text = f && game.controlsEnabled ? (f.kind === 'crate' ? 'E — lift the crate' : `E — clock out (${c.cratesTaken} crate${c.cratesTaken === 1 ? '' : 's'})`) : null;
+      const k = keyOf(game, 'interact');
+      const text = f && game.controlsEnabled ? (f.kind === 'crate' ? `${k} — lift the crate` : `${k} — clock out (${c.cratesTaken} crate${c.cratesTaken === 1 ? '' : 's'})`) : null;
       hud.setPrompt(text, 10, 'challenge');
     }
     if (c.ended && c.result && !this.reported) {

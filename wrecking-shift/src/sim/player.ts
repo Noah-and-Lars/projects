@@ -59,10 +59,13 @@ export class Player {
   /** last damage cause for the fail screen */
   lastHurt = '';
   godMode = false;
+  /** damage multiplier (toughness assist, Settings -> Assists) */
+  damageScale = 1;
 
   /** apply damage (0..1 of full health) */
   damage(amount: number, cause = ''): void {
     if (this.dead || this.godMode || amount <= 0) return;
+    amount *= this.damageScale;
     this.health = Math.max(0, this.health - amount);
     this.sinceHurt = 0;
     this.lastHurt = cause;
