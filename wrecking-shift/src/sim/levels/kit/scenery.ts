@@ -64,13 +64,16 @@ export function fence(sim: Sim, x: number, y: number, z: number, length: number,
   return sim.addBody(g, { x, y: y - 0.3, z }, { name: 'fence' });
 }
 
+/** lamp post: pole at (x, z), arm and lamp head toward -x (all call sites stand on the +x side of their road) */
 export function lampPost(sim: Sim, x: number, y: number, z: number): VoxelBody {
+  // the arm used to point to +x, away from every road it was meant to light (user report); turned 180 degrees with
+  // the pole kept where it was
   const g = new VoxelGrid(8, 46, 3);
-  box(g, 0, 0, 0, 2, 44, 2, flat(MAT.steel));
-  box(g, 0, 43, 0, 8, 44, 2, flat(MAT.steel));
-  box(g, 5, 41, 0, 8, 43, 3, pal(MAT.lamp));
+  box(g, 6, 0, 1, 8, 44, 3, flat(MAT.steel));
+  box(g, 0, 43, 1, 8, 44, 3, flat(MAT.steel));
+  box(g, 0, 41, 0, 3, 43, 3, pal(MAT.lamp));
   g.recount();
-  return sim.addBody(g, { x, y: y - 0.3, z }, { name: 'lamppost' });
+  return sim.addBody(g, { x: x - 0.6, y: y - 0.3, z: z - 0.1 }, { name: 'lamppost' });
 }
 
 /** shipping container (static until cut loose): sheet-metal shell on a steel frame */
@@ -159,11 +162,14 @@ function bricksFn(mat: number): PalFn {
   return (x, y, z) => { const row = (y / 2) | 0; const bx = ((x + z + (row % 2 ? 2 : 0)) / 4) | 0; return pal(mat, (hash3(bx >> 1, row >> 1, 0, 9) * 3) | 0); };
 }
 
-/** street lamp (steel pole with an arm) — taller than kit.lampPost, arm along +x rotated by `armZ` */
+/**
+ * street lamp (steel pole with an arm) — taller than kit.lampPost. The pole stands at (x, z); the arm reaches toward
+ * -x (or -z with `armZ`), over the road: every call site stands on the + side of its road. (It used to point to +x /
+ * +z, away from the road; turned 180 degrees with the pole kept in place.)
+ */
 export function streetLamp(sim: Sim, x: number, y: number, z: number, armZ = false): VoxelBody {
   const g = armZ ? new VoxelGrid(3, 52, 9) : new VoxelGrid(9, 52, 3);
-  box(g, 0, 0, 0, 2, 50, 2, flat(MAT.paintedmetal, 0));
-  if (armZ) { box(g, 0, 49, 0, 2, 50, 9, flat(MAT.steel)); box(g, 0, 47, 6, 3, 49, 9, pal(MAT.lamp)); }
-  else { box(g, 0, 49, 0, 9, 50, 2, flat(MAT.steel)); box(g, 6, 47, 0, 9, 49, 3, pal(MAT.lamp)); }
-  return addStatic(sim, g, x - 0.1, y - 0.3, z - 0.1, 'lamppost');
+  if (armZ) { box(g, 1, 0, 7, 3, 50, 9, flat(MAT.paintedmetal, 0)); box(g, 1, 49, 0, 3, 50, 9, flat(MAT.steel)); box(g, 0, 47, 0, 3, 49, 3, pal(MAT.lamp)); }
+  else { box(g, 7, 0, 1, 9, 50, 3, flat(MAT.paintedmetal, 0)); box(g, 0, 49, 1, 9, 50, 3, flat(MAT.steel)); box(g, 0, 47, 0, 3, 49, 3, pal(MAT.lamp)); }
+  return armZ ? addStatic(sim, g, x - 0.2, y - 0.3, z - 0.8, 'lamppost') : addStatic(sim, g, x - 0.8, y - 0.3, z - 0.2, 'lamppost');
 }

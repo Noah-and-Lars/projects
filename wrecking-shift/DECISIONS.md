@@ -315,3 +315,7 @@ Scripted, deterministic playthroughs of all 11 big-map missions live in `tests/u
   640x360 after warm-up: ~40-90 of 230 k pixels change by up to ~20/765 per frame (0 with TAA off). Moving bodies get
   no motion vectors (the clamp handles them). Test frames (`render()` = full sync) reset the history and are not
   jittered, so screenshots stay comparable. Guess: blend 0.1 / 1/64 and the 2 % + 5 cm distance tolerance.
+- **Lamp posts turned 180 degrees** (user report): `lampPost` and `streetLamp` now reach toward -x / -z. Checked per
+  lamp (`scripts/dbg-lamps.test.ts`, asphalt under the arm tip vs the other side): every lamp next to a road had its
+  arm pointing away from it; now all of them reach over asphalt (quay / yard lamps have concrete on both sides). The
+  pole stays at the same spot, so mission props and roads are unaffected.

@@ -41,6 +41,8 @@ over-darkened them).
 **What to try:** stand still on Kestrel Ridge or Gullwick Harbour and watch the distant ground (should be perfectly
 still); hammer a wooden wall up close (chips, hole rim, the chunk on the floor); bomb a brick wall (soot gradient).
 
+**Lamp posts** face the road now (they were turned the wrong way on every map).
+
 **Anti-aliasing:** medium and high now use TAA like the reference (smooth terrace edges and distant detail while
 moving; `?taa=0` or `renderer.setTAA(false)` switches back to FXAA / MSAA). A still camera converges to a still,
 supersampled image.
