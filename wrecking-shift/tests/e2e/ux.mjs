@@ -66,7 +66,7 @@ export async function runUxTests(url, test) {
     assert(u.look && /^Wooden crate · /.test(u.look) && !/Required/.test(u.look), 'crate look text: ' + u.look);
     await shot(page, 'ux-02-look-crate');
     // the outline of the idol from a step back (not aimed): screenshot for the faint state
-    await lookFrom(page, { x: idol.x + 2.5, y: 0.05, z: idol.z + 3 }, { x: idol.x + 0.6, y: idol.y, z: idol.z });
+    await lookFrom(page, { x: idol.x + 1.0, y: 0.05, z: idol.z + 1.6 }, { x: idol.x + 1.6, y: idol.y + 0.2, z: idol.z - 2 });
     await page.evaluate(() => window.__game.step(2));
     await frames(page, 40);
     await shot(page, 'ux-03-target-near');
@@ -211,8 +211,8 @@ export async function runUxTests(url, test) {
     await page.evaluate(() => { const g = window.__game; g.step(2); g.key('KeyE', true); g.step(1); g.key('KeyE', false); g.step(60 * 80); });
     s = await ui(page);
     assert(s.phase === 'alarm', 'still in the alarm after 80 s: ' + s.phase);
-    assert(/no limit/.test(await page.textContent('.ws-alarm')), 'HUD says no limit');
     await page.evaluate(() => window.__game.render());
+    assert(/no limit/.test(await page.textContent('.ws-alarm')), 'HUD says no limit');
     await shot(page, 'ux-32-no-limit');
     // head bob at 50 %: a smaller bob while walking, exactly zero once stopped
     const bob = await page.evaluate(() => {

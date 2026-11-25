@@ -42,7 +42,7 @@ void main() {
 const FRAG = /* glsl */ `
 uniform vec3 uColor;
 uniform float uStrength;
-void main() { gl_FragColor = vec4(uColor * uStrength, 1.0); }`;
+void main() { gl_FragColor = vec4(uColor * (uStrength * 2.2), 1.0); }`;
 
 interface Shell { mesh: THREE.Mesh }
 interface Entry {
@@ -56,7 +56,7 @@ export class TargetHighlight {
   readonly root = new THREE.Group();
   private entries = new Map<number, Entry>();
   /** world-space width per metre of distance at full strength */
-  width = 0.006;
+  width = 0.014;
 
   constructor() { this.root.name = 'target-highlight'; }
 
