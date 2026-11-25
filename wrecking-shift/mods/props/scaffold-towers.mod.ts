@@ -1,4 +1,5 @@
 import { MAT, box, defineMod, pal, place, planks, vox, type VoxelGrid } from '../../src/mods/kit';
+import { beam } from './_util';
 
 /** a steel-tube scaffold bay W x D (voxels), `lifts` platforms 2 m apart, with planks, toe boards and braces */
 function scaffold(w: number, d: number, lifts: number): VoxelGrid {
@@ -18,10 +19,10 @@ function scaffold(w: number, d: number, lifts: number): VoxelGrid {
       box(g, 0, y + 9, 0, w, y + 10, 1, tube); box(g, 0, y + 9, d - 1, w, y + 10, d, tube);
       box(g, 1, y + 1, 1, w - 1, y + 3, 2, pal(MAT.wood, 0));
       // diagonal face brace on the back
-      for (let i = 0; i < 20; i++) g.set(Math.round((i / 19) * (w - 1)), y - 20 + i, d - 1, tube);
+      beam(g, 0, y - 20, d - 1, w - 1, y, d - 1, tube);
     }
     // ladder up one side
-    for (let y = 2; y < h - 2; y += 3) box(g, 1, y, 1, 2, y + 1, d - 1, pal(MAT.sheetmetal, 1));
+    for (let y = 2; y < h - 2; y += 3) box(g, 1, y, 0, 2, y + 1, d, pal(MAT.sheetmetal, 1));
   });
 }
 

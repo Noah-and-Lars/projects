@@ -14,7 +14,7 @@ export default defineMod({
         for (const y of [2, 5]) box(g, 11, y, 0, 14, y + 1, 1, pal(MAT.steel, 3));
         box(g, 1, 3, 7, 15, 7, 8, pal(MAT.wood, 2));
         // monitor on a stand, keyboard, paper stacks, mug
-        box(g, 6, 8, 6, 8, 9, 7, pal(MAT.steel, 1));
+        box(g, 6, 8, 6, 8, 10, 7, pal(MAT.steel, 1));
         box(g, 3, 10, 6, 11, 13, 7, pal(MAT.electronics, 1)); box(g, 4, 10, 5, 10, 13, 6, pal(MAT.glass, 0));
         box(g, 4, 8, 2, 10, 9, 4, pal(MAT.plastic, 4));
         box(g, 12, 8, 2, 15, 11, 5, pal(MAT.plaster, 4));
@@ -40,7 +40,7 @@ export default defineMod({
         box(g, 0, 0, 0, 4, 9, 4, pal(MAT.sheetmetal, 3));
         box(g, 1, 6, 0, 3, 7, 1, pal(MAT.plastic, 1));
         cylinderY(g, 2, 2, 1.9, 9, 14, pal(MAT.glass, 1), 1);
-        cylinderY(g, 2, 2, 1.0, 9, 13, pal(MAT.ice, 3));
+        cylinderY(g, 2, 2, 1.0, 9, 14, pal(MAT.ice, 3));
         cylinderY(g, 2, 2, 0.8, 14, 15, pal(MAT.glass, 3));
       }), pos, yaw, 'water cooler'),
     },

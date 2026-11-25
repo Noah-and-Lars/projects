@@ -29,7 +29,7 @@ export default defineMod({
           box(g, 0, y, 0, 1, y + 1, 10, pal(MAT.steel, 2)); box(g, 13, y, 0, 14, y + 1, 10, pal(MAT.steel, 2));
         }
         // warning plate
-        box(g, 5, 7, 0, 9, 9, 1, pal(MAT.paintedmetal, 3));
+        box(g, 5, 9, 0, 9, 11, 1, pal(MAT.paintedmetal, 3));
       }), pos, yaw, 'gas cage', { tags: ['explosive'] }),
     },
   ],

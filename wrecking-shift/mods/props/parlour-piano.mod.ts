@@ -25,7 +25,7 @@ export default defineMod({
         box(g, 2, 9, 2, 13, 11, 3, pal(MAT.wood, 2));
         box(g, 4, 9, 1, 11, 10, 2, pal(MAT.plaster, 4));
         // brass pedals
-        for (const x of [6, 8]) g.set(x, 0, 0, pal(MAT.gold, 1));
+        for (const x of [6, 8]) { g.set(x, 0, 1, pal(MAT.gold, 1)); g.set(x, 1, 1, pal(MAT.wood, 0)); }
       }), pos, yaw, 'piano'),
     },
     {

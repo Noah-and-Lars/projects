@@ -16,10 +16,13 @@ export default defineMod({
         box(g, 2, 0, 2, 8, 1, 8, pal(MAT.snow, 2));
         // scarf, buttons, eyes, nose, bucket
         for (let x = 2; x < 8; x++) for (let z = 2; z < 8; z++) if (g.get(x, 13, z)) g.set(x, 13, z, pal(MAT.fabric, 1));
-        box(g, 3, 9, 1, 4, 13, 2, pal(MAT.fabric, 1));
-        for (const y of [8, 10, 12]) g.set(5, y, 1, pal(MAT.rock, 0));
-        g.set(4, 16, 2, pal(MAT.rock, 0)); g.set(6, 16, 2, pal(MAT.rock, 0));
-        box(g, 5, 15, 0, 6, 16, 3, pal(MAT.tile, 3));
+        // recolour the front-most snow voxel of a column (buttons, eyes), or stick something just in front of it
+        const front = (x: number, y: number) => { for (let z = 0; z < 10; z++) if (g.get(x, y, z)) return z; return 5; };
+        for (const y of [7, 9, 11]) g.set(5, y, front(5, y), pal(MAT.rock, 0));
+        for (const x of [4, 6]) g.set(x, 16, front(x, 16), pal(MAT.rock, 0));
+        const nz = front(5, 15);
+        box(g, 5, 15, nz - 2, 6, 16, nz, pal(MAT.tile, 3));
+        for (let y = 9; y < 13; y++) g.set(3, y, front(3, y), pal(MAT.fabric, 1));
         box(g, 3, 18, 3, 8, 21, 8, pal(MAT.sheetmetal, 2));
         box(g, 2, 18, 2, 9, 19, 9, pal(MAT.sheetmetal, 1));
       }), pos, yaw, 'snowman'),

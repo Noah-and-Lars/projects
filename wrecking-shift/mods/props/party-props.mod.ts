@@ -2,13 +2,13 @@ import type { VoxelBody } from '../../src/sim/body';
 import { MAT, box, cylinderY, defineMod, pal, place, vox } from '../../src/mods/kit';
 import { placeLocal } from './_util';
 
-/** a wrapped present: box + crossing ribbon + bow */
-function present(w: number, h: number, d: number, shade: number) {
-  return vox(w, h + 1, d, (g) => {
+/** a wrapped present: box + crossing ribbon (+ a bow on top when nothing is stacked on it) */
+function present(w: number, h: number, d: number, shade: number, bow: boolean) {
+  return vox(w, h + (bow ? 1 : 0), d, (g) => {
     box(g, 0, 0, 0, w, h, d, pal(MAT.fabric, shade));
     const rx = w >> 1, rz = d >> 1;
     box(g, rx, 0, 0, rx + 1, h, d, pal(MAT.gold, 2)); box(g, 0, 0, rz, w, h, rz + 1, pal(MAT.gold, 2));
-    g.set(rx, h, rz, pal(MAT.gold, 3));
+    if (bow) g.set(rx, h, rz, pal(MAT.gold, 3));
   });
 }
 
@@ -40,9 +40,9 @@ export default defineMod({
         const sizes: [number, number, number, number, number, number][] = [
           // w, h, d, lx, ly, lz
           [6, 5, 6, -0.4, 0, 0], [5, 4, 5, 0.3, 0, 0.05], [4, 4, 4, 0.85, 0, -0.1],
-          [4, 3, 4, -0.4, 0.62, 0], [3, 3, 3, 0.3, 0.52, 0], [3, 2, 3, -0.35, 1.03, 0],
+          [4, 3, 4, -0.4, 0.505, 0], [3, 3, 3, 0.3, 0.405, 0], [3, 2, 3, -0.4, 0.81, 0],
         ];
-        sizes.forEach(([w, h, d, lx, ly, lz], i) => out.push(placeLocal(sim, present(w, h, d, i % 5), pos, yaw, lx, ly, lz, 'present')));
+        sizes.forEach(([w, h, d, lx, ly, lz], i) => out.push(placeLocal(sim, present(w, h, d, i % 5, i === 2 || i >= 4), pos, yaw, lx, ly, lz, 'present')));
         return out;
       },
     },

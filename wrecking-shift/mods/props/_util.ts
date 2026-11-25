@@ -50,3 +50,21 @@ export function lathe(g: VoxelGrid, cx: number, cz: number, y0: number, y1: numb
         if (Math.hypot(x + 0.5 - cx, z + 0.5 - cz) <= r) g.set(x, y, z, f(x, y, z));
   }
 }
+
+/** 6-connected voxel line from a to b (inclusive), so diagonal braces stay one piece instead of crumbling */
+export function beam(g: VoxelGrid, ax: number, ay: number, az: number, bx: number, by: number, bz: number, p: PalFn | number): void {
+  const f = fnOf(p);
+  let x = Math.round(ax), y = Math.round(ay), z = Math.round(az);
+  const tx = Math.round(bx), ty = Math.round(by), tz = Math.round(bz);
+  const dx = tx - x, dy = ty - y, dz = tz - z;
+  const n = Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
+  const x0 = x, y0 = y, z0 = z;
+  g.set(x, y, z, f(x, y, z));
+  for (let k = 0; k < n; k++) {
+    // step the axis that lags furthest behind the straight line
+    const lag = (d: number, c: number, c0: number) => (d === 0 ? -Infinity : Math.abs(d) * (k + 1) / n - Math.abs(c - c0));
+    const lx = lag(dx, x, x0), ly = lag(dy, y, y0), lz = lag(dz, z, z0);
+    if (lx >= ly && lx >= lz) x += Math.sign(dx); else if (ly >= lz) y += Math.sign(dy); else z += Math.sign(dz);
+    g.set(x, y, z, f(x, y, z));
+  }
+}

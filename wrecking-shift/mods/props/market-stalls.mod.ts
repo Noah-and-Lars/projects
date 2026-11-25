@@ -7,7 +7,7 @@ export default defineMod({
   props: [
     {
       id: 'produce-stall', name: 'Produce stall', group: 'Market',
-      spawn: (sim, pos, yaw) => place(sim, vox(24, 24, 12, (g) => {
+      spawn: (sim, pos, yaw) => place(sim, vox(24, 25, 12, (g) => {
         // corner posts
         for (const [x, z] of [[0, 0], [23, 0], [0, 11], [23, 11]]) box(g, x, 0, z, x + 1, 22, z + 1, pal(MAT.wood, 0));
         // sloped trestle table with crates of produce on it
@@ -28,6 +28,7 @@ export default defineMod({
         for (let x = 0; x < 24; x++) if ((x >> 2) % 2) g.set(x, 19, 0, pal(MAT.fabric, 3));
         // price board
         box(g, 9, 14, 11, 15, 18, 12, pal(MAT.char, 1));
+        for (const x of [10, 13]) box(g, x, 18, 11, x + 1, 24, 12, pal(MAT.wire, 0));
       }), pos, yaw, 'market stall'),
     },
     {

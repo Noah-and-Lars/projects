@@ -1,5 +1,5 @@
 import { MAT, box, cylinderY, defineMod, pal, place, planks, vox } from '../../src/mods/kit';
-import { lathe } from './_util';
+import { beam, lathe } from './_util';
 
 /** A farm water tower: four braced steel legs carrying a stave-wood tank with a conical roof. */
 export default defineMod({
@@ -12,25 +12,24 @@ export default defineMod({
         const c = 17;
         const steel = pal(MAT.steel, 2);
         const legs: [number, number][] = [[3, 3], [30, 3], [3, 30], [30, 30]];
-        // legs lean inwards slightly
-        for (const [lx, lz] of legs) for (let y = 0; y < 60; y++) {
-          const t = y / 60;
-          const x = Math.round(lx + (c - lx) * t * 0.25), z = Math.round(lz + (c - lz) * t * 0.25);
+        // leg centre at height y (legs lean inwards a little)
+        const legAt = (k: number, y: number): [number, number] => {
+          const t = (y / 60) * 0.25;
+          return [Math.round(legs[k][0] + (c - legs[k][0]) * t), Math.round(legs[k][1] + (c - legs[k][1]) * t)];
+        };
+        for (let k = 0; k < 4; k++) for (let y = 0; y < 60; y++) {
+          const [x, z] = legAt(k, y);
           box(g, x - 1, y, z - 1, x + 1, y + 1, z + 1, steel);
         }
         // footings
         for (const [lx, lz] of legs) box(g, lx - 2, 0, lz - 2, lx + 2, 2, lz + 2, pal(MAT.concrete, 2));
-        // ring braces at two heights, with X braces between neighbouring legs
-        for (const y of [20, 40]) {
-          const t = y / 60;
-          const p = legs.map(([lx, lz]) => [Math.round(lx + (c - lx) * t * 0.25), Math.round(lz + (c - lz) * t * 0.25)]);
-          for (let i = 0; i < 4; i++) {
-            const [ax, az] = p[[0, 1, 3, 2][i]], [bx, bz] = p[[1, 3, 2, 0][i]];
-            for (let s = 0; s <= 30; s++) g.set(Math.round(ax + (bx - ax) * (s / 30)), y, Math.round(az + (bz - az) * (s / 30)), steel);
-            for (let s = 0; s <= 20; s++) {
-              g.set(Math.round(ax + (bx - ax) * (s / 20)), y - 20 + s, Math.round(az + (bz - az) * (s / 20)), pal(MAT.steel, 1));
-            }
-          }
+        // ring braces at two heights, each with a diagonal brace up from the neighbouring leg below
+        const order = [0, 1, 3, 2];
+        for (const y of [20, 40]) for (let i = 0; i < 4; i++) {
+          const a = order[i], b = order[(i + 1) % 4];
+          const [ax, az] = legAt(a, y), [bx, bz] = legAt(b, y), [dx, dz] = legAt(a, y - 20);
+          beam(g, ax, y, az, bx, y, bz, steel);
+          beam(g, dx, y - 20, dz, bx, y, bz, pal(MAT.steel, 1));
         }
         // tank platform + walkway rail
         cylinderY(g, c, c, 16, 60, 62, pal(MAT.steel, 1));
