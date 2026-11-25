@@ -44,7 +44,8 @@ const _v = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3
 export class Renderer {
   readonly three: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
-  readonly camera = new THREE.PerspectiveCamera(75, 16 / 9, 0.05, 600);
+  // near 0.1 m (was 0.05): twice the depth precision at distance; the view model starts ~0.15 m from the eye
+  readonly camera = new THREE.PerspectiveCamera(75, 16 / 9, 0.1, 600);
   readonly bodies: BodyViews;
   readonly chips = new ChipParticles();
   readonly sun = new THREE.DirectionalLight(0xfff2dd, 2.6);

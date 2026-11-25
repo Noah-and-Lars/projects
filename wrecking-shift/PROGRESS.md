@@ -41,6 +41,11 @@ over-darkened them).
 **What to try:** stand still on Kestrel Ridge or Gullwick Harbour and watch the distant ground (should be perfectly
 still); hammer a wooden wall up close (chips, hole rim, the chunk on the floor); bomb a brick wall (soot gradient).
 
+**If the ground still seems to move while standing still**, open the game with `?camdebug=1` (on-screen readout of
+camera motion per frame and raw mouse counts) and try one switch at a time: `?taa=0`, `?grain=0`, `?dynshadow=0`,
+`?near=0.05`, `?inflate=0`, `?bob=0`, `?quality=low`. In this container the camera and every shader input are
+bit-identical frame to frame while standing (real game loop, recorded).
+
 **Lamp posts** face the road now (they were turned the wrong way on every map).
 
 **Anti-aliasing:** medium and high now use TAA like the reference (smooth terrace edges and distant detail while

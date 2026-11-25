@@ -319,3 +319,12 @@ Scripted, deterministic playthroughs of all 11 big-map missions live in `tests/u
   lamp (`scripts/dbg-lamps.test.ts`, asphalt under the arm tip vs the other side): every lamp next to a road had its
   arm pointing away from it; now all of them reach over asphalt (quay / yard lamps have concrete on both sides). The
   pole stays at the same spot, so mission props and roads are unaffected.
+- **"Heat waves" report (after the 23:14 build, before TAA)**: verified with evidence that a standing player's
+  picture inputs do not change: the real rAF loop on harbor (`tests/e2e/realstill.mjs`) records camera, projection,
+  shadow camera, lamps and every shared shader uniform for 120 frames: bit-identical after the spawn landing; a sweep of
+  600 random standing spots (all maps, every 5th crouched, `scripts/dbg-stand3.test.ts`) found one moving camera (on a
+  settling scrap prop). No shader has per-frame noise (no uFrame / time term outside sky clouds, water, fire). Most
+  likely cause of what the user saw: sub-pixel view motion (mouse hand tremor) making sub-pixel detail crawl ("heat
+  haze"), which TAA (published since) resolves. Because the GPU path cannot be observed here, debug URL switches were
+  added (`?taa=0 &grain=0 &dynshadow=0 &near= &inflate=0 &bob=0 &camdebug=1`, see `src/render/lookModule.ts`), and the
+  near plane went 0.05 -> 0.1 m (2x depth precision; the view model starts ~0.15 m from the eye).

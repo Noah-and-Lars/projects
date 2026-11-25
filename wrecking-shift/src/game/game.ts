@@ -69,6 +69,8 @@ export class Game {
   fov = 80;
   /** additive first-person camera sway (head-bob, set by the UI module); ignored while cameraOverride is set */
   viewBob = { y: 0, roll: 0 };
+  /** debug switch (`?bob=0`): ignore head bob / roll */
+  noViewBob = false;
   /** seconds of hit-stop left (sim frozen, rendering continues) */
   hitStop = 0;
   private toolInput: ToolInput = emptyToolInput();
@@ -319,7 +321,7 @@ export class Game {
     const cam = this.cameraOverride;
     if (this.renderer.camera.fov !== this.fov) { this.renderer.camera.fov = this.fov; this.renderer.camera.updateProjectionMatrix(); }
     if (cam) this.renderer.setCamera(cam.eye, cam.yaw, cam.pitch, cam.roll ?? 0);
-    else { const e = p.eye; e.y += this.viewBob.y; this.renderer.setCamera(e, p.yaw, p.pitch, this.viewBob.roll); }
+    else { const e = p.eye; if (!this.noViewBob) e.y += this.viewBob.y; this.renderer.setCamera(e, p.yaw, p.pitch, this.noViewBob ? 0 : this.viewBob.roll); }
     this.renderer.render(this.sim, dt, full);
     this.perf.render = performance.now() - t0;
     this.frameCount++;

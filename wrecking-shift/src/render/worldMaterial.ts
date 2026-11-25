@@ -39,6 +39,8 @@ export interface LookShared {
   /** emissive voxel radiance multiplier */
   uEmissive: { value: number };
   uDebugAO: { value: number };
+  /** 1 = per-voxel colour grain + normal tilt + edge bevel, 0 = off (debug switch `?grain=0`) */
+  uGrain: { value: number };
   /** ambient left in fully occluded places (0..1) */
   uAOMin: { value: number };
   /** sun cone radius (radians) for soft shadows */
@@ -54,7 +56,7 @@ export function makeLookShared(): LookShared {
   return {
     uBits: { value: null }, uDens: { value: null },
     uVolSize: { value: new THREE.Vector3(4, 4, 4) }, uVolOrigin: { value: new THREE.Vector3() }, uInvVoxel: { value: 1 / VOXEL },
-    uEmissive: { value: 3 }, uDebugAO: { value: 0 }, uAOMin: { value: 0.12 }, uSunSpread: { value: 0.012 }, uSaturation: { value: 0.72 }, uInflate: { value: 0.0015 },
+    uEmissive: { value: 3 }, uDebugAO: { value: 0 }, uGrain: { value: 1 }, uAOMin: { value: 0.12 }, uSunSpread: { value: 0.012 }, uSaturation: { value: 0.72 }, uInflate: { value: 0.0015 },
     uSkyZenith: { value: new THREE.Color(0.2, 0.4, 0.8) }, uSkyHorizon: { value: new THREE.Color(0.7, 0.8, 0.9) },
   };
 }
@@ -84,7 +86,7 @@ function definesFor(kind: Kind, cfg: LookConfig): Record<string, string | number
 }
 
 const FRAG_PARS = /* glsl */ `
-uniform float uDebugAO; uniform float uEmissive; uniform float uAOMin; uniform float uSunSpread; uniform float uSaturation;
+uniform float uDebugAO; uniform float uGrain; uniform float uEmissive; uniform float uAOMin; uniform float uSunSpread; uniform float uSaturation;
 uniform vec3 uSkyZenith; uniform vec3 uSkyHorizon;
 #ifdef VX_OWN
 varying vec2 vAux; centroid varying vec3 vWPos; varying vec3 vWNrm; centroid varying vec3 vVox;
@@ -156,7 +158,7 @@ const LIGHTS_PRE = /* glsl */ `
   // 2. near the camera, convex voxel edges of static bodies get a narrow soft bevel that catches the light.
   {
     vec3 vxSn = vxN;
-    float vxNear = 1.0 - smoothstep(0.35, 1.1, vxFp);
+    float vxNear = (1.0 - smoothstep(0.35, 1.1, vxFp)) * uGrain;
     if (vxNear > 0.0) {
       vec3 vc = floor(vVox);
       vec3 h = vec3(vxGrain(vc + 11.3), vxGrain(vc + 23.7), vxGrain(vc + 5.1)) - 0.5;
@@ -290,7 +292,7 @@ function makeBase(kind: Kind, shared: LookShared, cfg: LookConfig, params: THREE
         vxFp = max(length(dFdx(vVox)), length(dFdy(vVox)));
         float vxG1 = mix(vxGrain(vox + 0.5), 0.5, smoothstep(0.5, 1.5, vxFp));
         float vxG4 = mix(vxGrain(floor(vox * 0.25) + 7.5), 0.5, smoothstep(2.0, 6.0, vxFp));
-        alb *= 0.9 + 0.14 * vxG1 + 0.06 * vxG4;
+        alb *= mix(0.97, 0.9 + 0.14 * vxG1 + 0.06 * vxG4, uGrain);
         diffuseColor.rgb *= alb;
       }`);
     fs = mustReplace(fs, '#include <emissivemap_fragment>', `#include <emissivemap_fragment>
