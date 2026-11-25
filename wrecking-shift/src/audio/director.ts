@@ -149,6 +149,11 @@ export class AudioDirector {
       case 'tool:foam': this.play('tool.foam', { gain: 0.8, category: 'spray' }); break;
       case 'tool:select': this.play('tool.select'); break;
       case 'tool:torch': this.torchOn = !!d.on; this.play(d.on ? 'tool.torch.on' : 'tool.torch.off', { gain: 0.8 }); if (!d.on) e.stopLoop('torch'); break;
+      case 'tool:boost':
+        if (d.start) { this.play('tool.torch.on', { pos: d.pos, refDist: 8 }); this.play('tool.throw', { pos: d.pos, gain: 0.6 }); }
+        if (d.pos) e.touchLoop('boost', 'boost', { pos: d.pos, level: 1, ttl: 0.25, refDist: 12 });
+        break;
+      case 'tool:boostEnd': this.play('tool.torch.off', { pos: d.pos, refDist: 8 }); break;
       case 'player:hurt': this.play('player.hurt', { gain: 0.6 + clamp01(d.amount ?? 0.2), category: 'hurt' }); break;
       case 'player:dead': this.play('player.dead', { priority: 8 }); break;
       case 'fire:ignite': this.play('fire.ignite', { pos: d.pos, refDist: 6, gain: 0.8, category: 'fire' }); break;

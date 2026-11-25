@@ -5,6 +5,7 @@ import { RANKS, TOOL_NAMES, UPGRADES, type Progress, type SettingsData } from '.
 import { isRequired, maxScore, pointsOf, type MissionDef } from '../../sim/mission';
 import { el, esc, money } from './dom';
 import { atmosControls, chResultHtml, challengesHtml, handleExtraClick } from './challengeUi';
+import { powerShopHtml } from './powerShop';
 import { handleModsClick, handleModsInput, modeInfoHtml, modeResultHtml, modsHtml, spawnHtml } from './modsUi';
 
 export type MenuName = 'main' | 'missions' | 'briefing' | 'sandbox' | 'shop' | 'settings' | 'controls' | 'diag' | 'pause' | 'success' | 'fail' | 'challenges' | 'chresult' | 'mods' | 'modeinfo' | 'moderesult' | 'spawn';
@@ -201,6 +202,7 @@ export class Menus {
     }
     return this.win('Tools &amp; upgrades',
       `<div class="ws-sec">Ammo upgrades</div><table class="ws-shop"><tr><th>Tool</th><th>Level</th><th>Per level</th><th class="r">Next</th></tr>${rows}</table>` +
+      powerShopHtml(p, belt) +
       `<div class="ws-sec" style="margin-top:.8em">Ranks &amp; tool unlocks</div><table class="ws-shop"><tr><th></th><th>Rank</th><th class="r">Score</th><th>Unlocks</th></tr>${ranks}</table>`,
       '<button class="ws-btn" data-act="back">Back</button>',
       { tag: 'Workshop', right: `<span class="money">${money(p.cash)}</span>` });
@@ -334,6 +336,7 @@ export class Menus {
       case 'start': h.startMission(id); break;
       case 'sbx': h.startSandbox(id); break;
       case 'buy': if (h.progress.buyUpgrade(id)) this.refresh(); break;
+      case 'buypow': if (h.progress.buyPower(id)) this.refresh(); break;
       case 'resume': h.close(); break;
       case 'restart': case 'retry': {
         if (act === 'restart' && h.game.ext.challenge?.active) { h.game.ext.challenge.restart(); h.close(); break; }

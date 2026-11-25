@@ -3,7 +3,7 @@ import { FlashLight, Puffs, Rockets, Segments } from '../render/toolFx';
 import { ViewModels } from '../render/viewModel';
 import { SPRAY_COLOR } from '../sim/materials';
 import type { SimEvent } from '../sim/sim';
-import type { Blowtorch, Cable, PipeBomb, Plank, RocketLauncher } from '../sim/tools';
+import type { Blowtorch, Booster, Cable, PipeBomb, Plank, RocketLauncher } from '../sim/tools';
 import type { Preview } from '../sim/tools/twopoint';
 import type { V3 } from '../sim/vec';
 import { lookOf } from '../sim/tools/tool';
@@ -179,6 +179,24 @@ export class ToolsModule implements GameModule {
 
     // pipe bomb fuses fizzle
     for (const pb of ofLook<PipeBomb>('pipebomb')) for (const c of pb.live) if (Math.random() < 0.7) this.sparks.spawn(c.pos, { x: rnd(1.5), y: 0.5 + Math.random() * 1.5, z: rnd(1.5) }, 0xffc040, 0.012, 0.25, 0, 6);
+
+    // booster cans: fuse fizz, then a flame jet + smoke trail out of the nozzle
+    for (const bc of ofLook<Booster>('booster')) for (const b of bc.live) {
+      if (b.stick.body.removed) continue;
+      const n = bc.nozzle(b);
+      if (!b.lit) { if (Math.random() < 0.6) this.sparks.spawn(n, { x: rnd(1.2), y: 0.4 + Math.random(), z: rnd(1.2) }, 0xffd060, 0.012, 0.2, 0, 6); continue; }
+      const d = bc.flameDir(b);
+      for (let i = 0; i < 5; i++) {
+        const s = 5 + Math.random() * 6;
+        const core = i < 2;
+        this.sparks.spawn(n, { x: d.x * s + rnd(0.8), y: d.y * s + rnd(0.8), z: d.z * s + rnd(0.8) }, core ? 0xfff2b0 : 0xff9a28, core ? 0.09 : 0.06 + Math.random() * 0.06, 0.1 + Math.random() * 0.1, core ? -0.4 : 0.15, 0, 2);
+      }
+      for (let i = 0; i < 3; i++) {
+        const s = 2 + Math.random() * 2.5;
+        this.puffs.spawn(n, { x: d.x * s + rnd(0.7), y: d.y * s + rnd(0.7) + 0.3, z: d.z * s + rnd(0.7) }, 0xb9b4aa, 0.1, 1.1 + Math.random() * 0.9, 0.6, -0.2, 1.2);
+      }
+      this.torch.hold(n, 5);
+    }
 
     // blowtorch flame on the surface
     if (lookOf(tool.id) === 'blowtorch' && tool.active && visible) {

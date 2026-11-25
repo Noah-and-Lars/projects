@@ -151,6 +151,18 @@ const MODELS: Record<string, () => THREE.Group> = {
     [0.072, 0.03, 0.072, 0, 0.0, -0.02, WHITE],
     [0.04, 0.03, 0.04, 0, 0.08, -0.02, STEEL_L],
   ]), 0, -0.02, 0),
+  // booster can: squat red can, white band, dark nozzle pointing up/back, yellow fuse tab
+  booster: () => {
+    const g = build([
+      [0.09, 0.12, 0.09, 0, 0, -0.02, 0xb8261a],
+      [0.092, 0.025, 0.092, 0, 0.01, -0.02, WHITE],
+      [0.05, 0.035, 0.05, 0, 0.075, -0.02, BLACK],
+      [0.03, 0.02, 0.03, 0, 0.1, -0.02, STEEL],
+      [0.02, 0.04, 0.008, 0.035, -0.03, -0.068, YELLOW],
+    ]);
+    g.rotation.set(0.35, 0, 0.2);
+    return wrap(g, 0, -0.02, 0);
+  },
 };
 
 function wrap(inner: THREE.Group, x: number, y: number, z: number): THREE.Group {
@@ -181,7 +193,7 @@ export interface ViewModelState {
   simTime: number;
 }
 
-const THROWN = new Set(['pipebomb', 'bomb', 'nitro', 'plank']);
+const THROWN = new Set(['pipebomb', 'bomb', 'nitro', 'plank', 'booster']);
 const GUNS = new Set(['pistol', 'shotgun', 'rocket', 'rifle']);
 
 export class ViewModels {

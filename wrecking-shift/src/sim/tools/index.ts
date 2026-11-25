@@ -1,5 +1,6 @@
 import { Blowtorch } from './blowtorch';
 import { Bomb } from './bomb';
+import { Booster } from './booster';
 import { Cable } from './cable';
 import { Extinguisher } from './extinguisher';
 import { LeafBlower } from './leafblower';
@@ -20,7 +21,7 @@ export function createTools(): Tool[] {
     new Sledge(), new Spray(), new Extinguisher(), new Blowtorch(),
     new Pistol(), new Shotgun(), new Plank(), new Cable(),
     new PipeBomb(), new Bomb(), new RocketLauncher(), new Nitro(),
-    new Rifle(), new LeafBlower(),
+    new Rifle(), new LeafBlower(), new Booster(),
   ];
 }
 /** extra tools from enabled mods (set by src/game/modsModule.ts); appended after the built-in set */
@@ -34,4 +35,4 @@ export function createBelt(): ToolBelt {
   return new ToolBelt(tools);
 }
 export * from './tool';
-export { Blowtorch, Bomb, Cable, Extinguisher, LeafBlower, Nitro, PipeBomb, Pistol, Plank, Rifle, RocketLauncher, Shotgun, Sledge, Spray };
+export { Blowtorch, Bomb, Booster, Cable, Extinguisher, LeafBlower, Nitro, PipeBomb, Pistol, Plank, Rifle, RocketLauncher, Shotgun, Sledge, Spray };
