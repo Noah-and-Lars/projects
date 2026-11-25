@@ -41,9 +41,11 @@ over-darkened them).
 **What to try:** stand still on Kestrel Ridge or Gullwick Harbour and watch the distant ground (should be perfectly
 still); hammer a wooden wall up close (chips, hole rim, the chunk on the floor); bomb a brick wall (soot gradient).
 
-**If the ground still seems to move while standing still**, open the game with `?camdebug=1` (on-screen readout of
-camera motion per frame and raw mouse counts) and try one switch at a time: `?taa=0`, `?grain=0`, `?dynshadow=0`,
-`?near=0.05`, `?inflate=0`, `?bob=0`, `?quality=low`. In this container the camera and every shader input are
+**If the ground still seems to move while standing still**: Esc -> Settings -> **Diagnostics**. Turn on the camera
+readout (or press F4: camera motion per frame + raw mouse counts), then switch one feature off at a time (TAA, voxel
+grain, moving-object shadows, near plane, crack hiding, head bob; quality is in Settings). Changes apply at once and
+are remembered. Locally the same switches work as URL parameters (`?camdebug=1&taa=0&grain=0&dynshadow=0&near=0.05
+&inflate=0&bob=0`); the artifact link does not pass query strings. In this container the camera and every shader input are
 bit-identical frame to frame while standing (real game loop, recorded).
 
 **Lamp posts** face the road now (they were turned the wrong way on every map).

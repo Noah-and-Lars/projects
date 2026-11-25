@@ -6,7 +6,7 @@ import { isRequired, maxScore, pointsOf, type MissionDef } from '../../sim/missi
 import { el, esc, money } from './dom';
 import { atmosControls, chResultHtml, challengesHtml, handleExtraClick } from './challengeUi';
 
-export type MenuName = 'main' | 'missions' | 'briefing' | 'sandbox' | 'shop' | 'settings' | 'controls' | 'pause' | 'success' | 'fail' | 'challenges' | 'chresult';
+export type MenuName = 'main' | 'missions' | 'briefing' | 'sandbox' | 'shop' | 'settings' | 'controls' | 'diag' | 'pause' | 'success' | 'fail' | 'challenges' | 'chresult';
 
 /** what the menus need from the UI module */
 export interface MenuHost {
@@ -26,7 +26,7 @@ export interface MenuHost {
 const CONTROLS: [string, string][] = [
   ['W A S D', 'Move'], ['Mouse', 'Look'], ['Space', 'Jump'], ['Shift', 'Sprint'], ['Ctrl / C', 'Crouch'],
   ['LMB', 'Use tool'], ['RMB', 'Grab / alt fire'], ['1 – 0 / Q / wheel', 'Select tool'], ['E', 'Take / interact / enter'],
-  ['Tab', 'Site map'], ['Esc', 'Pause'], ['F', 'Flashlight'], ['P', 'Photo mode'], ['F3', 'Debug info'],
+  ['Tab', 'Site map'], ['Esc', 'Pause'], ['F', 'Flashlight'], ['P', 'Photo mode'], ['F3', 'Debug info'], ['F4', 'Camera readout'],
 ];
 
 /** Full-screen menus (title, job board, briefing, shop, settings, pause, end screens). Plain DOM. */
@@ -63,6 +63,7 @@ export class Menus {
       case 'shop': return this.shopHtml();
       case 'settings': return this.settingsHtml();
       case 'controls': return this.controlsHtml();
+      case 'diag': return this.diagHtml();
       case 'pause': return this.pauseHtml();
       case 'success': return this.successHtml();
       case 'fail': return this.failHtml();
@@ -209,7 +210,19 @@ export class Menus {
       range('sfxVolume', 'Effects volume', 0, 1, 0.01, pct) +
       `<label>Graphics quality</label><span class="ws-seg">${q}</span><span></span>` +
       `</div>`,
-      '<button class="ws-btn" data-act="reset-settings">Defaults</button><button class="ws-btn pri" data-act="back">Done</button>', { cls: 'mid', tag: 'Options' });
+      '<button class="ws-btn" data-act="open" data-id="diag">Diagnostics</button><button class="ws-btn" data-act="reset-settings">Defaults</button><button class="ws-btn pri" data-act="back">Done</button>', { cls: 'mid', tag: 'Options' });
+  }
+
+  /** switches that turn individual rendering / camera features off (game.ext.diag, src/render/lookModule.ts) */
+  private diagHtml(): string {
+    const d = this.host.game.ext.diag;
+    if (!d) return this.win('Diagnostics', '<p class="ws-note">Not available in this build.</p>', '<button class="ws-btn pri" data-act="back">Back</button>', { cls: 'mid', tag: 'Options' });
+    const st = d.get();
+    const rows = d.items.map((it: { key: string; label: string; options?: number[] }) => it.options
+      ? `<label>${esc(it.label)}</label><span class="ws-seg">${it.options.map((v) => `<button data-act="dseg" data-key="${it.key}" data-val="${v}" class="${st[it.key] === v ? 'on' : ''}">${v}</button>`).join('')}</span><span></span>`
+      : `<label for="ws-d-${it.key}">${esc(it.label)}</label><input id="ws-d-${it.key}" type="checkbox" data-diag="${it.key}"${st[it.key] ? ' checked' : ''}><span></span>`).join('');
+    return this.win('Diagnostics', `<p class="ws-note" style="margin:0 0 .6em">If the picture moves while you stand still, turn on the camera readout (F4) and switch one feature off at a time. Changes apply at once and are remembered.</p><div class="ws-form">${rows}</div>`,
+      '<button class="ws-btn" data-act="reset-diag">Defaults</button><button class="ws-btn pri" data-act="back">Done</button>', { cls: 'mid', tag: 'Options' });
   }
 
   private controlsHtml(): string {
@@ -315,12 +328,15 @@ export class Menus {
       case 'quit': case 'menu': h.quitToMenu(); break;
       case 'reset-settings': h.progress.settings.reset(); this.refresh(); break;
       case 'seg': h.progress.settings.set(t.dataset.key as any, t.dataset.val as any); this.refresh(); break;
+      case 'dseg': h.game.ext.diag?.set(t.dataset.key, Number(t.dataset.val)); this.refresh(); break;
+      case 'reset-diag': h.game.ext.diag?.reset(); this.refresh(); break;
       default: handleExtraClick(h, act, t, () => this.refresh());
     }
   }
 
   private onInput(e: Event): void {
     const inp = e.target as HTMLInputElement;
+    if (inp.dataset.diag) { this.host.game.ext.diag?.set(inp.dataset.diag, inp.checked); return; }
     const key = inp.dataset.key as keyof SettingsData | undefined;
     if (!key) return;
     const s = this.host.progress.settings;

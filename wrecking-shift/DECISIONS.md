@@ -328,3 +328,6 @@ Scripted, deterministic playthroughs of all 11 big-map missions live in `tests/u
   haze"), which TAA (published since) resolves. Because the GPU path cannot be observed here, debug URL switches were
   added (`?taa=0 &grain=0 &dynshadow=0 &near= &inflate=0 &bob=0 &camdebug=1`, see `src/render/lookModule.ts`), and the
   near plane went 0.05 -> 0.1 m (2x depth precision; the view model starts ~0.15 m from the eye).
+- **Diagnostics page** (Esc -> Settings -> Diagnostics, F4 = camera readout): the artifact link passes no query
+  strings, so the URL switches are also in-game toggles (`game.ext.diag`, own localStorage key
+  `wrecking-shift-diag`, not part of the versioned settings save). Applied live.
