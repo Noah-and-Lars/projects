@@ -331,3 +331,10 @@ Scripted, deterministic playthroughs of all 11 big-map missions live in `tests/u
 - **Diagnostics page** (Esc -> Settings -> Diagnostics, F4 = camera readout): the artifact link passes no query
   strings, so the URL switches are also in-game toggles (`game.ext.diag`, own localStorage key
   `wrecking-shift-diag`, not part of the versioned settings save). Applied live.
+- **Head bob caused the "heat waves"** (user confirmed: Diagnostics -> head bob off fixed it). The bob took its speed
+  from the stride change per rendered frame (0 / 2.4x alternating on a 144 Hz screen, as stride only advances on
+  60 Hz ticks) and decayed exponentially, so the final camera never settled (measured: 1499 of 1499 frames changed
+  after stopping). Now it runs only while walking (movement input + grounded + horizontal sim speed > 0.6 m/s) and
+  ramps linearly to exactly 0 within ~0.25 s; roll is exactly 0 then. My earlier checks missed it because they never
+  walked before standing and the readout ignored roll; the F4 readout now compares the final camera matrix and
+  `tests/e2e/still.mjs` has a walk-then-stop case with head bob on (fails on the old code).

@@ -41,6 +41,10 @@ over-darkened them).
 **What to try:** stand still on Kestrel Ridge or Gullwick Harbour and watch the distant ground (should be perfectly
 still); hammer a wooden wall up close (chips, hole rim, the chunk on the floor); bomb a brick wall (soot gradient).
 
+**Ground "heat waves" while standing — found and fixed:** the head bob never settled after walking (it kept moving
+the camera by tiny amounts every frame, worst on high-refresh screens). It now runs only while walking and ends at
+exactly zero within a quarter second. Head bob can stay on.
+
 **If the ground still seems to move while standing still**: Esc -> Settings -> **Diagnostics**. Turn on the camera
 readout (or press F4: camera motion per frame + raw mouse counts), then switch one feature off at a time (TAA, voxel
 grain, moving-object shadows, near plane, crack hiding, head bob; quality is in Settings). Changes apply at once and

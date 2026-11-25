@@ -80,7 +80,7 @@ export function createLookModule(): GameModule {
 
   // camera readout
   let box: HTMLDivElement | null = null;
-  const last = new Float64Array(5);
+  const last = new Float64Array(6), lastM = new Float64Array(16);
   let have = false, frames = 0, mouseX = 0, mouseY = 0;
   const changed: number[] = [];
   if (typeof addEventListener === 'function') {
@@ -108,12 +108,20 @@ export function createLookModule(): GameModule {
       }
       box.style.display = g.ext.ui?.state?.().menu ? 'none' : ''; // not over menus
       // the camera of the previous drawn frame (game.draw runs after frameUpdate)
+      // the final camera transform (after head bob, punch and shake): position + all three rotation axes, and an
+      // exact compare of the whole world matrix for "frames moved"
       const c = g.renderer.camera;
-      const cur = [c.position.x, c.position.y, c.position.z, c.rotation.x, c.rotation.y];
-      let dp = 0, dr = 0;
-      if (have) { dp = Math.hypot(cur[0] - last[0], cur[1] - last[1], cur[2] - last[2]); dr = Math.hypot(cur[3] - last[3], cur[4] - last[4]); }
-      last.set(cur); have = true;
-      changed.push(dp > 0 || dr > 0 ? 1 : 0); if (changed.length > 120) changed.shift();
+      c.updateMatrixWorld();
+      const cur = [c.position.x, c.position.y, c.position.z, c.rotation.x, c.rotation.y, c.rotation.z];
+      const m = c.matrixWorld.elements;
+      let dp = 0, dr = 0, same = have;
+      if (have) {
+        dp = Math.hypot(cur[0] - last[0], cur[1] - last[1], cur[2] - last[2]);
+        dr = Math.hypot(cur[3] - last[3], cur[4] - last[4], cur[5] - last[5]);
+        for (let i = 0; i < 16; i++) if (m[i] !== lastM[i]) same = false;
+      }
+      last.set(cur); lastM.set(m); have = true;
+      changed.push(same ? 0 : 1); if (changed.length > 120) changed.shift();
       if (++frames % 6 === 1) {
         const n = changed.reduce((a, b) => a + b, 0);
         box.textContent = `camera move  ${(dp * 1e6).toFixed(1).padStart(9)} um\ncamera turn  ${(dr * 1e6).toFixed(1).padStart(9)} urad\nframes moved ${String(n).padStart(4)} / ${changed.length}\nmouse counts ${mouseX} x ${mouseY}\n` +

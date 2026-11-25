@@ -13,7 +13,11 @@ await page.goto(url + '?sandbox=' + level + (extra ? '&' + extra : ''));
 await page.waitForFunction(() => window.__game && window.__game.ready, null, { timeout: 180000 });
 await page.waitForFunction(() => !window.__game.game.loading && window.__game.game.level, null, { timeout: 240000 });
 await page.evaluate(() => window.__game.ui.closeMenus?.());
-await page.waitForTimeout(6000);
+await page.waitForTimeout(4000);
+if (process.env.WALK) { // walk forward, then stop and let the bob settle a moment
+  await page.keyboard.down('KeyW'); await page.waitForTimeout(+process.env.WALK); await page.keyboard.up('KeyW');
+  await page.waitForTimeout(+(process.env.SETTLE ?? 1500));
+}
 const r = await page.evaluate(() => new Promise((resolve) => {
   const game = window.__game.game, R = game.renderer;
   const rec = [];
@@ -27,7 +31,7 @@ const r = await page.evaluate(() => new Promise((resolve) => {
       proj: cam.projectionMatrix.elements.map((e) => e.toFixed(7)).join(','),
       sun: R.sun.position.toArray().map((e) => e.toFixed(5)).join(',') + '|' + R.sun.target.position.toArray().map((e) => e.toFixed(5)).join(','),
       shadowCam: R.sun.shadow.camera.matrixWorld.elements.map((e) => e.toFixed(5)).join(','),
-      bob: JSON.stringify(game.viewBob), shake: R.shake, punch: R.punch,
+      bob: JSON.stringify(game.viewBob), shake: R.shake, punch: R.punch, stride: game.player.stride.toFixed(6), vel: JSON.stringify(game.player.vel),
       lamps: R.lamps.group.children.filter((l) => l.isLight).map((l) => l.position.toArray().map((e) => e.toFixed(3)).join(',') + '@' + l.intensity.toFixed(3) + (l.visible ? '' : 'h')).join(';'),
       u: JSON.stringify(u), fog: R.scene.fog.near + ',' + R.scene.fog.far,
       res: R.post.renderSize.join('x') + ' q' + R.effectiveQuality, ticks: game.sim.tick,

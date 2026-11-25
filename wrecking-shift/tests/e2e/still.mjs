@@ -43,4 +43,41 @@ export async function runStillTests(url, test) {
     assert(errors.length === 0, 'console errors: ' + errors.join('\n'));
     await browser.close();
   });
+
+  // "heat waves" with head bob on: after walking, the bob must end at exactly zero and the final camera transform
+  // (after bob, punch, shake) must then be bit-identical every frame. Real-loop-like timing: 144 Hz frames, 60 Hz sim.
+  await test('still view: head bob on, walk then stop: the final camera settles to bit-identical within 0.5 s', async () => {
+    const { browser, page, errors } = await openGame(url, 'test=1&level=harbor');
+    try {
+    const r = await page.evaluate(() => {
+      const g = window.__game, game = g.game, R = game.renderer;
+      g.render(); g.step(120);
+      const s = game.ext.settings; if (s && !s.headBob) s.set('headBob', true);
+      const real = R.render.bind(R);
+      R.render = () => {}; // camera path only (setCamera, bob, punch, shake), no GPU work
+      let acc = 0, prev = null, lastChange = -1, maxBob = 0;
+      const frame = (walk, i) => {
+        const dt = 1 / 144; acc += dt;
+        if (walk) game.input.keys.add('KeyW'); else game.input.keys.delete('KeyW');
+        while (acc >= 1 / 60) { game.fixedStep(); acc -= 1 / 60; }
+        for (const m of game.modules) m.frameUpdate?.(game, dt);
+        game.draw(dt, false);
+        R.camera.updateMatrixWorld();
+        const key = R.camera.matrixWorld.elements.join(',');
+        if (!walk && prev !== null && key !== prev) lastChange = i;
+        prev = key;
+        if (walk) maxBob = Math.max(maxBob, Math.abs(game.viewBob.y));
+      };
+      for (let i = 0; i < 300; i++) frame(true, i);
+      const walked = game.player.stride;
+      for (let i = 0; i < 600; i++) frame(false, i);
+      R.render = real;
+      return { walked, maxBob, lastChange, bob: { ...game.viewBob }, headBob: !!s?.headBob };
+    });
+    assert(r.headBob && r.walked > 2 && r.maxBob > 0.005, 'walked with a visible bob: ' + JSON.stringify(r));
+    assert(r.bob.y === 0 && r.bob.roll === 0, 'bob ends at exactly zero: ' + JSON.stringify(r.bob));
+    assert(r.lastChange < 72, 'camera still changing ' + r.lastChange + ' frames (144 Hz) after stopping');
+    assert(errors.length === 0, 'console errors: ' + errors.join('\n'));
+    } finally { await browser.close(); }
+  });
 }

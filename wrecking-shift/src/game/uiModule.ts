@@ -54,7 +54,6 @@ export class UiModule implements GameModule, MenuHost {
   private endTimer = -1;
   private endKind: 'success' | 'fail' = 'success';
   private orbit = 0.6;
-  private prevStride = 0;
   private bobAmp = 0;
   /** time the pause menu was opened by losing pointer lock (ignore the Esc that caused it) */
   private lockPauseAt = 0;
@@ -196,9 +195,8 @@ export class UiModule implements GameModule, MenuHost {
   onLevelLoaded(game: Game): void {
     if (this.map.open) this.map.setOpen(game, false);
     this.endTimer = -1;
-    this.prevStride = 0;
     this.hud.reset();
-    game.viewBob.y = 0; game.viewBob.roll = 0;
+    game.viewBob.y = 0; game.viewBob.roll = 0; this.bobAmp = 0;
     if (!this.menus.name) game.controlsEnabled = true; // e.g. quickload during the end-of-mission delay
   }
 
@@ -254,15 +252,24 @@ export class UiModule implements GameModule, MenuHost {
     this.hud.update(game, dt, { visible: hudVisible && !this.map.open, mapOpen: this.map.open });
   }
 
+  /**
+   * Head bob only while actually walking. It used to take its speed from the stride change per *rendered* frame
+   * (0 / 2.4x alternating on a 144 Hz screen, since stride only advances on 60 Hz ticks) and decayed exponentially,
+   * so it never reached zero: the user saw "heat waves" on the ground while standing, gone with head bob off.
+   * Now: walking = movement input + on the ground + real horizontal speed from the sim; the amplitude moves linearly
+   * toward its target and ends at exactly 0 within ~0.25 s, after which the camera is bit-identical every frame.
+   */
   private headBob(game: Game, dt: number): void {
     const p = game.player;
-    const stride = p.stride;
     const on = !!game.ext.settings?.headBob && !game.cameraOverride && !p.seated && game.controlsEnabled;
-    const speed = dt > 0 ? Math.abs(stride - this.prevStride) / dt : 0;
-    this.prevStride = stride;
-    const target = on && p.grounded ? Math.min(1.3, speed / 5.2) : 0;
-    this.bobAmp += (target - this.bobAmp) * Math.min(1, dt * 8);
-    const ph = stride * (Math.PI / 0.75);
+    const input = Math.hypot(p.input.moveX, p.input.moveZ) > 0.01;
+    const hs = Math.hypot(p.vel.x, p.vel.z);
+    const walking = on && input && p.grounded && !p.inWater && hs > 0.6;
+    const target = walking ? Math.min(1.3, hs / 5.2) : 0;
+    const step = dt * 4;
+    this.bobAmp = this.bobAmp < target ? Math.min(target, this.bobAmp + step) : Math.max(target, this.bobAmp - step);
+    if (this.bobAmp === 0) { game.viewBob.y = 0; game.viewBob.roll = 0; return; }
+    const ph = p.stride * (Math.PI / 0.75);
     game.viewBob.y = this.bobAmp * 0.028 * Math.sin(ph * 2);
     game.viewBob.roll = this.bobAmp * 0.005 * Math.sin(ph);
   }
