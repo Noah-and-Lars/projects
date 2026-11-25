@@ -5,7 +5,8 @@ import { MODS, ModState, allMaps, allModes, allProps, allTools, allVehicles } fr
 import type { ModContext } from '../../src/mods/api';
 import { MAT, pal } from '../../src/sim/materials';
 import { Player } from '../../src/sim/player';
-import { VEHICLE_BLUEPRINTS, spawnVehicle } from '../../src/sim/prefabs/vehicles';
+import { VEHICLE_BLUEPRINTS, adoptVehicle, spawnVehicle } from '../../src/sim/prefabs/vehicles';
+import { restoreSim, snapshotSim } from '../../src/sim/snapshot';
 import { Sim, initPhysics } from '../../src/sim/sim';
 import { groundTile } from '../../src/sim/levels/testyard';
 import { ToolBelt, emptyToolInput } from '../../src/sim/tools/tool';
@@ -136,6 +137,22 @@ describe('mod props and vehicles spawn', () => {
       sim.dispose();
     });
   }
+});
+
+describe('mod vehicles survive quicksave / quickload', () => {
+  it('every mod vehicle is rebuilt around its restored chassis', () => {
+    const { sim } = yard();
+    const ids = allVehicles().map((v) => v.id);
+    ids.forEach((id, i) => spawnVehicle(sim, id, -20 + (i % 8) * 5, 0, -20 + Math.floor(i / 8) * 9, 0));
+    sim.step();
+    const snap = snapshotSim(sim);
+    const sim2 = new Sim(5);
+    restoreSim(snap, sim2);
+    const back = new Set<string>();
+    for (const b of sim2.bodies.values()) if (b.tags.has('vehicle')) { const v = adoptVehicle(sim2, b); if (v) back.add(v.spec.id); }
+    for (const id of ids) expect(back.has(id), id).toBe(true);
+    sim.dispose(); sim2.dispose();
+  });
 });
 
 describe('mod tools work', () => {

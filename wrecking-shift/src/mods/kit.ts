@@ -23,6 +23,7 @@ export { shootRay, spreadDir } from '../sim/tools/gun';
 export { emit } from '../sim/tools/util';
 export { VoxelGrid } from '../sim/voxels';
 export { carBlueprint, type CarParams } from './vehicleKit';
+export { Blue, slant, wheels } from '../sim/prefabs/vehicles';
 export { defineMod } from './api';
 export * as levelKit from '../sim/levels/kit';
 
