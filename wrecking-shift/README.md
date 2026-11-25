@@ -27,11 +27,14 @@ URL parameters: `?mission=<id>` (e.g. `paper-trail`), `?sandbox=<level>` (`harbo
 | WASD / mouse | move / look (click the view to capture the mouse) |
 | Space, Ctrl or C, Shift | jump, crouch, sprint |
 | LMB | use tool · RMB hold: grab an object (wheel = distance, LMB = throw) |
-| 1–0, mouse wheel, Q | select tool |
+| 1–6 · wheel · Q | tool group (press again: next tool in that group) · step through all tools · swap back |
 | E | interact: take targets/valuables, enter/exit vehicles, clock out at the escape van |
 | Tab | map · F3 debug overlay · Esc pause |
 | F, P | flashlight · photo mode (free camera, HUD hidden) |
 | F5 / F9 | quicksave / quickload (saving only while planning — not once the alarm runs) |
+| B | sandbox spawn menu (props and vehicles, built-in and from mods) |
+| R / F (loader) | raise / lower the bucket |
+| Gamepad | sticks move / look, triggers use tool, bumpers cycle tools, A jump, X interact, Start pause |
 | Driving | W/S throttle & brake/reverse, A/D steer, Space handbrake, V camera, R flip |
 
 ## Game structure
@@ -41,10 +44,36 @@ URL parameters: `?mission=<id>` (e.g. `paper-trail`), `?sandbox=<level>` (`harbo
 - **Sandbox**: any map, all tools, infinite ammo, choice of time of day and weather.
 - **Challenges**: Rubble Rush (destroy as much as you can in 90 s) and Snatch Sprint (grab loot crates and get out
   in 60 s) on any big map.
-- **Tools**: sledgehammer, spray can, extinguisher, blowtorch, handgun, shotgun, planks, cable, pipe bomb, bomb,
-  rocket launcher, nitro canister, rifle, leaf blower.
-- **Vehicles**: hatchback, van, wheel loader.
+- **Tools** (six groups on keys 1–6): sledgehammer, spray can, extinguisher, leaf blower · blowtorch, planks, cable,
+  booster can · handgun, shotgun, rocket launcher, rifle · pipe bomb, bomb, nitro canister. Cash buys ammo and power
+  upgrades (blast size, pellets, plank/cable length, …).
+- **Vehicles**: hatchback, van, wheel loader (raisable bucket) + 32 vehicles from mods.
 - **Security drones**: watchers (alarm after 2 s in sight) and gunners. Indestructible — but not waterproof.
+
+## Performance mode (low-end laptops)
+Esc (or title screen) → **Settings → Graphics → Performance mode (low-end laptops)**. It is remembered. It keeps all
+gameplay and switches to a tuned low-end profile: device pixel ratio 1, adaptive render resolution (50–85 %) with a
+sharpening upscale, cheaper lighting (no lighting volumes / bloom / TAA), a smaller shadow map refreshed every second
+frame, 170 m draw distance with fog, simpler water, and lower caps for debris, fire and particles plus at most two
+physics ticks per frame. If the game runs below ~24 fps for a while with it off, a small banner offers it (F7 or
+"Turn on"). Details and measurements: `DECISIONS.md` → "Performance mode".
+
+## Mods
+121 original built-in mods live in `mods/<category>/<id>.mod.ts` (props, tools, vehicles, maps, game modes, rule
+tweaks, looks); they are bundled at build time, so they also work in the single-file build.
+- **Mods** menu: title screen → *Mods*, or Esc → *Mods*. Switch mods on/off (remembered), filter by category,
+  search, enable/disable all shown. Content mods start enabled; rule tweaks and looks start disabled.
+- **Spawn menu**: in Sandbox press **B** (or Esc → *Spawn menu*): props and vehicles from enabled mods plus the
+  built-in ones are placed in front of you.
+- **Mod tools** join the belt in Sandbox (group 6 "Extras", key 6), **mod maps** appear in the Sandbox list,
+  **game modes** have a *Play* button in the Mods menu.
+- Writing a mod: `mods/README.md`; API `src/mods/api.ts`; helpers `src/mods/kit.ts`; every mod is exercised by
+  `tests/unit/mods.test.ts`.
+
+## Assists and accessibility
+Settings has Assists (extra alarm time or none, ammo ×1.5/×2, damage taken, unlock all jobs — results are tagged
+"assisted"), brightness, head-bob amount, key rebinding (Controls page), "tool bar always expanded", and gamepad
+support.
 
 ## Code map
 See `ARCHITECTURE.md`. Research notes on the genre reference are in `docs/research/`; design decisions and guesses

@@ -6,7 +6,42 @@ Branch: `teardown-voxel-game`, folder: `wrecking-shift/`. Research: `docs/resear
 (published from `dist/`; it could not be opened from the build container, so whether the artifact sandbox allows the
 physics WebAssembly and pointer lock is unverified — if it shows "Failed to start", run locally: `npm install && npm run dev`).
 
-## Latest pass (2026-11-24): ground glitch fix + voxel look (research: `docs/research/09-voxels-deep-dive.md`)
+## Night pass (2026-11-25): performance mode, gap fixes, mods, tool bar
+**Performance mode** — Settings → Graphics → *Performance mode (low-end laptops)* (remembered; `src/game/perfModule.ts`,
+`renderer.setPerformanceMode`). Tuned low tier, DPR 1, adaptive 50–85 % resolution with a contrast-adaptive
+sharpening upscale, 1024 shadow map refreshed every 2nd frame, 170 m draw distance behind fog, simple water,
+debris / fire / particle caps, ≤ 2 physics ticks per frame. Measured CPU (harbour, 40 blasts + fires): sim tick
+7.0 → 5.65 ms avg, 22 → 14.9 ms max. GPU cost judged by construction (no GPU here): see DECISIONS.md. A banner
+suggests it after ~12 s below 24 fps (F7 / Turn on / Not now / Don't ask again). Tests: `tests/e2e/perf.mjs`
+(applies live, persists, plays, screenshots `perf-*.png`).
+
+**Gap analysis** — `docs/research/10-gap-analysis.md` (sources), inventory research `12-inventory.md`, mods research
+`11-mods-research.md`. Filled: assists (alarm time / none, ammo ×1.5/×2, damage taken, unlock all jobs; results tagged
+assisted), target outline within 8 m + look-at names and jokes for props, key rebinding, fail-screen "Back to my
+save" + first-heist F5 hint, brightness + head-bob sliders, power upgrades in the workshop (blast, pellets, plank /
+cable length, …), the loader's bucket raises / lowers on a motorised hinge (R / F), a new Booster Can tool, gamepad
+support, and the sandbox spawn menu (B).
+
+**Tool bar / inventory** (relayed request: work like the genre reference) — six groups on keys 1–6 (again = next
+tool in the group), wheel through all tools, Q swaps back, compact always-on bar + expanded group columns on every
+switch (Settings: always expanded), low / empty ammo states, mod tools in group 6. Tests: `tests/unit/inventory.test.ts`,
+`tests/e2e/inventory.mjs` (`inv-*.png`).
+
+**Mods** — 121 original built-in mods (`mods/`): 25 prop packs (≈55 props), 21 tools, 31 vehicle mods (32 vehicles),
+13 maps, 11 game modes (each with its own small map), 11 rule tweaks, 9 looks. Format `src/mods/api.ts`, helpers
+`src/mods/kit.ts` + `vehicleKit.ts`, registry `src/mods/registry.ts` (Vite glob, bundled: works in the single-file
+build). Mods menu on the title screen and in the pause menu (on/off remembered, categories, search, conflicts),
+spawn menu, mod game-mode HUD + results. `tests/unit/mods.test.ts` builds every map, spawns + drives every vehicle,
+spawns every prop, uses every tool, runs every mode, applies / reverts every rule tweak, quickloads every mod
+vehicle; `tests/e2e/mods.mjs` covers the menus, spawning, a mod tool, a mod map and a mode (`mods-*.png`).
+
+**Known issues (this pass)** — performance-mode thresholds are reasoned, not measured on a real laptop; a parked
+empty car barely moves under a booster (its brakes hold); rebinding crouch drops the second default key (C); gamepad
+driving is on/off, not analog; the Controls page does not list gamepad buttons; mod tools are available in
+Sandbox and mod game modes only (not in career jobs or challenges); the tool test checks for *an* effect, not that
+the effect is good — mods were played by scripts and screenshots, not by a person.
+
+## Earlier pass (2026-11-24): ground glitch fix + voxel look (research: `docs/research/09-voxels-deep-dive.md`)
 **"The ground is glitched even when I am standing still" — cause and fix.** Logged the camera of a standing player:
 on every big map the eye flipped by 0.1 mm every physics tick (Rapier's character controller nudges the character
 off the ground, the -1 m/s ground-stick speed pulls it back), and on Kestrel Ridge's terraced slopes the player crept
