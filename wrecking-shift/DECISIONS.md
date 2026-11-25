@@ -366,3 +366,51 @@ Settings → Graphics → **Performance mode (low-end laptops)** (`settings.perf
   Don't ask again, remembered as `settings.perfHintOff`). Not forced: a guess about what players accept.
 - Guess: the exact thresholds (24 fps, 28-50 fps band, 170 m) are not measured on real laptops; they are the usual
   console-style targets (30 fps floor) and the fog distances of the overcast preset.
+
+## Power upgrades, loader bucket, booster can, gamepad — 2026-11-25
+Gaps 3 / 4 / 8 / Top-10 #5, #8, #9, #10 of `docs/research/10-gap-analysis.md`, built our own way.
+- **Power upgrades** (`src/sim/tools/power.ts` table, `Progress.powerLevel/buyPower/applyPower`, shop rows in
+  `src/game/ui/powerShop.ts`). Nine upgrades, 2-3 levels: sledge head (bite 0.55->0.82 m, reach 2.6->3.2 m), blowtorch
+  nozzle (0.15->0.27 m), shotgun load (8->14 pellets), plank length (4->7 m), cable spool (12->21 m), pipe-bomb blast
+  (1.0->1.4), bomb blast (1.6->2.35), rifle core (4->9 surfaces), booster fuel (3.5->5 s, +40 % thrust). Prices sit
+  between the ammo upgrades and roughly one job's pay per level (guess: one solid job, ~$200-400, buys one level).
+  Each upgrade stores *absolute* values per level (level 0 = stock, checked against the class defaults by a unit
+  test), so re-applying is idempotent and a fresh career resets the belt. Saved in the existing `upgrades` map under
+  dotted ids (`bomb.blast`) — old saves load with level 0, the save version stays 1, the ammo upgrade keys are
+  untouched. Applied in missions, the sandbox and challenges (guess: challenge bests are local only, so bought power
+  counting there is fine); free play (`?level=`) keeps stock tools. Because `Game.setupWorld` builds a new belt on
+  every load / quickload, `carryPower` copies the stats over the same way `maxAmmo` already was. Charges already placed
+  keep the blast size they were placed with (it is copied into each charge, and saved with it).
+- **Loader bucket** (`VehicleSpec.arm`, `VehicleArm` in `src/sim/vehicle.ts`, `loaderBlueprint`): the lift arms and
+  bucket are a *second dynamic voxel body* (kind 'vehicle', tags `vehicle-arm`, `arm-of:<chassis id>`) on a Rapier
+  revolute joint about the chassis X axis with a force-based position motor (600 kN·m/rad, damping 90 kN·m·s,
+  160 kN·m cap, limits -0.2 .. 0.9 rad). Chosen over a kinematic offset because the bucket then really collides,
+  carries load and is pushed back by what it hits. Chassis mass 7500 -> 6800 kg + 700 kg arm (same total).
+  The arm rams like the chassis front (same probe/carve code run on the arm body when moving forward), so the loader
+  still digs through walls with the bucket at any height. Angle 0 = the old fixed carry pose, so the Ridge road and
+  wall tests drive exactly the geometry they were tuned on. Controls: hold **R** raise / **F** lower while driving (R
+  only flips when the vehicle is on its side; F's flashlight toggle is skipped while in a vehicle with an arm),
+  gamepad RB / LB. Quicksave: the target angle lives in the arm body's `user.armTarget`, the snapshot restores the
+  arm body by id, `adoptVehicle` finds it by tag and re-creates the joint (the relative pose = the angle).
+  **Scoop assist:** a voxel cutting edge is a 0.1 m step and a box pushed by a step just slides along the ground, so
+  with the bucket fully lowered and the loader creeping forward (0.15-4 m/s), loose bodies (< 2.5 t) right at the lip
+  get their velocity nudged up and back into the bucket. A deliberate gameplay assist standing in for a sharp
+  wedge edge the voxel collider cannot represent.
+- **Booster can** (`src/sim/tools/booster.ts`, id `booster`, unlocks at Load Bearer with the planks): sticks with
+  `placeSticky` like the nitro / bomb, lights after a 1 s fuse (no separate ignite key: E is already interact and
+  there is no free mouse button — guess that auto-light reads better than a hidden key), burns 3.5 s pushing the
+  glued partner along the stuck surface normal (into the surface) at 9 kN, capped at 28 m/s² so small props do not
+  vanish; a can knocked loose flies by itself; burnt cans are removed. Only on dynamic bodies (on a building it would
+  do nothing; the click is refused without using a can). Parked cars barely move (their brakes and handbrake hold, as
+  they should); a car with someone at the wheel takes off. Flame / smoke from `toolsModule` (reads `booster.live`),
+  sound: new `boost` loop + torch-on/off one-shots through `tool:boost` / `tool:boostEnd` events. Quicksave via
+  `save/load` (sticky + remaining fuse / burn ticks).
+- **Gamepad** (`src/game/gamepad.ts` pure mapping + `GamepadInput`, `src/game/gamepadModule.ts`): the pad is turned
+  into the same key codes / mouse motion / mouse buttons / wheel the keyboard produces (synthetic keydown / keyup),
+  so menus, tools, vehicles and future key rebinding need no gamepad code. Polled once per frame *before* the game
+  gathers input (`Input.poll`, one line in `Game.frame`). Right stick = 1100 "mouse px"/s at full tilt x the mouse
+  sensitivity setting (so the Settings slider and invert-Y apply), dead zone 0.22 + squared curve. Driving is digital
+  (RT/LT thresholds -> W/S) like the keyboard. Menus: d-pad / left stick move focus over the visible buttons of the top
+  `.ws-menu`, left/right adjust a focused slider, A clicks, B / Start = Esc. Guess: "standard" mapping layout (the
+  W3C one every modern browser reports for Xbox / PlayStation pads); non-standard pads may have other indices.
+  Not done: on-screen button glyphs and a gamepad column on the Controls page (another branch is rebuilding that page).

@@ -15,6 +15,7 @@ import { createPhotoModule } from './photoModule';
 import { createLookModule } from '../render/lookModule';
 import { createPerfModule } from './perfModule';
 import { createModsModule } from './modsModule';
+import { createGamepadModule } from './gamepadModule';
 
 /**
  * Module registry. Each feature adds ONE import and ONE entry here.
@@ -36,6 +37,7 @@ export function createModules(): GameModule[] {
     createAtmosModule(), // after mission + challenge: applies the sandbox / challenge time + weather choice
     createEdgeModule(),
     createQuicksaveModule(),
+    createGamepadModule(),
     createPhotoModule(), // before the UI: its key handler must see Esc / Tab first while flying
     // keep the UI last: it reads state the other modules produced this frame (camera overrides, prompts)
     new UiModule(),

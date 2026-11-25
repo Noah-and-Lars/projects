@@ -46,6 +46,7 @@ await runLookTests(url, test);
 await (await import('./still.mjs')).runStillTests(url, test);
 await (await import('./diag.mjs')).runDiagTests(url, test);
 await (await import('./perf.mjs')).runPerfTests(url, test);
+await (await import('./gameplay2.mjs')).runGameplay2Tests(url, test);
 await (await import('./mods.mjs')).runModsTests(url, test);
 
 srv.close();

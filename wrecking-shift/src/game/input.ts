@@ -51,6 +51,9 @@ export class Input {
   exitLock(): void {
     if (document.pointerLockElement) document.exitPointerLock();
   }
+  /** per-frame input sources polled before the game reads input (gamepad: src/game/gamepadModule.ts) */
+  readonly pollers: ((dt: number) => void)[] = [];
+  poll(dt: number): void { for (const p of this.pollers) p(dt); }
   down(code: string): boolean { return this.keys.has(code); }
   /** true once per key press */
   hit(code: string): boolean { return this.pressed.has(code); }
