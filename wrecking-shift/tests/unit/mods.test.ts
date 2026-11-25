@@ -41,7 +41,7 @@ function yard(): { sim: Sim; player: Player; fire: FireSystem } {
 
 describe('mod registry', () => {
   it('loads more than 100 mods with unique ids, names, descriptions and a category', () => {
-    expect(MODS.length).toBeGreaterThanOrEqual(Number(process.env.MODS_MIN ?? 7));
+    expect(MODS.length).toBeGreaterThanOrEqual(Number(process.env.MODS_MIN ?? 100));
     const ids = new Set(MODS.map((m) => m.id));
     expect(ids.size).toBe(MODS.length);
     for (const m of MODS) {

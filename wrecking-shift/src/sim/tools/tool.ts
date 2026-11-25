@@ -141,6 +141,8 @@ export class ToolBelt {
     }
     // mouse wheel cycles tools when not holding anything
     if (input.scroll && !this.grab.holding) this.cycle(ctx, input.scroll > 0 ? 1 : -1);
+    // no usable tool (e.g. a game mode that allows none): hands only (grab still works)
+    if (!this.current.unlocked) return;
     this.current.update(ctx, input);
   }
   refillAll(): void { for (const t of this.tools) t.refill(); }

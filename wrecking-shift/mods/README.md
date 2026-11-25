@@ -39,3 +39,5 @@ Rules:
   runs every mode and applies / reverts every rule tweak. Run it with `npx vitest run tests/unit/mods.test.ts`.
 - Everything must be original: own names, designs and content. No real brands, no trademarked vehicles, nothing
   copied from other games or their mods.
+- `global.apply` runs once per level load (and when the mod is switched on mid-level); `revert` when it is
+  switched off. Save the original values in `apply` and restore them in `revert` instead of multiplying blindly.

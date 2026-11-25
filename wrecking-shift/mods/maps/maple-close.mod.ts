@@ -35,9 +35,9 @@ export default defineMod({
         const g = makeBuilding({ w, d, floors: 2, wall, lining: MAT.plaster, roof: 'gable', roofMat: roof, slab: MAT.wood, doors: door, partitions: true, lamps: true, winStep: 22, seed });
         placeBuilding(sim, g, x, 0, z, 'house');
         // a bit of furniture on the ground floor
-        const cx = x + w * 0.05, cz = z + d * 0.05;
+        const cx = x + 0.5, cz = z + 0.5;
         sofa(sim, cx + 1, 0.15, cz + 1.2, rng.range(-0.3, 0.3), [MAT.fabric, MAT.plastic, MAT.rubber][seed % 3]);
-        table(sim, cx + 3.2, 0.15, cz + 3);
+        table(sim, cx + 2.2, 0.15, cz + 3);
         bed(sim, cx + 1, 3.15, cz + 1, 0);
       }
       // garages beside the side houses

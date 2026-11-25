@@ -11,7 +11,7 @@ export async function runModsTests(url, test) {
     await page.evaluate(() => { localStorage.removeItem('wrecking-shift-mods'); window.__game.ui.openMenu('main'); });
     await page.click('[data-act=open][data-id=mods]');
     const info = await page.evaluate(() => ({ rows: document.querySelectorAll('.ws-mod').length, total: window.__game.game.ext.mods.all.length }));
-    assert(info.total >= Number(process.env.MODS_MIN ?? 7) && info.rows === info.total, 'every mod listed: ' + JSON.stringify(info));
+    assert(info.total >= Number(process.env.MODS_MIN ?? 100) && info.rows === info.total, 'every mod listed: ' + JSON.stringify(info));
     await shot(page, 'mods-01-menu');
     // category tab + search
     await page.click('[data-act=modcat][data-id=vehicles]');

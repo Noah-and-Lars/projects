@@ -86,7 +86,8 @@ export function createModsModule(): GameModule {
   const applyGlobals = (g: Game) => {
     const want = state.enabled().filter((m) => m.global);
     for (const m of applied) if (!want.includes(m)) { try { m.global!.revert?.(ctx(g)); } catch (e) { console.warn('[mods] revert', m.id, e); } }
-    for (const m of want) { try { m.global!.apply?.(ctx(g)); } catch (e) { console.warn('[mods] apply', m.id, e); } }
+    // apply only mods not applied to this level yet (re-applying would compound multipliers)
+    for (const m of want) if (!applied.includes(m)) { try { m.global!.apply?.(ctx(g)); } catch (e) { console.warn('[mods] apply', m.id, e); } }
     applied = want;
   };
 
@@ -190,6 +191,7 @@ export function createModsModule(): GameModule {
         g.belt.refillAll();
       }
       unlockTools(g);
+      applied = []; // a fresh level: every enabled rule tweak applies again
       applyGlobals(g);
       if (mode) {
         try { mode.rules.start(ctx(g)); } catch (e) { console.warn('[mods] mode start', mode.def.id, e); mode = null; }

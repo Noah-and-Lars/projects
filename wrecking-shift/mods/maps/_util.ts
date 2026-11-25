@@ -303,3 +303,12 @@ export function fell(o: { tag: string; below: number; seconds: number; label?: s
     protected override timeUp() { this.finish(false, `Time up: ${this.down} / ${this.bodies.length} down`); }
   })(o.seconds);
 }
+
+/** floating glowing marker 2.6 m above a checkpoint (static, out of the way of runners and cars) */
+export function beacon(sim: Sim, p: V3, i = 0): VoxelBody {
+  const g = new VoxelGrid(5, 5, 5);
+  box(g, 0, 0, 0, 5, 5, 5, pal(MAT.lamp));
+  box(g, 1, 1, 0, 4, 4, 5, pal(i % 2 ? MAT.alarmbox : MAT.gold, 1));
+  box(g, 0, 1, 1, 5, 4, 4, pal(i % 2 ? MAT.alarmbox : MAT.gold, 1));
+  return levelKit.addStatic(sim, g, p.x - 0.25, p.y + 2.6, p.z - 0.25, 'checkpoint beacon', ['beacon']);
+}

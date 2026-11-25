@@ -235,11 +235,19 @@ export function demolish(o: { tag: string; fraction: number; seconds: number; la
 export function topple(o: { tag: string; below: number; seconds: number; label?: string }): ModeRules {
   return new (class extends BaseRules {
     total = 0;
+    tops = new Map<number, number>();
     start(ctx: ModContext) { for (const b of ctx.sim.bodies.values()) if (b.tags.has(o.tag)) this.total++; }
     step(ctx: ModContext) {
       let standing = 0;
       for (const b of ctx.sim.bodies.values()) {
         if (!b.tags.has(o.tag) || b.removed) continue;
+        if (!b.dynamic) {
+          // anchored: standing while voxels remain above the line (its base always stays)
+          if (this.ticks % 15 === 1 || !this.tops.has(b.id)) this.tops.set(b.id, topVoxel(b));
+          const top = b.toWorld({ x: 0, y: this.tops.get(b.id)! + 1, z: 0 }).y;
+          if (top > o.below) standing++;
+          continue;
+        }
         const t = b.rb.translation();
         // top of the body's box in world space, roughly: centre of mass height + half height when upright
         const up = b.toWorld({ x: b.grid.sx / 2, y: b.grid.sy, z: b.grid.sz / 2 });
@@ -251,6 +259,13 @@ export function topple(o: { tag: string; below: number; seconds: number; label?:
       if (this.total > 0 && standing === 0) { this.score += Math.round((this.timeLeft ?? 0) * 10); this.finish(true, 'All down!'); }
     }
   })(o.seconds);
+}
+
+/** highest occupied voxel layer of a body (-1 = empty) */
+function topVoxel(b: VoxelBody): number {
+  const g = b.grid;
+  for (let y = g.sy - 1; y >= 0; y--) for (let z = 0; z < g.sz; z++) for (let x = 0; x < g.sx; x++) if (g.data[g.idx(x, y, z)]) return y;
+  return -1;
 }
 
 /** deterministic ring of points around a centre (for checkpoint / collect layouts) */
