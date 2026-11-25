@@ -95,3 +95,14 @@ tests/unit/     Vitest (Node)         tests/e2e/   Playwright smoke tests agains
   `markDirtyVoxel`). Glass and lamp voxels do not block light. `lamp`-like emissive voxel clusters get point lights.
 - Look tests: `node tests/e2e/look.mjs` (also part of run.mjs; `LOOK_FULL=1` renders every tier x preset x viewpoint);
   dev helpers `tests/e2e/lookdev.mjs`, `probe.mjs`, `specks.py`. CPU benchmarks: `BENCH=1 npx vitest run tests/unit/perf.test.ts`.
+
+## Power upgrades, vehicle arms, booster, gamepad
+- `src/sim/tools/power.ts` — `POWER_UPGRADES` (absolute tool stat values per level, level 0 = class default) +
+  `applyPower` / `carryPower`. `Progress.powerLevel/buyPower/applyPower` store levels in `save.upgrades` under dotted
+  ids. Shop rows: `src/game/ui/powerShop.ts`. A new upgradeable stat must be a plain numeric tool field.
+- `VehicleSpec.arm` (`ArmSpec`) + `VehicleBlueprint.arm` → `Vehicle.arm` (`VehicleArm`): a second voxel body on a
+  motorised revolute joint (loader bucket). `VehicleInput.arm` -1..1; R / F while driving. Arm bodies are tagged
+  `vehicle-arm` + `arm-of:<chassis id>` and found again by `adoptVehicle` after a quickload.
+- `src/sim/tools/booster.ts` — sticky thruster can (`tool:boost` / `tool:boostEnd` events).
+- `src/game/gamepad.ts` (pure `mapPad`, `GamepadInput`) + `gamepadModule.ts`: the pad is mapped to key codes, mouse
+  motion / buttons and wheel steps; polled through `Input.pollers` before the game gathers input each frame.
