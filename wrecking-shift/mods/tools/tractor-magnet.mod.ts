@@ -13,7 +13,7 @@ class TractorMagnet extends Tool {
   override look = 'leafblower';
   override hint = 'LMB hold to pull';
   range = 12;
-  cone = Math.cos(0.35);
+  cone = Math.cos(0.85);
   hold = 2.2;
   /** spring stiffness (1/s²) and damping (1/s) */
   k = 18;

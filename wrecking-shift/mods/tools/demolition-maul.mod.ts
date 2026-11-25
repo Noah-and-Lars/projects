@@ -3,7 +3,7 @@ import { Tool, type ToolContext, type ToolInput } from '../../src/sim/tools/tool
 import { add, fx } from './_util';
 
 /**
- * Heavy two-handed maul: a long wind-up, then a big bite that also cracks brick and dirt (medium), never
+ * Heavy long-handled maul: a long wind-up, then a big bite that also cracks brick and dirt (medium), never
  * steel or concrete. Hold LMB to keep swinging.
  */
 class DemolitionMaul extends Tool {
@@ -11,7 +11,7 @@ class DemolitionMaul extends Tool {
   readonly name = 'Demolition Maul';
   override look = 'sledge';
   override hint = 'LMB heavy swing';
-  reach = 2.8;
+  reach = 3.2;
   rate = 84;
   impactTick = 30;
   swingT = -1;

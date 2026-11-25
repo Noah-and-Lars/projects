@@ -16,7 +16,11 @@ import { VoxelGrid } from '../sim/voxels';
 import type { MapDef, ModContext, ModeRules, ModeStatus } from './api';
 
 export * from '../sim/build';
-export { MAT, pal } from '../sim/materials';
+export { MAT, pal, matOf, PAL_FLAMMABILITY, PAL_HARDNESS } from '../sim/materials';
+export { DT } from '../sim/sim';
+export { qyaw, qrot } from '../sim/vec';
+export { shootRay, spreadDir } from '../sim/tools/gun';
+export { emit } from '../sim/tools/util';
 export { VoxelGrid } from '../sim/voxels';
 export { carBlueprint, type CarParams } from './vehicleKit';
 export { defineMod } from './api';

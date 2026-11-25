@@ -13,8 +13,8 @@ class CoreDrill extends Tool {
   override hint = 'LMB hold to bore';
   override ammo = 25 * 60;
   override maxAmmo = 25 * 60;
-  /** the bit reaches this far (the blowtorch look reads `range` for its flame) */
-  range = 2.2;
+  /** extended bore bar: the bit reaches this far (the blowtorch look reads `range` for its flame) */
+  range = 3.5;
   radius = 0.32;
   private spin = 0;
 

@@ -49,6 +49,12 @@ export interface PropDef {
   spawn(sim: Sim, pos: V3, yaw: number): VoxelBody | VoxelBody[];
 }
 
+/**
+ * Tools set `look` to a built-in tool id for their view model, sounds and effects. Some looks expect fields the
+ * presentation reads (src/game/toolsModule.ts): 'rocket' -> `projectiles: {pos, vel}[]`, 'pipebomb' ->
+ * `live: {pos}[]`, 'blowtorch' -> `range`, 'cable' -> `ends()` + `preview`, 'plank' -> `preview`. Subclass the
+ * built-in tool (or use `variant`) to get them for free.
+ */
 export interface ToolDef {
   /** global tool id (prefix it with the mod id to stay unique) */
   id: string;

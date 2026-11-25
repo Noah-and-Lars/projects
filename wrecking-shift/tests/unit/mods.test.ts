@@ -147,6 +147,9 @@ describe('mod tools work', () => {
       const belt = new ToolBelt([tool]);
       const ctx = { sim, player, infiniteAmmo: false, fire };
       tool.onSelect(ctx);
+      // let the yard settle first so settling impacts do not count as the tool's effect
+      for (let i = 0; i < 60; i++) sim.step();
+      sim.drainEvents();
       const seen = new Set<string>();
       let removed = 0;
       sim.onRemoved.push(() => { removed++; });
@@ -162,7 +165,7 @@ describe('mod tools work', () => {
         sim.step();
         for (const e of sim.drainEvents()) seen.add(e.type === 'custom' ? e.name : e.type);
       }
-      const did = [...seen].filter((n) => n !== 'custom' && n !== 'tool:select' && n !== 'tool:empty');
+      const did = [...seen].filter((n) => n !== 'custom' && n !== 'tool:select' && n !== 'tool:empty' && n !== 'impact' && n !== 'crumb');
       expect(did.length + removed, `${td.id} had no effect (events: ${[...seen].join(', ')})`).toBeGreaterThan(0);
       expect(finite(player.pos)).toBe(true);
       sim.dispose();
