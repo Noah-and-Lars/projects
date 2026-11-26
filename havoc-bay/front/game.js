@@ -332,6 +332,25 @@ function poseSoldier(s, dt) {
   m.hips.position.y = s.crouch ? .62 : .95; if (s.crouch) { m.legs[0].thigh.rotation.z = 1.2; m.legs[0].shin.rotation.z = -1.9; m.legs[1].thigh.rotation.z = .3; m.legs[1].shin.rotation.z = -1.4; }
   if (s.swim) { m.hips.position.y = .6; m.torso.rotation.z = -.9; } else m.torso.rotation.z = 0;
   m.arms.rotation.z = clamp(s.pitch, -.9, .9);
+  if (m.real) poseReal(s, m, sp, dt);
+}
+function poseReal(s, m, sp, dt) { // the realistic soldier: a proper gait, hip bob, lean, breathing, a level head
+  s._t = (s._t || Math.random() * 9) + dt;
+  const run = clamp((sp - 2) / 3, 0, 1), amp = Math.min(sp / 3.2, 1) * (.42 + run * .32), ph = s.walk * (2.2 - run * .5);
+  if (!s.crouch && !s.swim) {
+    for (let k = 0; k < 2; k++) {
+      const sg = k ? -1 : 1, a = Math.sin(ph) * amp * sg, swing = Math.max(0, Math.cos(ph) * sg);
+      m.legs[k].thigh.rotation.z = a + run * .12;
+      m.legs[k].shin.rotation.z = -(swing * amp * 1.7 + Math.max(0, -a) * .5 + .04 + run * .2);
+    }
+    m.hips.position.y = .95 - amp * .05 - run * .05 + Math.cos(ph * 2) * .022 * amp;
+  }
+  const lean = -(Math.min(sp / 6, 1) * .14 + run * .08), breathe = Math.sin(s._t * 1.7) * .012 * (1 - amp);
+  if (!s.swim) m.torso.rotation.z = lean + breathe + (s.crouch ? -.18 : 0);
+  m.torso.rotation.y = Math.sin(ph) * .1 * amp; m.hips.rotation.y = -Math.sin(ph) * .06 * amp;
+  m.arms.rotation.z = clamp(s.pitch, -.9, .9) - m.torso.rotation.z;
+  m.arms.rotation.x = -Math.sin(ph) * .03 * amp;
+  m.head.rotation.z = -m.torso.rotation.z * .7 + clamp(s.pitch, -.6, .6) * .4; m.head.rotation.y = -m.torso.rotation.y;
 }
 function soldierShoot(s, aimPoint, dt, wantFire, inaccuracy) {
   s.cool -= dt;

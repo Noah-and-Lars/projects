@@ -108,7 +108,9 @@ class Soldier extends Ent {
     this.npc = !!o.npc; this.isPlayer = !!o.player; this.bot = o.bot || null; this.name = o.name || '';
     this.hp = SOLDIER_HP; this.yaw = 0; this.pitch = 0; this.onGround = true; this.veh = null; this.walk = 0; this.crouch = false;
     this.mag = 30; this.ammo = 210; this.reload = 0; this.cool = 0; this.rpg = 3; this.slot = 0; this.dead = 0; this.lastHurt = -99;
-    this.model = buildSoldier(team, this.npc); mergeModel(this.model.root); scene.add(this.model.root);
+    if (WORLD.gfx === 'realistic') this.model = buildRealSoldier(team, this.npc); // real-soldier.js
+    else { this.model = buildSoldier(team, this.npc); mergeModel(this.model.root); }
+    scene.add(this.model.root);
   }
   get eye() { return _eye.set(this.pos.x, this.pos.y + (this.crouch ? 1.15 : 1.6), this.pos.z); }
   get chest() { return _chest.set(this.pos.x, this.pos.y + 1.25, this.pos.z); }

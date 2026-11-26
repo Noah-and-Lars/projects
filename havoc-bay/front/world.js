@@ -392,6 +392,7 @@ function buildCheckpoint(M, p) {
   p.flag = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 2.7), new THREE.MeshLambertMaterial({ color: 0xdedede, side: THREE.DoubleSide })); p.flag.position.set(fx + 2.3, y0 + 12.6, fz); WORLD.group.add(p.flag);
 }
 function buildTowns(M) {
+  if (WORLD.gfx === 'realistic') return buildRealTowns(M); // European villages (real-town.js)
   for (const [x, y, w, d, a] of M.buildings) {
     const s = new Site(x * 1000, y * 1000, a, groundY(x * 1000, y * 1000) - .3), W = w * 1000, D = d * 1000;
     s.roofHouse(0, 0, W, D, 3.2 + (W * 7 | 0) % 3 * 2.8, [0xd8cfb8, 0xc9bfa4, 0xe0d6c2, 0xb8ad94][(W * 3 | 0) % 4], [0x8a4b38, 0x6b5a4a, 0x7b3f30][(D * 5 | 0) % 3]);
@@ -427,6 +428,7 @@ function buildWorld(M) {
   M.bases.forEach((b, t) => buildTeamBase(M, b, t));
   M._cps.forEach(p => buildCheckpoint(M, p));
   buildTowns(M); buildAirfields(M); buildDocks(M);
+  if (WORLD.gfx === 'realistic') buildRealFlora(M); // woods, hedgerows and grass, clear of the houses
   batchFlush(WORLD.group);
   if (WORLD.gfx === 'realistic') flushWire();
 }

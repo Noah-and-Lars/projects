@@ -18,9 +18,14 @@ Open `index.html` in this folder, or use the **Island Front** card on Havoc Bay'
 The title screen has a **Graphics** setting:
 
 - **Optimised**: the original lighter map. Runs on most computers.
-- **Realistic**: a finer 13 m terrain grid with textured ground (grass, dirt, rock, sand), dry patches and farm fields, wind-blown grass and rocks round the camera, dense forests (detailed trees up close, billboards far away), wave water with shore foam, a sky with sun and clouds, textured buildings (windows, tiled roofs, concrete, sandbags), asphalt roads with markings, power lines, and tents, containers, nets and razor wire in the compounds. Needs a good graphics card.
+- **Realistic**: European countryside in the style of Normandy and Poland. A finer 13 m terrain grid with textured ground, farm fields boxed in by hedgerows and dry stone walls, stone villages, mixed woods, wind-blown grass, wave water with shore foam, and a sky with sun and clouds. Needs a good graphics card.
+  - **Villages**: stone farmhouses, half-timbered, plaster and brick houses and barns, with windows and doors set into the walls, shutters, sills, steep tiled or slate roofs with overhanging eaves and chimneys, and a church with a spire in every town. Gardens behind the houses have stone walls or hedges.
+  - **Woods**: oak, beech, birch, Norway spruce and Scots pine, with hazel scrub thickening the forest edges and ferns on the forest floor. Each tree has three levels of detail: a full model with branches and leaf sprays up to 140 m, a lighter model up to 620 m, and a billboard beyond. The leaf cards' normals are bent onto a sphere round each crown so a tree shades as one volume, and the leaf textures keep their coverage in the smaller mipmaps so distant trees don't thin out.
+  - **Fields**: wheat, young crops, pasture and ploughed land round each town, with hedgerow oaks.
+  - **Grass**: real curved, tapering blades within 28 m of the camera, finer grass cards to 80 m, coloured to match the ground's green and dry patches, all moving in gusts of wind.
+  - **Soldiers**: proper proportions with smooth limbs, camouflage uniforms (woodland for Blue, tan for Red, grey for the guards), plate carriers with pouches, radios and hydration packs, helmets with covers and mounts, gloves, boots, and detailed rifles (M4, AK-74M, AKM). They walk and run with a proper gait, lean into a run, breathe when standing and keep their heads level.
 
-Everything in Realistic mode is generated in code (`realistic.js`); there are no image files.
+Everything in Realistic mode is generated in code; there are no image files. Optimised mode looks exactly as before.
 
 ## Vehicles
 
@@ -40,7 +45,10 @@ Each team has its own real-world vehicles: Blue drives the M1A2 Abrams, M2A2 Bra
 | `three.r128.js` | three.js r128, the same build Havoc Bay embeds |
 | `maps.js` | The three map definitions and the terrain generator (heights in metres on a 26.7 m grid) |
 | `world.js` | Renderer, terrain mesh, sea, forests, roads, bridges, buildings, colliders (Optimised look) |
-| `realistic.js` | The Realistic graphics mode |
+| `realistic.js` | The Realistic graphics mode: terrain, ground textures, sky, water, power lines, compound clutter |
+| `real-flora.js` | Realistic mode plants: tree species and their three levels of detail, hedgerows, grass, wheat, ferns, pebbles |
+| `real-town.js` | Realistic mode villages: the wall and roof textures, houses, barns, churches, garden and field walls |
+| `real-soldier.js` | Realistic mode soldiers: camouflage, kit, rifles |
 | `vehicles.js` | Real vehicles, ammunition, armour, modules, crew and the damage model |
 | `units.js` | Howitzer and soldier models, projectiles, effects, sound |
 | `game.js` | Match rules, checkpoints, NPC guards, howitzers, bots, player controls, camera, HUD, menus |
@@ -53,6 +61,9 @@ Each team has its own real-world vehicles: Blue drives the M1A2 Abrams, M2A2 Bra
 - Howitzer accuracy, range and reload: `HIT_CHANCE`, `HOW_RANGE`, `HOW_COOL` in `game.js`.
 - Vehicle stats, armour and modules: `VEH` in `vehicles.js`.
 - Ammunition: `AMMO` in `vehicles.js`.
+- Realistic tree species, sizes and crown shapes: `SPECIES` in `real-flora.js`; level-of-detail distances: `NEAR_R`, `FAR_R`.
+- What each town is built of: `TOWN_KIND` in `real-town.js`.
+- Soldier camouflage, kit colours and rifles: `KIT` in `real-soldier.js`.
 
 ## Testing
 
