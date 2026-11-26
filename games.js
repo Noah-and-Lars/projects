@@ -24,6 +24,20 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'snow-rider-3d',
+    title: 'Snow Rider 3D',
+    category: 'Racing',
+    tagline: 'Sled down an endless snowy mountain. Dodge trees, rocks and snowmen, and jump the obstacles.',
+    description: 'Ride a sled down a snowy mountain that never ends, steering around trees, rocks and snowmen and jumping over obstacles. Collect gifts along the way and spend them in the shop. Single player.',
+    controls: 'Keyboard or touch',
+    keys: [['← →', 'Steer'], ['↑', 'Jump'], ['Click / tap', 'Start, menus and restart']],
+    path: 'snow-rider-3d/index.html',
+    thumb: 'snow-rider-3d/thumb.jpg',
+    added: '2026-11-26T20:30:00+11:00',
+    updated: '2026-11-26T20:30:00+11:00',
+    // No stat(): the game keeps its best score in IndexedDB (Unity PlayerPrefs), which the site can't read.
+  },
+  {
     id: 'mile-zero',
     title: 'Mile Zero',
     category: 'Driving',
@@ -423,6 +437,7 @@ window.COMING_SOON = [
 ];
 
 window.NEWS = [
+  { date: '2026-11-26', game: 'snow-rider-3d', imgs: ['snow-rider-3d/news/1.0-title.jpg', 'snow-rider-3d/news/1.0-ride.jpg', 'snow-rider-3d/news/1.0-menu.jpg'], headline: 'Snow Rider 3D is out', text: 'New game: Snow Rider 3D. Ride a sled down a snowy mountain that never ends, steer around trees, rocks and snowmen and jump over obstacles. Collect gifts on the way and spend them in the shop.', post: "\u2744\ufe0f SNOW RIDER 3D is out now!\n\n\ud83d\udef7 Sled down a mountain that never ends\n\ud83c\udf32 Dodge trees, rocks and snowmen\n\u2b06\ufe0f Jump the obstacles\n\ud83c\udf81 Grab gifts and spend them in the shop\n\nHow far can you ride? \ud83d\udc47\n\n#snowrider3d #TheArcade #NewGame" },
   { date: '2026-11-25', href: 'players.html', imgs: ['news/players-standby.jpg'], headline: 'New: Standby', text: "Players tab: when someone switches to another tab or app, they now show as Standby (with an orange dot) instead of Online or the game they're playing. They still count towards the players online, and it goes back to normal as soon as they come back to the tab.",
     post: "🟠 New on The Arcade: STANDBY!\n\n👀 Switched to another tab? You now show as Standby on the Players page, with an orange dot\n🎮 Still counted in the players online\n↩️ Back to Online (or the game you're on) the moment you come back" },
   { date: '2026-11-25', href: 'players.html', imgs: ['news/players-sort.jpg'], headline: 'Sort the Players list', text: 'Players tab: a new menu next to the player count sorts everyone by Last online, Newest joined or Name. It starts on Last online (people online now at the top) and remembers what you pick. The All, Friends, Requests and Chats buttons are fixed too: they were squashed and off-centre, now they line up evenly.' },
