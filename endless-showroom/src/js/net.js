@@ -16,6 +16,8 @@
 //            c  chat;  x  someone was caught
 //            pu a shove, to the host;  wh  someone whistled
 //            nz someone made a noise with a toy (the host lets the staff hear it)
+//            of a newcomer to a public store offers its saved copy of this week's store, to the host
+//            rs the host opens this week's fresh public store (Sunday)
 //            need / full  a newcomer asks for, and gets, the store's changes
 const RT_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=2';
 const MAX = 8;
@@ -38,12 +40,32 @@ export function myName() {
   return 'Shopper';
 }
 
+// Public stores are this week's store: the same store for everyone from the
+// start of Sunday to the end of Saturday (Sydney time), then a fresh one.
+// storeWeek() is the day number of the Sunday the week started on.
+export function storeWeek(now = Date.now()) {
+  let y, m, d, wd;
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Australia/Sydney', year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short' }).formatToParts(new Date(now));
+    const g = (t) => parts.find((p) => p.type === t).value;
+    y = +g('year'); m = +g('month'); d = +g('day'); wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(g('weekday'));
+    if (!(y > 0) || wd < 0) throw new Error('no time zone');
+  } catch (_) { const t = new Date(now + 10 * 3600e3); y = t.getUTCFullYear(); m = t.getUTCMonth() + 1; d = t.getUTCDate(); wd = t.getUTCDay(); }
+  return Math.round(Date.UTC(y, m - 1, d) / 864e5) - wd;
+}
+// The store a public room has this week (the same on every screen).
+export function publicSeed(room, week = storeWeek()) {
+  let h = 2166136261;
+  for (const ch of room + ':' + week) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
 export function myShirt() { try { const v = parseInt(localStorage.getItem('es-shirt'), 10); return v >= 0 && v < 10 ? v : -1; } catch (_) { return -1; } }
 
 export function createNet(h) {
   const myId = (Math.random().toString(36) + '00000000').slice(2, 10);
   let client = null, libLoad = null, ch = null, me = null, members = [], hostId = null;
-  const api = { id: myId, on: false, room: null, isPublic: false, seed: 0, members: () => members };
+  const api = { id: myId, on: false, room: null, isPublic: false, seed: 0, week: 0, members: () => members };
 
   function getClient() {
     if (client) return Promise.resolve(client);
@@ -79,11 +101,11 @@ export function createNet(h) {
   }
 
   // Join a room. Resolves 'ok' (with api.seed set to the room's store) or 'full'.
-  function enter(name) {
+  function enter(name, fixedSeed) {
     return new Promise((res, rej) => {
       drop();
       const joinedAt = Date.now();
-      api.seed = (Math.random() * 4294967296) >>> 0;
+      api.seed = fixedSeed != null ? fixedSeed >>> 0 : (Math.random() * 4294967296) >>> 0;
       me = { id: myId, n: myName(), t: joinedAt, sd: api.seed, lk: myShirt() };
       ch = client.channel(BASE + '-' + name, { config: { broadcast: { self: false, ack: false }, presence: { key: myId } } });
       const c = ch;
@@ -138,6 +160,8 @@ export function createNet(h) {
       on('pu', (p) => { if (api.isHost()) h.push?.(p.f, p); });
       on('wh', (p) => h.whistle?.(p.f, p));
       on('nz', (p) => h.noise?.(p.f, p));
+      on('of', (p) => { if (api.isHost()) h.offer?.(p.f, p); });
+      on('rs', (p) => { if (fromHost(p)) h.reset?.(p); });
       on('full', (p) => { if (fromHost(p) && p.to === myId) h.full?.(p); });
       ch.subscribe((st) => {
         if (st === 'SUBSCRIBED') track();
@@ -149,7 +173,8 @@ export function createNet(h) {
   api.quick = async () => {
     await getClient();
     for (let n = 1; n <= 20; n++) {
-      if (await enter('pub' + n) === 'ok') { api.on = true; api.room = 'pub' + n; api.isPublic = true; return 'ok'; }
+      const week = storeWeek();
+      if (await enter('pub' + n, publicSeed('pub' + n, week)) === 'ok') { api.on = true; api.room = 'pub' + n; api.isPublic = true; api.week = week; return 'ok'; }
     }
     return 'full';
   };

@@ -9,7 +9,7 @@ import { World, CHUNK, CEIL, setLampGlow, setSkyLight , ROOMS, GARDEN_ROOMS } fr
 import { TYPES, ITEMS, FOOD_KEYS, TV_CHANNELS, itemDims, itemMatrix, itemParts, itemQuat, cleanQuat, furnitureGeometry, itemGeometry } from './furniture.js';
 import { moveBody, bodyFits } from './physics.js';
 import { StaffSim } from './staff.js';
-import { createNet, myName, cleanName, myShirt } from './net.js';
+import { createNet, myName, cleanName, myShirt, storeWeek, publicSeed } from './net.js';
 import { input, initInput, initTouch, lockPointer, endFrame, pollGamepad } from './input.js';
 import { makeShopper, makeStaff, animate, setHeld, nameTag, nameHash, SHIRT_COLORS } from './models.js';
 import { makeBody, stepBody, bodyPose, bodyMatrix, makeBall, stepBall, ballMatrix } from './fall.js';
@@ -173,7 +173,7 @@ highlight.visible = false; scene.add(highlight);
 const net = createNet({
   members: onMembers, hostChanged: onHostChanged, player: onPlayer, request: (from, q) => hostRequest(from, q),
   world: onWorld, staff: onStaffSnap, clock: onClock, hit: (d) => hurt(d, 'staff'), chat: onChat, caught: onCaught,
-  need: onNeed, full: onFull, push: onPushRequest, whistle: onWhistle, noise: onNoise,
+  need: onNeed, full: onFull, push: onPushRequest, whistle: onWhistle, noise: onNoise, offer: onOffer, reset: onWeekReset,
 });
 
 const INV = 16, HOTBAR = 8;
@@ -286,6 +286,96 @@ $('code-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') goOnlin
 $('b-solo').onclick = () => { initAudio(); startGame((Math.random() * 4294967296) >>> 0, false); saveSolo(); };
 $('b-continue').onclick = () => { const sv = loadSolo(); if (!sv) return; initAudio(); startGame(sv.seed >>> 0, false, sv); };
 
+// ---------------------------------------------------------------- public stores
+// A public store is this week's store: the same layout for everyone from the
+// start of Sunday to the end of Saturday (Sydney time), and nothing built in it
+// is thrown away when the last person leaves. There's no server storage, so
+// every player's browser keeps a copy of the week's store (every 20 s and on
+// leaving). The first one back into an empty store brings their copy back, and
+// anyone who joins offers theirs to the host, which fills in whatever it's
+// missing or has an older version of (never anything changed live since). At
+// the start of Sunday the host opens a fresh store for everyone.
+const PUB_KEY = 'es-pub-';
+const liveIds = new Set(); // changed live while we've been here: an offered copy never overrides these
+let offered = false, weekCheckT = 0;
+function pubLoad() {
+  try {
+    const c = JSON.parse(localStorage.getItem(PUB_KEY + net.room) || 'null');
+    return c && c.v === 1 && c.week === net.week && (c.seed >>> 0) === (world.seed >>> 0) && Array.isArray(c.mods) ? c : null;
+  } catch (_) { return null; }
+}
+function pubSave() {
+  if (!net.on || !net.isPublic || mode !== 'play' || storeWeek() !== net.week) return;
+  try {
+    localStorage.setItem(PUB_KEY + net.room, JSON.stringify({ v: 1, week: net.week, seed: world.seed >>> 0, day: clock.day, t: +clock.t.toFixed(1), at: Date.now(), mods: world.allMods().map(([id, st]) => [id, st.c ? Object.assign({}, st, { c: 0 }) : st]) }));
+    // copies of other weeks are no use any more
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(PUB_KEY) || k === PUB_KEY + net.room) continue;
+      let c = null; try { c = JSON.parse(localStorage.getItem(k)); } catch (_) {}
+      if (!c || c.week !== net.week) localStorage.removeItem(k);
+    }
+  } catch (_) {}
+}
+// First into an empty public store: bring back our copy of it. Returns how many changes.
+function pubRestore() {
+  const c = pubLoad(); if (!c) return 0;
+  let n = 0;
+  for (const e of c.mods) if (Array.isArray(e) && typeof e[0] === 'string' && e[1] && world.applyState(e[0], Object.assign({}, e[1], { c: 0 }))) n++;
+  clock.day = Math.max(1, c.day | 0); clock.t = clamp(+c.t || 30, 0, cycleLen(clock.day) - 1); world.setDay(clock.day);
+  return n;
+}
+// Joining a public store that has people in it: offer the host our copy.
+function pubOffer() {
+  if (!net.on || !net.isPublic || net.isHost() || mode !== 'play') return;
+  const c = pubLoad(); if (!c) return;
+  const m = c.mods.filter((e) => Array.isArray(e) && typeof e[0] === 'string' && e[1] && +e[1].tm > 0), size = 80, n = Math.ceil(m.length / size);
+  for (let i = 0; i < n; i++) net.send('of', { i, n, m: m.slice(i * size, (i + 1) * size), d: c.day | 0, t: +c.t || 0 });
+}
+// The host merges an offered copy: what it doesn't know about, or only knows
+// an older version of from a saved copy. Changes made live win.
+function onOffer(from, p) {
+  if (!net.isPublic || mode !== 'play' || !Array.isArray(p.m)) return;
+  const now = Date.now(), weekStart = (net.week * 864e5) - 14 * 3600e3, u = [];
+  for (const e of p.m.slice(0, 80)) {
+    if (!Array.isArray(e) || typeof e[0] !== 'string' || !e[1] || typeof e[1] !== 'object') continue;
+    const id = e[0], tm = +e[1].tm;
+    if (!(tm > weekStart && tm < now + 60000) || liveIds.has(id) || tm <= (world.modTime.get(id) || 0)) continue;
+    const cur = world.items.get(id);
+    if (cur && cur.c) continue; // someone's holding it right now
+    if (!world.applyState(id, Object.assign({}, e[1], { c: 0, tm }))) continue;
+    u.push([id, Object.assign({ tm }, world.mods.get(id))]);
+  }
+  for (let i = 0; i < u.length; i += 80) net.send('w', { u: u.slice(i, i + 80) });
+  // a store that started again from day 1 takes the day the copy had got to
+  if ((p.i | 0) === 0 && (p.d | 0) > clock.day) { clock.day = Math.min(9999, p.d | 0); clock.t = clamp(num(p.t), 0, cycleLen(clock.day) - 1); world.setDay(clock.day); }
+  if (u.length) toast(`Someone brought back ${u.length} change${u.length === 1 ? '' : 's'} to this week's store.`);
+}
+// Sunday: the host opens this week's fresh store, and everyone moves into it.
+function checkWeek(dt) {
+  if ((weekCheckT -= dt) > 0) return;
+  weekCheckT = 10;
+  if (!net.on || !net.isPublic || !net.isHost() || mode !== 'play') return;
+  const wk = storeWeek();
+  if (wk <= net.week) return;
+  const sd = publicSeed(net.room, wk);
+  net.send('rs', { sd, wk });
+  newWeek(sd, wk);
+}
+function onWeekReset(p) {
+  const wk = p.wk | 0;
+  if (!net.isPublic || mode !== 'play' || wk <= net.week) return;
+  newWeek(p.sd >>> 0, wk);
+}
+function newWeek(sd, wk) {
+  try { localStorage.removeItem(PUB_KEY + net.room); } catch (_) {}
+  net.week = wk; net.seed = sd; net.set({ sd });
+  startGame(sd, false);
+  announce('A new week', "The store has been reset for the week. Everything built last week is gone.", 7);
+}
+setInterval(() => { if (mode === 'play') pubSave(); }, 20000);
+addEventListener('pagehide', () => { if (mode === 'play') pubSave(); });
+
 // ---------------------------------------------------------------- solo saves
 // A solo store is saved every 20 s and when you leave, so you can carry on later.
 function saveSolo() {
@@ -347,7 +437,7 @@ function roomText() { return net.on ? (net.isPublic ? `Public store ${net.room.r
 
 // ---------------------------------------------------------------- game start / leave
 function startGame(seed, waitForState, save) {
-  setDayScale(save ? +save.k || 1 : waitForState ? 1 : settings.short ? 0.5 : 1);
+  setDayScale(save ? +save.k || 1 : waitForState || (net.on && net.isPublic) ? 1 : settings.short ? 0.5 : 1);
   world.reset(seed);
   clock.day = 1; clock.t = 30;
   world.setDay(1);
@@ -356,6 +446,9 @@ function startGame(seed, waitForState, save) {
     clock.day = Math.max(1, save.day | 0); clock.t = clamp(+save.t || 30, 0, cycleLen(clock.day) - 1);
     world.setDay(clock.day);
   }
+  liveIds.clear(); offered = false;
+  let restored = 0;
+  if (net.on && net.isPublic && !waitForState) restored = pubRestore();
   remotes.forEach((r) => { scene.remove(r.model.root); if (r.heldMesh) scene.remove(r.heldMesh); }); remotes.clear();
   staffViews.forEach((s) => scene.remove(s.model.root)); staffViews.clear();
   staffSim = net.isHost() ? new StaffSim(world) : null;
@@ -389,6 +482,7 @@ function startGame(seed, waitForState, save) {
     const retry = setInterval(() => { if (pendingFull.got || !net.on || mode !== 'play' || ++tries > 5) { clearInterval(retry); return; } net.send('need', {}); }, 4000);
   }
   if (net.on) toast(`Joined ${roomText().toLowerCase()}. Press Enter to chat.`);
+  if (net.on && net.isPublic) toast(restored ? `This week's store is back as it was left (${restored} changes). It resets at the start of Sunday.` : "This is this week's store: whatever is built here stays until it resets at the start of Sunday.");
   showDayTitle();
   if (save) { announce(`Welcome back · Day ${clock.day}`, 'Your solo store is just as you left it.', 5); return; }
   announce('Welcome to the store', net.on ? 'You\'re somewhere in the aisles. Whistle (H) to find the others, gather food, and be ready for closing time.' : 'Gather food, build somewhere high, and be ready for closing time.', 7);
@@ -397,7 +491,7 @@ let touchReady = false;
 function initTouchOnce() { if (!touchReady) { initTouch($('touch')); touchReady = true; } $('touch').classList.remove('hidden'); }
 
 function leaveGame() {
-  if (!net.on) saveSolo();
+  if (!net.on) saveSolo(); else pubSave();
   net.leave();
   mode = 'menu'; paused = false;
   $('hud').classList.add('hidden'); $('death').classList.add('hidden'); $('touch').classList.add('hidden');
@@ -534,6 +628,7 @@ function onNeed(from) {
 function onFull(p) {
   if (!Array.isArray(p.m)) return;
   pendingFull.got = true;
+  if (net.isPublic && !offered) { offered = true; setTimeout(pubOffer, 1500); }
   for (const [id, s] of p.m) if (typeof id === 'string') world.applyState(id, s);
   onClock(p);
 }
@@ -546,6 +641,7 @@ function broadcastItems(ids, extra) {
     const st = world.stateOf(it);
     if (extra && extra[id]) Object.assign(st, extra[id]);
     world.mods.set(id, world.stateOf(it));
+    st.tm = Date.now(); world.modTime.set(id, st.tm); liveIds.add(id);
     u.push([id, st]);
   }
   if (u.length) net.send('w', { u });
@@ -1613,6 +1709,7 @@ function frame() {
   updateInteraction(dt);
   updateFlying(dt);
   updateRecords(dt);
+  checkWeek(dt);
   { const ph = Math.floor(now / 800); if (ph !== world.fadePhase) { world.fadePhase = ph; if (world.hasFading) world.itemsDirty = true; } }
   achT -= dt;
   if (achT <= 0 && P.alive) {
@@ -1795,9 +1892,11 @@ function myHold() {
   if (f) return { t: f.carry.t, v: f.carry.v, x: f.pos[0], y: f.pos[1], z: f.pos[2], o: f.carry.o };
   return null;
 }
-// Furniture being held is solid to players: hold a piece under yourself and
-// lift it, and you go up with it (that's how you get onto high shelves, or
-// float). Someone else can carry you the same way.
+// Furniture someone else is holding is solid to you: they can put it under
+// your feet and lift you. Your own held piece isn't solid to you (or you could
+// stand on it, raise it, jump, raise it again and fly), and nor is anyone
+// else's while you're carrying something yourself (or two people could lift
+// each other in turns, all the way up).
 const prevTops = new Map();
 function updateHeldBoxes() {
   const out = [], tops = new Map();
@@ -1806,8 +1905,7 @@ function updateHeldBoxes() {
     list.forEach((b, i) => { b.py1 = prev && prev.length === list.length ? prev[i] : b.y1; b.held = key; out.push(b); });
     tops.set(key, list.map((b) => b.y1));
   };
-  if (P.carry && P.alive) add('me', P.carry);
-  for (const [id, r] of remotes) if (r.hold) add(id, r.hold);
+  if (!P.carry) for (const [id, r] of remotes) if (r.hold) add(id, r.hold);
   prevTops.clear(); for (const [k, v] of tops) prevTops.set(k, v);
   world.held = out;
 }
@@ -1986,5 +2084,6 @@ requestAnimationFrame(frame);
 
 // Test hook for tools/test.cjs.
 window.__game = { P, clock, world, net, renderer, TYPES, ITEMS, get music() { return musicState(); }, get notes() { return audioMod.noteCount; }, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
+  placeForTest: (x, y, z) => { if (!P.carry) return false; placeCarry({ x, y, z, o: P.carry.o, a: 1 }); return true; },   pubSaveForTest: () => pubSave(), leaveForTest: () => leaveGame(), weekForTest: () => { net.week -= 1; weekCheckT = 0; checkWeek(0); return net.week; }, storeWeek, publicSeed,
   sitForTest: (id) => { const it = world.items.get(id); if (it) sitDown(it, it.x, it.z); return !!P.sit; }, get beacons() { return beacons; }, whistleForTest: (from, p) => onWhistle(from, p), dropAllForTest: () => dropAll(),
   useItemForTest: (id) => { const it = world.items.get(id); if (it) useItem(it); }, nightLen, roomNames: () => ROOMS.map((r) => [r.name, 'showroom']).concat(GARDEN_ROOMS.map((r) => [r.name, 'garden'])), useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; }, get flying() { return flying.map((f) => ({ t: f.carry.t, age: +f.body.age.toFixed(2), v: +f.body.v.length().toFixed(3), w: f.body.w ? +f.body.w.length().toFixed(3) : 0, ball: !!f.body.ball, still: +f.body.still.toFixed(2), y: +f.body.p.y.toFixed(3), touching: !!f.body.touching })); } };

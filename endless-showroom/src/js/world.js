@@ -868,6 +868,7 @@ export class World {
     this.chunks = new Map();
     this.items = new Map();
     this.mods = new Map();
+    this.modTime = new Map(); // when each change was made (the host's clock, ms), for merging saved copies of a public store
     this.grid = new Map();
     this.held = []; this.withHeld = false; // boxes of furniture being held right now
     this.fadePhase = 0; this.hasFading = false;
@@ -881,7 +882,7 @@ export class World {
     for (const im of this.inst.values()) { this.group.remove(im); im.dispose(); }
     if (this.shadowInst) { this.group.remove(this.shadowInst); this.shadowInst.dispose(); this.shadowInst = null; }
     this.inst.clear(); this.itemsDirty = true; this._lastFocus = null;
-    this.chunks.clear(); this.items.clear(); this.mods.clear(); this.grid.clear();
+    this.chunks.clear(); this.items.clear(); this.mods.clear(); this.modTime.clear(); this.grid.clear();
     this.seed = seed >>> 0;
     this.day = 1; this.epoch = 1;
   }
@@ -1245,6 +1246,7 @@ export class World {
     const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: fin(s.x, -1e6, 1e6), y: fin(s.y, 0, CEIL), z: fin(s.z, -1e6, 1e6), r: (s.r | 0) & 3, tl: ((s.tl | 0) % 3 + 3) % 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: Math.max(0, Math.min(15, s.s | 0)) };
     if (st.k === 'f' ? !Object.prototype.hasOwnProperty.call(TYPES, st.t) : !Object.prototype.hasOwnProperty.call(ITEMS, st.t)) return null;
     this.mods.set(id, st);
+    if (+s.tm > 0) this.modTime.set(id, +s.tm);
     let it = this.items.get(id);
     if (!it) return this._addItem(id, st);
     this.edit(it, st);
@@ -1252,7 +1254,7 @@ export class World {
   }
 
   // Everything modded, for a newcomer.
-  allMods() { const out = []; for (const [id, s] of this.mods) out.push([id, s]); return out; }
+  allMods() { const out = []; for (const [id, s] of this.mods) { const tm = this.modTime.get(id); out.push([id, tm ? Object.assign({ tm }, s) : s]); } return out; }
 
   // Dropping things that lost what held them up (host only). Returns the ids that changed.
   settle(around) {

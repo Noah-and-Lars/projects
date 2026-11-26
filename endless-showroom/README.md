@@ -20,7 +20,11 @@ the other arcade games use) when you choose an online mode, and like the
 other games it needs an online Arcade account.
 
 - **Play Online**: joins the first public store with room (`pub1` to `pub20`,
-  8 players each).
+  8 players each). A public store is **this week's store**: the same store
+  for everyone from the start of Sunday to the end of Saturday (Sydney time),
+  and what's built in it stays when everyone leaves. It's only reset at the
+  start of Sunday, when everyone in it moves into the new week's fresh store.
+  Public stores always run normal-length days.
 - **Create Private Room**: makes a 4-letter code to give to friends.
 - **Join**: type a friend's code.
 - **New Solo Store**: your own store, no connection needed. It's saved
@@ -189,13 +193,15 @@ turn that off).
   throw and let go of F to throw it: the longer you hold, the further it
   goes. It leaves your hands turning end over end and lands, bounces and
   tumbles by the same physics. Settings can snap held pieces to a 25 cm, 50 cm or 1 m grid.
-- **Ride** what you hold: put a piece under your feet and raise it, and you
-  go up with it (jumping helps). Someone else can lift you the same way.
+- **Get lifted**: a friend can put a piece they're holding under your feet
+  and raise it, and you go up with it. You can't ride a piece you're holding
+  yourself (you walk through it), and while you're carrying something, other
+  people's held pieces don't hold you up either, so nobody can fly.
 - **Walk-in wardrobes** are hollow. Step in and block the front for a
   last-minute hiding place. Bathtubs are hollow too.
 - **Shelving can't be climbed.** Racks, bookcases, cube shelves and bunk
   beds are just walls to you: the only way up is to build. Stack furniture
-  into steps you can jump (about 1.2 m at a time), ride a piece up, or carry
+  into steps you can jump (about 1.2 m at a time), get a friend to lift you, or carry
   a ladder over and walk into it to climb it.
 - **Lamps** (floor and table) light up the dark and glow like beacons.
   Carry one at night to see where you're going, or press **F** on one to
@@ -379,7 +385,9 @@ the room longest), runs:
 - all the staff: path finding, attacks, breaking furniture;
 - every change to furniture and food. Other players send requests ("take
   this", "put it here", "drop this food"). The host applies them and
-  broadcasts the result. Nothing falls, so a piece stays wherever it was put.
+  broadcasts the result. A piece let go touching something stays exactly where
+  it was put; one let go in mid-air falls on the screen of whoever let go of it,
+  which then tells the host where it came to rest.
 
 Everyone simulates their own shopper and sends its position 10 times a
 second. Staff positions go out 8 times a second, and the clock once a
@@ -391,6 +399,21 @@ the room's seed. Only *changes* travel, and every screen keeps the full list.
 A newcomer asks the host for that list when they join. When the host leaves,
 the next-oldest player already has everything and takes over the clock and
 the staff.
+
+**Public stores keep their builds all week**, with no server storage:
+
+- The seed comes from the room and the week (the Sunday it started on, in
+  Sydney time), so a public store that empties comes back as the same store.
+- Every player's browser keeps a copy of the week's store (every change, and
+  the day and time) every 20 seconds and when they leave. The first person
+  back into an empty store brings their copy back.
+- The host stamps every change with the time it was made. Someone joining
+  offers their copy to the host, which takes whatever it doesn't have, or
+  only has an older version of from a saved copy. A change made live while
+  the host has been there is never overridden by an offered copy. So builds
+  come back as long as anyone who saw them comes back during the week.
+- At the start of Sunday the host sends everyone the new week's seed (`rs`),
+  and everyone moves into the fresh store and throws away last week's copy.
 
 | Message | From | What |
 | --- | --- | --- |
@@ -405,6 +428,8 @@ the staff.
 | `pu` | anyone | shove a member of staff (to the host) |
 | `wh` | anyone | I whistled here, short or long (the host lets the staff hear it) |
 | `nz` | anyone | I made a noise with a toy here (the host lets the staff hear it) |
+| `of` | a newcomer to a public store | my saved copy of this week's store, to the host (in parts) |
+| `rs` | host | a new week: here's the fresh public store's seed |
 | `need` / `full` | newcomer / host | the list of changes, in parts |
 
 Furniture and staff are cheap to draw: each furniture model (type and
@@ -451,7 +476,8 @@ cd tools && npm install && npm run build
 | `achievements.js` | The achievements, their counters, and saving them |
 | `tools/build.mjs` | Builds the single-file `index.html` |
 | `tools/test.cjs` | Solo smoke test (see below) |
-| `tools/test-items.cjs` | Whistling, sitting, TV light, kicking a ball, noisy toys, drop all |
+| `tools/test-items.cjs` | Whistling, sitting, TV light, kicking a ball, noisy toys, no flying on a held piece, drop all |
+| `tools/test-pub.cjs` | Public stores: this week's seed, builds surviving an empty store and merging back, the Sunday reset |
 | `tools/test-mp.cjs`, `tools/mock-rt.js` | Two-player test with a stand-in realtime server |
 | `tools/shots.cjs` | Screenshots of the look: day, close-up, night, lamps, staff, third person, a grid pillar, a cafeteria hall, a warehouse street |
 | `tools/soak.cjs` | Runs through every day and night transition, including an old store's long nights, checking for errors |
@@ -465,6 +491,7 @@ the built file.
 node tools/test.cjs <screenshot-dir>
 node tools/test-mp.cjs <screenshot-dir>
 node tools/test-items.cjs
+node tools/test-pub.cjs
 ```
 
 `test.cjs` starts solo play and checks:

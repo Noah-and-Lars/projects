@@ -3,7 +3,8 @@
 // whistle (cooldown and energy), someone else's help whistle showing as a
 // marker at the edge of the screen, sitting on a chair and standing up, a TV
 // lighting the room, kicking a ball by walking into it (it rolls away and
-// stops), a noisy toy, and dropping your whole inventory.
+// stops), a noisy toy, jumping on a piece you're holding not lifting you, and
+// dropping your whole inventory.
 const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch();
@@ -80,6 +81,21 @@ const { chromium } = require('playwright');
   await g(() => { const P = __game.P, w = __game.world; w.applyState('test:drum', { t: 'toyDrum', k: 'f', v: 0, x: P.x + 1, y: 0, z: P.z, r: 0 }); });
   await g(() => __game.useItemForTest('test:drum'));
   ok(true, 'banging the drum works without errors');
+
+  // holding a piece under your feet and jumping doesn't lift you (no flying)
+  const fly = await g(() => {
+    const P = __game.P, w = __game.world;
+    w.applyState('test:pallet', { t: 'pallet', k: 'f', v: 0, x: P.x + 1.2, y: 0, z: P.z, r: 0 });
+    P.y = 0; P.vy = 0;
+    return __game.grabForTest('test:pallet');
+  });
+  await g(() => { const P = __game.P; P.pitch = -1.5; P.carryDist = 1.5; window.__maxY = 0; window.__flyT = setInterval(() => { window.__maxY = Math.max(window.__maxY, __game.P.y); }, 50); });
+  for (let i = 0; i < 6; i++) { await page.keyboard.down('Space'); await waitGame(0.25); await page.keyboard.up('Space'); await waitGame(0.45); }
+  await waitGame(0.8);
+  const fl2 = await g(() => { clearInterval(window.__flyT); return { maxY: +window.__maxY.toFixed(2), y: +__game.P.y.toFixed(2), carrying: !!__game.P.carry }; });
+  ok(fly && fl2.carrying && fl2.maxY < 1.45 && fl2.y < 0.3, `jumping onto a piece you're holding doesn't lift you (${JSON.stringify(fl2)})`);
+  await g(() => { if (__game.P.carry) { __game.P.pitch = 0; } });
+  await page.keyboard.press('KeyE'); await waitGame(0.3);
 
   // drop all
   const dropped = await g(() => {
