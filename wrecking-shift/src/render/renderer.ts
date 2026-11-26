@@ -97,6 +97,8 @@ export class Renderer {
   private volumesFailed = false;
   private adopted = new Set<THREE.Material>();
   private lite = false;
+  /** performance mode without upscaling blur: full resolution, no TAA (Settings: Sharp image) */
+  private liteSharp = false;
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.three = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
@@ -163,11 +165,19 @@ export class Renderer {
     this.three.setPixelRatio(this.post.supported ? this.basePixelRatio : this.basePixelRatio * this.resScale);
     this.camera.far = on ? LITE_DRAW_DISTANCE : 600;
     this.camera.updateProjectionMatrix();
-    this.post.configure({ sharpen: on ? 0.45 : 0, lowRes: on });
+    this.post.configure({ sharpen: on && !this.liteSharp ? 0.45 : 0, lowRes: on && !this.liteSharp });
     this.bodies.maxDynamicDist = on ? 90 : Infinity;
     this.resize();
     this.setQuality(this.requested);
     this.applyTimeOfDay();
+  }
+
+  /** performance mode: sharp image (no TAA, no upscale sharpening, the caller sets resolution scale 1) */
+  setPerformanceSharp(on: boolean): void {
+    if (on === this.liteSharp) return;
+    this.liteSharp = on;
+    this.post.configure({ sharpen: this.lite && !on ? 0.45 : 0, lowRes: this.lite && !on });
+    this.applyLook();
   }
 
   /** scene resolution relative to the canvas (0.5 .. 1); traced lighting cost is linear in pixels */
@@ -217,7 +227,7 @@ export class Renderer {
     const v = this.volumes;
     return {
       quality: this.requested, effectiveQuality: this.effective, timeOfDay: this.tod, resolutionScale: this.resScale,
-      performanceMode: this.lite, pixelRatio: this.three.getPixelRatio(), drawDistance: this.camera.far, shadowMapSize: this.sun.shadow.mapSize.x,
+      performanceMode: this.lite, performanceSharp: this.liteSharp, pixelRatio: this.three.getPixelRatio(), drawDistance: this.camera.far, shadowMapSize: this.sun.shadow.mapSize.x,
       post: this.post.supported, renderSize: this.post.renderSize,
       quads: this.bodies.stats.quads, remeshed: this.bodies.stats.remeshed, pendingChunks: this.pendingChunks(),
       drawCalls: this.three.info.render.calls, triangles: this.three.info.render.triangles,
@@ -329,7 +339,7 @@ export class Renderer {
   /** settings of the tier in use (performance mode overrides a few) */
   private tier(): Tier {
     const t = TIERS[this.effective];
-    return this.lite ? { ...t, ...LITE } : t;
+    return this.lite ? { ...t, ...LITE, ...(this.liteSharp ? { taa: false } : {}) } : t;
   }
 
   private makeConfig(): LookConfig {

@@ -42,6 +42,7 @@ export function createPerfModule(): GameModule {
   let game: Game | null = null;
   let on = false;
   let scale = LITE_SCALE.start;
+  let sharp = false;
   // adaptive resolution: frame time average over ~1 s windows
   let accMs = 0, accFrames = 0, fastFor = 0;
   // slow-frame detector (performance mode off)
@@ -66,6 +67,13 @@ export function createPerfModule(): GameModule {
       if (on) { scale = LITE_SCALE.start; g.renderer.setResolutionScale(scale); }
       else g.renderer.setResolutionScale(Number(g.ext.settings?.resolutionScale) || 1);
       if (on) hideBanner();
+    }
+    // Sharp image: full resolution, no TAA (no upscaling blur); adaptive resolution is off then
+    const sharpWant = on && !!(settings() as any)?.perfSharp;
+    if (sharpWant !== sharp) {
+      sharp = sharpWant;
+      g.renderer.setPerformanceSharp(sharp);
+      if (on) { scale = sharp ? 1 : LITE_SCALE.start; g.renderer.setResolutionScale(scale); }
     }
     applyCaps(g);
   };
@@ -137,7 +145,7 @@ export function createPerfModule(): GameModule {
         const far = g.ext.ui?.state?.().mapOpen || g.ext.photo?.active ? 600 : LITE_DRAW_DISTANCE;
         if (R.camera.far !== far) { R.camera.far = far; R.camera.updateProjectionMatrix(); }
         // adaptive resolution: hold ~28-50 fps by trading pixels (the scale changes at most once a second)
-        if (playing(g) && !g.testMode) {
+        if (playing(g) && !g.testMode && !sharp) {
           accMs += dt * 1000; accFrames++;
           if (accMs >= 1000) {
             const avg = accMs / accFrames;

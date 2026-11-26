@@ -47,6 +47,15 @@ export async function runPerfTests(url, test) {
     await shot(page, 'perf-03-harbor');
     s = await stats(page);
     assert(s.perf && s.debris === 110, 'caps kept on a new level: ' + JSON.stringify(s));
+    // Sharp image option: full resolution, no TAA (no upscaling blur), listed under performance mode in Settings
+    await page.evaluate(() => window.__game.ui.openMenu('settings'));
+    await page.click('#ws-perfSharp');
+    const sh = await page.evaluate(() => { const st = window.__game.game.renderer.stats(); return { sharp: st.performanceSharp, scale: st.resolutionScale, perf: st.performanceMode, taa: window.__game.game.renderer.post.options.taa, setting: window.__game.game.ext.settings.perfSharp }; });
+    assert(sh.sharp && sh.scale === 1 && sh.perf && !sh.taa && sh.setting, 'sharp image: ' + JSON.stringify(sh));
+    await shot(page, 'perf-03b-settings-sharp');
+    await page.evaluate(() => { window.__game.ui.closeMenus(); });
+    await shot(page, 'perf-03c-harbor-sharp');
+    await page.evaluate(() => window.__game.game.ext.settings.set('perfSharp', false));
     // switching off restores the normal profile
     await page.evaluate(() => window.__game.game.ext.perf.set(false));
     s = await stats(page);

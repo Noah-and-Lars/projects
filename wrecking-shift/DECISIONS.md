@@ -506,3 +506,7 @@ Gaps 3 / 4 / 8 / Top-10 #5, #8, #9, #10 of `docs/research/10-gap-analysis.md`, b
   frame), draw distance 240 m with the fog pushed back, starting resolution 80 % (adaptive 55–90 %), less ambient
   fill + a little more sun and contrast (the low tier has no sky occlusion, so shaded sides looked as bright as lit
   ones). Paid for on the CPU by not drawing dynamic bodies (props, debris, parked cars) farther than 90 m.
+- **Performance mode: "Sharp image" option** (2026-11-26, user: option to turn off the blur). Under Performance
+  mode in Settings. Renders at full resolution (device pixel ratio still 1) with TAA and the sharpening upscale off,
+  adaptive resolution disabled; all other performance-mode savings stay. Costs more GPU (≈1.6x the pixels of the 80 %
+  default), so it is opt-in.

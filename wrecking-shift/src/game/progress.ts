@@ -80,6 +80,8 @@ export interface SettingsData {
   perfMode: boolean;
   /** "don't suggest performance mode again" */
   perfHintOff: boolean;
+  /** performance mode without the upscaling blur: full resolution, no TAA (costs more GPU) */
+  perfSharp: boolean;
   // --- assists (src/game/assists.ts) ---
   assistAlarm: AlarmAssist;
   /** max ammo multiplier in missions: 1 | 1.5 | 2 */
@@ -100,7 +102,7 @@ export interface SettingsData {
 }
 export const DEFAULT_SETTINGS: SettingsData = {
   sensitivity: 1, invertY: false, fov: 80, headBob: true, masterVolume: 0.8, musicVolume: 0.6, sfxVolume: 0.9, quality: 'medium',
-  perfMode: false, perfHintOff: false,
+  perfMode: false, perfHintOff: false, perfSharp: false,
   assistAlarm: 'normal', assistAmmo: 1, assistToughness: 1, assistJobs: false, brightness: 1, headBobAmount: 1, keys: {}, toolbarExpanded: false,
 };
 
@@ -117,6 +119,7 @@ function sanitizeSettings(raw: any): SettingsData {
   if (typeof raw.headBob === 'boolean') s.headBob = raw.headBob;
   if (typeof raw.perfMode === 'boolean') s.perfMode = raw.perfMode;
   if (typeof raw.perfHintOff === 'boolean') s.perfHintOff = raw.perfHintOff;
+  if (typeof raw.perfSharp === 'boolean') s.perfSharp = raw.perfSharp;
   if (raw.quality === 'low' || raw.quality === 'medium' || raw.quality === 'high') s.quality = raw.quality;
   if (isAlarmAssist(raw.assistAlarm)) s.assistAlarm = raw.assistAlarm;
   s.assistAmmo = pickOption(raw.assistAmmo, AMMO_OPTIONS, 1);
@@ -146,6 +149,7 @@ export class Settings implements SettingsData {
   quality: Quality = DEFAULT_SETTINGS.quality;
   perfMode = DEFAULT_SETTINGS.perfMode;
   perfHintOff = DEFAULT_SETTINGS.perfHintOff;
+  perfSharp = DEFAULT_SETTINGS.perfSharp;
   assistAlarm: AlarmAssist = DEFAULT_SETTINGS.assistAlarm;
   assistAmmo = DEFAULT_SETTINGS.assistAmmo;
   assistToughness = DEFAULT_SETTINGS.assistToughness;
@@ -178,10 +182,10 @@ export class Settings implements SettingsData {
     for (const l of this.listeners) l(this, null);
   }
   toJSON(): SettingsData {
-    const { sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality, perfMode, perfHintOff } = this;
+    const { sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality, perfMode, perfHintOff, perfSharp } = this;
     const { assistAlarm, assistAmmo, assistToughness, assistJobs, brightness, headBobAmount, toolbarExpanded } = this;
     return {
-      sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality, perfMode, perfHintOff,
+      sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality, perfMode, perfHintOff, perfSharp,
       assistAlarm, assistAmmo, assistToughness, assistJobs, brightness, headBobAmount, keys: { ...this.keys }, toolbarExpanded,
     };
   }
