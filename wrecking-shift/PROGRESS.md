@@ -6,6 +6,27 @@ Branch: `teardown-voxel-game`, folder: `wrecking-shift/`. Research: `docs/resear
 (published from `dist/`; it could not be opened from the build container, so whether the artifact sandbox allows the
 physics WebAssembly and pointer lock is unverified — if it shows "Failed to start", run locally: `npm install && npm run dev`).
 
+## Look matched to reference screenshots (2026-11-26)
+User: find screenshots of the actual genre reference and tweak the look to match. 14 official screenshots (Steam store
++ the official site; analysis only, not committed) were measured against the same kinds of views rendered from Corvane
+City (`tests/e2e/refmatch.mjs`). Write-up with sources, numbers and remaining gaps: `docs/research/14-reference-match.md`;
+before / after: `docs/look/ref-*.jpg`; guesses: DECISIONS.md "Look matched to reference screenshots".
+- **FOV**: 90° *horizontal* by default (was 80° vertical ≈ 112° horizontal): voxels and buildings ~1.5x bigger on
+  screen. Setting is horizontal (70–120°); old saves migrate once (`migrateFov`, test in `tests/unit/progress.test.ts`).
+- **Grade**: exponential tone curve (AgX as `?tone=agx`), per-preset saturation + warm colour balance, neutral / warm
+  fill instead of saturated blue (navy shadows and black sunset streets are gone), paler day sky.
+- **Atmospheric fog** (`src/render/fog.ts`): radial exponential haze, thinner looking up, glowing toward a low sun.
+- **Sun shafts**: screen-space god rays from the bright sky / sun mask, all tiers.
+- **Auto-exposure**: eye adaptation (+0.8 EV max into interiors, −0.5 EV toward bright sky), bit-identical when still
+  (`tests/e2e/still.mjs`), `?autoexp=0` to disable.
+- **Smoke**: sun-lit and world-shadowed, glows when backlit; blast smoke rises as a column and lingers 12–25 s.
+- **Camera shake** is smooth (sines) instead of white noise.
+- Numbers (16 city views): night pure-black pixels 28 % → 0.2 %, night mean 0.13 → 0.21 (reference 0.24), sunset
+  shadow:lit 0.03 → 0.19, warmth −0.04 → +0.04 (reference +0.09). Saturation stays below the reference (0.22 vs 0.32):
+  the city is grey concrete; the reference's maps are greener and more colourful.
+- Performance mode gets all of it (fog, grade, shafts, adaptation: two tiny extra passes); its own extra saturation
+  was removed because the grade already provides it.
+
 ## Follow-up (2026-11-25, user feedback): city, big maps, map preview, concrete
 - **Corvane City**: a large procedural city (~300 m, 36 blocks, towers / apartments / houses / parks / warehouses,
   streets with lane markings, lamps, parked cars) — Sandbox → Corvane City. Heavy: ~49 M voxels, slow to load;

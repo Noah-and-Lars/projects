@@ -88,6 +88,10 @@ tests/unit/     Vitest (Node)         tests/e2e/   Playwright smoke tests agains
 - `renderer.setQuality('low'|'medium'|'high')`, `setTimeOfDay('day'|'sunset'|'overcast'|'night')`, `setResolutionScale(0.5..1)`,
   `pendingChunks()`, `stats()`, `patchMaterial(mat)`. Old members (`scene`, `camera`, `three`, `chips`, `sun`, `hemi`, `bodies`,
   `shake`, `setCamera`, `handleEvents`, `render`, `reset`, `setLevel`, `resize`) are unchanged.
+- Look pipeline (see `docs/research/14-reference-match.md`): `fog.ts` replaces three's fog chunks globally (radial
+  exponential haze + sun glow; uniforms are shared plain objects); `post.ts` = bloom, sun shafts, eye adaptation
+  (1x1 EV target, held exactly when still), exp tone curve + per-preset saturation / colour balance; presets in
+  `sky.ts` carry all look parameters. `game.fov` is horizontal degrees (`verticalFov` converts).
 - The scene is drawn into an HDR target and tone-mapped in `post.ts`; colours you put in the scene are linear radiance
   (values > 1 bloom). Add objects to `renderer.scene` as usual; lit three materials are patched automatically to receive the
   voxel world's traced shadows. Objects with `castShadow = true` render into the small sun shadow map.
