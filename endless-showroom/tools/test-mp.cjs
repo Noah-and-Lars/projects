@@ -85,12 +85,13 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   check(await B.evaluate(() => { const r = [...__game.remotes.values()][0]; return !!(r && r.hold && r.heldMesh && r.heldMesh.visible && Math.abs(r.hold.o[3]) < 0.99); }), 'Bravo sees the turned piece floating where Alpha aims');
   for (let i = 0; i < 16; i++) {
     await A.evaluate(() => { __game.P.yaw += Math.PI / 8; __game.P.pitch = -0.7; });
-    await A.waitForTimeout(500);
-    if (await A.evaluate(() => __game.placement && __game.placement.ok)) break;
+    { const t0 = await A.evaluate(() => __game.clock.t); await A.waitForFunction((t) => __game.clock.t > t, t0 + 0.15, { timeout: 120000, polling: 100 }).catch(() => {}); } // a few frames to follow the aim
+    if (await A.evaluate(() => __game.placement && __game.placement.sticks && !__game.P.carry.blocked)) break; // touching something: it stays put where it's let go
   }
   await A.keyboard.press('KeyE');
   await A.waitForTimeout(800);
-  await A.waitForFunction((id) => !__game.world.items.get(id).c, moved, { timeout: 30000 }).catch(() => {});
+  // (if it fell instead, the fall takes game time, which passes slowly here)
+  await A.waitForFunction((id) => !__game.world.items.get(id).c && !__game.flying.length, moved, { timeout: 300000 }).catch(() => {});
   await A.waitForTimeout(800);
   const posA = await A.evaluate((id) => { const it = __game.world.items.get(id); return [it.x, it.y, it.z, it.c, JSON.stringify(it.o)]; }, moved);
   const posB = await B.evaluate((id) => { const it = __game.world.items.get(id); return it ? [it.x, it.y, it.z, it.c, JSON.stringify(it.o)] : null; }, moved);

@@ -202,10 +202,21 @@ fs.mkdirSync(out, { recursive: true });
 
   // Picking up takes a held E; a tap isn't enough.
   const tapGrab = await g(() => {
-    const P = __game.P, w = __game.world; let best = null, bd = 1e9;
-    for (const it of w.items.values()) { if (it.k !== 'f' || !w.active(it) || it.y > 0.01 || __game.TYPES[it.t].flat || __game.TYPES[it.t].h < 0.5 || (__game.TYPES[it.t].heavy || 0) > 1) continue; const d = Math.hypot(it.x - P.x, it.z - P.z); if (d < bd) { bd = d; best = it; } }
-    const a = Math.atan2(P.x - best.x, P.z - best.z); P.x = best.x + Math.sin(a) * 1.5; P.z = best.z + Math.cos(a) * 1.5; P.y = 0;
-    P.yaw = a; P.pitch = Math.atan2(best.y + 0.25 - 1.6, 1.5); return best.id;
+    const P = __game.P, w = __game.world, T = __game.TYPES;
+    // the nearest piece of the store's own (not one an earlier check made) that we can stand
+    // 1.5 m from, on clear floor, with nothing between our eyes and it
+    const list = [...w.items.values()].filter((it) => it.k === 'f' && !it.id.startsWith('test:') && w.active(it) && it.y <= 0.01 && !T[it.t].flat && T[it.t].h >= 0.5 && (T[it.t].heavy || 0) <= 1)
+      .sort((p, q) => Math.hypot(p.x - P.x, p.z - P.z) - Math.hypot(q.x - P.x, q.z - P.z));
+    for (const best of list.slice(0, 60)) for (let i = 0; i < 16; i++) {
+      const a = i / 16 * Math.PI * 2, sx = best.x + Math.sin(a) * 1.5, sz = best.z + Math.cos(a) * 1.5;
+      if (!w.fits({ x0: sx - 0.4, x1: sx + 0.4, z0: sz - 0.4, z1: sz + 0.4, y0: 0.02, y1: 1.8 })) continue;
+      let clear = true;
+      for (let t = 0.15; t < 0.75 && clear; t += 0.1) { const x = sx + (best.x - sx) * t, z = sz + (best.z - sz) * t, y = 1.6 + (best.y + 0.25 - 1.6) * t; clear = w.fits({ x0: x - 0.04, x1: x + 0.04, z0: z - 0.04, z1: z + 0.04, y0: y - 0.04, y1: y + 0.04 }, best); }
+      if (!clear) continue;
+      P.x = sx; P.z = sz; P.y = 0; P.vy = 0; P.yaw = a; P.pitch = Math.atan2(best.y + 0.25 - 1.6, 1.5);
+      return best.id;
+    }
+    return null;
   });
   await page.waitForTimeout(400);
   await page.keyboard.press('KeyE'); await page.waitForTimeout(400);
