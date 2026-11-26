@@ -36,6 +36,7 @@
     <nav class="menu" id="home-menu">
       <button class="mbtn primary" data-go="courses">Ride</button>
       <button class="mbtn" data-go="garage">Garage</button>
+      <button class="mbtn" data-go="replays">Replays</button>
       <button class="mbtn" data-go="controls">Controls</button>
       <button class="mbtn" data-go="settings">Settings</button>
     </nav>
@@ -66,6 +67,27 @@
     </div>
   </div>
 </section>
+
+<!-- Replays -->
+<section id="scr-replays" class="screen hidden">
+  <div class="sheet">
+    <header class="head"><button class="back" data-go="home" aria-label="Back">‹</button><span>Replays</span></header>
+    <div class="body" id="replay-list"></div>
+    <footer class="foot"><p class="note" style="margin:0">Your best run on each trail is kept, plus your 10 most recent. Replays live in this browser.</p></footer>
+  </div>
+</section>
+
+<!-- Replay controls -->
+<div id="replay-bar" class="hidden">
+  <div class="rb-top"><span class="rb-tag">REPLAY</span><span id="rb-title"></span></div>
+  <div class="rb-row">
+    <button class="ibtn" id="rb-play" aria-label="Play or pause">❚❚</button>
+    <input type="range" id="rb-seek" min="0" max="1000" value="0" aria-label="Position">
+    <button class="ibtn wide" id="rb-rate" aria-label="Speed">1×</button>
+    <button class="ibtn" id="rb-cam" aria-label="Camera">◎</button>
+    <button class="ibtn" id="rb-exit" aria-label="Exit replay">✕</button>
+  </div>
+</div>
 
 <!-- Controls -->
 <section id="scr-controls" class="screen hidden">
@@ -139,6 +161,7 @@
     <div class="body" id="fin-body"></div>
     <footer class="foot">
       <button class="mbtn" data-f="home">Home</button>
+      <button class="mbtn" data-f="replay" id="fin-replay">Watch replay</button>
       <button class="mbtn primary" data-f="again">Ride again</button>
       <button class="mbtn" data-f="next">Next trail ›</button>
     </footer>

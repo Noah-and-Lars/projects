@@ -3,7 +3,7 @@
 // landings, crashes and the UI. Plus a small generative music loop.
 
 let ctx = null;
-let master, sfxBus, musicBus;
+let master, sfxBus, musicBus, musicFilter = null, musicDuck = null;
 let buffers = null;
 let loops = null;
 let muted = false, musicOn = true;
@@ -66,19 +66,32 @@ function makeBuffers(sr) {
     highpass(a, sr, 900); lowpass(a, sr, 5000); normalise(a, 0.8);
     B.gravel = a;
   }
-  // Tread hum: knobs slapping the dirt, pitched by playback rate.
-  {
+  // Tread hum at three knob rates (slow, medium, fast), crossfaded by
+  // speed so the tyre noise changes character instead of just pitch.
+  const tread = (knobsPerSec, toneLo, toneHi, lp) => {
     const a = new Float32Array(sr * 2);
-    const knobs = 120;
-    for (let k = 0; k < knobs; k++) {
-      const at = Math.floor((k + (Math.random() - 0.5) * 0.4) / knobs * a.length);
-      const amp = (0.3 + Math.random() * 0.7) ** 1.5;
-      burst(a, at, Math.floor(sr * 0.006), amp, 5);
-      tone(a, at, Math.floor(sr * 0.02), 90 + Math.random() * 110, sr, amp * 0.6, 4);
+    const n = Math.round(knobsPerSec * 2);
+    for (let k = 0; k < n; k++) {
+      const at = Math.floor((k + (Math.random() - 0.5) * 0.5) / n * a.length);
+      const amp = (0.25 + Math.random() * 0.75) ** 1.5;
+      burst(a, at, Math.floor(sr * (0.002 + Math.random() * 0.008)), amp, 5);
+      tone(a, at, Math.floor(sr * 0.018), toneLo + Math.random() * (toneHi - toneLo), sr, amp * 0.5, 3.5);
     }
-    lowpass(a, sr, 1800); normalise(a, 0.8);
-    B.tread = a;
+    lowpass(a, sr, lp); normalise(a, 0.8);
+    return a;
+  };
+  B.treadSlow = tread(16, 70, 140, 1400);
+  B.treadMid = tread(40, 90, 200, 2200);
+  B.treadFast = tread(100, 120, 260, 3200);
+  // Skid: broadband gravel scrape.
+  {
+    const a = pinkNoise(sr * 2);
+    for (let k = 0; k < 400; k++) burst(a, Math.floor(Math.random() * a.length), Math.floor(sr * 0.004), 0.5, 4);
+    highpass(a, sr, 700); normalise(a, 0.8);
+    B.skid = a;
   }
+  // Wooden plank knock (drop decks).
+  B.plank = (() => { const a = new Float32Array(Math.floor(sr * 0.09)); tone(a, 0, a.length, 180, sr, 0.9, 7); tone(a, 0, a.length, 410, sr, 0.4, 9); burst(a, 0, Math.floor(sr * 0.01), 0.5, 5); lowpass(a, sr, 2500); normalise(a, 0.9); return a; })();
   // Freehub: a click every 1/40 s; playback rate sets the buzz speed.
   {
     const a = new Float32Array(sr);
@@ -129,7 +142,11 @@ export function initAudio() {
   master.gain.value = muted ? 0 : 0.9;
   master.connect(ctx.destination);
   sfxBus = ctx.createGain(); sfxBus.connect(master);
-  musicBus = ctx.createGain(); musicBus.gain.value = musicOn ? 0.32 : 0; musicBus.connect(master);
+  // Music path: bus → speed filter → duck → master.
+  musicDuck = ctx.createGain(); musicDuck.connect(master);
+  musicFilter = ctx.createBiquadFilter(); musicFilter.type = 'lowpass'; musicFilter.frequency.value = 9000;
+  musicFilter.connect(musicDuck);
+  musicBus = ctx.createGain(); musicBus.gain.value = musicOn ? 0.32 : 0; musicBus.connect(musicFilter);
   const raw = makeBuffers(ctx.sampleRate);
   buffers = {};
   for (const k in raw) buffers[k] = toBuffer(raw[k]);
@@ -156,14 +173,31 @@ function startLoops() {
   loops = {
     wind: loopNode(buffers.wind, 'lowpass', 600),
     gravel: loopNode(buffers.gravel, 'bandpass', 2400),
-    tread: loopNode(buffers.tread, 'lowpass', 900),
+    treadSlow: loopNode(buffers.treadSlow, 'lowpass', 1200),
+    treadMid: loopNode(buffers.treadMid, 'lowpass', 2000),
+    treadFast: loopNode(buffers.treadFast, 'lowpass', 3000),
+    skid: loopNode(buffers.skid, 'bandpass', 1300),
     hub: loopNode(buffers.hub, 'highpass', 1500),
   };
+  loops.skid.filter.Q.value = 0.7;
+  // Brake squeal: a wavering tone, only on hard braking at speed.
+  const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = 1650;
+  const lfo = ctx.createOscillator(); lfo.frequency.value = 7;
+  const lfoG = ctx.createGain(); lfoG.gain.value = 22;
+  lfo.connect(lfoG); lfoG.connect(o.frequency);
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1650; bp.Q.value = 6;
+  const g = ctx.createGain(); g.gain.value = 0;
+  o.connect(bp); bp.connect(g); g.connect(sfxBus);
+  o.start(); lfo.start();
+  loops.squeal = { g, o };
 }
+let plankAcc = 0;
 
 const smooth = (param, v, t = 0.06) => param.setTargetAtTime(v, ctx.currentTime, t);
 
 // Per-frame: speed (m/s), grounded, pedalling, surface ('trail'|'grass').
+// Per-frame: speed (m/s), grounded, air, pedalling, rough, slide (0..1),
+// skid (0..1), brake (0..1), wood (on a timber deck), dt.
 export function updateRide(st) {
   if (!ctx || !loops) return;
   const v = Math.abs(st.speed || 0);
@@ -171,14 +205,46 @@ export function updateRide(st) {
   smooth(loops.wind.g.gain, (st.active ? 0.05 + 0.5 * k * k : 0) * (st.air ? 1.4 : 1));
   smooth(loops.wind.filter.frequency, 300 + 1600 * k);
   const roll = st.active && st.grounded ? Math.min(1, v / 4) : 0;
-  smooth(loops.gravel.g.gain, roll * (0.12 + 0.35 * k) * (st.rough ? 1.8 : 1));
+  const dirt = st.wood ? 0.25 : 1;
+  smooth(loops.gravel.g.gain, roll * dirt * (0.1 + 0.3 * k) * (st.rough ? 1.8 : 1));
   loops.gravel.src.playbackRate.value = 0.7 + k * 0.8;
-  smooth(loops.tread.g.gain, roll * (0.15 + 0.45 * k));
-  loops.tread.src.playbackRate.value = 0.3 + v / 9;
+  // Crossfade the three tread layers by speed.
+  const band = (lo, mid, hi) => (v <= lo || v >= hi ? 0 : v < mid ? (v - lo) / (mid - lo) : 1 - (v - mid) / (hi - mid));
+  const tr = roll * dirt * (0.2 + 0.4 * k);
+  smooth(loops.treadSlow.g.gain, tr * Math.max(band(0, 3, 7), v < 3 ? 1 : 0));
+  smooth(loops.treadMid.g.gain, tr * band(3, 8, 13));
+  smooth(loops.treadFast.g.gain, tr * Math.max(band(8, 14, 40), v >= 14 ? 1 : 0));
+  for (const L of [loops.treadSlow, loops.treadMid, loops.treadFast]) L.src.playbackRate.value = 0.75 + v / 30;
+  // Skids and slides.
+  const sl = st.active && st.grounded ? Math.max(st.slide || 0, (st.skid || 0) * 0.9) : 0;
+  smooth(loops.skid.g.gain, sl * Math.min(1, v / 5) * 0.45, 0.04);
+  loops.skid.src.playbackRate.value = 0.8 + k * 0.5;
+  smooth(loops.squeal.g.gain, st.active && st.grounded && (st.brake || 0) > 0.6 && v > 4 ? 0.035 * Math.min(1, (v - 4) / 6) : 0, 0.08);
   const coast = st.active && !st.pedal && v > 1.2;
   smooth(loops.hub.g.gain, coast ? 0.12 + 0.12 * k : 0, 0.03);
   // Clicks per second ≈ wheel revs × engagement points.
   loops.hub.src.playbackRate.value = Math.max(0.2, (v / (2 * Math.PI * 0.37)) * 36 / 40);
+  // Timber decks knock under the tyres, one plank every ~12 cm per wheel.
+  if (st.wood && st.grounded && v > 1) {
+    plankAcc += v * (st.dt || 0.016) / 0.12;
+    if (plankAcc >= 1) { plankAcc = plankAcc % 1; sfx('plank', 0.12 + 0.1 * k, 0.9 + Math.random() * 0.2); }
+  }
+  // Music opens up with speed.
+  if (musicFilter) smooth(musicFilter.frequency, 1400 + 9000 * k * k, 0.4);
+}
+
+// Duck the music (crashes, pauses), then let it come back.
+export function duckMusic(level = 0.3, hold = 1.2) {
+  if (!ctx || !musicDuck) return;
+  const t = ctx.currentTime;
+  musicDuck.gain.cancelScheduledValues(t);
+  musicDuck.gain.setTargetAtTime(level, t, 0.05);
+  musicDuck.gain.setTargetAtTime(1, t + hold, 0.6);
+}
+export function holdMusicDuck(on) {
+  if (!ctx || !musicDuck) return;
+  musicDuck.gain.cancelScheduledValues(ctx.currentTime);
+  musicDuck.gain.setTargetAtTime(on ? 0.35 : 1, ctx.currentTime, 0.2);
 }
 
 export function sfx(name, vol = 1, rate = 1) {

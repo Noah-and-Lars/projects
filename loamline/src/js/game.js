@@ -7,8 +7,9 @@ import { Track } from './track.js';
 import { World } from './world.js';
 import { buildBike, buildRider } from './models.js';
 import { RiderAnimator } from './animate.js';
+import { Recorder, saveReplay, flagsOf } from './replay.js';
 import { CameraRig } from './camera.js';
-import { sfx, updateRide } from './audio.js';
+import { sfx, updateRide, duckMusic } from './audio.js';
 import { clamp, wrapAngle, smoothstep } from './noise.js';
 import { store, save, setting, loadGhost, saveGhost } from './storage.js';
 
@@ -34,7 +35,18 @@ export class Game {
     this.renderer = renderer;
     this.scene = scene;
     this.input = input;
-    this.hud = hud;
+    // HUD calls that show ride text are mirrored into the replay timeline.
+    const REC = new Set(['trickLine', 'trickTotal', 'flash', 'split', 'taskDone']);
+    this.hud = new Proxy(hud, {
+      get: (t, k) => {
+        const v = t[k];
+        if (typeof v !== 'function') return v;
+        return (...a) => {
+          if (REC.has(k) && this.recorder && this.started) this.recorder.event('hud', k, ...a);
+          return v.apply(t, a);
+        };
+      },
+    });
     this.course = course;
     const st = store();
     this.bikeDef = BIKES[bikeId] || BIKES.trail;
@@ -104,6 +116,9 @@ export class Game {
     this.countdown = 0;
     this.finishedData = null;
     this.tasks = Object.assign({}, store().tasks[this.course.id] || {});
+    const o = this.track.pointAt(0, 0);
+    this.recorder = this.course.timed ? new Recorder({ x: o.x, y: this.track.base[0], z: o.z }) : null;
+    this.replayId = null;
     this.spawnAt(3, 0, 0);
     this.hud.reset(this);
     if (this.course.timed) this.phase = 'ready';
@@ -191,6 +206,7 @@ export class Game {
     if (this.started && this.phase === 'run') this.time += dt;
     this.updateVisuals(dt, inp);
     this.recordGhost(dt);
+    this.recordReplay(dt);
     this.updateGhost();
     this.hud.update(this, dt);
   }
@@ -235,8 +251,10 @@ export class Game {
       const j = tr.nextJump(p.s, 45);
       let target = null;
       if (j && j.lipS - p.s < 40) target = j.speed;
+      // Ease off for a berm, unless a jump right after it needs the speed.
       const berm = tr.featureAt(p.s + 8);
-      if (berm && berm.type === 'berm') target = Math.min(target ?? 99, 11.5);
+      const after = berm && berm.type === 'berm' ? tr.nextJump(berm.s1, 40) : null;
+      if (berm && berm.type === 'berm') target = Math.min(target ?? 99, after ? Math.max(12, after.speed - 1) : 12);
       if (target !== null) {
         const v = sim.speed;
         if (v < target - 0.3) { inp.throttle = Math.max(inp.throttle, 1); inp.brake = 0; }
@@ -275,6 +293,17 @@ export class Game {
     // Leaving the course.
     if (off > 7 || (sim.grounded && off > 4.5 && Math.abs(sim.speed) > 3)) { this.doCrash('offtrack'); return; }
     if (sim.pos.y < p.base - 12) { this.doCrash('pit'); return; }
+
+    // On the ground between a gap's lip and its landing: that's the pit.
+    if (sim.grounded) {
+      const f = tr.featureAt(p.s);
+      if (f && f.type === 'jump' && f.gap && p.s > f.lipS + 0.4 && p.s < f.knuckleS - 0.4 && Math.abs(p.d) < tr.hw + 1) { this.doCrash('pit'); return; }
+    }
+    // Stuck (e.g. rolled back into a gap): put the rider back after a while.
+    if (this.started && this.phase === 'run' && Math.abs(sim.speed) < 0.4 && sim.grounded) {
+      this.stuckT = (this.stuckT || 0) + DT;
+      if (this.stuckT > 4) { this.stuckT = 0; this.hud.flash('Stuck: back to the run-in', 'warn'); this.respawn(true); return; }
+    } else this.stuckT = 0;
 
     // Manual time.
     if (sim.grounded && sim.manual > 0.18 && sim.speed > 1.5) {
@@ -315,6 +344,7 @@ export class Game {
     if (e.type === 'pop') {
       sfx('pop', 0.5);
       this.anim.onPop();
+      if (this.recorder) this.recorder.event('pop');
       const j = tr.nextJump(p.s - 2, 4);
       if (j && e.kind !== 'hop') {
         const dl = p.s - j.lipS;
@@ -336,11 +366,14 @@ export class Game {
     }
     if (e.type === 'land') this.onLand(e, p);
     if (e.type === 'loopout') this.doCrash('loopout');
-    if (e.type === 'barcatch') this.barCatch = e.rate;
+    if (e.type === 'barcatch') { this.barCatch = e.rate; if (this.recorder) this.recorder.event('barcatch', +e.rate.toFixed(2)); }
   }
 
   onLand(e, p) {
-    if (!e.crash) this.anim.onLand(e);
+    if (!e.crash) {
+      this.anim.onLand(e);
+      if (this.recorder) this.recorder.event('land', +e.vn.toFixed(2), e.first);
+    }
     const tr = this.track, sim = this.sim;
     const j = this.takeoffJump;
     this.takeoffJump = null;
@@ -349,7 +382,7 @@ export class Game {
     let grade = null;
     if (j && e.airTime >= 0.35) {
       grade = tr.judge(j, s);
-      if (grade === 'casedGap' && j.pit > 0.8) crash = crash || 'pit';
+      if (grade === 'casedGap') crash = crash || 'pit';
     }
     if (crash) { this.doCrash(crash); return; }
 
@@ -373,7 +406,7 @@ export class Game {
     if (e.barspins > 0) items.push([`Barspin${e.barspins > 1 ? ' ×' + e.barspins : ''}`, 300 * e.barspins]);
     if (e.airTime > 0.8) items.push([`Air ${e.airTime.toFixed(1)}s`, Math.round(e.airTime * 40)]);
     if (grade === 'sweet' && Math.abs(e.pitchErr) < 0.3) items.push(['Sweet spot', 100]);
-    else if (e.clean && e.airTime > 0.5) items.push(['Clean landing', 40]);
+    else if (e.clean && e.airTime > 0.5 && !/cased/i.test(grade || '')) items.push(['Clean landing', 40]);
 
     let total = items.reduce((a, b) => a + b[1], 0);
     const nTricks = items.filter((i) => !/Air|Sweet|Clean/.test(i[0])).length;
@@ -434,6 +467,7 @@ export class Game {
     this.crashes++;
     this.hud.flash(CRASH_TEXT[reason] || 'Crash!', 'bad', 1.6);
     sfx('crash', 0.8);
+    duckMusic(0.25, 1.6);
     this.rig.shake = 1;
     // Rider and bike tumble apart.
     const v = sim.vel;
@@ -518,13 +552,44 @@ export class Game {
       prev.styleBest = Math.max(prev.styleBest || 0, this.style);
     }
     save();
+    this.replayId = this.saveReplay(total);
     this.finishedData = {
       time: total, raw: this.time, penalty: this.penalty, crashes: this.crashes, style: this.style,
       splits: this.splits.slice(), prev, isBest, coins,
-      jumps: this.jumpsCleared.size, jumpTotal: this.track.jumps().length,
+      jumps: this.jumpsCleared.size, jumpTotal: this.track.jumps().length, replayId: this.replayId,
     };
     sfx('finish', 0.8);
     this.hud.finish(this, this.finishedData);
+  }
+
+  // ----------------------------------------------------------- replay --
+
+  recordReplay(dt) {
+    if (!this.recorder || !this.started || this.phase !== 'run') return;
+    const sim = this.sim, r = this.bikeRoot;
+    const crash = !!this.crash;
+    this.recorder.tick(dt, crash ? {
+      x: r.position.x, y: r.position.y, z: r.position.z, yaw: r.rotation.y, pitch: -r.rotation.x, roll: -r.rotation.z,
+      clock: this.time + this.penalty, flags: flagsOf({ crash: true }), landIn: 4,
+    } : {
+      x: sim.pos.x, y: sim.pos.y, z: sim.pos.z, yaw: sim.yaw, pitch: sim.pitch, roll: sim.roll, whip: sim.whip,
+      speed: sim.grounded ? sim.speed : sim.hSpeed(), lift: sim.manual - sim.stoppie, preload: sim.preload,
+      noHand: sim.noHand, superman: sim.superman, barAngle: sim.barAngle, barspin: sim.barspin,
+      steerVis: sim.steerVis, brakeVis: sim.brakeVis, landIn: sim.landIn, spinVel: sim.spinVel,
+      sliding: sim.sliding, skid: sim.skid, clock: this.time + this.penalty,
+      flags: flagsOf({ grounded: sim.grounded, pedaling: sim.pedaling, bunny: sim.bunny, standing: sim.hopT >= 0 }),
+    });
+  }
+
+  saveReplay(total) {
+    if (!this.recorder || this.recorder.frames.length < 20) return null;
+    const st = store();
+    const rec = this.recorder.encode({
+      course: this.course.id, courseName: this.course.name, bike: this.bikeDef.id,
+      color: st.colors[this.bikeDef.id] || this.bikeDef.color, kit: { ...st.kit },
+      time: total, style: this.style, crashes: this.crashes, weather: this.world.weather,
+    });
+    return saveReplay(rec);
   }
 
   // ------------------------------------------------------------ ghost --
@@ -583,9 +648,12 @@ export class Game {
     const camTarget = this.crash ? { pos: this.bikeRoot.position, vel: { x: 0, y: 0, z: 0 }, yaw: this.rig.yaw, pitch: 0, grounded: true, speed: 0, roll: 0, preload: 0 } : sim;
     this.rig.update(dt, camTarget, ground);
     this.world.follow(this.bikeRoot.position, sim.yaw);
+    const ps = this.projTmp.s ?? 0;
+    const deck = this.track.features.find((f) => f.deckS !== null && f.deckS !== undefined && ps >= f.deckS && ps <= f.lipS);
     updateRide({
       active: this.phase === 'run' || this.phase === 'finished', speed: this.crash ? 0 : sim.grounded ? sim.speed : sim.hSpeed(),
-      grounded: sim.grounded && !this.crash, air: !sim.grounded, pedal: sim.pedaling && sim.grounded, rough: this.rough || sim.sliding > 0.3 || sim.skid > 0.4,
+      grounded: sim.grounded && !this.crash, air: !sim.grounded, pedal: sim.pedaling && sim.grounded, rough: this.rough,
+      slide: sim.sliding, skid: sim.skid, brake: sim.brakeVis, wood: !!deck && sim.grounded, dt,
     });
   }
 

@@ -8,6 +8,7 @@ import { sfx, setMuted, setMusic, isMuted } from './audio.js';
 import { fmtTime, COIN_RATE } from './game.js';
 import { VIEWS, VIEW_NAMES } from './camera.js';
 import { Tilt } from './input.js';
+import { listReplays, deleteReplay } from './replay.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -114,6 +115,29 @@ export function buildCourseList(onPick) {
       <div class="best">${c.timed ? (best ? `Best ${fmtTime(best.time)} · ★ ${best.style.toLocaleString()}` : 'No time yet') : `Skills ${done}/${c.tasks.length}`}</div></div>`;
     b.onclick = () => { sfx('click'); onPick(c); };
     el.appendChild(b);
+  }
+}
+
+// ------------------------------------------------------------- replays
+
+export function buildReplays(onWatch) {
+  const el = $('#replay-list');
+  const list = listReplays();
+  if (!list.length) { el.innerHTML = '<p class="empty">No replays yet. Finish a timed trail and your run is saved here.</p>'; return; }
+  el.innerHTML = '<div class="rlist"></div>';
+  const box = el.firstChild;
+  for (const r of list) {
+    const row = document.createElement('div');
+    row.className = 'rrow';
+    const d = new Date(r.date);
+    const when = `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    row.innerHTML = `<div class="rn">${r.courseName || r.course}${r.best ? '<span class="best">BEST</span>' : ''}</div>
+      <div class="rt">${fmtTime(r.time)}</div>
+      <div class="rb"><button class="watch">Watch</button><button class="del" aria-label="Delete">✕</button></div>
+      <div class="rm">${when} · ${(BIKES[r.bike] || {}).name || r.bike} · ★ ${(r.style || 0).toLocaleString()} · crashes ${r.crashes || 0}</div>`;
+    row.querySelector('.watch').onclick = () => { sfx('click'); onWatch(r.id); };
+    row.querySelector('.del').onclick = () => { sfx('click'); deleteReplay(r.id); buildReplays(onWatch); };
+    box.appendChild(row);
   }
 }
 
@@ -394,6 +418,7 @@ export function renderFinish(game, d) {
     const df = ref !== null && ref !== undefined ? ` <span style="color:${t <= ref ? '#4c8c00' : '#c0262f'}">${t <= ref ? '−' : '+'}${Math.abs(t - ref).toFixed(2)}</span>` : '';
     return `<div><span>Split ${i + 1}</span><span>${fmtTime(t)}${df}</span></div>`;
   }).join('');
+  $('#fin-replay').classList.toggle('hidden', !d.replayId);
   $('#fin-title').textContent = d.isBest ? (prev ? 'New record!' : 'First time in the books!') : 'Finished!';
   $('#fin-body').innerHTML = `
     <div class="fin-time">${fmtTime(d.time)}${d.isBest ? '<span class="fin-badge">Best</span>' : ''}</div>${sub}

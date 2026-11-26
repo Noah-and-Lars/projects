@@ -23,38 +23,61 @@ import { clamp, wrapAngle } from './noise.js';
 export const G = 9.81;
 const TAU = Math.PI * 2;
 
-// travel: suspension soak factor; airK: how quickly it rotates in the air;
-// massK: pop strength; head: head angle (steeper = less nose-down margin).
+// Each bike is described by its build (wheel radius m, suspension travel m,
+// tyre width in, mass kg, head angle deg, wheelbase m); deriveBike() turns
+// that into handling. Trail 140 is the reference (all factors 1).
 export const BIKES = {
   trail: {
     id: 'trail', name: 'Trail 140', type: 'Full suspension', price: 0,
     desc: 'The all-rounder: 140 mm of travel, quick to pedal, easy to throw around.',
-    wb: 1.18, pedalAcc: 4.4, vPedal: 14.0, brake: 7.0, grip: 1.05,
-    airK: 1.0, travel: 1.0, massK: 1.0, head: 65, impact: 18, barspin: true,
-    color: '#e8562a', stats: { speed: 3, air: 3, grip: 3, tough: 3 },
+    wb: 1.18, wheelR: 0.37, travelM: 0.14, tyre: 2.4, mass: 14, head: 65, topKmh: 50, brake: 7.0, barspin: true,
+    color: '#e8562a',
   },
   dj: {
     id: 'dj', name: 'Slab DJ', type: 'Dirt jumper', price: 300,
     desc: 'Small wheels, slammed saddle, rigid back end. Spins and flips fast, lands hard.',
-    wb: 1.06, pedalAcc: 4.8, vPedal: 12.6, brake: 6.6, grip: 0.95,
-    airK: 1.3, travel: 0.6, massK: 1.06, head: 69, impact: 15, barspin: true,
-    color: '#2fb8e6', stats: { speed: 2, air: 5, grip: 2, tough: 2 },
+    wb: 1.06, wheelR: 0.33, travelM: 0.08, tyre: 2.2, mass: 11, head: 69, topKmh: 45, brake: 6.6, barspin: true,
+    color: '#2fb8e6',
   },
   enduro: {
     id: 'enduro', name: 'Scree 170', type: 'Enduro', price: 650,
     desc: 'Long, slack and planted. Holds a line in the rough and soaks up casings.',
-    wb: 1.24, pedalAcc: 4.4, vPedal: 15.0, brake: 7.4, grip: 1.12,
-    airK: 0.92, travel: 1.2, massK: 0.97, head: 63.5, impact: 20, barspin: true,
-    color: '#8bc34a', stats: { speed: 4, air: 3, grip: 4, tough: 4 },
+    wb: 1.24, wheelR: 0.37, travelM: 0.17, tyre: 2.5, mass: 15.5, head: 63.5, topKmh: 54, brake: 7.4, barspin: true,
+    color: '#8bc34a',
   },
   dh: {
     id: 'dh', name: 'Gravity 200', type: 'Downhill (dual crown)', price: 1200,
     desc: 'Two hundred millimetres and a dual-crown fork. Flat-out fast, forgiving, slow to rotate. No barspins.',
-    wb: 1.28, pedalAcc: 4.1, vPedal: 16.0, brake: 7.8, grip: 1.18,
-    airK: 0.82, travel: 1.4, massK: 0.92, head: 62.5, impact: 22, barspin: false,
-    color: '#f2c230', stats: { speed: 5, air: 2, grip: 5, tough: 5 },
+    wb: 1.28, wheelR: 0.37, travelM: 0.2, tyre: 2.5, mass: 17, head: 62.5, topKmh: 58, brake: 7.8, barspin: false,
+    color: '#f2c230',
   },
 };
+
+// Handling from the build:
+//  - airK: rotation agility, from mass and wheelbase (moment of inertia)
+//  - massK: pop strength (rider + bike mass)
+//  - travel: how much of a lip's kick the suspension soaks up
+//  - impact: the landing speed (into the slope) that crashes you
+//  - grip: tyre width; rough: sensitivity off the trail (small wheels, little travel)
+//  - rmin: tightest turn (longer, slacker bikes turn wider); vPedal: pedalling top speed
+export function deriveBike(b) {
+  const ref = BIKES.trail;
+  const inertia = (x) => 12 + x.mass * (x.wb / 2) ** 2;
+  const soak = (x) => 0.3 + x.travelM;
+  b.airK = inertia(ref) / inertia(b);
+  b.massK = (75 + ref.mass) / (75 + b.mass);
+  b.travel = soak(b) / soak(ref);
+  b.impact = 18 * b.travel;
+  b.grip = 1.05 * (1 + 0.3 * Math.log(b.tyre / ref.tyre)) * (b.id === 'dh' ? 1.06 : 1);
+  b.rough = Math.sqrt((ref.wheelR / b.wheelR) / b.travel);
+  b.rmin = 1.6 * (b.wb / 1.32) / (1 + 0.05 * (b.head - 63));
+  b.vPedal = b.topKmh / 3.6 * 1.0;
+  b.pedalAcc = 4.4 * Math.pow(b.massK, 2);
+  const lvl = (v, lo, hi) => Math.max(1, Math.min(5, Math.round(1 + 4 * (v - lo) / (hi - lo))));
+  b.stats = { speed: lvl(b.topKmh, 44, 58), air: lvl(b.airK, 0.85, 1.12), grip: lvl(b.grip, 1.0, 1.12), tough: lvl(b.impact, 15.5, 21) };
+  return b;
+}
+for (const b of Object.values(BIKES)) deriveBike(b);
 
 export const POP_FLAT = 3.0;      // ollie on the flat: ~45 cm
 export const POP_LIP = 1.5;       // added to a kicker's throw
@@ -174,8 +197,11 @@ export class BikeSim {
     const hFext = Math.min(hRb * L0 + hR * L1 + hc * L2, hc + 1.2 * w2);
     // Past a lip or a drop edge the front wheel has nothing under it: the bike
     // rides the rear wheel's line until the rear leaves too.
-    const fh = hF < hFext - 0.03 ? hFext : hF;
-    const lost = fh !== hF;
+    // Only a real edge (ground under the front well below where it should
+    // be) hands over, and continuously from 3 cm.
+    const lostK = clamp((hFext - hF - 0.03) / 0.04, 0, 1);
+    const fh = hF + (hFext - hF) * lostK;
+    const lost = lostK > 0.5;
     const avg = (fh + hR) / 2;
     const c = Math.max(avg, lost ? -Infinity : hc);
     return { f: hF, r: hR, c, slope: clamp((fh - hR) / this.bike.wb, -1.2, 1.2), edge: lost };
@@ -268,7 +294,7 @@ export class BikeSim {
     this.skid = lock > this.skid ? lock : this.skid * Math.exp(-7 * dt);
     this.rearGrip = lock > 0 ? Math.min(this.rearGrip, 1 - lock * 0.7) : Math.min(1, this.rearGrip + 1.2 * dt);
     const drag = CD * (1 - 0.4 * this.preload);
-    const roll = CRR * G * this.surface.roll + drag * u * u + (this.sliding * 1.5);
+    const roll = CRR * G * (this.surface.roll > 1 ? this.surface.roll * b.rough : 1) + drag * u * u + (this.sliding * 1.5);
     a -= Math.sign(u) * roll;
     let u2 = u + a * dt;
     if (brakeDecel > 0 && u2 < 0) u2 = 0;
@@ -279,7 +305,7 @@ export class BikeSim {
     // by twice the grip; the velocity only follows as far as grip allows, so
     // over-asking slides.
     const P = Math.abs(u);
-    const Rmin = 1.6 * (b.wb / 1.32);
+    const Rmin = b.rmin;
     const gripRate = a1 / Math.max(P, 1);
     let yawRate = -inp.steer * Math.min(P / Rmin, 2 * gripRate) * (u < 0 ? -1 : 1);
     const dyaw = yawRate * dt;

@@ -18,7 +18,7 @@ for (const course of COURSES) {
   hs.hint = start.i;
   sim.reset(start.x, 0, start.z, start.yaw, 0);
   const p = {};
-  let t = 0, crashes = 0, takeoff = null, held = false;
+  let t = 0, crashes = 0, takeoff = null, held = false, stuckT = 0;
   const grades = {};
   const log = [];
   while (t < 240) {
@@ -61,7 +61,7 @@ for (const course of COURSES) {
       if (e.type === 'land') {
         const lp = tr.project(sim.pos.x, sim.pos.z, hs.hint, {});
         let g = takeoff && e.airTime >= 0.35 ? tr.judge(takeoff, lp.s) : null;
-        let crash = e.crash || (g === 'casedGap' && takeoff.pit > 0.8 ? 'pit' : null);
+        let crash = e.crash || (g === 'casedGap' ? 'pit' : null);
         if (g) grades[g] = (grades[g] || 0) + 1;
         if (crash || (g && g !== 'sweet')) log.push(`  ${takeoff ? takeoff.kind + '@' + takeoff.lipS.toFixed(0) : 'bump'} v=${takeoff ? takeoff.speed : '-'} → ${g}${crash ? ' CRASH ' + crash : ''} vn=${e.vn.toFixed(1)} pitchErr=${(e.pitchErr * 57).toFixed(0)}° air=${e.airTime.toFixed(2)}`);
         if (crash) {
@@ -75,8 +75,22 @@ for (const course of COURSES) {
         takeoff = null;
       }
     }
+    // In a gap's pit (as in the game): a crash.
+    { const f = tr.featureAt(p.s);
+      if (sim.grounded && f && f.type === 'jump' && f.gap && p.s > f.lipS + 0.4 && p.s < f.knuckleS - 0.4 && Math.abs(p.d) < tr.hw + 1) {
+        crashes++; log.push(`  in the pit of ${f.kind}@${f.lipS.toFixed(0)}`);
+        const pt = tr.pointAt(Math.max(3, f.s0 - 16), 0); hs.hint = pt.i; sim.reset(pt.x, 0, pt.z, pt.yaw, f.speed * 0.97); takeoff = null; continue;
+      } }
+    // Stuck (as in the game): count it and put the bot back.
+    if (sim.grounded && Math.abs(sim.speed) < 0.4) stuckT += DT; else stuckT = 0;
+    if (stuckT > 4) {
+      stuckT = 0; crashes++; log.push(`  stuck at s=${p.s.toFixed(0)} (feature ${JSON.stringify(tr.featureAt(p.s)?.kind || tr.featureAt(p.s)?.type || null)})`);
+      const j = tr.jumps().filter((f) => f.s0 <= p.s + 2).pop();
+      const pt = tr.pointAt(Math.max(3, j ? j.s0 - 16 : p.s - 20), 0); hs.hint = pt.i; sim.reset(pt.x, 0, pt.z, pt.yaw, j ? j.speed * 0.97 : 7);
+    }
     if (Math.abs(p.d) > tr.hw + 7) { crashes++; log.push(`  off track at s=${p.s.toFixed(0)}`); const pt = tr.pointAt(p.s - 10, 0); hs.hint = pt.i; sim.reset(pt.x, 0, pt.z, pt.yaw, 8); }
     t += DT;
+    if (process.env.TRACE === course.id && Math.abs(t % 5) < DT) console.log(`    t=${t.toFixed(0)} s=${p.s.toFixed(1)} d=${p.d.toFixed(2)} v=${sim.speed.toFixed(2)} vLat=${sim.vLat.toFixed(2)} air=${!sim.grounded} lift=${sim.lift.toFixed(2)}`);
   }
   // The bot is a simple controller, not a perfect rider: a course passes if
   // it can be finished with at most a couple of crashes.

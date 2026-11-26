@@ -85,13 +85,15 @@ export function designJump(o, grade) {
   const kind = o.kind || 'table';
   const v = o.speed;
   const h = o.h ?? 1.4;
-  const run = 3;                     // flat run-in
+  let run = 3;                       // flat run-in (nudged so the lip lands on a sample)
   const prof = new Profile();
+  const meta0 = {};
   let lipX, kickStart = run;
 
   if (kind === 'drop') {
     const up = h / Math.tan(11 * DEG);
     const deck = o.deck ?? 6;
+    run += (DS - ((run + up + deck) % DS)) % DS;
     // Gentle roll-up, flat deck, tiny upturn at the edge.
     prof.add(run, run + up, (x) => {
       const t = (x - run) / up;
@@ -99,9 +101,12 @@ export function designJump(o, grade) {
     });
     prof.add(run + up, run + up + deck, () => h);
     lipX = run + up + deck;
+    meta0.deckX = run + up;
   } else {
     const th = (o.angle ?? 28) * DEG;
     const Lk = 2 * h / Math.tan(th);
+    run += (DS - ((run + Lk) % DS)) % DS;
+    kickStart = run;
     prof.add(run, run + Lk, (x) => h * ((x - run) / Lk) ** 2);
     lipX = run + Lk;
   }
@@ -114,7 +119,7 @@ export function designJump(o, grade) {
 
   let landH = o.land ?? (kind === 'step' ? h - 0.7 : kind === 'stepup' ? h + 0.8 : kind === 'drop' ? h * 0.85 : h);
   const pit = o.pit ?? (kind === 'gap' ? 3.2 : 0.7);
-  const meta = { kind, speed: v, lipX, lipH, run, landH };
+  const meta = { kind, speed: v, lipX, lipH, run, landH, ...meta0 };
 
   if (kind === 'stepup') {
     const a = crossDown(pathNo, landH + 0.2), b = crossDown(pathPop, landH + 0.2);
@@ -159,7 +164,8 @@ export function designJump(o, grade) {
     aK = crossDown(pathNo, landH + 0.12);
     if (!aK) throw new Error(`jump unflyable: ${JSON.stringify(o)}`);
     const popK = crossDown(pathPop, landH) || aK;
-    kn = Math.max((gapy ? aK.z - 0.2 : aK.z + (popK.z - aK.z) * 0.3), lipX + minGap);
+    // Gaps get a metre of margin: no pop still lands a metre down the ramp.
+    kn = Math.max((gapy ? aK.z - 1.1 : aK.z + (popK.z - aK.z) * 0.3), lipX + minGap);
     hitB = null;
     for (let ang = 42; ang >= 24; ang -= 1) {
       m = Math.tan(ang * DEG);
@@ -258,6 +264,7 @@ export class Track {
     };
 
     const defGrade = c.grade ?? 0.06;
+    let flowV = 11;   // running estimate of riding speed (last jump's design speed)
     for (const p of c.layout) {
       const [type, ...a] = p;
       const s0 = s;
@@ -267,18 +274,21 @@ export class Track {
         for (let i = 0; i < n; i++) emit(0, grade, 0, 0, 0);
       } else if (type === 'b' || type === 't') {
         // turn: angle (deg, + = left), radius, grade, bank (deg)
-        const [angD, r, grade = defGrade, bankD = type === 'b' ? 28 : 0] = a;
+        const [angD, r, grade = defGrade] = a;
         const A = angD * DEG;
         const L = Math.abs(A) * r / 0.8;
         const n = Math.round(L / DS);
         const kmax = A / (0.8 * L);
+        // Berms are banked for the speed they're ridden at: tan(bank) = v²κ/g,
+        // between 12° and 35°.
+        const bankD = type === 'b' ? clamp(Math.atan(flowV * flowV * Math.abs(kmax) / 9.81) / DEG, 12, 35) : 0;
         for (let i = 0; i < n; i++) {
           const t = i / n;
           const shape = Math.min(1, t / 0.2, (1 - t) / 0.2);
           const bshape = smoothstep(0, 0.25, t) * (1 - smoothstep(0.75, 1, t));
           emit(kmax * shape, grade, Math.sign(A) * Math.tan(bankD * DEG) * bshape, 0, 0);
         }
-        if (type === 'b') this.features.push({ type: 'berm', s0, s1: s, angle: angD });
+        if (type === 'b') this.features.push({ type: 'berm', s0, s1: s, angle: angD, bank: bankD });
       } else if (type === 'rollers') {
         const [n, amp = 0.6, wl = 7, grade = defGrade] = a;
         const L = n * wl + 4;
@@ -294,6 +304,7 @@ export class Track {
       } else {
         // jump
         const opt = Object.assign({ kind: type }, a[0] || {});
+        flowV = Math.min(13, opt.speed);
         const grade = opt.grade ?? Math.min(defGrade, 0.05);
         const j = designJump(opt, grade);
         const n = Math.round(j.len / DS);
@@ -302,7 +313,7 @@ export class Track {
           type: 'jump', kind: j.kind, s0, s1: s, speed: opt.speed, name: opt.name,
           lipS: s0 + j.lipX, knuckleS: s0 + j.knuckleX, rampEndS: s0 + j.rampEnd,
           sweet: [s0 + j.sweet[0], s0 + j.sweet[1]], flatS: s0 + j.flatX, gap: j.gap,
-          lipH: j.lipH, landH: j.landH, pit: j.pit || 0,
+          lipH: j.lipH, landH: j.landH, pit: j.pit || 0, deckS: j.deckX !== undefined ? s0 + j.deckX : null,
         });
       }
       pieceOf.push([s0, s]);
@@ -422,12 +433,18 @@ export class Track {
   heightFromProj(x, z, p) {
     const hw = this.hw;
     const d = p.d, ad = Math.abs(d);
-    if (ad <= hw) return p.base + p.feat + p.bank * d;
+    // Berms: straight on the inside, curling up toward the outside edge and
+    // into a lip beyond it.
+    const outer = p.bank !== 0 && Math.sign(d) === Math.sign(p.bank);
+    const ab = Math.abs(p.bank);
+    if (ad <= hw) return p.base + p.feat + p.bank * d + (outer ? 0.35 * ab * hw * (ad / hw) ** 2 : 0);
     const e = ad - hw;
     const sg = Math.sign(d);
     const f = p.feat;
     const fs = f > 0 ? f * (1 - smoothstep(0, 1.1 * f + 0.9, e)) : f * (1 - smoothstep(0, 1.2, e));
-    const bankEdge = p.bank * sg * hw * (1 - smoothstep(0, 5, e));
+    const curlEdge = outer ? 0.35 * ab * hw : 0;
+    const bankEdge = (p.bank * sg * hw + curlEdge) * (1 - smoothstep(0, 5, e))
+      + (outer ? 0.9 * ab * smoothstep(0, 1, e) * (1 - smoothstep(1.5, 5, e)) : 0);
     const rough = this.noise(x * 0.35, z * 0.35) * 0.25 * smoothstep(0, 4, e)
       + this.noise2(x * 0.08, z * 0.08) * 1.6 * smoothstep(2, 20, e);
     const side = p.cross * (e) * smoothstep(0, 14, e) + 0.06 * e * smoothstep(0, 10, e);

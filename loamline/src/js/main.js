@@ -6,12 +6,14 @@ import { COURSES } from './courses.js';
 import { BIKES, emptyInput } from './physics.js';
 import { buildBike, buildRider } from './models.js';
 import { Game, resolveQuality } from './game.js';
+import { ReplayView } from './replayview.js';
+import { loadReplay } from './replay.js';
 import { Input, bindTouch } from './input.js';
-import { initAudio, setMuted, setMusic, sfx } from './audio.js';
+import { initAudio, setMuted, setMusic, sfx, holdMusicDuck } from './audio.js';
 import { store, setting } from './storage.js';
 import {
   show, currentScreen, buildCourseList, buildGarage, buildControls, buildSettings, Hud, renderFinish,
-  updateCoins, menuKey, isTouch, $, $$,
+  updateCoins, menuKey, isTouch, buildReplays, $, $$,
 } from './ui.js';
 
 const canvas = $('#game');
@@ -124,7 +126,10 @@ const showroom = (() => {
 
 function goHome() {
   if (game) { game.dispose(); game = null; }
+  holdMusicDuck(false);
   hud.show(false);
+  document.body.classList.remove('replay-on');
+  $('#replay-bar').classList.add('hidden');
   document.body.classList.remove('photo-on');
   $('#photo').classList.add('hidden');
   showroom.rebuild();
@@ -154,10 +159,52 @@ function startCourse(course) {
   }, 30));
 }
 
+// ------------------------------------------------------------- replays --
+function startReplay(id) {
+  const rec = loadReplay(id);
+  if (!rec) return;
+  const course = COURSES.find((c) => c.id === rec.meta.course);
+  show('loading');
+  $('#loading-text').textContent = `Loading replay: ${course ? course.name : ''}…`;
+  requestAnimationFrame(() => setTimeout(() => {
+    if (game) { game.dispose(); game = null; }
+    applyQuality();
+    try {
+      game = new ReplayView({ renderer, scene: new THREE.Scene(), camera, rec, hud, input });
+    } catch (e) {
+      console.error(e);
+      $('#loading-text').textContent = 'Could not load the replay: ' + e.message;
+      return;
+    }
+    game.onExit = () => { goHome(); buildReplays(startReplay); show('replays'); };
+    show(null);
+    hud.reset(game);
+    hud.show(true);
+    document.body.classList.add('replay-on');
+    $('#replay-bar').classList.remove('hidden');
+    $('#rb-title').textContent = `${course ? course.name : rec.meta.course} · ${fmtClock(rec.meta.time)}`;
+    window.__game = game;
+  }, 30));
+}
+const fmtClock = (t) => { const m = Math.floor(t / 60), x = t - m * 60; return `${m}:${x < 10 ? '0' : ''}${x.toFixed(2)}`; };
+const RATES = [0.25, 0.5, 1, 2];
+$('#rb-play').onclick = () => { if (game && game.isReplay) { if (game.t >= game.duration) game.seek(0); game.playing = !game.playing; } };
+$('#rb-rate').onclick = () => { if (game && game.isReplay) { game.rate = RATES[(RATES.indexOf(game.rate) + 1) % RATES.length]; $('#rb-rate').textContent = game.rate + '×'; } };
+$('#rb-cam').onclick = () => { if (game && game.isReplay) game.rig.next(); };
+$('#rb-exit').onclick = () => { if (game && game.isReplay) game.onExit(); };
+$('#rb-seek').addEventListener('input', (e) => { if (game && game.isReplay) game.seek(e.target.value / 1000 * game.duration); });
+window.addEventListener('keydown', (e) => {
+  if (!game || !game.isReplay) return;
+  if (e.code === 'Space') { e.preventDefault(); $('#rb-play').click(); }
+  if (e.code === 'ArrowRight') game.seek(game.t + 5);
+  if (e.code === 'ArrowLeft') game.seek(game.t - 5);
+});
+
 hud.onAct = (a) => input.action(a);
 hud.onPause = (g) => {
   if (g.phase === 'finished') return;
   g.paused = !g.paused;
+  holdMusicDuck(g.paused);
   if (g.paused) {
     buildSettings('#pause-settings', { inRun: true, onChange: () => applyRunSettings(g) });
     show('pause');
@@ -193,8 +240,8 @@ $('#scr-pause').addEventListener('click', (e) => {
   if (!b || !game) return;
   sfx('click');
   const p = b.dataset.p;
-  if (p === 'resume') { game.paused = false; show(null); }
-  if (p === 'restart') { game.paused = false; show(null); game.restart(); }
+  if (p === 'resume') { game.paused = false; holdMusicDuck(false); show(null); }
+  if (p === 'restart') { game.paused = false; holdMusicDuck(false); show(null); game.restart(); }
   if (p === 'home') goHome();
 });
 $('#scr-finish').addEventListener('click', (e) => {
@@ -206,6 +253,7 @@ $('#scr-finish').addEventListener('click', (e) => {
   if (f === 'home') goHome();
   if (f === 'again') { show(null); game.restart(); }
   if (f === 'next') startCourse(COURSES[(COURSES.indexOf(c) + 1) % COURSES.length]);
+  if (f === 'replay' && game.replayId) startReplay(game.replayId);
 });
 $('#photo-exit').onclick = () => game && hud.onPhoto(game);
 $('#photo-save').onclick = () => {
@@ -244,6 +292,7 @@ for (const b of $$('[data-go]')) {
     if (go === 'courses') buildCourseList(startCourse);
     if (go === 'garage') buildGarage(() => showroom.rebuild());
     if (go === 'controls') buildControls();
+    if (go === 'replays') buildReplays(startReplay);
     if (go === 'settings') buildSettings('#settings-body', { onChange: () => { applyQuality(); } });
     show(go);
   });
@@ -282,6 +331,10 @@ function frame(now) {
   const scr = currentScreen();
   if (game) {
     game.update(dt);
+    if (game.isReplay) {
+      $('#rb-seek').value = Math.round(game.t / game.duration * 1000);
+      $('#rb-play').textContent = game.playing ? '❚❚' : '▶';
+    }
     renderer.render(game.scene, camera);
     // Running slowly: drop resolution once.
     fpsCheckT += dt;
@@ -305,4 +358,4 @@ function frame(now) {
 // Boot.
 document.fonts && document.fonts.load('italic 800 20px "Barlow Condensed"').catch(() => {});
 setTimeout(() => { show('home'); requestAnimationFrame(frame); }, 50);
-window.__loam = { startCourse, COURSES, input, emptyInput };
+window.__loam = { startCourse, startReplay, COURSES, input, emptyInput };

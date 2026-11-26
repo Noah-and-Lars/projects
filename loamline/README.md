@@ -63,6 +63,16 @@ straightens you a little in the air. *Strong* follows the trail
 for the landing. Less assist earns more coins. The speedometer shows the
 speed window for the next jump.
 
+**Replays**: every finished timed run is recorded. The Replays menu keeps
+your best run on each trail plus your 10 most recent; watch them back with
+play / pause, 0.25–2× speed, scrubbing and every camera view (Space, ← / →
+and C work too).
+
+**Bikes** are described by how they're built (wheel size, travel, tyre
+width, mass, head angle, wheelbase) and their handling follows from that:
+light short bikes rotate and pop more, long-travel bikes soak up lips and
+hard landings, wide tyres grip, slack long bikes turn wider.
+
 Settings also cover weather (day, dusk, night with a bike lamp, fog or
 random), graphics quality, camera view, steering sensitivity, tilt
 steering on phones, sound and music. Everything is saved in your browser.
@@ -96,15 +106,16 @@ node tools/test.mjs
 | File (`src/js/`) | What it does |
 | --- | --- |
 | `physics.js` | Bike physics: banked-curve grip with drift and rear-wheel lock, manual balance, lip and rear-wheel takeoff with suspension soak, pops and bunny hops, flips, spins, whips with landing-aware limits, a landing predictor with auto-align, barspins, crash rules. Pure math, so node can run it. |
-| `track.js` | Builds a trail from pieces, the world height function, and the **jump designer**: each kicker is ridden with the real physics, with and without a pop, and the landing is placed and shaped to catch both. |
+| `track.js` | Builds a trail from pieces (berms banked for their speed, with a curled outer edge), the world height function, and the **jump designer**: each kicker is ridden with the real physics, with and without a pop, and the landing is placed and shaped to catch both. |
 | `courses.js` | Trail layouts and visual themes. |
-| `world.js` | Terrain, trail ribbon, start hut, arches, tape, signs, trees, rocks, grass, sky shader, weather and dust. |
+| `world.js` | Terrain (with hidden triangles under the trail dropped), trail ribbon, start hut, arches, tape, signs, timber drop decks, trees, rocks and grass in distance-culled tiles with blob shadows, sky shader, weather and dust. |
 | `models.js` | Procedural bikes (working fork slider and swingarm) and the rider, pinned to bar and pedals with two-bone IK (helmet, goggles and pack included). |
 | `animate.js` | Procedural animation: eased / sprung pose channels added together (crouch, weight shift, manual, arm give, turn and spin lean, whip twist and lay with an unwind, no-hander and superman arcs, barspin hand release and catch wobble, bunny-hop pull and push, head tracking the landing), a small fork / shock / rider-legs simulation, crank levelling, and rotation about the rider's centre of mass in the air. |
 | `game.js` | A run: fixed-step physics, assist, tricks and scoring, landing grades, crashes and respawns, splits, ghost. |
 | `camera.js` | Behind, far, rear-side, front, side, helmet, chest and photo views. |
 | `input.js` | Keyboard, gamepad, touch sticks and tilt steering. |
-| `audio.js` | Synthesised tyre, wind, freehub and impact sounds, UI sounds and a generative music loop. |
+| `audio.js` | Synthesised sound: tyre tread in three speed layers (crossfaded), gravel, skids, brake squeal, freehub, wind, timber-deck knocks, impacts, UI sounds, and a generative music loop that opens up with speed and ducks for crashes and pauses. |
+| `replay.js`, `replayview.js` | Recording runs (20 Hz, 16-bit quantised frames plus an event timeline), storage (best per trail + 10 recent), and the replay viewer. |
 | `ui.js`, `main.js` | Menus, garage, settings, HUD, finish screen, photo mode, render loop. |
 
 Barlow Condensed (SIL Open Font License) is embedded for the display
