@@ -220447,6 +220447,189 @@ p7wgmd2poKWiknCmAwrpXq7NF1m4+uvEw5emGXupln900F2ujFwxVJ+KehCgNQTqOy4DcgYgtIos
 g120ktXoqOQSwUsCxNRokzLKsNa4SBaWJlp3i2rAmUdJLnlbK2pUnhTUix2Kzi0L/FQKY2ZhiZSv
 aKXLd4KJ34AA0hiZgfMLMFYuVkTCmgAD4C7tdt9uv0ePr+3hWYGQtXZPJM5kZcAEdyUAZ3zWAA==
 </script>
+<script id="sr-board">
+// Snow Rider 3D 1.1: the arcade leaderboard (window.SR).
+// The game keeps its best in Unity's PlayerPrefs file in IndexedDB (/idbfs/<id>/PlayerPrefs: ints "Best" and "Plays").
+// sync() copies them to localStorage 'snowrider3d.save' {best, plays}, never lowering them, so games.js stat() can say
+// "Best N", account.js syncs it to the player's Arcade account and /acct/top?g=snow-rider-3d ranks everyone by it.
+// seed(), run before the game starts, writes a higher synced best (from another device) back into PlayerPrefs so the
+// game shows it too. Only existing int entries are changed in place; a missing file is left alone.
+window.SR = (() => {
+  const KEY = 'snowrider3d.save', G = 'snow-rider-3d', LBKEY = 'snowrider3d-lb', TTL = 2 * 60e3;
+  const getSave = () => { try { return JSON.parse(localStorage.getItem(KEY) || 'null') || {}; } catch (e) { return {}; } };
+  const putSave = v => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} };
+
+  // PlayerPrefs: "UnityPrf" + 8 header bytes, then entries: key length (1 byte; 0x80 = a 4-byte length follows), the key
+  // (UTF-8), then 0xFE + int32, 0xFD + float32, or a string (its length the same way as the key's, then the bytes).
+  function parse(b) {
+    const out = {}, magic = 'UnityPrf';
+    if (!b || b.length < 16) return out;
+    for (let i = 0; i < 8; i++) if (b[i] !== magic.charCodeAt(i)) return out;
+    const dv = new DataView(b.buffer, b.byteOffset, b.byteLength), td = new TextDecoder();
+    let p = 16;
+    const len = () => { let n = b[p++]; if (n === 0x80) { n = dv.getUint32(p, true); p += 4; } return n; };
+    try {
+      while (p < b.length) {
+        const kl = len(); if (p + kl > b.length) break;
+        const k = td.decode(b.subarray(p, p + kl)); p += kl;
+        const t = b[p];
+        if (t === 0xFE) { out[k] = { int: dv.getInt32(p + 1, true), at: p + 1 }; p += 5; }
+        else if (t === 0xFD) p += 5;
+        else p += len();
+      }
+    } catch (e) {}
+    return out;
+  }
+
+  // Runs over every PlayerPrefs file in the game's IndexedDB. Returns [{best, plays}] (null if there is no save yet).
+  // With raise = {best, plays}, lower values in the files are raised to those.
+  function scan(raise) {
+    return new Promise(res => {
+      let req;
+      try { req = indexedDB.open('/idbfs'); } catch (e) { return res(null); }
+      req.onupgradeneeded = e => { try { e.target.transaction.abort(); } catch (x) {} }; // never create it: the game makes its own
+      req.onerror = req.onblocked = () => res(null);
+      req.onsuccess = () => {
+        const db = req.result, found = [];
+        if (!db.objectStoreNames.contains('FILE_DATA')) { db.close(); return res(null); }
+        let tx;
+        try { tx = db.transaction('FILE_DATA', raise ? 'readwrite' : 'readonly'); } catch (e) { db.close(); return res(null); }
+        tx.oncomplete = () => { db.close(); res(found); };
+        tx.onerror = tx.onabort = () => { db.close(); res(found.length ? found : null); };
+        const c = tx.objectStore('FILE_DATA').openCursor();
+        c.onsuccess = () => {
+          const cur = c.result; if (!cur) return;
+          const v = cur.value;
+          if (/\/PlayerPrefs$/.test(String(cur.key)) && v && v.contents) {
+            const b = new Uint8Array(v.contents), P = parse(b);
+            if (raise) {
+              const dv = new DataView(b.buffer, b.byteOffset, b.byteLength); let changed = false;
+              for (const [k, want] of [['Best', raise.best], ['Plays', raise.plays]])
+                if (P[k] && want > P[k].int && want < 2e9) { dv.setInt32(P[k].at, want, true); P[k].int = want; changed = true; }
+              if (changed) cur.update(Object.assign({}, v, { contents: b, timestamp: new Date() }));
+            }
+            found.push({ best: P.Best ? P.Best.int : 0, plays: P.Plays ? P.Plays.int : 0 });
+          }
+          cur.continue();
+        };
+      };
+    });
+  }
+
+  let syncing = false;
+  async function sync() {
+    if (syncing) return; syncing = true;
+    try {
+      const f = await scan(); if (!f || !f.length) return;
+      const s = getSave(); let best = Math.max(0, +s.best || 0), plays = Math.max(0, +s.plays || 0);
+      for (const x of f) { best = Math.max(best, x.best | 0); plays = Math.max(plays, x.plays | 0); }
+      if (best !== s.best || plays !== s.plays) putSave({ best, plays });
+    } finally { syncing = false; }
+  }
+  async function seed() {
+    const s = getSave();
+    if (s.best > 0 || s.plays > 0) await scan({ best: +s.best || 0, plays: +s.plays || 0 });
+    await sync();
+  }
+  function watch() {
+    setInterval(sync, 5000);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) sync(); });
+    addEventListener('pagehide', () => { sync(); });
+  }
+
+  // ---------- the leaderboard panel ----------
+  const acc = () => { try { return (window.parent !== window && window.parent.ArcadeAccount) || window.ArcadeAccount || null; } catch (e) { return window.ArcadeAccount || null; } };
+  const server = () => { const A = acc(); return (A && A.server) || 'https://arcade-realtime.arcade-realtime.workers.dev'; };
+  const myName = () => {
+    try { const A = acc(); if (A && A.kind && A.kind() === 'online') return String(A.name()); } catch (e) {}
+    try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); if (a && a.name && a.token) return String(a.name); } catch (e) {}
+    return '';
+  };
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const num = s => { const m = /Best\s+([\d,]+)/i.exec(String(s || '')); return m ? +m[1].replace(/,/g, '') : 0; };
+
+  async function load() {
+    try { const c = JSON.parse(sessionStorage.getItem(LBKEY) || 'null'); if (c && Date.now() - c.at < TTL) return c.rows; } catch (e) {}
+    const r = await fetch(server() + '/acct/top?g=' + G, { cache: 'no-store' });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const j = await r.json(), seen = new Set(), rows = [];
+    for (const x of j.top || []) { const n = String(x.n || ''), k = n.toLowerCase(), v = num(x.s); if (!n || seen.has(k) || !(v > 0)) continue; seen.add(k); rows.push({ n, v }); }
+    try { sessionStorage.setItem(LBKEY, JSON.stringify({ at: Date.now(), rows })); } catch (e) {}
+    return rows;
+  }
+
+  let ov = null, ask = 0;
+  function build() {
+    const css = document.createElement('style');
+    css.textContent = `
+#lbBtn { position: fixed; top: 12px; z-index: 6; border: 0; border-radius: 8px; padding: 8px 12px; background: rgba(0,0,0,.45);
+  color: #fff; font: 600 13px system-ui, sans-serif; cursor: pointer; }
+#lbBtn:hover { background: rgba(0,0,0,.7); }
+#lbOv { position: fixed; inset: 0; z-index: 8; display: none; align-items: center; justify-content: center; padding: 16px;
+  background: rgba(5,12,20,.6); backdrop-filter: blur(3px); }
+#lbOv.on { display: flex; }
+#lbBox { width: min(440px, 100%); max-height: min(560px, 100%); display: flex; flex-direction: column; background: #0f1d2c;
+  color: #eaf4ff; border: 1px solid #2a4560; border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.5); font: 14px system-ui, sans-serif; }
+#lbBox header { display: flex; align-items: center; gap: 10px; padding: 16px 16px 6px; }
+#lbBox h2 { margin: 0; font-size: 20px; flex: 1; }
+#lbBox .x { border: 0; background: #1c2d40; color: #fff; width: 32px; height: 32px; border-radius: 8px; font-size: 18px; cursor: pointer; }
+#lbBox .sub { padding: 0 16px 10px; color: #8aa4bd; font-size: 13px; }
+#lbList { overflow-y: auto; padding: 0 10px; flex: 1; min-height: 80px; }
+.lbRow { display: grid; grid-template-columns: 48px 1fr auto; gap: 8px; align-items: center; padding: 8px 8px; border-radius: 8px; }
+.lbRow:nth-child(odd) { background: rgba(255,255,255,.03); }
+.lbRow .rk { color: #8aa4bd; font-variant-numeric: tabular-nums; }
+.lbRow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.lbRow .v { font-variant-numeric: tabular-nums; font-weight: 700; color: #6cc4ff; }
+.lbRow.top1 .rk { color: #ffd34d; } .lbRow.top2 .rk { color: #d5dde6; } .lbRow.top3 .rk { color: #e6a060; }
+.lbRow.me { background: rgba(108,196,255,.18); outline: 1px solid rgba(108,196,255,.5); }
+.lbRow .nm small { color: #8aa4bd; font-weight: 400; }
+.lbNote { color: #8aa4bd; padding: 18px 8px; text-align: center; line-height: 1.5; }
+#lbMe:empty { display: none; }
+#lbMe { padding: 10px 16px 16px; color: #eaf4ff; font-weight: 600; border-top: 1px solid #22384f; margin-top: 8px; }`;
+    document.head.appendChild(css);
+    const btn = document.createElement('button');
+    btn.id = 'lbBtn'; btn.textContent = '🏆 Leaderboard'; btn.title = 'Leaderboard';
+    btn.addEventListener('click', show);
+    document.body.appendChild(btn);
+    const place = () => { const fs = document.getElementById('fs'), w = fs ? fs.getBoundingClientRect().width : 0; btn.style.right = (w ? w + 20 : 12) + 'px'; }; // #fs is hidden inside play.html
+    place(); addEventListener('resize', place); setTimeout(place, 500);
+    ov = document.createElement('div');
+    ov.id = 'lbOv';
+    ov.innerHTML = `<div id="lbBox" role="dialog" aria-modal="true" aria-labelledby="lbTitle"><header><h2 id="lbTitle">🏆 Leaderboard</h2><button class="x" aria-label="Close">×</button></header>
+<div class="sub">Everyone's best run on The Arcade.</div><div id="lbList"></div><div id="lbCount" class="sub" style="padding-top:8px"></div><div id="lbMe"></div></div>`;
+    ov.querySelector('.x').addEventListener('click', hide);
+    ov.addEventListener('click', e => { if (e.target === ov) hide(); });
+    addEventListener('keydown', e => { if (e.key === 'Escape' && ov.classList.contains('on')) hide(); });
+    document.body.appendChild(ov);
+  }
+  function hide() { ov.classList.remove('on'); const c = document.getElementById('canvas'); if (c) c.focus(); }
+  async function show() {
+    ov.classList.add('on');
+    const L = document.getElementById('lbList'), M = document.getElementById('lbMe'), C = document.getElementById('lbCount'), me = myName(), my = ++ask;
+    L.innerHTML = '<div class="lbNote">Loading the leaderboard…</div>'; M.textContent = ''; C.textContent = '';
+    await sync();
+    let rows;
+    try { rows = (await load()).map(x => Object.assign({}, x)); }
+    catch (e) { if (my === ask) L.innerHTML = '<div class="lbNote">Couldn’t load the leaderboard. Check your connection and try again.</div>'; return; }
+    if (my !== ask) return;
+    const mine0 = +getSave().best || 0;
+    if (me && mine0 > 0) { const k = me.toLowerCase(), o = rows.find(x => x.n.toLowerCase() === k); if (o) o.v = Math.max(o.v, mine0); else rows.push({ n: me, v: mine0 }); }
+    rows.sort((a, b) => b.v - a.v || a.n.localeCompare(b.n));
+    let rank = 0, last = null; rows.forEach((x, i) => { if (x.v !== last) { rank = i + 1; last = x.v; } x.r = rank; }); // the same score shares a place
+    const isMe = x => me && x.n.toLowerCase() === me.toLowerCase();
+    L.innerHTML = rows.length
+      ? rows.map(x => `<div class="lbRow${x.r <= 3 ? ' top' + x.r : ''}${isMe(x) ? ' me' : ''}"><span class="rk">#${x.r}</span><span class="nm">${esc(x.n)}${isMe(x) ? ' <small>(you)</small>' : ''}</span><span class="v">${x.v.toLocaleString('en-US')}</span></div>`).join('')
+      : '<div class="lbNote">Nobody is on the board yet. Ride while signed in to an Arcade account to be first.</div>';
+    C.textContent = rows.length ? (rows.length === 1 ? '1 rider on the board.' : rows.length.toLocaleString('en-US') + ' riders on the board.') : '';
+    const mine = rows.find(isMe);
+    M.textContent = mine ? `You’re #${mine.r} of ${rows.length} with ${mine.v.toLocaleString('en-US')}.`
+      : me ? 'Finish a run to get on the board.' : 'Sign in to an Arcade account on the site to get on the board.';
+    const el = L.querySelector('.me'); if (el) L.scrollTop = Math.max(0, el.offsetTop - (L.clientHeight - el.offsetHeight) / 2);
+  }
+  if (document.body) build(); else addEventListener('DOMContentLoaded', build);
+  return { sync, seed, watch, show, parse };
+})();
+</script>
 <script>
 (() => {
   const BUILD = "Build/";
@@ -220671,6 +220854,8 @@ aKXLd4KJ34AA0hiZgfMLMFYuVkTCmgAD4C7tdt9uv0ePr+3hWYGQtXZPJM5kZcAEdyUAZ3zWAA==
 
     setStatus("Starting engine…");
     fill.style.width = "93%";
+    // 1.1: put a best synced from another device into the game's save before it reads it, then keep copying it out
+    if (window.SR) { try { await SR.seed(); } catch (e) { console.warn(e); } SR.watch(); }
     const framework = await loadFramework(FILES.framework, fwText);
     framework(Module);
   }

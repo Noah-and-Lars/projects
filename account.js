@@ -30,6 +30,7 @@
 
   /* ---------- which saved entries belong to which game ---------- */
   var GROUPS = [
+    ['snow-rider-3d', /^snowrider3d\./],
     ['mile-zero', /^milezero\./],
     ['closing-time', /^es-(ach|name|settings|shirt|solo|stats)$/],
     ['throttle-ridge', /^throttle-ridge\./],
@@ -103,6 +104,7 @@
         case 'arcade': { var pt = J('arcade-playtime'), ps = 0; for (var pg in pt) ps += N(pt[pg]); return ps; } // the copy with more play time
         case 'turn-turn-turn': { var tt = J('turnturnturn.save'); return N(tt.runs) * 10 + Object.keys(tt.best || {}).length * 100; }
         case 'tickets': { var tk = J('arcade-tickets'); return N(tk.e) + N(tk.s) * 0.01; } // the copy that earned more
+        case 'snow-rider-3d': { var sr = J('snowrider3d.save'); return N(sr.best) * 1000 + N(sr.plays); }
         case 'block-drop': return N(d['blockdrop-best']);
         case '2048': return N(d['2048-best']);
         case 'poly-racer': { var q = J('polyracer'); return Object.keys(q.best || {}).length * 1000 + JSON.stringify(q).length * 0.001; }

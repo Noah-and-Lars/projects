@@ -27,15 +27,17 @@ window.GAMES = [
     id: 'snow-rider-3d',
     title: 'Snow Rider 3D',
     category: 'Racing',
-    tagline: 'Sled down an endless snowy mountain. Dodge trees, rocks and snowmen, and jump the obstacles.',
-    description: 'Ride a sled down a snowy mountain that never ends, steering around trees, rocks and snowmen and jumping over obstacles. Collect gifts along the way and spend them in the shop. Single player.',
+    tagline: 'Sled down an endless snowy mountain, dodge trees and rocks, and chase the top of the leaderboard.',
+    description: 'Ride a sled down a snowy mountain that never ends, steering around trees, rocks and snowmen and jumping over obstacles. Collect gifts to spend in the shop. Single player, with an online leaderboard of everyone\'s best run.',
     controls: 'Keyboard or touch',
     keys: [['← →', 'Steer'], ['↑', 'Jump'], ['Click / tap', 'Start, menus and restart']],
     path: 'snow-rider-3d/index.html',
     thumb: 'snow-rider-3d/thumb.jpg',
     added: '2026-11-26T20:30:00+11:00',
-    updated: '2026-11-26T20:30:00+11:00',
-    // No stat(): the game keeps its best score in IndexedDB (Unity PlayerPrefs), which the site can't read.
+    updated: '2026-11-27T09:00:00+11:00',
+    // 1.1: the game's page copies its best out of Unity's PlayerPrefs (IndexedDB) into 'snowrider3d.save'; the
+    // leaderboard (/acct/top?g=snow-rider-3d, the 🏆 button in the game) ranks everyone by this line.
+    stat() { const s = readSave('snowrider3d.save', true); return s && s.best > 0 ? 'Best ' + Math.floor(s.best).toLocaleString('en-US') : null; },
   },
   {
     id: 'mile-zero',
@@ -437,6 +439,7 @@ window.COMING_SOON = [
 ];
 
 window.NEWS = [
+  { date: '2026-11-27', game: 'snow-rider-3d', imgs: ['snow-rider-3d/news/1.1-leaderboard.jpg'], headline: 'Snow Rider 3D leaderboard', text: 'Snow Rider 3D 1.1: an online leaderboard. Your best run goes on the board with your Arcade account and follows you to every device. Tap the Leaderboard button in the game to see who is on top.', post: "\ud83c\udfc6 SNOW RIDER 3D now has a LEADERBOARD!\n\n\ud83d\udef7 Your best run goes on the board for everyone to see\n\ud83d\udcf1 Your best follows your Arcade account to every device\n\ud83e\udd47 Tap \ud83c\udfc6 Leaderboard in the game to see who's on top\n\nCan you take #1? \ud83d\udc47\n\n#snowrider3d #TheArcade #Leaderboard" },
   { date: '2026-11-26', game: 'snow-rider-3d', imgs: ['snow-rider-3d/news/1.0-title.jpg', 'snow-rider-3d/news/1.0-ride.jpg', 'snow-rider-3d/news/1.0-menu.jpg'], headline: 'Snow Rider 3D is out', text: 'New game: Snow Rider 3D. Ride a sled down a snowy mountain that never ends, steer around trees, rocks and snowmen and jump over obstacles. Collect gifts on the way and spend them in the shop.', post: "\u2744\ufe0f SNOW RIDER 3D is out now!\n\n\ud83d\udef7 Sled down a mountain that never ends\n\ud83c\udf32 Dodge trees, rocks and snowmen\n\u2b06\ufe0f Jump the obstacles\n\ud83c\udf81 Grab gifts and spend them in the shop\n\nHow far can you ride? \ud83d\udc47\n\n#snowrider3d #TheArcade #NewGame" },
   { date: '2026-11-25', href: 'players.html', imgs: ['news/players-standby.jpg'], headline: 'New: Standby', text: "Players tab: when someone switches to another tab or app, they now show as Standby (with an orange dot) instead of Online or the game they're playing. They still count towards the players online, and it goes back to normal as soon as they come back to the tab.",
     post: "🟠 New on The Arcade: STANDBY!\n\n👀 Switched to another tab? You now show as Standby on the Players page, with an orange dot\n🎮 Still counted in the players online\n↩️ Back to Online (or the game you're on) the moment you come back" },
