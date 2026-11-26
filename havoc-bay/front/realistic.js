@@ -34,18 +34,23 @@ const TEX = {};
 function makeTextures() {
   if (TEX.grass) return;
   const S = 512, R = rng(77);
-  { // grass
-    const n = tfbm(S, 4, 5, 11), dry = tfbm(S, 2, 3, 12), grit = tnoise(S, 128, 13);
-    const cv = paint(S, (x, y, i) => { let c = mixc([62, 76, 36], [104, 114, 60], n[i] * .6 + .5); if (dry[i] > .18) c = mixc(c, [132, 122, 76], Math.min(1, (dry[i] - .18) * 3)); const k = 1 + grit[i] * .03; return [c[0] * k, c[1] * k, c[2] * k]; });
-    const g = cv.getContext('2d');
-    for (let k = 0; k < 6000; k++) { const x = R() * S, y = R() * S, a = R() * Math.PI * 2, l = 3 + R() * 7, lt = R() < .5; g.strokeStyle = lt ? `rgba(${120 + R() * 30 | 0},${136 + R() * 24 | 0},${62 + R() * 16 | 0},.1)` : `rgba(40,${58 + R() * 16 | 0},26,.1)`; g.lineWidth = 1; wrapDraw(g, S, x, y, (px, py) => { g.beginPath(); g.moveTo(px, py); g.lineTo(px + Math.cos(a) * l, py + Math.sin(a) * l); g.stroke(); }); }
+  { // grass: a dense mat of fine blades in mixed greens, clover and dead stalks, at twice the resolution of the other ground textures
+    const n = tfbm(S, 4, 5, 11), dry = tfbm(S, 2, 3, 12);
+    const base = paint(S, (x, y, i) => { let c = mixc([54, 70, 32], [86, 100, 50], n[i] * .6 + .5); if (dry[i] > .2) c = mixc(c, [118, 112, 70], Math.min(1, (dry[i] - .2) * 2.5)); return c; });
+    const G2 = S * 2, cv = canvasOf(G2), g = cv.getContext('2d'); g.imageSmoothingEnabled = true; g.drawImage(base, 0, 0, G2, G2);
+    const blade = (x, y, a, l, w, col) => wrapDraw(g, G2, x, y, (px, py) => { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.moveTo(px, py); g.quadraticCurveTo(px + Math.cos(a) * l * .5 + 1.5, py + Math.sin(a) * l * .5, px + Math.cos(a) * l, py + Math.sin(a) * l); g.stroke(); });
+    g.lineCap = 'round';
+    for (let k = 0; k < 26000; k++) { const x = R() * G2, y = R() * G2, a = -Math.PI / 2 + (R() - .5) * 2.2, l = 6 + R() * 14, t = R(), sh = t < .3 ? .7 : t < .8 ? 1 : 1.25, dd = dry[((y / 2) | 0) * S + ((x / 2) | 0)] > .25 && R() < .5; const c = dd ? [134 + R() * 30, 124 + R() * 24, 76] : [58 + R() * 34, 82 + R() * 34, 34 + R() * 16]; blade(x, y, a, l, 1.2 + R(), `rgba(${c[0] * sh | 0},${c[1] * sh | 0},${c[2] * sh | 0},.55)`); }
+    for (let k = 0; k < 900; k++) { const x = R() * G2, y = R() * G2; wrapDraw(g, G2, x, y, (px, py) => { for (let q = 0; q < 3; q++) { const a = q / 3 * TAU + R(); g.fillStyle = `rgba(${60 + R() * 20 | 0},${96 + R() * 20 | 0},${40 + R() * 10 | 0},.7)`; g.beginPath(); g.ellipse(px + Math.cos(a) * 3, py + Math.sin(a) * 3, 3.2, 2.6, a, 0, 7); g.fill(); } }); } // clover
+    for (let k = 0; k < 1400; k++) blade(R() * G2, R() * G2, R() * TAU, 8 + R() * 12, 1, `rgba(${150 + R() * 30 | 0},${136 + R() * 20 | 0},${92 | 0},.5)`); // dead stalks lying flat
     TEX.grass = texOf(cv);
   }
-  { // dirt with pebbles
-    const n = tfbm(S, 4, 5, 21), damp = tfbm(S, 2, 3, 22), grit = tnoise(S, 160, 23);
-    const cv = paint(S, (x, y, i) => { let c = mixc([92, 74, 54], [140, 116, 86], n[i] * .6 + .5); if (damp[i] > .2) c = mixc(c, [70, 56, 42], Math.min(1, (damp[i] - .2) * 2.5)); const k = 1 + grit[i] * .05; return [c[0] * k, c[1] * k, c[2] * k]; });
+  { // dirt: soft soil with damp patches, a few rounded stones and tyre-worn streaks; kept low in contrast so it doesn't shimmer
+    const n = tfbm(S, 4, 5, 21), damp = tfbm(S, 2, 3, 22), fine = tfbm(S, 24, 2, 23);
+    const cv = paint(S, (x, y, i) => { let c = mixc([98, 80, 60], [136, 114, 86], n[i] * .6 + .5); if (damp[i] > .15) c = mixc(c, [80, 66, 50], Math.min(1, (damp[i] - .15) * 2)); const k = 1 + fine[i] * .06; return [c[0] * k, c[1] * k, c[2] * k]; });
     const g = cv.getContext('2d');
-    for (let k = 0; k < 2600; k++) { const x = R() * S, y = R() * S, r = .8 + R() * 2.6, v = 110 + R() * 60 | 0; wrapDraw(g, S, x, y, (px, py) => { g.fillStyle = 'rgba(30,24,18,.35)'; g.beginPath(); g.ellipse(px + .7, py + .9, r, r * .75, 0, 0, 7); g.fill(); g.fillStyle = `rgb(${v},${v - 6},${v - 16})`; g.beginPath(); g.ellipse(px, py, r, r * .75, 0, 0, 7); g.fill(); }); }
+    for (let k = 0; k < 420; k++) { const x = R() * S, y = R() * S, r = 1.5 + R() * 3.5, v = 118 + R() * 40 | 0; wrapDraw(g, S, x, y, (px, py) => { g.fillStyle = 'rgba(40,32,24,.16)'; g.beginPath(); g.ellipse(px + .8, py + 1, r * 1.1, r * .85, 0, 0, 7); g.fill(); const gr = g.createRadialGradient(px - r * .3, py - r * .3, 0, px, py, r); gr.addColorStop(0, `rgb(${v + 18},${v + 12},${v})`); gr.addColorStop(1, `rgb(${v - 20},${v - 26},${v - 34})`); g.fillStyle = gr; g.beginPath(); g.ellipse(px, py, r, r * .8, 0, 0, 7); g.fill(); }); }
+    for (let k = 0; k < 60; k++) { const x = R() * S, y = R() * S, l = 30 + R() * 80, a = R() * TAU; wrapDraw(g, S, x, y, (px, py) => { g.strokeStyle = 'rgba(60,48,36,.18)'; g.lineWidth = 1; g.beginPath(); g.moveTo(px, py); g.lineTo(px + Math.cos(a) * l, py + Math.sin(a) * l); g.stroke(); }); }
     TEX.dirt = texOf(cv);
   }
   { // rock: strata, cracks, lichen
@@ -106,15 +111,33 @@ function terrainYFine(x, z) {
   return u + v <= 1 ? h00 + (h10 - h00) * u + (h01 - h00) * v : h11 + (h01 - h11) * (1 - u) + (h10 - h11) * (1 - v);
 }
 
+/* ---------------- baked terrain light: hills shadow the land beyond the shadow map, hollows get less sky ---------------- */
+const REAL_SHADE = { value: null };
+function bakeShade(M) { // R = sun visible (soft), G = sky visible (ambient occlusion); one texel per height-grid point
+  const H = M.H, out = new Uint8Array(GW * GH * 4), sx = SUN_DIR.x, sz = SUN_DIR.z, hl = Math.hypot(sx, sz), dx = sx / hl, dz = sz / hl, tanS = SUN_DIR.y / hl;
+  const at = (i, j) => H[clamp(j, 0, GH - 1) * GW + clamp(i, 0, GW - 1)];
+  const dirs = []; for (let k = 0; k < 8; k++) dirs.push([Math.cos(k / 8 * TAU), Math.sin(k / 8 * TAU)]);
+  for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) {
+    const h0 = Math.max(0, at(i, j)) + 1.5; let ex = -1e9;
+    for (let st = 1; st <= 70; st++) { const t = st * (st < 20 ? 1 : st < 40 ? 2 : 4) - (st < 20 ? 0 : st < 40 ? 19 : 99), hh = at(Math.round(i + dx * t), Math.round(j + dz * t)); ex = Math.max(ex, hh - (h0 + t * CELL * tanS)); }
+    const sun = 1 - sstep(-6, 10, ex);
+    let occ = 0; for (const [ax, az] of dirs) { let m = 0; for (const r of [1, 2, 4, 8, 16]) { const hh = at(Math.round(i + ax * r), Math.round(j + az * r)); m = Math.max(m, (hh - h0) / (r * CELL)); } occ += Math.atan(m) / (Math.PI / 2); }
+    const sky = clamp(1 - occ / 8 * 1.6, 0, 1), o = (j * GW + i) * 4;
+    out[o] = (.18 + .82 * sun) * 255; out[o + 1] = sky * 255; out[o + 3] = 255;
+  }
+  const t = new THREE.DataTexture(out, GW, GH, THREE.RGBAFormat); t.magFilter = t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
+  REAL_SHADE.value = t;
+}
+
 /* ---------------- terrain: chunks with a splat shader ---------------- */
 function terrainMaterial() {
   const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95, metalness: 0, envMapIntensity: .32 });
   m.onBeforeCompile = sh => {
-    Object.assign(sh.uniforms, { tGrass: { value: TEX.grass }, tDirt: { value: TEX.dirt }, tRock: { value: TEX.rock }, tSand: { value: TEX.sand }, tMacro: { value: TEX.macro } });
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aSplat; varying vec4 vSplat; varying vec3 vWP; varying vec3 vWN;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = aSplat; vWP = (modelMatrix * vec4(position, 1.0)).xyz; vWN = normal;');
+    Object.assign(sh.uniforms, { tGrass: { value: TEX.grass }, tDirt: { value: TEX.dirt }, tRock: { value: TEX.rock }, tSand: { value: TEX.sand }, tMacro: { value: TEX.macro }, tShade: REAL_SHADE, uWorld: { value: new THREE.Vector2(WORLD_W, WORLD_H) } });
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aSplat; attribute vec2 aField; varying vec4 vSplat; varying vec2 vField; varying vec3 vWP; varying vec3 vWN;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = aSplat; vField = aField; vWP = (modelMatrix * vec4(position, 1.0)).xyz; vWN = normal;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-      uniform sampler2D tGrass, tDirt, tRock, tSand, tMacro; varying vec4 vSplat; varying vec3 vWP; varying vec3 vWN; vec3 tAlb;
+      uniform sampler2D tGrass, tDirt, tRock, tSand, tMacro, tShade; uniform vec2 uWorld; varying vec4 vSplat; varying vec2 vField; varying vec3 vWP; varying vec3 vWN; vec3 tAlb;
       vec3 two(sampler2D t, vec2 p, float far) { vec3 a = texture2D(t, p / 4.5).rgb, b = texture2D(t, p / 23.0).rgb, c = texture2D(t, p / 110.0).rgb; return pow(mix(mix(a, b, .5), mix(b, c, .5), far), vec3(2.2)); }`)
       .replace('#include <map_fragment>', `
         float dist = length(vWP - cameraPosition), far = smoothstep(60.0, 420.0, dist);
@@ -124,15 +147,24 @@ function terrainMaterial() {
         tAlb = two(tGrass, vWP.xz, far) * w.x + two(tDirt, vWP.xz, far) * w.y + rk * w.z + two(tSand, vWP.xz, far) * w.w;
         float mac = texture2D(tMacro, vWP.xz / 900.0).r * .7 + texture2D(tMacro, vWP.xz / 211.0).r * .3;
         float dry = smoothstep(.42, .72, texture2D(tMacro, vWP.xz / 2300.0 + .37).r) * .8 + smoothstep(.6, .8, texture2D(tMacro, vWP.xz / 310.0 + .71).r) * .35;
-        vec3 grassTone = mix(vec3(.74, .88, .62), vec3(1.2, 1.06, .64), clamp(dry, 0.0, 1.0)); // olive meadows with dry, straw-coloured patches
+        vec3 grassTone = mix(vec3(.7, .8, .56), vec3(1.16, 1.02, .62), clamp(dry, 0.0, 1.0)); // olive meadows with dry, straw-coloured patches
         tAlb *= mix(vec3(1.0), grassTone, w.x);
         tAlb *= mix(1.0, .8, w.x * (1.0 - smoothstep(45.0, 85.0, dist))); // the ground between the grass blades is in their shade
+        { // farm fields: ploughed furrows, crop rows, fading out with distance so they don't shimmer
+          float ft = vField.x, rowFade = 1.0 - smoothstep(120.0, 650.0, dist); vec2 fd = vec2(-sin(vField.y), cos(vField.y)); float fr = dot(vWP.xz, fd);
+          float plough = 1.0 - smoothstep(.35, .6, abs(ft - 1.0)), crop = 1.0 - smoothstep(.35, .6, abs(ft - 3.0)), wheat = 1.0 - smoothstep(.35, .6, abs(ft - 2.0));
+          float fur = sin(fr * 7.0) * .5 + .5; tAlb *= mix(1.0, mix(.94, .7 + .5 * fur, rowFade), plough);
+          float row = smoothstep(.55, .85, sin(fr * 10.5) * .5 + .5); vec3 cr = mix(tAlb, vec3(.05, .09, .02), mix(.4, row, rowFade)); tAlb = mix(tAlb, cr, crop);
+          tAlb *= mix(1.0, mix(1.0, .9 + .14 * (sin(fr * 25.0) * .5 + .5), rowFade), wheat);
+        }
         diffuseColor.rgb *= tAlb * (.66 + mac * .55);`)
       .replace('#include <normal_fragment_begin>', `#include <normal_fragment_begin>
-        { float hL = dot(sqrt(tAlb), vec3(.333)); vec2 dH = vec2(dFdx(hL), dFdy(hL)) * .8 * (1.0 - far) * (1.0 - vSplat.x / max(.001, vSplat.x + vSplat.y + vSplat.z + vSplat.w) * .75);
+        { float hL = dot(sqrt(tAlb), vec3(.333)); vec2 dH = vec2(dFdx(hL), dFdy(hL)) * .45 * (1.0 - far) * (1.0 - vSplat.x / max(.001, vSplat.x + vSplat.y + vSplat.z + vSplat.w) * .75);
           vec3 sX = dFdx(-vViewPosition), sY = dFdy(-vViewPosition), R1 = cross(sY, normal), R2 = cross(normal, sX); float det = dot(sX, R1);
           normal = normalize(abs(det) * normal - sign(det) * (dH.x * R1 + dH.y * R2)); }`)
-      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, .6, vSplat.w * smoothstep(3.0, 0.5, vWP.y));');
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, .6, vSplat.w * smoothstep(3.0, 0.5, vWP.y));')
+      .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+        { vec2 sh = texture2D(tShade, vWP.xz / uWorld).rg; reflectedLight.directDiffuse *= sh.r; reflectedLight.directSpecular *= sh.r; reflectedLight.indirectDiffuse *= .55 + .45 * sh.g; }`);
   };
   m.extensions = { derivatives: true };
   return m;
@@ -141,19 +173,20 @@ function buildTerrainChunks(M) {
   const HF = WORLD.HF, CH = 100, mat = terrainMaterial(), group = new THREE.Group();
   // farm plots round the towns
   const towns = M.towns.map(t => ({ x: t.x * 1000, z: t.y * 1000, a: hash2(t.x * 100 | 0, t.y * 100 | 0, 9) * Math.PI }));
+  let cropAng = 0;
   const crop = (x, z) => {
     for (const t of towns) {
       const dx = x - t.x, dz = z - t.z, d = Math.hypot(dx, dz); if (d > 1300 || d < 260) continue;
       const c = Math.cos(t.a), s = Math.sin(t.a), u = dx * c + dz * s, v = -dx * s + dz * c, pu = Math.floor(u / 160), pv = Math.floor(v / 110), k = hash2(pu + 500, pv + 500, 7);
       const edge = Math.min(Math.abs(u / 160 - Math.round(u / 160)) * 160, Math.abs(v / 110 - Math.round(v / 110)) * 110);
       if (edge < 4) return 0; // hedgerows and lanes between fields
-      return 1 + Math.floor(k * 4) * (d < 1100 ? 1 : 0);
+      cropAng = t.a; return 1 + Math.floor(k * 4) * (d < 1100 ? 1 : 0);
     }
     return 0;
   };
   for (let cj = 0; cj < GHF - 1; cj += CH) for (let ci = 0; ci < GWF - 1; ci += CH) {
     const i1 = Math.min(ci + CH, GWF - 1), j1 = Math.min(cj + CH, GHF - 1), nx = i1 - ci + 1, nz = j1 - cj + 1, N = nx * nz;
-    const pos = new Float32Array(N * 3), nor = new Float32Array(N * 3), col = new Float32Array(N * 3), spl = new Float32Array(N * 4);
+    const pos = new Float32Array(N * 3), nor = new Float32Array(N * 3), col = new Float32Array(N * 3), spl = new Float32Array(N * 4), fld = new Float32Array(N * 2);
     for (let j = cj; j <= j1; j++) for (let i = ci; i <= i1; i++) {
       const k = (j - cj) * nx + (i - ci), id = j * GWF + i, x = i * CELLF, z = j * CELLF, h = HF[id];
       pos[k * 3] = x; pos[k * 3 + 1] = h; pos[k * 3 + 2] = z;
@@ -168,10 +201,10 @@ function buildTerrainChunks(M) {
       rw = sstep(.38, .75, sl) + (h > 450 ? sstep(450, 650, h) * .6 : 0);
       dw = (forest ? .55 : 0) + Math.max(0, nn - .15) * 1.4 + (road === 1 ? .6 : 0);
       if (forest) { tint = [.46, .5, .42]; dw += .35; }
-      const cp = h > 6 && sl < .2 && !forest && !road ? crop(x, z) : 0;
+      const cp = h > 6 && sl < .2 && !forest && !road ? crop(x, z) : 0; fld[k * 2] = cp; fld[k * 2 + 1] = cropAng;
       if (cp === 1) { dw += .9; tint = [.95, .82, .7]; } // ploughed
       else if (cp === 2) { gw = 1; tint = [1.28, 1.1, .62]; dw += .2; } // wheat
-      else if (cp === 3) { tint = [.86, 1.12, .82]; } // young crop
+      else if (cp === 3) { dw += .85; tint = [.92, .9, .84]; } // young crop: rows of plants on bare soil (painted in the shader)
       // in compounds the ground is worn to dirt
       if (M.yard) { const yd = M.yard[cid]; dw += yd * 1.1; gw *= 1 - yd * .7; }
       gw = Math.max(0, gw - rw - sw); dw = dw * (1 - rw) * (1 - sw);
@@ -182,7 +215,7 @@ function buildTerrainChunks(M) {
     const lod = st => { const out = []; for (let j = 0; j < nz - 1; j += st) for (let i = 0; i < nx - 1; i += st) { const j2 = Math.min(j + st, nz - 1), i2 = Math.min(i + st, nx - 1), a = j * nx + i, b = j * nx + i2, d = j2 * nx + i, e = j2 * nx + i2; out.push(a, d, b, b, d, e); } return new THREE.BufferAttribute(new Uint32Array(out), 1); };
     const idx = lod(1), idx2 = lod(2), idx4 = lod(4);
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('aSplat', new THREE.BufferAttribute(spl, 4));
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('aSplat', new THREE.BufferAttribute(spl, 4)); g.setAttribute('aField', new THREE.BufferAttribute(fld, 2));
     g.setIndex(idx); g.computeBoundingSphere();
     const mesh = new THREE.Mesh(g, mat); mesh.receiveShadow = true; mesh.userData.lod = [idx, idx2, idx4]; mesh.userData.c = g.boundingSphere.center.clone(); group.add(mesh); REAL.chunks.push(mesh);
   }
@@ -191,6 +224,7 @@ function buildTerrainChunks(M) {
 }
 
 /* ---------------- sky: gradient, sun, drifting clouds ---------------- */
+const REAL_SUN_DIR = new V3(-.5, .52, .69).normalize();
 const SKY_U = { uSun: { value: SUN_DIR.clone() }, uTop: { value: new THREE.Color(0x2f6db3) }, uHz: { value: new THREE.Color(0xc4d4e0) }, uTime: { value: 0 } };
 const SKY_FRAG_NOISE = `float hh(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f); return mix(mix(hh(i), hh(i+vec2(1,0)), f.x), mix(hh(i+vec2(0,1)), hh(i+vec2(1,1)), f.x), f.y); }
@@ -349,8 +383,9 @@ function applyLook(realistic) {
   if (!LOOK.optimised) LOOK.optimised = { fog: [scene.fog.color.getHex(), scene.fog.near, scene.fog.far], sun: sun.intensity, hemi: hemi.intensity, exp: renderer.toneMappingExposure, map: sun.shadow.mapSize.x, ext: sun.shadow.camera.right };
   const O = LOOK.optimised;
   if (realistic) {
-    scene.fog.color.set(0xbfd0de); scene.fog.near = 700; scene.fog.far = 15000;
-    sun.intensity = 3.0; sun.color.set(0xfff0dc); hemi.intensity = .3; renderer.toneMappingExposure = .78;
+    LOOK.linFog = LOOK.linFog || scene.fog; scene.fog = LOOK.expFog || (LOOK.expFog = new THREE.FogExp2(0xbccddb, .000072)); // haze that thickens naturally with distance
+    LOOK.sunOpt = LOOK.sunOpt || SUN_DIR.clone(); SUN_DIR.copy(REAL_SUN_DIR); SKY_U.uSun.value.copy(SUN_DIR); if (REAL.water) REAL.water.material.uniforms.uSun.value.copy(SUN_DIR); // a lower, warmer afternoon sun
+    sun.intensity = 3.5; sun.color.set(0xffe4c0); hemi.intensity = .34; hemi.color.set(0xbcd4ee); hemi.groundColor.set(0x4d5233); renderer.toneMappingExposure = .76;
     setShadow(4096, 170);
     if (!REAL.sky) { REAL.sky = buildSky(); scene.add(REAL.sky); }
     REAL.sky.visible = true; SKY.visible = false;
@@ -358,7 +393,8 @@ function applyLook(realistic) {
     scene.environment = REAL.env;
     document.body.classList.add('realistic');
   } else {
-    scene.fog.color.setHex(O.fog[0]); scene.fog.near = O.fog[1]; scene.fog.far = O.fog[2];
+    if (LOOK.linFog) scene.fog = LOOK.linFog; scene.fog.color.setHex(O.fog[0]); scene.fog.near = O.fog[1]; scene.fog.far = O.fog[2];
+    if (LOOK.sunOpt) { SUN_DIR.copy(LOOK.sunOpt); SKY_U.uSun.value.copy(SUN_DIR); } hemi.color.set(0xcfe2f4); hemi.groundColor.set(0x4a5636);
     sun.intensity = O.sun; sun.color.set(0xfff0d8); hemi.intensity = O.hemi; renderer.toneMappingExposure = O.exp; setShadow(O.map, O.ext);
     if (REAL.sky) REAL.sky.visible = false; SKY.visible = true; scene.environment = null;
     document.body.classList.remove('realistic');
@@ -369,7 +405,7 @@ function setShadow(size, ext) {
   Object.assign(sun.shadow.camera, { left: -ext, right: ext, top: ext, bottom: -ext }); sun.shadow.camera.updateProjectionMatrix();
 }
 function buildRealWorld(M) { // terrain, water, power lines (buildings, then plants, come later in buildWorld)
-  makeTextures(); REAL.chunks = [];
+  makeTextures(); REAL.chunks = []; bakeShade(M);
   WORLD.group.add(buildTerrainChunks(M));
   WORLD.group.add(buildWater(M)); REAL.water = WORLD.group.children[WORLD.group.children.length - 1];
   FL.built = false; buildPowerLines(M); // plants come after the towns (buildRealFlora), so they can keep clear of the houses

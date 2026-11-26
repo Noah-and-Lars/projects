@@ -144,31 +144,39 @@ const MOD_NAME = { driver: 'Driver', gunner: 'Gunner', commander: 'Commander', l
 /* ---------------- materials: one camo shader per team ---------------- */
 const CAMO = [
   { c: [0xb9a27a, 0xa88f66, 0x8f7a58], cut: [.62, .86], dirt: 0x6e5c45 }, // US desert tan, faint mottling
-  { c: [0x4f5a3a, 0x8f8058, 0x2c2e27], cut: [.48, .7], dirt: 0x5a4a38 },  // Russian three-tone
+  { c: [0x4a5332, 0x6e6748, 0x2e3125], cut: [.5, .72], dirt: 0x5a4a38 },  // Russian three-tone, faded
 ];
 const GLSL_NOISE = `
 float h3(vec3 p){ p = fract(p * 0.3183099 + .1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float vn3(vec3 x){ vec3 i = floor(x), f = fract(x); f = f*f*(3.0-2.0*f);
   return mix(mix(mix(h3(i+vec3(0,0,0)),h3(i+vec3(1,0,0)),f.x), mix(h3(i+vec3(0,1,0)),h3(i+vec3(1,1,0)),f.x),f.y),
              mix(mix(h3(i+vec3(0,0,1)),h3(i+vec3(1,0,1)),f.x), mix(h3(i+vec3(0,1,1)),h3(i+vec3(1,1,1)),f.x),f.y), f.z); }`;
-const VEH_MATS = [0, 1].map(t => {
-  const P = CAMO[t], m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .82, metalness: .25 });
+const VEH_MATS = [0, 1].map(t => { // painted steel: camouflage, dust on top faces, rain streaks and grime on the sides, mud low down
+  const P = CAMO[t], m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .78, metalness: .06, envMapIntensity: .7 });
   const col = h => new THREE.Color(h).convertSRGBToLinear();
   m.onBeforeCompile = sh => {
-    Object.assign(sh.uniforms, { uC0: { value: col(P.c[0]) }, uC1: { value: col(P.c[1]) }, uC2: { value: col(P.c[2]) }, uCut: { value: new THREE.Vector2(...P.cut) }, uDirt: { value: col(P.dirt) } });
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aCamo; varying float vCamo; varying vec3 vMP;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCamo = aCamo; vMP = position;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uC0, uC1, uC2, uDirt; uniform vec2 uCut; varying float vCamo; varying vec3 vMP;' + GLSL_NOISE)
+    Object.assign(sh.uniforms, { uC0: { value: col(P.c[0]) }, uC1: { value: col(P.c[1]) }, uC2: { value: col(P.c[2]) }, uCut: { value: new THREE.Vector2(...P.cut) }, uDirt: { value: col(P.dirt) }, uDust: { value: col(t ? 0x8e8166 : 0xb3a17e) } });
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aCamo; varying float vCamo; varying vec3 vMP; varying vec3 vMN;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCamo = aCamo; vMP = position; vMN = normal;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uC0, uC1, uC2, uDirt, uDust; uniform vec2 uCut; varying float vCamo; varying vec3 vMP; varying vec3 vMN;' + GLSL_NOISE)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float wear = vn3(vMP * 6.0) * .5 + vn3(vMP * 23.0) * .5;
+        vec3 mn = normalize(vMN);
         if (vCamo > .5) {
           float n = vn3(vMP * .55 + 3.1) * .62 + vn3(vMP * 1.5) * .38;
           vec3 c = n > uCut.y ? uC2 : n > uCut.x ? uC1 : uC0;
-          diffuseColor.rgb = c * (.9 + wear * .2);
+          diffuseColor.rgb = c * (.88 + wear * .2);
         }
-        float dirt = smoothstep(1.25, .25, vMP.y + (wear - .5) * .5);
-        diffuseColor.rgb = mix(diffuseColor.rgb, uDirt, dirt * .6);`)
-      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor + (wear - .5) * .25, .3, 1.0);');
+        float side = 1.0 - abs(mn.y);
+        float streak = smoothstep(.55, .9, vn3(vec3(vMP.x * 9.0, vMP.y * .7, vMP.z * 9.0))) * side;          // rain streaks run down the sides
+        diffuseColor.rgb *= 1.0 - streak * .22;
+        float dust = smoothstep(.55, .95, mn.y) * (.35 + .4 * vn3(vMP * 2.3));                              // dust settles on the flat tops
+        diffuseColor.rgb = mix(diffuseColor.rgb, uDust * (.85 + wear * .3), dust * .45);
+        float low = smoothstep(1.35, .35, vMP.y + (wear - .5) * .55);                                       // mud thrown up by the tracks
+        diffuseColor.rgb = mix(diffuseColor.rgb, uDirt * (.8 + wear * .4), low * .62);
+        diffuseColor.rgb *= .82 + .18 * smoothstep(-.6, .6, mn.y);                                          // faces turned down sit in shadow
+        `)
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor + (wear - .5) * .22 + low * .15, .35, 1.0);');
   };
   return m;
 });
@@ -202,95 +210,47 @@ function cylX(parent, x0, x1, r0, r1, y, z, color, seg = 12) { const m = new THR
 function cylY(parent, x, y0, y1, z, r, color, seg = 12) { const m = new THREE.Mesh(gCyl(r, r, seg), color === 'C' ? CAMO_MARK : mat(color)); m.scale.set(1, y1 - y0, 1); m.position.set(x, (y0 + y1) / 2, z); parent.add(m); return m; }
 function cylZ(parent, x, y, z0, z1, r, color, seg = 12) { const m = new THREE.Mesh(gCyl(r, r, seg), color === 'C' ? CAMO_MARK : mat(color)); m.rotation.x = Math.PI / 2; m.scale.set(1, z1 - z0, 1); m.position.set(x, y, (z0 + z1) / 2); parent.add(m); return m; }
 function smokeBank(parent, x, y, z, n, out) { for (let k = 0; k < n; k++) { const m = cylX(parent, 0, .32, .045, .045, 0, 0, K_STEEL, 6); m.position.set(x - k * .11, y + (k % 2) * .09, z); m.rotation.set(0, out * -.6, -.5); } }
-// wheel geometry: tyre + rim + hub, axis along z
+// wheel geometry, axis along z, radius 1, width 1 (scaled per vehicle)
+function latheZ(prof, seg = 24) { const g = new THREE.LatheGeometry(prof.map(p => new THREE.Vector2(p[0], p[1])), seg); g.rotateX(Math.PI / 2); return g; }
 const WHEEL_GEO = (() => {
   const t = new THREE.CylinderGeometry(1, 1, .9, 20); t.rotateX(Math.PI / 2);
   const r = new THREE.CylinderGeometry(.72, .72, 1.0, 16); r.rotateX(Math.PI / 2);
   const h = new THREE.CylinderGeometry(.25, .3, 1.15, 8); h.rotateX(Math.PI / 2);
-  return { road: coloredGeo([[t, 0x262622], [r, 0x55573f], [h, 0x3a3a33]]), tyre: coloredGeo([[t, 0x1c1c1a], [r, 0x4a4a40], [h, 0x2e2e2a]]), sprocket: coloredGeo([[new THREE.CylinderGeometry(1, 1, .8, 12).rotateX(Math.PI / 2), 0x2f2f2a], [h, 0x45453d]]) };
+  // a tracked vehicle's road wheel: two dished steel discs with rubber tyres and a gap between them for the guide horns
+  const parts = [];
+  for (const sd of [-1, 1]) {
+    const z0 = sd * .1, z1 = sd * .5, P = (r, z) => [r, z]; // lathe (radius, along axis)
+    const rv = l => sd > 0 ? l : l.reverse(); // mirrored profiles run the other way so faces stay outward
+    const tyre = latheZ(rv([P(.8, z0), P(.97, z0), P(1, z0 + sd * .04), P(1, z1 - sd * .04), P(.97, z1), P(.8, z1)]));
+    const dish = latheZ(rv([P(.8, z0 + sd * .02), P(.6, z0 + sd * .06), P(.36, z0 + sd * .02), P(.22, z0 + sd * .1), P(.22, z1 - sd * .02), P(.36, z1 - sd * .1), P(.62, z1 - sd * .03), P(.8, z1 - sd * .01)]));
+    const hub = new THREE.CylinderGeometry(.2, .2, .44, 12); hub.rotateX(Math.PI / 2); hub.translate(0, 0, sd * .3);
+    parts.push([tyre, 0x1d1d1b], [dish, 0x4a4b40], [hub, 0x34342f]);
+    for (let k = 0; k < 8; k++) { const b2 = new THREE.CylinderGeometry(.035, .035, .06, 6); b2.rotateX(Math.PI / 2); const a = k / 8 * TAU; b2.translate(Math.cos(a) * .15, Math.sin(a) * .15, sd * .52); parts.push([b2, 0x2a2a26]); }
+  }
+  const idler = parts.map(([g, c]) => [g, c === 0x1d1d1b ? 0x3a3a34 : c]);
+  // drive sprocket: two toothed rings on a hub
+  const gear = new THREE.Shape(), T = 11; for (let k = 0; k < T * 4; k++) { const a = k / (T * 4) * TAU, rr = (k % 4 === 1 || k % 4 === 2) ? 1.0 : .82; const x = Math.cos(a) * rr, y = Math.sin(a) * rr; k ? gear.lineTo(x, y) : gear.moveTo(x, y); }
+  const hole = new THREE.Path(); hole.absarc(0, 0, .5, 0, TAU, true); gear.holes.push(hole);
+  const spr = [];
+  for (const sd of [-1, 1]) { const g = new THREE.ExtrudeGeometry(gear, { depth: .14, bevelEnabled: false, curveSegments: 4 }); g.translate(0, 0, sd > 0 ? .28 : -.42); spr.push([g, 0x35352f]); }
+  const sh = new THREE.CylinderGeometry(.55, .6, 1.0, 16); sh.rotateX(Math.PI / 2); spr.push([sh, 0x2c2c28]);
+  for (let k = 0; k < 10; k++) { const b2 = new THREE.CylinderGeometry(.05, .05, 1.08, 6); b2.rotateX(Math.PI / 2); const a = k / 10 * TAU; b2.translate(Math.cos(a) * .38, Math.sin(a) * .38, 0); spr.push([b2, 0x45453d]); }
+  return { road: coloredGeo(parts), idler: coloredGeo(idler), tyre: coloredGeo([[t, 0x1c1c1a], [r, 0x4a4a40], [h, 0x2e2e2a]]), sprocket: coloredGeo(spr) };
 })();
-// track link texture
-const TRACK_TEX = (() => {
-  const cv = document.createElement('canvas'); cv.width = 64; cv.height = 32; const g = cv.getContext('2d');
-  g.fillStyle = '#2a2a26'; g.fillRect(0, 0, 64, 32);
-  g.fillStyle = '#3d3c36'; g.fillRect(2, 2, 26, 28); g.fillRect(34, 2, 26, 28);
-  g.fillStyle = '#4c4a42'; g.fillRect(6, 4, 4, 24); g.fillRect(38, 4, 4, 24);
-  g.fillStyle = '#1a1a18'; g.fillRect(29, 0, 4, 32); g.fillRect(61, 0, 3, 32);
-  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t;
-})();
+// a single track link, x along the track (one pitch long), +y on the outside (ground side), z across (unit width)
+function trackLinkGeo(pitch, rubber) {
+  const B = (sx, sy, sz, x, y, z, c) => { const g = new THREE.BoxGeometry(sx, sy, sz); g.translate(x, y, z); return [g, c]; };
+  const parts = [B(pitch * .9, .045, 1, 0, 0, 0, 0x34342e)];
+  if (rubber) for (const z of [-.27, .27]) parts.push(B(pitch * .72, .03, .4, 0, .035, z, 0x1a1a18));
+  else parts.push(B(.035, .028, .92, -pitch * .2, .034, 0, 0x403f38), B(.035, .028, .92, pitch * .2, .034, 0, 0x403f38));
+  for (const z of [-.47, .47]) { const c = new THREE.CylinderGeometry(.028, .028, .07, 8); c.rotateX(Math.PI / 2); c.translate(pitch * .45, 0, z); parts.push([c, 0x2a2a26]); }
+  parts.push(B(.06, .1, .035, 0, -.07, -.05, 0x2e2e2a), B(.06, .1, .035, 0, -.07, .05, 0x2e2e2a)); // guide horns, on the inside running between the twin wheels
+  return coloredGeo(parts);
+}
+const LINK_MAT = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .72, metalness: .45 });
 
-/* Each model returns { root, hull, turret, gun, muzzle, wheels: [{x,y,r,z,kind}], tracks: {y top, z, w, sprocket, idler} } */
-function modelM1A2() {
-  const root = new THREE.Group(), hull = new THREE.Group(); root.add(hull);
-  prof(hull, [[-3.75, .5], [3.45, .5], [3.95, 1.28], [2.05, 1.6], [-3.85, 1.6], [-3.85, .9]], -1.2, 1.2, 'C', .03); // hull with the long, flat upper glacis
-  for (const sd of [-1, 1]) {
-    bx(hull, -3.85, 1.15, sd * 1.18, 3.75, 1.6, sd * 1.83, 'C'); // sponsons over the tracks
-    prof(hull, [[3.0, 1.15], [3.95, 1.25], [3.8, 1.6], [2.9, 1.6]], sd * 1.18, sd * 1.83, 'C');
-    bx(hull, .2, .55, sd * 1.83, 3.6, 1.18, sd * 1.93, 'C'); // thick front skirts
-    bx(hull, -3.55, .62, sd * 1.83, .2, 1.18, sd * 1.88, 'C'); // thinner rear skirts
-    for (let k = 0; k < 4; k++) bx(hull, .5 + k * .8, .7, sd * 1.93, .62 + k * .8, 1.1, sd * 1.95, K_STEEL); // skirt bolts
-    bx(hull, -3.88, 1.25, sd * 1.4, -3.8, 1.45, sd * 1.7, K_BLACK); // tail lights
-    bx(hull, 3.6, 1.42, sd * 1.5, 3.85, 1.58, sd * 1.72, K_BLACK); // headlight guards
-  }
-  bx(hull, -3.75, 1.6, -1.2, -1.85, 1.64, 1.2, K_STEEL); for (let k = 0; k < 9; k++) bx(hull, -3.7 + k * .2, 1.64, -1.1, -3.6 + k * .2, 1.66, 1.1, K_BLACK); // engine grilles
-  bx(hull, -3.92, .75, -1.0, -3.85, 1.45, 1.0, K_STEEL); // rear exhaust grille
-  bx(hull, 2.3, 1.6, -.45, 2.85, 1.7, .45, 'C'); cylY(hull, 2.55, 1.66, 1.74, 0, .28, K_STEEL); // driver's hatch
-  for (let k = 0; k < 3; k++) bx(hull, 2.82, 1.62, -.3 + k * .3, 2.9, 1.72, -.12 + k * .3, K_GLASS); // driver's periscopes
-  for (const sd of [-1, 1]) bx(hull, 3.7, .7, sd * .9, 3.98, .85, sd * 1.2, K_STEEL); // tow hooks
-  const turret = new THREE.Group(); turret.position.set(-.2, 1.6, 0); hull.add(turret);
-  topProf(turret, [[2.15, -.6], [2.15, .6], [1.95, 1.72], [-1.6, 1.85], [-2.05, 1.72], [-2.05, -1.72], [-1.6, -1.85], [1.95, -1.72]], 0, .92, 'C', .05); // wedge cheeks, flat roof
-  topProf(turret, [[-2.0, -1.55], [-2.0, 1.55], [-3.3, 1.45], [-3.3, -1.45]], .08, .8, 'C', .03); // bustle
-  bx(turret, -3.95, .2, -1.6, -3.3, .78, 1.6, K_STEEL); bx(turret, -3.9, .22, -1.55, -3.35, .74, 1.55, 0x5d5338); // stowage basket with kit
-  bx(turret, -1.7, .97, -1.0, -.6, 1.0, -.2, K_STEEL); // blow-out panels
-  cylY(turret, -.45, .95, 1.25, .78, .42, 'C', 14); cylY(turret, -.45, 1.25, 1.32, .78, .36, K_STEEL); // commander's station
-  bx(turret, -.2, 1.25, .65, .45, 1.37, .78, K_STEEL); cylX(turret, .45, 1.6, .035, .03, 1.31, .72, K_BLACK, 6); // .50 cal
-  cylY(turret, -.4, .95, 1.1, -.78, .35, 'C', 12); cylX(turret, -.1, .8, .025, .022, 1.2, -.85, K_BLACK, 6); bx(turret, -.35, 1.1, -.92, .05, 1.28, -.78, K_STEEL); // loader's hatch and M240
-  bx(turret, .9, .92, .55, 1.6, 1.25, 1.05, 'C'); bx(turret, 1.58, .98, .6, 1.62, 1.2, 1.0, K_GLASS); // gunner's primary sight
-  cylY(turret, .4, .92, 1.35, -.45, .2, 'C', 10); bx(turret, .3, 1.25, -.62, .6, 1.45, -.28, K_STEEL); // CITV
-  cylY(turret, -1.9, .92, 1.6, .2, .03, K_STEEL, 6); // wind sensor mast
-  for (const sd of [-1, 1]) smokeBank(turret, 1.8, .55, sd * 1.75, 6, sd);
-  cylY(turret, -2.6, .8, 3.2, -1.3, .015, K_BLACK, 4); cylY(turret, -2.6, .8, 2.7, 1.3, .015, K_BLACK, 4); // antennas
-  const gun = new THREE.Group(); gun.position.set(2.0, .45, 0); turret.add(gun);
-  bx(gun, -.1, -.38, -.55, .5, .38, .55, 'C'); // mantlet
-  cylX(gun, .4, 2.3, .14, .13, 0, 0, 'C', 14); cylX(gun, 2.3, 3.4, .12, .12, 0, 0, 'C', 14); cylX(gun, 3.4, 4.2, .16, .16, 0, 0, 'C', 14); cylX(gun, 4.2, 5.75, .11, .1, 0, 0, 'C', 14); // thermal sleeve, bore evacuator
-  cylX(gun, 5.75, 5.95, .105, .105, 0, 0, K_STEEL, 12); bx(gun, 5.6, .1, -.06, 5.85, .18, .06, K_STEEL); // muzzle and reference sensor
-  const wheels = [], X = [-2.75, -1.85, -.95, -.05, .85, 1.75, 2.65];
-  for (const x of X) wheels.push({ x, y: .36, r: .32, kind: 'road' });
-  wheels.push({ x: -3.48, y: .78, r: .32, kind: 'sprocket' }, { x: 3.38, y: .68, r: .3, kind: 'road' });
-  return { root, hull, turret, gun, muzzle: 5.95, wheels, wz: 1.5, ww: .62, track: { top: 1.08, sag: .05, rollers: [-1.8, -.1, 1.6] } };
-}
-function modelT90A() {
-  const root = new THREE.Group(), hull = new THREE.Group(); root.add(hull);
-  prof(hull, [[-3.4, .45], [3.0, .45], [3.43, 1.0], [2.2, 1.48], [-3.45, 1.48], [-3.45, .85]], -1.1, 1.1, 'C', .03);
-  for (const sd of [-1, 1]) {
-    bx(hull, -3.45, 1.12, sd * 1.1, 3.1, 1.48, sd * 1.75, 'C'); prof(hull, [[2.4, 1.12], [3.4, 1.2], [3.3, 1.42], [2.4, 1.48]], sd * 1.1, sd * 1.75, 'C');
-    bx(hull, -3.0, .72, sd * 1.75, 3.2, 1.12, sd * 1.8, K_RUBBER); // rubber skirt
-    for (let k = 0; k < 3; k++) bx(hull, 1.6 + k * .55, .72, sd * 1.8, 2.1 + k * .55, 1.12, sd * 1.9, 'C'); // Kontakt-5 side bricks
-    bx(hull, -3.4, .9, sd * 1.3, -3.2, 1.4, sd * 1.7, 'C'); // rear stowage
-  }
-  for (let r = 0; r < 2; r++) for (let k = -3; k <= 3; k++) { const m = bx(hull, 0, 0, 0, .9, .14, .5, 'C'); m.position.set(2.75 - r * .55, 1.28 + r * .14, k * .5); m.rotation.z = .37; } // Kontakt-5 on the glacis
-  bx(hull, 3.1, .85, -1.0, 3.45, 1.0, 1.0, K_STEEL); // dozer blade mount
-  for (const sd of [-1, 1]) { cylZ(hull, -3.75, 1.15, sd * .35, sd * 1.15, .3, 0x3c4030); } // external fuel drums
-  bx(hull, -3.4, 1.48, -1.0, -1.7, 1.5, 1.0, K_STEEL); for (let k = 0; k < 7; k++) bx(hull, -3.3 + k * .23, 1.5, -.9, -3.2 + k * .23, 1.53, .9, K_BLACK);
-  cylY(hull, 2.35, 1.48, 1.56, 0, .26, K_STEEL); bx(hull, 2.62, 1.48, -.15, 2.7, 1.58, .15, K_GLASS);
-  const turret = new THREE.Group(); turret.position.set(.1, 1.48, 0); hull.add(turret);
-  const ring = []; for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2, r = 1.55 - .25 * Math.max(0, Math.cos(a + Math.PI)); ring.push([Math.cos(a) * r * (Math.cos(a) > 0 ? 1.05 : 1.15), Math.sin(a) * r]); }
-  topProf(turret, ring, 0, .78, 'C', .12); // cast/welded dome
-  for (const sd of [-1, 1]) { const m = bx(turret, 0, 0, 0, 1.15, .62, .9, 'C'); m.position.set(1.2, .42, sd * .95); m.rotation.y = sd * .5; m.rotation.z = -.15; } // Kontakt-5 clamshells
-  for (const sd of [-1, 1]) { bx(turret, .95, .55, sd * .55, 1.35, .85, sd * .85, 0x2e2e28); bx(turret, 1.34, .62, sd * .6, 1.37, .78, sd * .8, 0x6a1a14); } // Shtora dazzlers
-  bx(turret, .6, .78, -.85, 1.05, 1.05, -.45, 'C'); bx(turret, 1.04, .82, -.8, 1.07, 1.0, -.5, K_GLASS); // gunner's sight
-  cylY(turret, .1, .78, 1.0, .62, .4, 'C', 14); cylY(turret, .1, 1.0, 1.06, .62, .34, K_STEEL); bx(turret, .3, 1.05, .5, .65, 1.17, .7, K_STEEL); cylX(turret, .65, 1.75, .03, .028, 1.12, .6, K_BLACK, 6); // commander + Kord
-  for (const sd of [-1, 1]) smokeBank(turret, .2, .55, sd * 1.65, 6, sd);
-  bx(turret, -2.0, .25, -1.0, -1.55, .7, 1.0, 0x4e4a35); cylZ(turret, -1.85, .85, -1.0, 1.0, .1, K_STEEL); // stowage bins, snorkel
-  cylY(turret, -1.2, .78, 3.0, -.9, .015, K_BLACK, 4);
-  const gun = new THREE.Group(); gun.position.set(1.55, .4, 0); turret.add(gun);
-  bx(gun, -.15, -.3, -.42, .35, .3, .42, 'C');
-  cylX(gun, .3, 2.6, .135, .12, 0, 0, 'C', 14); cylX(gun, 2.6, 3.5, .17, .17, 0, 0, 'C', 14); cylX(gun, 3.5, 6.0, .11, .1, 0, 0, 'C', 14); cylX(gun, 6.0, 6.15, .1, .1, 0, 0, K_STEEL, 12);
-  const wheels = [], X = [-2.55, -1.55, -.55, .45, 1.45, 2.45];
-  for (const x of X) wheels.push({ x, y: .4, r: .38, kind: 'road' });
-  wheels.push({ x: -3.18, y: .72, r: .3, kind: 'sprocket' }, { x: 3.08, y: .65, r: .3, kind: 'road' });
-  return { root, hull, turret, gun, muzzle: 6.15, wheels, wz: 1.42, ww: .58, track: { top: .86, sag: .12, rollers: [] } };
-}
+/* Each model returns { root, hull, turret, gun, muzzle, wheels: [{x,y,r,z,kind}], tracks: {y top, z, w, sprocket, idler} }.
+   The M1A2 and T-90A are in tank-models.js. */
 function modelM2A2() {
   const root = new THREE.Group(), hull = new THREE.Group(); root.add(hull);
   prof(hull, [[-3.25, .5], [2.9, .5], [3.3, 1.2], [2.1, 2.05], [-3.25, 2.05]], -1.65, 1.65, 'C', .03);
@@ -368,76 +328,79 @@ const VMODEL = { m1a2: modelM1A2, t90a: modelT90A, m2a2: modelM2A2, bmp2: modelB
 
 /* running gear: road wheels on springs (instanced) and track belts that follow them */
 function buildRunningGear(v) {
-  const M = v.model, n = M.wheels.length * 2;
-  const geo = v.def.wheeled ? WHEEL_GEO.tyre : WHEEL_GEO.road;
-  const im = new THREE.InstancedMesh(geo, TREE_MAT, n); im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false; im.userData.keep = true;
-  M.hull.add(im); M.wheelMesh = im; M.wheelOff = new Float32Array(n); M.wheelRot = 0;
-  if (!v.def.wheeled) {
-    M.belts = [-1, 1].map(sd => {
-      const mt = new THREE.MeshStandardMaterial({ map: TRACK_TEX.clone(), roughness: .85, metalness: .35, side: THREE.DoubleSide }); mt.map.needsUpdate = true;
-      const g = new THREE.BufferGeometry(), mesh = new THREE.Mesh(g, mt); mesh.castShadow = true; mesh.receiveShadow = true; mesh.frustumCulled = false; mesh.userData.keep = true;
-      M.hull.add(mesh); return { sd, mesh, g, mt, off: 0 };
-    });
+  const M = v.model, n = M.wheels.length * 2, tracked = !v.def.wheeled;
+  M.rollers = tracked ? (M.track.rollers || []).map(x => ({ x, y: M.track.top - .13, r: .12, kind: 'roller' })) : [];
+  const mk = (geo, cnt) => { const im = new THREE.InstancedMesh(geo, TREE_MAT, cnt); im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false; im.userData.keep = true; M.hull.add(im); return im; };
+  M.wheelMesh = mk(tracked ? WHEEL_GEO.road : WHEEL_GEO.tyre, n + M.rollers.length * 2);
+  if (tracked) { M.sprMesh = mk(WHEEL_GEO.sprocket, 2); M.idlerMesh = mk(WHEEL_GEO.idler, 2); }
+  M.wheelOff = new Float32Array(n); M.wheelRot = 0;
+  if (tracked) {
+    const pitch = M.track.pitch || .16, geo = trackLinkGeo(pitch, !!M.track.rubber);
+    M.belts = [-1, 1].map(sd => { const im = new THREE.InstancedMesh(geo, LINK_MAT, 140); im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false; im.userData.keep = true; M.hull.add(im); return { sd, im, off: 0, pitch }; });
   }
   updateRunningGear(v, 0, true);
 }
-const _wm = new THREE.Matrix4(), _wq = new THREE.Quaternion(), _wv = new V3(), _ws = new V3(), _wz = new V3(0, 0, 1), _wp = new V3();
+const _wm = new THREE.Matrix4(), _wq = new THREE.Quaternion(), _wv = new V3(), _ws = new V3(), _wz = new V3(0, 0, 1), _wp = new V3(), _wy = new V3(0, 1, 0), _wq2 = new THREE.Quaternion();
 function updateRunningGear(v, dt, force) {
   const M = v.model, im = M.wheelMesh; if (!im) return;
   M.wheelRot += (v.speed || 0) * dt;
+  // far away nobody sees the wheels turn: update a few times a second only
+  if (!force && camera.position.distanceToSquared(v.pos) > 250 * 250) { M._skip = (M._skip || 0) + dt; if (M._skip < .25) return; dt = M._skip; }
+  M._skip = 0;
   // suspension: how far the ground sits above or below where each wheel would rest
   if (force || dt > 0) {
     M.root.updateMatrixWorld(true);
     let k = 0;
     for (const sd of [-1, 1]) for (const w of M.wheels) {
-      if (w.kind === 'sprocket' || (w.kind === 'road' && w === M.wheels[M.wheels.length - 1] && !v.def.wheeled)) { M.wheelOff[k++] = 0; continue; }
+      if (w.kind !== 'road') { M.wheelOff[k++] = 0; continue; }
       _wp.set(w.x, 0, sd * M.wz).applyMatrix4(M.root.matrixWorld);
       const g = groundY(_wp.x, _wp.z, v.pos.y + 1);
       const want = clamp(g - _wp.y, -.16, .2);
       M.wheelOff[k] += (want - M.wheelOff[k]) * clamp(dt * 18, 0, 1); k++;
     }
   }
-  let k = 0;
-  for (const sd of [-1, 1]) for (const w of M.wheels) {
-    const steer = w.steer && v.def.wheeled ? -(v.steerIn || 0) * .5 : 0;
-    _wq.setFromAxisAngle(_wz, -(M.wheelRot + (v.def.wheeled ? 0 : sd * (v.turnRate || 0) * 1.5 * dt)) / w.r);
-    if (steer) _wq.premultiply(new THREE.Quaternion().setFromAxisAngle(new V3(0, 1, 0), steer));
-    _wm.compose(_wv.set(w.x, w.y + M.wheelOff[k], sd * M.wz), _wq, _ws.set(w.r, w.r, w.kind === 'sprocket' ? M.ww * .8 : M.ww * (v.def.wheeled ? .75 : .45)));
-    im.setMatrixAt(k++, _wm);
+  let k = 0, ks = 0, ki = 0, kr = M.wheels.length * 2;
+  for (const sd of [-1, 1]) {
+    for (const w of M.wheels) {
+      const steer = w.steer && v.def.wheeled ? -(v.steerIn || 0) * .5 : 0;
+      _wq.setFromAxisAngle(_wz, -(M.wheelRot + (v.def.wheeled ? 0 : sd * (v.turnRate || 0) * 1.5 * dt)) / w.r);
+      if (steer) _wq.premultiply(_wq2.setFromAxisAngle(_wy, steer));
+      const wide = w.kind === 'sprocket' ? M.ww * .8 : M.ww * (v.def.wheeled ? .75 : 1);
+      _wm.compose(_wv.set(w.x, w.y + M.wheelOff[k], sd * M.wz), _wq, _ws.set(w.r, w.r, wide));
+      if (w.kind === 'sprocket' && M.sprMesh) { M.sprMesh.setMatrixAt(ks++, _wm); _wm.makeScale(0, 0, 0); }
+      else if (w.kind === 'idler' && M.idlerMesh) { M.idlerMesh.setMatrixAt(ki++, _wm); _wm.makeScale(0, 0, 0); }
+      im.setMatrixAt(k++, _wm);
+    }
+    for (const w of M.rollers) { _wq.setFromAxisAngle(_wz, -M.wheelRot / w.r); _wm.compose(_wv.set(w.x, w.y, sd * M.wz), _wq, _ws.set(w.r, w.r, M.ww * .5)); im.setMatrixAt(kr++, _wm); }
   }
-  im.instanceMatrix.needsUpdate = true;
+  im.instanceMatrix.needsUpdate = true; if (M.sprMesh) M.sprMesh.instanceMatrix.needsUpdate = true; if (M.idlerMesh) M.idlerMesh.instanceMatrix.needsUpdate = true;
   if (M.belts) for (const b of M.belts) buildBelt(v, b, dt);
 }
-function buildBelt(v, b, dt) { // a closed loop of track over the sprocket, return rollers, idler and road wheels
-  const M = v.model, T = M.track, sd = b.sd, base = M.wheels.length * (sd < 0 ? 0 : 1), th = .07;
+const _lm = new THREE.Matrix4(), _lq = new THREE.Quaternion(), _lp = new V3(), _ls = new V3();
+function buildBelt(v, b, dt) { // a closed loop of track links over the sprocket, return rollers, idler and road wheels
+  const M = v.model, T = M.track, sd = b.sd, base = M.wheels.length * (sd < 0 ? 0 : 1), th = .06;
   const W = M.wheels.map((w, i) => ({ ...w, y: w.y + M.wheelOff[base + i] })).sort((a, c) => a.x - c.x);
   const rear = W[0], front = W[W.length - 1];
   const pts = [];
   const arc = (c, a0, a1, n) => { for (let i = 0; i <= n; i++) { const a = lerp(a0, a1, i / n); pts.push([c.x + Math.cos(a) * (c.r + th / 2), c.y + Math.sin(a) * (c.r + th / 2)]); } };
-  // bottom run, rear to front, under the road wheels
-  for (const w of W.slice(1, -1)) pts.push([w.x, w.y - w.r - th / 2]);
-  arc(front, -Math.PI / 2, Math.PI / 2, 6); // round the front wheel
-  const tx0 = front.x, tx1 = rear.x, ty = T.top + th / 2, rollers = T.rollers.slice().sort((a, c) => c - a);
+  for (const w of W.slice(1, -1)) pts.push([w.x, w.y - w.r - th / 2]); // bottom run, under the road wheels
+  arc(front, -Math.PI / 2, Math.PI / 2, 8); // round the idler
+  const tx0 = front.x, tx1 = rear.x, ty = T.top + th / 2, rollers = (T.rollers || []).slice().sort((a, c) => c - a);
   if (rollers.length) for (const x of rollers) pts.push([x, ty]);
-  else for (let i = 1; i < 6; i++) { const x = lerp(tx0, tx1, i / 6); pts.push([x, ty - Math.sin(i / 6 * Math.PI) * T.sag]); }
-  arc(rear, Math.PI / 2, Math.PI * 1.5, 6); // round the sprocket
+  else for (let i = 1; i < 8; i++) { const x = lerp(tx0, tx1, i / 8); pts.push([x, ty - Math.sin(i / 8 * Math.PI) * T.sag]); }
+  arc(rear, Math.PI / 2, Math.PI * 1.5, 8); // round the sprocket
   pts.push(pts[0]);
-  const n = pts.length, pos = new Float32Array(n * 4 * 3), uv = new Float32Array(n * 4 * 2), z0 = sd * M.wz - M.ww / 2, z1 = sd * M.wz + M.ww / 2;
-  let s = 0;
+  const L = [0]; for (let i = 1; i < pts.length; i++) L.push(L[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const total = L[L.length - 1], n = Math.min(b.im.count = Math.floor(total / b.pitch), 140); b.im.count = n;
   const trackSpeed = (v.speed || 0) + (v.def.wheeled ? 0 : sd * (v.turnRate || 0) * M.wz);
-  b.off = (b.off + trackSpeed * dt / .16) % 1; b.mt.map.offset.x = -b.off;
-  for (let i = 0; i < n; i++) {
-    const p = pts[i], q = pts[(i + 1) % n], o = pts[(i - 1 + n) % n], dx = q[0] - o[0], dy = q[1] - o[1], L = Math.hypot(dx, dy) || 1, nx = dy / L, ny = -dx / L; // outward normal
-    if (i) s += Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]);
-    const outX = p[0] + nx * th / 2, outY = p[1] + ny * th / 2, inX = p[0] - nx * th / 2, inY = p[1] - ny * th / 2;
-    const V = [[outX, outY, z0], [outX, outY, z1], [inX, inY, z1], [inX, inY, z0]];
-    for (let j = 0; j < 4; j++) { pos.set(V[j], (i * 4 + j) * 3); uv[(i * 4 + j) * 2] = s / .16; uv[(i * 4 + j) * 2 + 1] = j === 0 || j === 3 ? 0 : 1; }
+  b.off = ((b.off + trackSpeed * dt / b.pitch) % 1 + 1) % 1;
+  const step = total / n; let seg = 0;
+  for (let k = 0; k < n; k++) {
+    let s = ((k + 1 - b.off) * step) % total; if (s < L[seg]) seg = 0; while (seg < L.length - 2 && L[seg + 1] < s) seg++;
+    const p = pts[seg], q = pts[seg + 1], f = (s - L[seg]) / Math.max(1e-6, L[seg + 1] - L[seg]), dx = q[0] - p[0], dy = q[1] - p[1];
+    _lq.setFromAxisAngle(_wz, Math.atan2(dy, dx)); _lm.compose(_lp.set(p[0] + dx * f, p[1] + dy * f, sd * M.wz), _lq, _ls.set(step / b.pitch, 1, M.ww)); b.im.setMatrixAt(k, _lm);
   }
-  if (!b.idx || b.n !== n) {
-    const idx = []; for (let i = 0; i < n - 1; i++) for (let f = 0; f < 4; f++) { const a = i * 4 + f, c = i * 4 + (f + 1) % 4, a2 = a + 4, c2 = c + 4; idx.push(a, c, a2, c, c2, a2); }
-    b.g.setIndex(idx); b.idx = true; b.n = n;
-  }
-  b.g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); b.g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); b.g.computeVertexNormals();
+  b.im.instanceMatrix.needsUpdate = true;
 }
 
 /* ---------------- the Vehicle entity ---------------- */

@@ -330,12 +330,37 @@ const Sound = (() => {
   };
   function play(name, vol = 1) { if (ctx && DEF[name]) DEF[name](vol); }
   function at(name, pos, vol = 1) { const d = pos.distanceTo(listener), range = name === 'bigboom' || name === 'howitzer' ? 9000 : name === 'boom' || name === 'cannon' ? 4000 : 1200; if (d < range) play(name, vol * Math.pow(1 - d / range, 2) * (d < 30 ? 1 : 30 / Math.max(30, d * .35) * 2 + .1)); }
-  function engine(on, rpm, heavy, turbine) {
+  function engine(on, rpm, heavy, turbine) { // engine and running-gear noise: rumble, firing pulses or turbine air, track clatter; no pure tones
     if (!ctx) return;
-    if (!eng) { const o = ctx.createOscillator(), o2 = ctx.createOscillator(), w = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(), wg = ctx.createGain(); o.type = 'sawtooth'; o2.type = 'square'; w.type = 'sine'; f.type = 'lowpass'; f.frequency.value = 320; g.gain.value = 0; wg.gain.value = 0; o.connect(f); o2.connect(f); f.connect(g); g.connect(master); w.connect(wg); wg.connect(master); o.start(); o2.start(); w.start(); eng = { o, o2, g, f, w, wg }; }
-    const t = ctx.currentTime; eng.g.gain.setTargetAtTime(on ? (heavy ? (turbine ? .06 : .12) : .07) : 0, t, .2);
-    eng.o.frequency.setTargetAtTime((heavy ? 32 : 55) + rpm * (heavy ? 30 : 90), t, .15); eng.o2.frequency.setTargetAtTime((heavy ? 16 : 28) + rpm * (heavy ? 15 : 45), t, .15);
-    eng.wg.gain.setTargetAtTime(on && turbine ? .025 + rpm * .02 : 0, t, .3); eng.w.frequency.setTargetAtTime(1500 + rpm * 900, t, .4); // a gas turbine's whine
+    if (!eng) {
+      const src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
+      const rumbleF = ctx.createBiquadFilter(); rumbleF.type = 'lowpass'; rumbleF.frequency.value = 180; rumbleF.Q.value = .7;
+      const rumble = ctx.createGain(); rumble.gain.value = 0;
+      const airF = ctx.createBiquadFilter(); airF.type = 'bandpass'; airF.frequency.value = 420; airF.Q.value = .45;
+      const airLP = ctx.createBiquadFilter(); airLP.type = 'lowpass'; airLP.frequency.value = 1100;
+      const air = ctx.createGain(); air.gain.value = 0;
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; const oF = ctx.createBiquadFilter(); oF.type = 'lowpass'; oF.frequency.value = 150; oF.Q.value = .5;
+      const pulse = ctx.createGain(); pulse.gain.value = 0; const lfo = ctx.createOscillator(); lfo.type = 'sine'; const lfoG = ctx.createGain(); lfoG.gain.value = 0;
+      src.connect(rumbleF); rumbleF.connect(rumble); rumble.connect(master);
+      src.connect(airF); airF.connect(airLP); airLP.connect(air); air.connect(master);
+      o.connect(oF); oF.connect(pulse); pulse.connect(master); lfo.connect(lfoG); lfoG.connect(pulse.gain);
+      src.start(); o.start(); lfo.start();
+      eng = { rumble, rumbleF, air, airF, o, oF, pulse, lfo, lfoG, nextClank: 0 };
+    }
+    const t = ctx.currentTime, r = clamp(rpm, 0, 1.3);
+    eng.rumble.gain.setTargetAtTime(on ? (heavy ? .22 : .12) * (.45 + r * .55) : 0, t, .25);
+    eng.rumbleF.frequency.setTargetAtTime(110 + r * (heavy ? 160 : 260), t, .3);
+    // a gas turbine is a smooth roar of air; a diesel thumps
+    eng.air.gain.setTargetAtTime(on && turbine ? .05 + r * .06 : 0, t, .4); eng.airF.frequency.setTargetAtTime(300 + r * 260, t, .5);
+    const firing = (heavy ? 22 : 34) + r * (heavy ? 34 : 70);
+    eng.o.frequency.setTargetAtTime(firing, t, .2); eng.lfo.frequency.setTargetAtTime(firing / 4, t, .2);
+    const pv = on && !turbine ? (heavy ? .07 : .05) * (.5 + r * .5) : on ? .015 : 0;
+    eng.pulse.gain.setTargetAtTime(pv, t, .25); eng.lfoG.gain.setTargetAtTime(pv * .7, t, .25);
+    if (on && heavy && r > .08 && t >= eng.nextClank) { // track links slapping over the wheels
+      burst(.06 + r * .05, .05, 700 + Math.random() * 300, 1.2, 'bandpass'); thump(.05 * r, .05, 70);
+      eng.nextClank = t + clamp(.16 / r, .05, .5) * (.8 + Math.random() * .4);
+    }
   }
+
   return { init, play, at, engine, listener, get ok() { return !!ctx; } };
 })();

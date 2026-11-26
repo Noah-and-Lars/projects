@@ -167,31 +167,37 @@ function crownFns(C, rad, upBias = .35) { // normals bent onto the crown's ellip
     aofn: p => { const q = [(p[0] - C[0]) / rad[0], (p[1] - C[1]) / rad[1], (p[2] - C[2]) / rad[2]], r = v3len(q); return clamp(.45 + .6 * r, .4, 1.05) * (.78 + .22 * clamp(q[1] * .5 + .5, 0, 1)); },
   };
 }
-function genBroad(sp, lod, seed) { // oak, beech, birch: a trunk, limbs and twigs out to an ellipsoid crown, leaf sprays at the ends
+function genBroad(sp, lod, seed) { // oak, beech, birch: a trunk and limbs reaching into a crown made of clustered lobes, leaf sprays on each lobe
   const R = rng(seed), W = new FG(), F = new FG(), H = sp.h, near = lod === 0;
-  const C = [(R() - .5) * H * .06, H * sp.cy, (R() - .5) * H * .06], rad = [H * sp.rx * (.9 + R() * .2), H * sp.ry, H * sp.rx * (.9 + R() * .2)], { nfn, aofn } = crownFns(C, rad);
+  const C = [(R() - .5) * H * .06, H * sp.cy, (R() - .5) * H * .06], rad = [H * sp.rx * (.9 + R() * .2), H * sp.ry, H * sp.rx * (.9 + R() * .2)], crown = crownFns(C, rad);
   const bt = sp.barkTint, birch = !!sp.birch, trunkTop = [C[0] * .6, C[1] - rad[1] * .25, C[2] * .6];
+  // the crown's lobes: clumps of foliage round the upper part of the crown, each shading as its own rounded mass
+  const lobes = [], nLobe = (sp.lobes || 6) + ((R() * 2) | 0);
+  for (let k = 0; k < nLobe; k++) { const az = k / nLobe * TAU + R() * .6, el = k === nLobe - 1 ? 1.4 : lerp(-.25, .85, R()), d = [Math.cos(el) * Math.cos(az), Math.sin(el), Math.cos(el) * Math.sin(az)], f = .45 + R() * .08;
+    lobes.push({ c: [C[0] + d[0] * rad[0] * f, C[1] + d[1] * rad[1] * f, C[2] + d[2] * rad[2] * f], r: [rad[0] * (.5 + R() * .12), rad[1] * (.5 + R() * .12), rad[2] * (.5 + R() * .12)] }); }
+  const lobeOf = p => { let best = lobes[0], bd = 1e9; for (const L of lobes) { const q = [(p[0] - L.c[0]) / L.r[0], (p[1] - L.c[1]) / L.r[1], (p[2] - L.c[2]) / L.r[2]], d = v3len(q); if (d < bd) { bd = d; best = L; } } return best; };
+  const nfn = p => { const L = lobeOf(p), ln = v3norm([(p[0] - L.c[0]) / L.r[0], (p[1] - L.c[1]) / L.r[1], (p[2] - L.c[2]) / L.r[2]]), cn = crown.nfn(p); return v3norm(v3add(v3add(v3mulC(ln, .6), cn, .5), [0, 1, 0], .15)); };
+  const aofn = p => { const L = lobeOf(p), r = v3len([(p[0] - L.c[0]) / L.r[0], (p[1] - L.c[1]) / L.r[1], (p[2] - L.c[2]) / L.r[2]]); return crown.aofn(p) * (.72 + .3 * clamp(r, 0, 1)); };
+  const onLobe = (L, d, r) => [L.c[0] + d[0] * L.r[0] * r, L.c[1] + d[1] * L.r[1] * r, L.c[2] + d[2] * L.r[2] * r];
   // trunk with a slight wander
-  let va = 0, prev = [0, -.6, 0]; const tpts = [];
+  let va = 0, prev = [0, -.6, 0];
   const tn = near ? 4 : 1;
-  for (let k = 1; k <= tn; k++) { const t = k / tn, p = [trunkTop[0] * t + (near ? (R() - .5) * .25 : 0), lerp(-.6, trunkTop[1], t), trunkTop[2] * t + (near ? (R() - .5) * .25 : 0)]; va = limbSeg(W, prev, p, sp.r0 * lerp(1.15, .62, (k - 1) / tn), sp.r0 * lerp(1.15, .62, t), near ? 8 : 5, birch, bt, va); tpts.push(p); prev = p; }
+  for (let k = 1; k <= tn; k++) { const t = k / tn, p = [trunkTop[0] * t + (near ? (R() - .5) * .25 : 0), lerp(-.6, trunkTop[1], t), trunkTop[2] * t + (near ? (R() - .5) * .25 : 0)]; va = limbSeg(W, prev, p, sp.r0 * lerp(1.15, .62, (k - 1) / tn), sp.r0 * lerp(1.15, .62, t), near ? 8 : 5, birch, bt, va); prev = p; }
   const tips = [];
-  const nL = near ? sp.limbs : Math.max(3, sp.limbs - 2);
-  for (let k = 0; k < nL; k++) {
-    const az = k / nL * TAU + R() * .7, el = lerp(sp.elev[0], sp.elev[1], R()), dir = [Math.cos(el) * Math.cos(az), Math.sin(el), Math.cos(el) * Math.sin(az)];
-    const start = k === nL - 1 ? trunkTop : v3add([0, 0, 0], trunkTop, lerp(.72, 1, R())), tgt = [C[0] + dir[0] * rad[0] * .62, C[1] + dir[1] * rad[1] * .6, C[2] + dir[2] * rad[2] * .62];
-    const mid = v3add(v3add(start, v3sub(tgt, start), .5), [0, .5 + R() * .6, 0]);
+  for (const [k, L] of lobes.entries()) { // one limb into each lobe, twigs out to its surface
+    if (!near && k % 2) continue;
+    const start = k === lobes.length - 1 ? trunkTop : v3add([0, 0, 0], trunkTop, lerp(.72, 1, R())), tgt = L.c;
+    const mid = v3add(v3add(start, v3sub(tgt, start), .5), [0, .4 + R() * .5, 0]);
     let vv = limbSeg(W, start, mid, sp.r0 * .5, sp.r0 * .3, near ? 6 : 4, birch, bt, 0); limbSeg(W, mid, tgt, sp.r0 * .3, sp.r0 * .12, near ? 5 : 3, birch, bt, vv);
-    if (near) for (let b = 0; b < sp.twigs; b++) {
-      const t = .35 + R() * .65, from = v3add(mid, v3sub(tgt, mid), t), bd = v3norm(v3add(v3norm(v3sub(tgt, C)), randDir(R), .65)), end = [C[0] + bd[0] * rad[0] * (.88 + R() * .14), C[1] + bd[1] * rad[1] * (.88 + R() * .14), C[2] + bd[2] * rad[2] * (.88 + R() * .14)];
-      limbSeg(W, from, end, sp.r0 * .09, sp.r0 * .025, 3, birch, bt, 0); tips.push(end, v3add(from, v3sub(end, from), .55));
-    }
+    if (near) for (let b = 0; b < sp.twigs; b++) { const from = v3add(mid, v3sub(tgt, mid), .4 + R() * .6), end = onLobe(L, randDir(R), .85 + R() * .15); limbSeg(W, from, end, sp.r0 * .09, sp.r0 * .025, 3, birch, bt, 0); tips.push(end, v3add(from, v3sub(end, from), .55)); }
     tips.push(tgt);
   }
   const tint = sp.leafTint, cell = sp.cell;
-  const card = (p, s) => { const out = v3norm(v3sub(p, C)), up = v3norm(v3add(v3add(out, randDir(R), .7), [0, .35, 0])), side = v3norm(v3cross(up, randDir(R))); leafCard(F, v3add(p, up, s * .3), up, side, s, s, cell, nfn, aofn, tint, near ? .12 : 0); };
-  if (near) { for (const t of tips) for (let k = 0; k < sp.perTip; k++) card(v3add(t, randDir(R), sp.leaf * .35), sp.leaf * (.8 + R() * .4)); for (let k = 0; k < sp.fill; k++) { const d = randDir(R), r = .55 + Math.sqrt(R()) * .45; card([C[0] + d[0] * rad[0] * r, C[1] + d[1] * rad[1] * r, C[2] + d[2] * rad[2] * r], sp.leaf * (.85 + R() * .4)); } }
-  else for (let k = 0; k < sp.midCards; k++) { const d = randDir(R), r = .55 + R() * .35; card([C[0] + d[0] * rad[0] * r, C[1] + d[1] * rad[1] * r, C[2] + d[2] * rad[2] * r], Math.max(rad[0], rad[1]) * .75); }
+  const card = (p, s) => { const L = lobeOf(p), out = v3norm(v3add(v3norm(v3sub(p, L.c)), v3norm(v3sub(p, C)), .6)), up = v3norm(v3add(v3add(out, randDir(R), .7), [0, .35, 0])), side = v3norm(v3cross(up, randDir(R))); leafCard(F, v3add(p, up, s * .3), up, side, s, s, cell, nfn, aofn, tint, near ? .12 : 0); };
+  if (near) {
+    for (const t of tips) for (let k = 0; k < sp.perTip; k++) card(v3add(t, randDir(R), sp.leaf * .35), sp.leaf * (.8 + R() * .4));
+    for (let k = 0; k < sp.fill; k++) { const L = lobes[(R() * lobes.length) | 0], d = randDir(R); card(onLobe(L, d, .6 + Math.sqrt(R()) * .4), sp.leaf * (.85 + R() * .4)); }
+  } else for (let k = 0; k < sp.midCards; k++) { const L = lobes[k % lobes.length]; card(onLobe(L, randDir(R), .55 + R() * .35), Math.max(L.r[0], L.r[1]) * 1.05); }
   return { wood: W.geo(), leaf: F.geo() };
 }
 function genSpruce(sp, lod, seed) { // Norway spruce: whorls of drooping needle fronds round a straight trunk
@@ -248,9 +254,9 @@ function genBush(sp, lod, seed) { // hazel or yew: a few stems and a dome of lea
   return { wood: W.geo(), leaf: F.geo() };
 }
 const SPECIES = {
-  oak: { gen: genBroad, cell: FC.oak, h: 15, rx: .36, ry: .3, cy: .6, r0: .42, limbs: 7, twigs: 4, perTip: 3, leaf: 2.3, fill: 60, midCards: 30, elev: [.1, .75], barkTint: [1, 1, 1], leafTint: [.95, 1, .9] },
-  beech: { gen: genBroad, cell: FC.beech, h: 19, rx: .26, ry: .34, cy: .6, r0: .36, limbs: 7, twigs: 4, perTip: 3, leaf: 2.3, fill: 64, midCards: 30, elev: [.35, 1.0], barkTint: [1.35, 1.35, 1.45], leafTint: [1, 1, .95] },
-  birch: { gen: genBroad, cell: FC.birch, h: 15, rx: .16, ry: .32, cy: .62, r0: .2, limbs: 7, twigs: 3, perTip: 3, leaf: 1.5, fill: 40, midCards: 22, elev: [.6, 1.2], barkTint: [1, 1, 1], leafTint: [1, 1, .95], birch: true },
+  oak: { gen: genBroad, cell: FC.oak, h: 15, rx: .36, ry: .3, cy: .6, r0: .42, limbs: 7, twigs: 4, perTip: 3, leaf: 2.1, fill: 80, midCards: 34, lobes: 7, elev: [.1, .75], barkTint: [1, 1, 1], leafTint: [.95, 1, .9] },
+  beech: { gen: genBroad, cell: FC.beech, h: 19, rx: .26, ry: .34, cy: .6, r0: .36, limbs: 7, twigs: 4, perTip: 3, leaf: 2.1, fill: 84, midCards: 34, lobes: 6, elev: [.35, 1.0], barkTint: [1.35, 1.35, 1.45], leafTint: [1, 1, .95] },
+  birch: { gen: genBroad, cell: FC.birch, h: 15, rx: .16, ry: .32, cy: .62, r0: .2, limbs: 7, twigs: 3, perTip: 3, leaf: 1.4, fill: 52, midCards: 24, lobes: 5, elev: [.6, 1.2], barkTint: [1, 1, 1], leafTint: [1, 1, .95], birch: true },
   spruce: { gen: genSpruce, cell: FC.spruce, h: 22, rw: .2, barkTint: [.9, .85, .8], leafTint: [.95, 1, 1] },
   pine: { gen: genPine, cell: FC.pine, h: 19, barkTint: [.95, .85, .78], leafTint: [1, 1, .95] },
   hazel: { gen: genBush, cell: FC.hazel, h: 4.2, rx: .62, leaf: 1.5, fill: 30, midCards: 9, barkTint: [1, 1, 1], leafTint: [1, 1, .95] },
@@ -273,9 +279,21 @@ function cullPatch(sh, cull, wind) {
     .replace('#include <project_vertex>', `#include <project_vertex>
       { float dd = distance(ipw.xz, uCam.xz); if (dd < uCull.x || dd >= uCull.y) gl_Position = vec4(2.0, 2.0, 2.0, 1.0); }`);
 }
+function plantLight(sh, trans) { // baked hill shadow and sky occlusion, and light shining through leaves when the sun is behind them
+  Object.assign(sh.uniforms, { tShade: REAL_SHADE, uWorld: { value: new THREE.Vector2(WORLD_W, WORLD_H) }, uSun: SKY_U.uSun });
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform sampler2D tShade; uniform vec2 uWorld; uniform vec3 uSun;')
+    .replace('#include <lights_lambert_vertex>', `#include <lights_lambert_vertex>
+      { vec2 shd = texture2D(tShade, ipw.xz / uWorld).rg; vLightFront *= shd.r; vIndirectFront *= .55 + .45 * shd.g;
+        vec3 wpos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        #ifdef USE_INSTANCING
+          wpos = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
+        #endif
+        float back = pow(max(0.0, dot(normalize(wpos - cameraPosition), uSun)), 3.0);
+        vLightFront += vec3(1.0, .92, .62) * back * ${trans.toFixed(2)} * shd.r; }`);
+}
 function floraMat(map, cull, o = {}) {
   const m = new THREE.MeshLambertMaterial({ map, vertexColors: true, alphaTest: o.alpha || 0, side: o.alpha ? THREE.DoubleSide : THREE.FrontSide, alphaToCoverage: !!o.alpha });
-  m.onBeforeCompile = sh => { cullPatch(sh, cull, o.wind || 0); sh.fragmentShader = sh.fragmentShader.replace(/:\s*vLightBack/g, ': vLightFront').replace(/:\s*vIndirectBack/g, ': vIndirectFront'); };
+  m.onBeforeCompile = sh => { cullPatch(sh, cull, o.wind || 0); plantLight(sh, o.alpha ? 1.1 : 0); sh.fragmentShader = sh.fragmentShader.replace(/:\s*vLightBack/g, ': vLightFront').replace(/:\s*vIndirectBack/g, ': vIndirectFront'); };
   m.customProgramCacheKey = () => 'flora' + (o.wind || 0) + (o.alpha ? 'a' : '');
   return m;
 }
@@ -332,7 +350,7 @@ function cropAt(frames, x, z) { // 0 none, 1 ploughed, 2 wheat, 3 young crop, 4 
     const c = Math.cos(t.a), s = Math.sin(t.a), u = dx * c + dz * s, v = -dx * s + dz * c, pu = Math.floor(u / 160), pv = Math.floor(v / 110), k = hash2(pu + 500, pv + 500, 7);
     const edge = Math.min(Math.abs(u / 160 - Math.round(u / 160)) * 160, Math.abs(v / 110 - Math.round(v / 110)) * 110);
     if (edge < 4) return 0;
-    return 1 + Math.floor(k * 4) * (d < 1100 ? 1 : 0);
+    FL.cropAng = t.a; return 1 + Math.floor(k * 4) * (d < 1100 ? 1 : 0);
   }
   return 0;
 }
@@ -518,6 +536,19 @@ function bladeClump(nBlades, seed, hMin, hMax, spread, wBase) { // curved, taper
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); return g;
 }
+function meadowGeo(kind, seed) { // wildflowers (a coloured head on each stem) or seed-head stalks
+  const R = rng(seed), P = [], C = [], N = [], U = [], I = []; let v = 0;
+  const quad = (a, b, c, d, ca, cb) => { for (const [p, cc] of [[a, ca], [b, ca], [c, cb], [d, cb]]) { P.push(...p); C.push(...cc); N.push(0, 1, 0); U.push(0, p[1]); } I.push(v, v + 1, v + 2, v, v + 2, v + 3); v += 4; };
+  const n = kind === 'flower' ? 6 : 4;
+  for (let k = 0; k < n; k++) {
+    const a = R() * TAU, r = R() * .18, x = Math.cos(a) * r, z = Math.sin(a) * r, h = kind === 'flower' ? .22 + R() * .22 : .55 + R() * .4, lean = (R() - .5) * .12, f = R() * TAU, fx = Math.cos(f) * .007, fz = Math.sin(f) * .007;
+    const stem = kind === 'flower' ? [.16, .26, .08] : [.42, .44, .2], top = [x + lean, h, z + lean * .5];
+    quad([x - fx, 0, z - fz], [x + fx, 0, z + fz], [top[0] + fx, h, top[2] + fz], [top[0] - fx, h, top[2] - fz], [stem[0] * .6, stem[1] * .6, stem[2] * .6], stem);
+    if (kind === 'flower') { const s2 = .03 + R() * .02; for (let q = 0; q < 3; q++) { const b = q / 3 * Math.PI + R(), cx = Math.cos(b) * s2, cz = Math.sin(b) * s2; quad([top[0] - cx, h - .005, top[2] - cz], [top[0] + cx, h - .005, top[2] + cz], [top[0] + cx, h + .012, top[2] + cz], [top[0] - cx, h + .012, top[2] - cz], [1, 1, 1], [1, 1, 1]); } }
+    else { const hl = .07 + R() * .05; for (let q = 0; q < 2; q++) { const b = q * Math.PI / 2 + f, cx = Math.cos(b) * .012, cz = Math.sin(b) * .012; quad([top[0] - cx, h, top[2] - cz], [top[0] + cx, h, top[2] + cz], [top[0] + cx * .3, h + hl, top[2] + cz * .3], [top[0] - cx * .3, h + hl, top[2] - cz * .3], [.62, .55, .32], [.78, .7, .44]); } }
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); return g;
+}
 function grassMat(base, o) { // matches the ground: the same dry/green macro patches the terrain shader uses, wind, fades at the edge of its ring
   const m = new THREE.MeshLambertMaterial({ color: new THREE.Color(base[0], base[1], base[2]), vertexColors: true, side: THREE.DoubleSide, map: o.map || null, alphaTest: o.map ? .5 : 0 });
   m.onBeforeCompile = sh => {
@@ -534,10 +565,11 @@ function grassMat(base, o) { // matches the ground: the same dry/green macro pat
         #include <color_vertex>
         { float dry = smoothstep(.42, .72, texture2D(tMacro, ipw.xz / 2300.0 + .37).r) * .8 + smoothstep(.6, .8, texture2D(tMacro, ipw.xz / 310.0 + .71).r) * .35;
           float mac = texture2D(tMacro, ipw.xz / 900.0).r * .7 + texture2D(tMacro, ipw.xz / 211.0).r * .3;
-          vColor.rgb *= mix(vec3(.74, .88, .62), vec3(1.2, 1.06, .64), clamp(dry, 0.0, 1.0) * ${o.dry.toFixed(2)}) * (.66 + mac * .55); }`);
+          ${o.noTone ? 'vColor.rgb *= .85 + mac * .25;' : `vColor.rgb *= mix(vec3(.7, .8, .56), vec3(1.16, 1.02, .62), clamp(dry, 0.0, 1.0) * ${o.dry.toFixed(2)}) * (.66 + mac * .55);`} }`);
+    plantLight(sh, 1.4);
     sh.fragmentShader = sh.fragmentShader.replace(/:\s*vLightBack/g, ': vLightFront').replace(/:\s*vIndirectBack/g, ': vIndirectFront');
   };
-  m.customProgramCacheKey = () => 'grassF' + o.dry + (o.map ? 'm' : '');
+  m.customProgramCacheKey = () => 'grassF' + o.dry + (o.map ? 'm' : '') + (o.noTone ? 't' : '');
   return m;
 }
 function buildGrassF() {
@@ -558,10 +590,13 @@ function buildGrassF() {
   const bush = new THREE.InstancedMesh(floraModels().hazel.near.leaf, floraMat(FL.leaf, new THREE.Vector2(0, 1e9), { alpha: .45, wind: .02 }), 900);
   const rockG = new THREE.IcosahedronGeometry(1, 1); { const p = rockG.attributes.position, Rr = rng(9); for (let i = 0; i < p.count; i++) { const k = .75 + Rr() * .5; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k * .7, p.getZ(i) * k); } rockG.computeVertexNormals(); }
   const rocks = new THREE.InstancedMesh(rockG, new THREE.MeshStandardMaterial({ map: TEX.rock, roughness: .95 }), 1600);
-  for (const im of [near, far, fern, bush, rocks]) { im.frustumCulled = false; im.count = 0; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); WORLD.group.add(im); }
+  const flowers = new THREE.InstancedMesh(meadowGeo('flower', 3), grassMat([1, 1, 1], { ring: [-1, 0, 22, 27], dry: 0, noTone: true }), 2500);
+  const heads = new THREE.InstancedMesh(meadowGeo('stalk', 4), grassMat([1, 1, 1], { ring: [-1, 0, 22, 27], dry: 1 }), 3500);
+  for (const im of [flowers, heads]) im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(im.instanceMatrix.count * 3), 3);
+  for (const im of [near, far, fern, bush, rocks, flowers, heads]) { im.frustumCulled = false; im.count = 0; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); WORLD.group.add(im); }
   near.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(16000 * 3), 3); far.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(26000 * 3), 3);
   fern.castShadow = bush.castShadow = rocks.castShadow = true; rocks.receiveShadow = fern.receiveShadow = bush.receiveShadow = true;
-  FL.grass = { near, far, fern, bush, rocks, lastN: new V3(1e9, 0, 1e9), lastF: new V3(1e9, 0, 1e9) };
+  FL.grass = { near, far, fern, bush, rocks, flowers, heads, lastN: new V3(1e9, 0, 1e9), lastF: new V3(1e9, 0, 1e9) };
 }
 function roadBins(M) { // road segments in metres, binned, for a precise "is this on the road" test
   const B = 40, map = new Map();
@@ -584,23 +619,30 @@ function grassKind(x, z) { // [density, height, r, g, b] for the ground here
   const cp = h > 6 && sl < .2 ? cropAt(FL.frames, x, z) : 0;
   if (cp === 1) return [.05, .6, 1.1, .95, .8];          // ploughed: a few weeds
   if (cp === 2) return [1, 2.1, 2.6, 1.85, .7];          // wheat
-  if (cp === 3) return [.85, .55, .95, 1.25, .85];       // young crop
+  if (cp === 3) { const fr = -x * Math.sin(FL.cropAng) + z * Math.cos(FL.cropAng); return Math.sin(fr * 10.5) > .55 ? [1, .55, .95, 1.3, .8] : [.02, .5, 1, 1, 1]; } // young crop, in rows
   if (cp === 4) return [1, 1.15, 1, 1.05, .95];          // pasture
   return [k, 1, 1, 1, 1];
 }
+const FLOWER_COLS = [[1.0, 1.0, .96], [1.0, .86, .18], [.72, .5, .95], [1.0, .97, .9], [.95, .55, .7], [1.0, .9, .3]]; // daisy, buttercup, clover, yarrow, campion, dandelion
 function updateGrassF(cam) {
   const G = FL.grass; if (!G) return;
   const dummy = new THREE.Object3D(), col = new THREE.Color();
   if (Math.hypot(cam.x - G.lastN.x, cam.z - G.lastN.z) > 3.5) { // blades
-    G.lastN.copy(cam); const S = .46, RAD = 28, im = G.near, cx = Math.floor(cam.x / S), cz = Math.floor(cam.z / S), r = Math.ceil(RAD / S), MAX = im.instanceMatrix.count; let n = 0;
+    G.lastN.copy(cam); const S = .46, RAD = 28, im = G.near, cx = Math.floor(cam.x / S), cz = Math.floor(cam.z / S), r = Math.ceil(RAD / S), MAX = im.instanceMatrix.count, MF = G.flowers.instanceMatrix.count, MH = G.heads.instanceMatrix.count; let n = 0, nf = 0, nh = 0;
     for (let j = -r; j <= r && n < MAX; j++) for (let i = -r; i <= r && n < MAX; i++) {
       const gi = cx + i, gj = cz + j, x = (gi + hash2(gi, gj, 1)) * S, z = (gj + hash2(gi, gj, 2)) * S; if (Math.hypot(x - cam.x, z - cam.z) > RAD) continue;
       const w = grassKind(x, z); if (!w || hash2(gi, gj, 3) > w[0]) continue;
       const s = .75 + hash2(gi, gj, 4) * .5, hy = w[1] * (.75 + hash2(gi, gj, 6) * .5);
       dummy.position.set(x, terrainY(x, z) - .03, z); dummy.rotation.set(0, hash2(gi, gj, 5) * TAU, 0); dummy.scale.set(s * (w[1] > 1.5 ? .7 : 1), s * hy, s * (w[1] > 1.5 ? .7 : 1)); dummy.updateMatrix(); im.setMatrixAt(n, dummy.matrix);
       const k = hash2(gi, gj, 7) * .26 - .13, dryc = hash2(gi, gj, 8) < .12 ? .35 : 0; im.setColorAt(n, col.setRGB(w[2] * (1 + k + dryc * .9), w[3] * (1 + k * .7 + dryc * .3), w[4] * (1 + k * .5 - dryc * .2))); n++;
+      if (w[1] >= .9 && w[1] < 1.5 && w[0] > .5) { // meadows (not crops): patches of wildflowers and seed heads
+        const patch = fbm(x * .05, z * .05, 77, 2), hf = hash2(gi, gj, 9);
+        if (hf < .045 + Math.max(0, patch) * .12 && nf < MF) { dummy.scale.setScalar(.8 + hash2(gi, gj, 10) * .5); dummy.updateMatrix(); G.flowers.setMatrixAt(nf, dummy.matrix); const fc = FLOWER_COLS[(patch * 9 + 9 + (hash2(gi, gj, 12) < .35 ? hash2(gi, gj, 13) * 6 : 0) | 0) % FLOWER_COLS.length]; G.flowers.setColorAt(nf++, col.setRGB(fc[0], fc[1], fc[2])); }
+        else if (hf > .9 - Math.max(0, -patch) * .1 && nh < MH) { dummy.scale.set(1, .8 + hash2(gi, gj, 11) * .5, 1); dummy.updateMatrix(); G.heads.setMatrixAt(nh, dummy.matrix); G.heads.setColorAt(nh++, col.setRGB(1, 1, 1)); }
+      }
     }
     im.count = n; im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true;
+    for (const [m2, c2] of [[G.flowers, nf], [G.heads, nh]]) { m2.count = c2; m2.instanceMatrix.needsUpdate = true; m2.instanceColor.needsUpdate = true; }
   }
   if (Math.hypot(cam.x - G.lastF.x, cam.z - G.lastF.z) < 10) return;
   G.lastF.copy(cam);
