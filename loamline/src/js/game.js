@@ -6,6 +6,7 @@ import { BikeSim, BIKES, emptyInput } from './physics.js';
 import { Track } from './track.js';
 import { World } from './world.js';
 import { buildBike, buildRider } from './models.js';
+import { RiderAnimator } from './animate.js';
 import { CameraRig } from './camera.js';
 import { sfx, updateRide } from './audio.js';
 import { clamp, wrapAngle, smoothstep } from './noise.js';
@@ -21,7 +22,7 @@ export const CRASH_TEXT = {
   impact: 'Landed too hard — crash!',
   offtrack: 'Off the trail!',
   barspin: "Didn't catch the bar!",
-  pose: 'Hands and feet not back on — crash!',
+  loopout: 'Looped out of the manual!',
   pit: 'Fell in the gap!',
 };
 
@@ -54,6 +55,7 @@ export class Game {
     this.bikeRoot = this.bike.root;
     this.bikeRoot.add(this.rider.group);
     scene.add(this.bikeRoot);
+    this.anim = new RiderAnimator(this.bike, this.rider);
 
     this.rig = new CameraRig(camera);
     this.rig.setView(st.settings.camera || 'follow');
@@ -244,12 +246,9 @@ export class Game {
     }
     if (!sim.grounded) {
       // Line the bike up with the landing.
-      if (!this.landPred || (this.landPredT -= dt) <= 0) {
-        this.landPred = tr.predictLanding(sim.pos, sim.vel, this.hintState.hint);
-        this.landPredT = 0.1;
-      }
-      if (!this.landPred) return;
-      sim.assist.airPitch = Math.atan(this.landPred.slope);
+      // The bike already rights itself near the ground; assist starts that
+      // earlier and harder.
+      sim.assist.airPitch = sim.landSlope;
       sim.assist.airGain = lvl === 2 ? 0.85 : 0.4;
       sim.assist.straighten = lvl === 2 ? 1 : 0.4;
     }
@@ -264,8 +263,10 @@ export class Game {
     tr.hint = p.i;
     const off = Math.abs(p.d) - tr.hw;
     sim.surface.roll = off > 0.3 ? 4 : 1;
-    sim.surface.grip = off > 0.3 ? 0.75 : 1;
+    sim.surface.grip = off > 0.3 ? 0.75 : off > 1.2 ? 0.65 : 1;
     this.rough = off > 0.3;
+    const jl = tr.nextJump(p.s - 0.6, 8);
+    sim.nearLip = !!(jl && p.s > jl.s0 && p.s < jl.lipS + 0.5);
 
     const events = sim.step(DT, inp);
     for (const e of events) this.onEvent(e, p);
@@ -313,11 +314,13 @@ export class Game {
     const tr = this.track, sim = this.sim;
     if (e.type === 'pop') {
       sfx('pop', 0.5);
+      this.anim.onPop();
       const j = tr.nextJump(p.s - 2, 4);
       if (j && e.kind !== 'hop') {
         const dl = p.s - j.lipS;
-        // Released right at the lip (or with the rear still on it).
-        if ((e.kind === 'late' && dl < 1.4) || (dl > -0.7 && dl < 0.5)) {
+        // Released in the last ~70 ms before the lip, or just after leaving it.
+        const win = Math.max(0.3, Math.abs(sim.speed || sim.hSpeed()) * 0.07);
+        if ((e.kind === 'late' && sim.airTime <= 0.07 + 1e-3) || (e.kind !== 'late' && dl > -win && dl < 0.5)) {
           this.lastPop = { jump: j, perfect: true };
           this.trick('Perfect pop', 50, true);
           this.task('pop');
@@ -332,9 +335,12 @@ export class Game {
       }
     }
     if (e.type === 'land') this.onLand(e, p);
+    if (e.type === 'loopout') this.doCrash('loopout');
+    if (e.type === 'barcatch') this.barCatch = e.rate;
   }
 
   onLand(e, p) {
+    if (!e.crash) this.anim.onLand(e);
     const tr = this.track, sim = this.sim;
     const j = this.takeoffJump;
     this.takeoffJump = null;
@@ -367,7 +373,7 @@ export class Game {
     if (e.barspins > 0) items.push([`Barspin${e.barspins > 1 ? ' ×' + e.barspins : ''}`, 300 * e.barspins]);
     if (e.airTime > 0.8) items.push([`Air ${e.airTime.toFixed(1)}s`, Math.round(e.airTime * 40)]);
     if (grade === 'sweet' && Math.abs(e.pitchErr) < 0.3) items.push(['Sweet spot', 100]);
-    else if (!e.hard && e.airTime > 0.5 && Math.abs(e.pitchErr) < 0.25) items.push(['Clean landing', 40]);
+    else if (e.clean && e.airTime > 0.5) items.push(['Clean landing', 40]);
 
     let total = items.reduce((a, b) => a + b[1], 0);
     const nTricks = items.filter((i) => !/Air|Sweet|Clean/.test(i[0])).length;
@@ -479,7 +485,7 @@ export class Game {
     this.rider.group.rotation.copy(rf.rot);
     this.rider.group.translateY(-0.6);
     // Ragdoll-ish limp pose.
-    this.poseRider({ crouch: 0.6, back: 0.2, noHand: 0.7, superman: 0.3, barspin: 0, limp: true });
+    this.limpPose();
 
     if (c.t > 1.7) {
       this.bikeRoot.add(this.rider.group);
@@ -556,24 +562,19 @@ export class Game {
   updateVisuals(dt, inp) {
     const sim = this.sim;
     if (!this.crash) {
-      const r = this.bikeRoot;
-      r.position.set(sim.pos.x, sim.pos.y, sim.pos.z);
-      r.rotation.order = 'YXZ';
-      r.rotation.set(-sim.pitch, sim.yaw, -sim.roll * 0.9);
-      // Suspension sag on landings / compressions.
-      r.position.y -= sim.compress * 0.08;
-      sim.compress *= Math.max(0, 1 - dt * 6);
-      this.bike.update(dt, sim);
-      this.poseRider({
-        crouch: clamp(sim.preload * 0.9 + sim.compress * 0.6 + (sim.grounded ? 0.15 : 0.05), 0, 1),
-        back: clamp(sim.manual / 0.34, 0, 1) - clamp(sim.stoppie / 0.26, 0, 1) * 0.5,
-        noHand: sim.noHand, superman: sim.superman,
-        barspin: sim.barspin > 0 ? 1 : 0,
+      const fx = Math.sin(sim.yaw), fz = Math.cos(sim.yaw), w2 = this.bike.wb / 2;
+      const h = this.hintState.hint;
+      this.anim.update(dt, sim, {
+        root: this.bikeRoot,
+        gF: this.track.height(sim.pos.x + fx * w2, sim.pos.z + fz * w2, h),
+        gR: this.track.height(sim.pos.x - fx * w2, sim.pos.z - fz * w2, h),
+        barCatch: this.barCatch || 0,
       });
-      // Dust off the rear tyre.
+      this.barCatch = 0;
+      // Dust off the rear tyre (lots of it when sliding or skidding).
       const hs = Math.abs(sim.speed);
-      if (sim.grounded && hs > 4 && Math.random() < hs / 30 * (this.rough ? 2 : 1)) {
-        const fx = Math.sin(sim.yaw), fz = Math.cos(sim.yaw);
+      const slide = Math.max(sim.sliding, sim.skid * 0.8);
+      if (sim.grounded && hs > 4 && Math.random() < hs / 30 * (this.rough ? 2 : 1) + slide * 1.5) {
         this.world.dust.emit(sim.pos.x - fx * 0.6, sim.pos.y + 0.05, sim.pos.z - fz * 0.6, -fx * 1.5, 0.6, -fz * 1.5, 1);
       }
     }
@@ -584,29 +585,17 @@ export class Game {
     this.world.follow(this.bikeRoot.position, sim.yaw);
     updateRide({
       active: this.phase === 'run' || this.phase === 'finished', speed: this.crash ? 0 : sim.grounded ? sim.speed : sim.hSpeed(),
-      grounded: sim.grounded && !this.crash, air: !sim.grounded, pedal: inp.throttle > 0.1 && sim.grounded, rough: this.rough,
+      grounded: sim.grounded && !this.crash, air: !sim.grounded, pedal: sim.pedaling && sim.grounded, rough: this.rough || sim.sliding > 0.3 || sim.skid > 0.4,
     });
   }
 
-  poseRider(o) {
-    const b = this.bike;
-    b.root.updateMatrixWorld(true);
-    const inv = new THREE.Matrix4().copy(b.root.matrixWorld).invert();
-    const toLocal = (v) => v.applyMatrix4(inv);
-    const gl = toLocal(b.worldGrip(0, new THREE.Vector3()));
-    const gr = toLocal(b.worldGrip(1, new THREE.Vector3()));
-    // Standing riders keep the cranks level.
-    const pl = toLocal(b.worldPedal(0, new THREE.Vector3()));
-    const pr = toLocal(b.worldPedal(1, new THREE.Vector3()));
-    if (o.limp) {
-      gl.set(0.35, 1.0, 0.6); gr.set(-0.35, 1.0, 0.6);
-      pl.set(0.2, 0.3, -0.2); pr.set(-0.2, 0.4, 0.1);
-    }
-    const bbW = b.bb.clone().applyMatrix4(b.body.matrix).applyMatrix4(b.whipPivot.matrix);
+  // Loose, tumbling pose while the rider is thrown clear in a crash.
+  limpPose() {
+    const V3 = THREE.Vector3;
     this.rider.pose({
-      gripL: gl, gripR: gr, pedalL: pl, pedalR: pr, bb: bbW,
-      crouch: o.crouch, back: o.back, noHand: o.noHand, superman: o.superman, barspin: o.barspin,
-      lean: clamp(this.sim.roll * 0.4, -0.3, 0.3), look: -this.sim.whip * 0.3,
+      bb: this.bike.bb, handL: new V3(0.4, 0.75, 0.55), handR: new V3(-0.45, 0.85, 0.4),
+      footL: new V3(0.22, 0.2, -0.15), footR: new V3(-0.25, 0.35, 0.2),
+      drop: 0.25, fore: 0.1, hipX: 0, torso: 0.9, hipYaw: 0.2, hipRoll: 0.3, headPitch: 0.5, headYaw: 0.3,
     });
   }
 

@@ -34,6 +34,8 @@ export function placeBetween(m, a, b, r, capsule = false) {
   else m.scale.set(r, len, r);
 }
 
+const clamp01 = (x) => Math.max(-0.4, Math.min(1, x));
+
 function wheel(R, tyreW, mats, spokes = 28) {
   const g = new THREE.Group();
   const tyre = new THREE.Mesh(new THREE.TorusGeometry(R - tyreW, tyreW, 8, 36), mats.tyre);
@@ -127,12 +129,18 @@ export function buildBike(id, wb, colorHex) {
   body.add(tube(crown.clone().add(V(0, 0.03, 0)), bb, 0.03, f));      // down tube
   body.add(tube(bb, stTop.clone().addScaledVector(seatDir, 0.02), 0.022, f)); // seat tube
   const sL = V(0.06, 0, 0), sR = V(-0.06, 0, 0);
+  // Rear end. The swingarm (stays + rear wheel) pivots so the suspension
+  // can be seen working; hardtails keep it fixed.
+  const piv = G.fs ? bb.clone().add(V(0, 0.1, -0.03)) : bb.clone();
+  const rearArm = new THREE.Group();
+  rearArm.position.copy(piv);
+  body.add(rearArm);
+  const inArm = (p) => p.clone().sub(piv);
+  const armLen = Math.max(0.2, Math.abs(rA.z - piv.z));
   if (G.fs) {
-    // Swingarm, rocker and shock.
-    const piv = bb.clone().add(V(0, 0.1, -0.03));
     for (const sd of [sL, sR]) {
-      body.add(tube(piv.clone().add(sd), rA.clone().add(sd), 0.017, f));
-      body.add(tube(rA.clone().add(sd), stTop.clone().add(V(0, -0.12, 0)).add(sd).addScaledVector(seatDir, -0.05), 0.014, f));
+      rearArm.add(tube(inArm(piv.clone().add(sd)), inArm(rA.clone().add(sd)), 0.017, f));
+      rearArm.add(tube(inArm(rA.clone().add(sd)), inArm(stTop.clone().add(V(0, -0.12, 0)).add(sd).addScaledVector(seatDir, -0.05)), 0.014, f));
     }
     const rocker = stTop.clone().addScaledVector(seatDir, -0.13);
     const shockA = rocker.clone().add(V(0, 0.02, 0.02));
@@ -141,7 +149,7 @@ export function buildBike(id, wb, colorHex) {
     body.add(tube(shockA.clone().lerp(shockB, 0.2), shockA.clone().lerp(shockB, 0.65), 0.03, mats.stanchion));
   } else {
     for (const sd of [sL, sR]) {
-      body.add(tube(bb.clone().add(sd.clone().multiplyScalar(0.6)), rA.clone().add(sd), 0.014, f));
+      rearArm.add(tube(inArm(bb.clone().add(sd.clone().multiplyScalar(0.6))), inArm(rA.clone().add(sd)), 0.014, f));
       body.add(tube(stTop.clone().add(V(0, -0.03, 0)), rA.clone().add(sd), 0.012, f));
     }
   }
@@ -181,8 +189,8 @@ export function buildBike(id, wb, colorHex) {
 
   // Wheels.
   const rearWheel = wheel(R, G.tyre, mats, id === 'dj' ? 32 : 28);
-  rearWheel.position.copy(rA);
-  body.add(rearWheel);
+  rearWheel.position.copy(inArm(rA));
+  rearArm.add(rearWheel);
 
   // Steering assembly: fork, bar and front wheel turn about the head axis.
   const steerPivot = new THREE.Group();
@@ -197,9 +205,12 @@ export function buildBike(id, wb, colorHex) {
   };
   const fAs = toSteer(fA);
   const legs = G.dual ? 0.075 : 0.06;
+  // Fork lowers and the front wheel slide up the stanchions.
+  const forkSlide = new THREE.Group();
+  steer.add(forkSlide);
   for (const sd of [1, -1]) {
     const lowerTop = fAs.clone().add(V(0, 0.3, 0));
-    steer.add(tube(fAs.clone().add(V(sd * legs, 0, 0)), lowerTop.clone().add(V(sd * legs, 0, 0)), 0.022, mats.dark));
+    forkSlide.add(tube(fAs.clone().add(V(sd * legs, 0, 0)), lowerTop.clone().add(V(sd * legs, 0, 0)), 0.022, mats.dark));
     const top = G.dual ? V(sd * legs, 0.16, 0) : V(sd * legs, 0.02, 0);
     steer.add(tube(lowerTop.clone().add(V(sd * legs, -0.05, 0)), top, 0.017, mats.stanchion));
   }
@@ -225,9 +236,8 @@ export function buildBike(id, wb, colorHex) {
   const frontWheel = wheel(R, G.tyre, mats, id === 'dj' ? 32 : 28);
   frontWheel.position.copy(fAs);
   frontWheel.quaternion.copy(steerPivot.quaternion).invert();
-  const frontSpin = new THREE.Group();
-  frontWheel.add(frontSpin);
-  steer.add(frontWheel);
+  forkSlide.add(frontWheel);
+  const steerAxisY = steerDir.y;
 
   const gripMarkers = [new THREE.Object3D(), new THREE.Object3D()];
   gripMarkers[0].position.copy(gripL); gripMarkers[1].position.copy(gripR);
@@ -235,36 +245,46 @@ export function buildBike(id, wb, colorHex) {
 
   root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
 
-  const tmp = new THREE.Vector3();
+  const travelF = G.dual ? 0.2 : G.fs ? 0.15 : 0.1;
+  const travelR = G.fs ? (G.dual ? 0.2 : 0.14) : 0;
+  const frontQ0 = steerPivot.quaternion.clone().invert();
   const api = {
     id, root, whipPivot, body, steer, frontWheel, rearWheel, cranks, pedals, mats, R, wb,
-    gripMarkers, bb,
+    gripMarkers, bb, travelF, travelR, steerAxisY, dual: G.dual,
     // World-space positions of grips / pedals (call after updateMatrixWorld).
     worldGrip(i, out) { return gripMarkers[i].getWorldPosition(out); },
     worldPedal(i, out) { return pedals[i].getWorldPosition(out); },
     worldSaddle(out) { return saddle.getWorldPosition(out); },
     setColor(hex) { frameMat.color.set(hex); },
-    spin: 0,
-    update(dt, sim) {
-      const v = sim.grounded ? sim.speed : sim.hSpeed();
-      this.spin += (v / R) * dt * (sim.grounded || this.spin ? 1 : 1);
-      rearWheel.rotation.x = this.spin;
-      frontWheel.children[0].parent.rotation.x = 0;
-      // Front wheel spins about its own axle (local X of the wheel group).
-      frontWheel.rotateX(0); // keep orientation
-      frontWheel.quaternion.copy(steerPivot.quaternion).invert();
+    spin: 0, spinR: 0,
+    // Wheels roll with the ground speed; a locked rear stops turning.
+    roll(dt, speed, rearLock = 0) {
+      this.spin += (speed / R) * dt;
+      this.spinR += (speed / R) * dt * (1 - rearLock);
+      rearWheel.rotation.x = this.spinR;
+      frontWheel.quaternion.copy(frontQ0);
       frontWheel.rotateX(this.spin);
-      // Steering + barspin.
-      steer.rotation.y = -sim.steerVis * 0.32 * (sim.grounded ? 1 : 0.4) - sim.barAngle;
-      // Cranks: pedal while pedalling, level when coasting.
-      cranks.rotation.x = sim.pedalPhase;
-      // Whip: twist + lay.
-      const w = sim.whip;
-      whipPivot.rotation.set(0, 0, 0);
+    },
+    setBar(angle) { steer.rotation.y = angle; },
+    setCrank(a) {
+      cranks.rotation.x = a;
+      for (const p of pedals) p.rotation.x = -a;   // pedals stay flat
+    },
+    // front: travel along the fork (m), rear: wheel travel (m).
+    setSuspension(front, rear) {
+      forkSlide.position.y = clamp01(front / travelF) * travelF;
+      rearArm.rotation.x = travelR ? Math.asin(Math.min(0.9, clamp01(rear / travelR) * travelR / armLen)) : 0;
+    },
+    setWhip(twist, lay) {
       whipPivot.rotation.order = 'YXZ';
-      whipPivot.rotation.y = w * 0.75;
-      whipPivot.rotation.z = -w * 0.55;
-      void tmp;
+      whipPivot.rotation.set(0, twist, -lay);
+    },
+    // Legacy convenience used by the showroom.
+    update(dt, sim) {
+      this.roll(dt, sim.grounded ? sim.speed : 0);
+      this.setBar(-sim.steerVis * 0.32 - sim.barAngle);
+      this.setCrank(sim.pedalPhase + Math.PI / 2);
+      this.setWhip(sim.whip * 0.75, sim.whip * 0.55);
     },
   };
   return api;
@@ -382,78 +402,54 @@ export function buildRider(kit = {}) {
       if (k.pants) pants.color.set(k.pants);
     },
     /**
-     * Pose the rider in the bike root's local space.
-     * t: { gripL, gripR, pedalL, pedalR (Vector3 local), bb, crouch, back,
-     *      noHand, superman, barspin, steer, lean, look }
+     * Pose the rider in the bike root's local space. All motion decisions
+     * live in animate.js; this just builds the body from its channels and
+     * pins hands and feet with two-bone IK.
+     * c: { bb, handL, handR, footL, footR, poleL?, poleR?, drop, fore, hipX,
+     *      torso (forward fold, rad), hipYaw, hipRoll, headPitch, headYaw,
+     *      toes (0..1 pointed feet) }
      */
-    pose(t) {
-      const crouch = t.crouch, back = t.back;
-      // Hips over the bottom bracket, pushed back for a manual, down for a crouch.
-      const hip = tmp.hip.set(
-        t.lean * 0.12,
-        t.bb.y + 0.74 - crouch * 0.2 - back * 0.08 + t.superman * 0.12,
-        t.bb.z - 0.16 - back * 0.24 + t.superman * 0.15,
-      );
-      const gripMid = tmp.a.copy(t.gripL).add(t.gripR).multiplyScalar(0.5);
-      // Torso leans toward the bar.
-      const toBar = tmp.b.copy(gripMid).sub(hip);
-      const torsoDir = toBar.clone().normalize();
-      const upright = V(0, 1, 0);
-      const tilt = 0.55 - crouch * 0.18 + back * 0.15 - t.superman * 0.35;
-      torsoDir.lerp(upright, Math.max(0, tilt)).normalize();
+    pose(c) {
+      const hip = tmp.hip.set(c.hipX || 0, c.bb.y + 0.76 - c.drop, c.bb.z - 0.14 + c.fore);
+      const yawQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, c.hipYaw || 0, c.hipRoll || 0, 'YXZ'));
+      // Torso: leaning toward the bar from upright, folded by the channels.
+      const gripMid = tmp.a.copy(c.handL).add(c.handR).multiplyScalar(0.5);
+      const toBar = gripMid.sub(hip).normalize();
+      const base = Math.atan2(toBar.z, toBar.y);            // forward lean of the reach line
+      const lean = THREE.MathUtils.clamp(base * 0.62 + (c.torso || 0), -0.3, 1.45);
+      const torsoDir = new THREE.Vector3(0, Math.cos(lean), Math.sin(lean)).applyQuaternion(yawQ);
       const shoulder = tmp.shoulder.copy(hip).addScaledVector(torsoDir, L.torso);
       setLimb(parts.torso, hip, shoulder);
       parts.hips.position.copy(hip);
       parts.hips.quaternion.copy(parts.torso.quaternion);
-      // Head.
-      const neckTop = shoulder.clone().addScaledVector(torsoDir, 0.08).add(V(0, 0.03, 0.02));
+      const neckTop = shoulder.clone().addScaledVector(torsoDir, 0.08).add(V(0, 0.03, 0));
       setLimb(parts.neck, shoulder, neckTop);
       parts.head.position.copy(neckTop).add(V(0, 0.12, 0.03));
-      parts.head.rotation.set(-0.1 + crouch * 0.25 - t.superman * 0.3, t.look || 0, 0);
-      // Backpack behind the upper torso.
-      const back3 = V(0, 0, -1).applyQuaternion(parts.torso.quaternion);
-      parts.pack.position.copy(hip).lerp(shoulder, 0.62).addScaledVector(back3, 0.0).add(V(0, 0, 0));
+      parts.head.rotation.set(c.headPitch || 0, c.headYaw || 0, 0, 'YXZ');
+      parts.pack.position.copy(hip).lerp(shoulder, 0.62);
       parts.pack.quaternion.copy(parts.torso.quaternion);
       parts.pack.translateZ(-0.19);
-
-      const side = (s) => V(s * 0.19, 0, 0).applyQuaternion(parts.torso.quaternion);
-      const hipSide = (s) => V(s * 0.1, 0, 0);
-      // Arms.
-      for (const s of [1, -1]) {
-        const sh = shoulder.clone().add(side(s)).addScaledVector(torsoDir, -0.05);
-        let hand = (s > 0 ? t.gripL : t.gripR).clone();
-        if (t.noHand > 0.01) {
-          const out = sh.clone().add(V(s * 0.5, 0.25, -0.1));
-          hand.lerp(out, t.noHand);
-        }
-        if (t.barspin > 0.01) {
-          const up = sh.clone().add(V(s * 0.25, 0.2, 0.25));
-          hand.lerp(up, t.barspin);
-        }
-        const elbow = tmp.elbow;
-        const pole = V(s * 0.8, -0.2, -0.6);
-        const h = twoBone(sh, hand, L.upper, L.fore, pole, elbow);
-        setLimb(s > 0 ? parts.upperL : parts.upperR, sh, elbow);
-        setLimb(s > 0 ? parts.foreL : parts.foreR, elbow, h);
-        (s > 0 ? parts.handL : parts.handR).position.copy(h);
+      const side = (sgn) => V(sgn * 0.19, 0, 0).applyQuaternion(parts.torso.quaternion);
+      for (const sgn of [1, -1]) {
+        const sh = shoulder.clone().add(side(sgn)).addScaledVector(torsoDir, -0.05);
+        const hand = sgn > 0 ? c.handL : c.handR;
+        const pole = (sgn > 0 ? c.poleL : c.poleR) || V(sgn * 1.4, 0.3, -0.1);
+        const h = twoBone(sh, hand, L.upper, L.fore, pole, tmp.elbow);
+        setLimb(sgn > 0 ? parts.upperL : parts.upperR, sh, tmp.elbow);
+        setLimb(sgn > 0 ? parts.foreL : parts.foreR, tmp.elbow, h);
+        (sgn > 0 ? parts.handL : parts.handR).position.copy(h);
       }
-      // Legs.
-      for (const s of [1, -1]) {
-        const hp = hip.clone().add(hipSide(s));
-        let foot = (s > 0 ? t.pedalL : t.pedalR).clone().add(V(0, 0.05, 0));
-        if (t.superman > 0.01) {
-          const behind = hip.clone().add(V(s * 0.12, -0.15, -0.85));
-          foot.lerp(behind, t.superman);
-        }
-        const knee = tmp.knee;
-        const pole = V(s * 0.25, 0.1, 1);
-        const f = twoBone(hp, foot, L.thigh, L.shin, pole, knee);
-        setLimb(s > 0 ? parts.thighL : parts.thighR, hp, knee);
-        setLimb(s > 0 ? parts.shinL : parts.shinR, knee, f);
-        const ft = s > 0 ? parts.footL : parts.footR;
-        ft.position.copy(f).add(V(0, -0.02, 0.03));
-        ft.rotation.set(t.superman * 0.9, 0, 0);
+      for (const sgn of [1, -1]) {
+        const hp = hip.clone().add(V(sgn * 0.1, -0.05, 0).applyQuaternion(yawQ));
+        const foot = (sgn > 0 ? c.footL : c.footR).clone().add(V(0, 0.05, 0));
+        const h = twoBone(hp, foot, L.thigh, L.shin, V(sgn * (c.kneeOut || 0.2), 0.2, 1), tmp.knee);
+        setLimb(sgn > 0 ? parts.thighL : parts.thighR, hp, tmp.knee);
+        setLimb(sgn > 0 ? parts.shinL : parts.shinR, tmp.knee, h);
+        const ft = sgn > 0 ? parts.footL : parts.footR;
+        ft.position.copy(h).add(V(0, -0.02, 0.03));
+        ft.rotation.set((c.toes || 0) * 0.9, 0, 0);
       }
+      return { shoulder, hip };
     },
   };
 }

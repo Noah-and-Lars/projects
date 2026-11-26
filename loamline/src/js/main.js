@@ -76,6 +76,7 @@ const showroom = (() => {
   scene.add(holder);
   let bike = null, rider = null, t = 0;
   const fakeSim = { speed: 0, grounded: true, steerVis: 0, barAngle: 0, pedalPhase: 0, whip: 0, hSpeed: () => 0 };
+  void fakeSim;
   function rebuild() {
     holder.clear();
     const st = store();
@@ -106,10 +107,13 @@ const showroom = (() => {
       bike.root.updateMatrixWorld(true);
       const inv = new THREE.Matrix4().copy(bike.root.matrixWorld).invert();
       const L = (v) => v.applyMatrix4(inv);
+      const sway = Math.sin(t * 1.3) * 0.04;
       rider.pose({
-        gripL: L(bike.worldGrip(0, new THREE.Vector3())), gripR: L(bike.worldGrip(1, new THREE.Vector3())),
-        pedalL: L(bike.worldPedal(0, new THREE.Vector3())), pedalR: L(bike.worldPedal(1, new THREE.Vector3())),
-        bb: bike.bb.clone(), crouch: 0.25 + Math.sin(t * 1.3) * 0.08, back: 0, noHand: 0, superman: 0, barspin: 0, lean: 0, look: Math.sin(t * 0.5) * 0.3,
+        bb: bike.bb.clone(),
+        handL: L(bike.worldGrip(0, new THREE.Vector3())), handR: L(bike.worldGrip(1, new THREE.Vector3())),
+        footL: L(bike.worldPedal(0, new THREE.Vector3())), footR: L(bike.worldPedal(1, new THREE.Vector3())),
+        drop: 0.06 + sway, fore: 0, hipX: 0, torso: 0.1 + sway, hipYaw: Math.sin(t * 0.5) * 0.08, hipRoll: 0,
+        headPitch: 0.05, headYaw: Math.sin(t * 0.5) * 0.3,
       });
       renderer.render(scene, camera);
     },

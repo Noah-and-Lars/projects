@@ -49,9 +49,13 @@ its own speed, rotation, grip and toughness.
 | Respawn | R | Y | ↺ |
 | Camera · photo · pause | C · P · Esc | RB · B · Start | buttons |
 
-Let go of Space right at a lip for a **perfect pop**. On the flat it hops
-about 30 cm; hold ↓ and press Space to bunny hop. Land on the downslope
-with the bike lined up, straightened and with your hands back on.
+Let go of Space in the last moment before a lip for a **perfect pop**. On
+the flat it hops about 45 cm; pull up into a manual and press Space to
+bunny hop. Manuals have to be balanced (feather ↓ or drag the rear brake,
+or you loop out). Over-steering drifts the bike and hard braking locks
+the rear. In the air, let go and the bike follows its arc and lines itself
+up for the landing in the last moments; a crossed-up landing turns into a
+slide rather than a crash.
 
 **Riding assist** (Settings): *Weak* helps you round corners and
 straightens you a little in the air. *Strong* follows the trail
@@ -91,11 +95,12 @@ node tools/test.mjs
 
 | File (`src/js/`) | What it does |
 | --- | --- |
-| `physics.js` | Bike physics: ground following, takeoff/landing, pops, manuals, flips, spins, whips, barspins, crash rules. Pure math, so node can run it. |
+| `physics.js` | Bike physics: banked-curve grip with drift and rear-wheel lock, manual balance, lip and rear-wheel takeoff with suspension soak, pops and bunny hops, flips, spins, whips with landing-aware limits, a landing predictor with auto-align, barspins, crash rules. Pure math, so node can run it. |
 | `track.js` | Builds a trail from pieces, the world height function, and the **jump designer**: each kicker is ridden with the real physics, with and without a pop, and the landing is placed and shaped to catch both. |
 | `courses.js` | Trail layouts and visual themes. |
 | `world.js` | Terrain, trail ribbon, start hut, arches, tape, signs, trees, rocks, grass, sky shader, weather and dust. |
-| `models.js` | Procedural bikes, and the rider posed with two-bone IK (helmet, goggles and pack included). |
+| `models.js` | Procedural bikes (working fork slider and swingarm) and the rider, pinned to bar and pedals with two-bone IK (helmet, goggles and pack included). |
+| `animate.js` | Procedural animation: eased / sprung pose channels added together (crouch, weight shift, manual, arm give, turn and spin lean, whip twist and lay with an unwind, no-hander and superman arcs, barspin hand release and catch wobble, bunny-hop pull and push, head tracking the landing), a small fork / shock / rider-legs simulation, crank levelling, and rotation about the rider's centre of mass in the air. |
 | `game.js` | A run: fixed-step physics, assist, tricks and scoring, landing grades, crashes and respawns, splits, ghost. |
 | `camera.js` | Behind, far, rear-side, front, side, helmet, chest and photo views. |
 | `input.js` | Keyboard, gamepad, touch sticks and tilt steering. |

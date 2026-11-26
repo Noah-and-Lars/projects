@@ -50,6 +50,7 @@ for (const course of COURSES) {
       sim.assist.airPitch = lp ? Math.atan(lp.slope) : null;
       sim.assist.airGain = 0.85; sim.assist.straighten = 1;
     }
+    { const jl = tr.nextJump(p.s - 0.6, 8); sim.nearLip = !!(jl && p.s > jl.s0 && p.s < jl.lipS + 0.5); }
     const off = Math.abs(p.d) - tr.hw;
     sim.surface.roll = off > 0.3 ? 4 : 1;
     const ev = sim.step(DT, inp);

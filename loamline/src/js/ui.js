@@ -174,9 +174,10 @@ export function buildControls() {
   $('#controls-body').innerHTML = `
     <h4>On the ground</h4>${rows([
       ['W', 'Pedal'], ['S', 'Brake; once stopped, reverse'], ['A / D', 'Steer'],
-      ['Space', 'Hold to preload, let go to pop. It pops where you let go. Let go right at a lip for a perfect pop and extra height; on the flat it hops about 30 cm.'],
-      ['↓', 'Lift the front wheel (manual). Press Space while manualling to bunny hop, about 55 cm.'],
-      ['↑', 'Lift the rear wheel (stoppie)'],
+      ['Space', 'Hold to preload, let go to pop. It pops where you let go. Let go in the last moment before a lip (or just after leaving it) for a perfect pop and extra height; on the flat it hops about 45 cm. Holding longer than a second on the flat just stands you up.'],
+      ['↓', 'Weight back. A tap is a weighting; keep pulling and the front comes up into a manual, and keeps coming: feather it, or drag the rear brake (S), or you loop out. Press Space in a manual to bunny hop (the rider stands, then pops, up to ~80 cm).'],
+      ['↑', 'Weight forward; at speed, lifts the rear wheel (stoppie)'],
+      ['S (hard)', 'Past half the lever the rear wheel locks and slides. Steering harder than the tyres can hold drifts the bike; berms give you far more grip when you turn into them.'],
     ])}
     <h4>In the air</h4>${rows([
       ['A / D', 'Whip the rear out; let go to straighten before you land'],
@@ -198,7 +199,7 @@ export function buildControls() {
       ['Right stick', 'Weight on the ground; flips and spins in the air'], ['JUMP', 'Hold to preload, let go to pop'],
     ])}
     <h4>Landings</h4>
-    <p class="note">Land on the downslope of the landing. The middle is the <b>sweet spot</b> and keeps all your speed. Short onto the deck is a <b>cased</b> landing and costs speed; short into a gap is a crash. Past the bottom is a <b>flat landing</b>. Line the bike up with the slope, straighten whips and finish spins before you touch down. Crashing adds 3 seconds and puts you back before the feature.</p>`;
+    <p class="note">Land on the downslope of the landing. The middle is the <b>sweet spot</b> and keeps all your speed. Short onto the deck is a <b>cased</b> landing and costs speed; short into a gap is a crash. Past the bottom is a <b>flat landing</b>. Let go of the controls and the bike follows its arc and, in the last moments, rights itself toward the landing and rounds a spin to a whole turn; tricks you're still holding are pulled in as the ground comes up. A crossed-up landing turns into a slide. You only crash on a big mismatch: far nose-down or nose-high, landing badly sideways at speed, an unfinished barspin, or a huge impact. Crashing adds 3 seconds and puts you back before the feature.</p>`;
 }
 
 // ------------------------------------------------------------ settings

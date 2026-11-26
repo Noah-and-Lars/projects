@@ -22,6 +22,7 @@ function lineGround(fn, grade) {
 function rideProfile(prof, grade, speed, popAt) {
   const sim = new BikeSim(lineGround(prof, grade), BIKES.trail);
   sim.reset(0, 0, 0.3, 0, speed);
+  sim.nearLip = true; // riding a kicker: pops are lip pops
   const inp = emptyInput();
   const dt = 1 / 240;
   let held = false, popped = popAt === null;
