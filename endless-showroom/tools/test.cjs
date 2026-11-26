@@ -272,6 +272,7 @@ fs.mkdirSync(out, { recursive: true });
       if (w.fits({ x0: x - 3, x1: x + 3, z0: z - 3, z1: z + 3, y0: 0.02, y1: 3.5 })) spot = [x, z];
     }
     if (!spot) return null;
+    window.__openSpot = spot;
     // three crates made just for this test
     const put = (id, x, y, z) => w.applyState(id, { t: 'crate', k: 'f', v: 0, x, y, z, r: 0, tl: 0, hp: 120, g: 0, c: 0, d: 0 });
     const crates = [put('test:a', spot[0], 0, spot[1]), put('test:b', spot[0], 1, spot[1]), put('test:c', spot[0] + 60, 0, spot[1] + 60)];
@@ -299,7 +300,8 @@ fs.mkdirSync(out, { recursive: true });
     const P = __game.P, w = __game.world; P.hp = 100;
     let best = null, bd = 1e9;
     for (const it of w.items.values()) { if (it.t !== 'wardrobe' || !w.active(it) || it.y > 0.01) continue; const d = Math.hypot(it.x - P.x, it.z - P.z); if (d < bd) { bd = d; best = it; } }
-    if (!best) return null;
+    // not every part of the store has a wardrobe nearby: bring one
+    if (!best) best = w.applyState('test:wardrobe', { t: 'wardrobe', k: 'f', v: 0, x: P.x, y: 0, z: P.z, r: 0 });
     // move it to open floor, so nothing next to it can act as a step
     __game.spawnAt(P.x, P.z, 10);
     let spot = null;
@@ -307,7 +309,11 @@ fs.mkdirSync(out, { recursive: true });
       const x = P.x + (Math.random() - 0.5) * (30 + k / 8), z = P.z + (Math.random() - 0.5) * (30 + k / 8);
       if (w.fits({ x0: x - 2.5, x1: x + 2.5, z0: z - 2.5, z1: z + 2.5, y0: 0.05, y1: 3 })) spot = [x, z];
     }
-    if (!spot) return null;
+    if (!spot && window.__openSpot) { // the climbing test's open floor, its crates taken away
+      for (const id of ['test:a', 'test:b', 'test:c']) { const it = w.items.get(id); if (it) w.applyState(id, Object.assign(w.stateOf(it), { g: 1 })); }
+      spot = window.__openSpot;
+    }
+    if (!spot) return 'no open floor';
     const st = w.stateOf(best); st.x = spot[0]; st.z = spot[1]; st.y = 0; st.tl = 0; delete st.o; w.applyState(best.id, st); // squared up (an earlier test may have turned it)
     P.x = best.x; P.z = best.z; P.y = 2.1; P.vy = 0;
     const s = [...__game.staff.staff.values()][0];
@@ -316,7 +322,7 @@ fs.mkdirSync(out, { recursive: true });
   });
   { const t0 = await g(() => __game.clock.t); await page.waitForFunction((t0) => __game.clock.t > t0 + 4, t0, { timeout: 150000 }); }
   const safe = await g(() => ({ hp: __game.P.hp, y: __game.P.y }));
-  console.log((perch && safe.hp === 100 && safe.y > 2 ? 'ok   ' : 'FAIL ') + 'on top of a wardrobe the staff cannot reach (' + JSON.stringify(safe) + ')');
+  console.log((perch && perch !== 'no open floor' && safe.hp === 100 && safe.y > 2 ? 'ok   ' : 'FAIL ') + 'on top of a wardrobe the staff cannot reach (' + JSON.stringify({ perch, ...safe }) + ')');
   await page.screenshot({ path: path.join(out, '08-perch.png') });
   // Control: the same staff member does reach you on the floor.
   await g(() => {
