@@ -1,0 +1,11 @@
+{
+  "name": "loamline-tools",
+  "private": true,
+  "type": "module",
+  "description": "Build and test tooling for Loamline (not shipped).",
+  "scripts": { "build": "node build.mjs", "test": "node test.cjs" },
+  "devDependencies": {
+    "esbuild": "0.24.2",
+    "three": "0.170.0"
+  }
+}

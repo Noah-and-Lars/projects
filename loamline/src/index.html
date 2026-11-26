@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Loamline</title>
+<meta name="description" content="Freeride mountain biking in your browser: pop, whip, spin and flip down five original courses.">
+<meta name="theme-color" content="#101318">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Loamline">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="vignette"></div>
+
+<!-- Loading -->
+<section id="scr-loading" class="screen">
+  <div class="loading">
+    <div class="logo"><span>LOAM</span><span>LINE</span></div>
+    <div class="label" id="loading-text">Building the trail…</div>
+  </div>
+</section>
+
+<!-- Home -->
+<section id="scr-home" class="screen hidden">
+  <div class="home">
+    <div class="logo big"><span>LOAM</span><span>LINE</span></div>
+    <p class="tag">Freeride mountain biking</p>
+    <nav class="menu" id="home-menu">
+      <button class="mbtn primary" data-go="courses">Ride</button>
+      <button class="mbtn" data-go="garage">Garage</button>
+      <button class="mbtn" data-go="controls">Controls</button>
+      <button class="mbtn" data-go="settings">Settings</button>
+    </nav>
+  </div>
+  <div class="wallet"><span class="coin"></span><span id="coins">0</span></div>
+</section>
+
+<!-- Course select -->
+<section id="scr-courses" class="screen hidden">
+  <div class="sheet wide">
+    <header class="head"><button class="back" data-go="home" aria-label="Back">‹</button><span>Pick a trail</span></header>
+    <div class="body cards" id="course-list"></div>
+  </div>
+</section>
+
+<!-- Garage -->
+<section id="scr-garage" class="screen hidden garage-screen">
+  <div class="sheet side">
+    <header class="head"><button class="back" data-go="home" aria-label="Back">‹</button><span>Garage</span><span class="wallet-sm"><span class="coin"></span><span class="coins-mirror">0</span></span></header>
+    <div class="body">
+      <div id="bike-list" class="bikes"></div>
+      <h4>Frame colour</h4>
+      <div class="swatches" id="frame-colors"></div>
+      <h4>Jersey</h4>
+      <div class="swatches" id="jersey-colors"></div>
+      <h4>Helmet</h4>
+      <div class="swatches" id="helmet-colors"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Controls -->
+<section id="scr-controls" class="screen hidden">
+  <div class="sheet">
+    <header class="head"><button class="back" data-go="back" aria-label="Back">‹</button><span>Controls</span></header>
+    <div class="body controls" id="controls-body"></div>
+  </div>
+</section>
+
+<!-- Settings -->
+<section id="scr-settings" class="screen hidden">
+  <div class="sheet">
+    <header class="head"><button class="back" data-go="back" aria-label="Back">‹</button><span>Settings</span></header>
+    <div class="body settings" id="settings-body"></div>
+  </div>
+</section>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div class="hud-tl">
+    <div class="pill time"><span id="hud-time">0:00.00</span><span id="hud-pen"></span></div>
+    <div class="pill small" id="hud-course"></div>
+    <div id="hud-split" class="split hidden"></div>
+    <div id="hud-tasks" class="tasks hidden"></div>
+  </div>
+  <div class="hud-tr">
+    <button class="ibtn" data-act="camera" aria-label="Camera">◎</button>
+    <button class="ibtn" data-act="pause" aria-label="Pause">❚❚</button>
+  </div>
+  <div class="hud-bc">
+    <div class="speedo"><span id="hud-speed">0</span><small>km/h</small></div>
+    <div class="target hidden" id="hud-target"><div class="bar"><i id="hud-target-band"></i><b id="hud-target-needle"></b></div><span id="hud-target-text"></span></div>
+  </div>
+  <div id="hud-progress"><i></i></div>
+  <div id="tricks"></div>
+  <div id="flash"></div>
+  <div id="countdown"></div>
+  <div id="ready" class="hidden"></div>
+  <div id="toast"></div>
+</div>
+
+<!-- Touch controls -->
+<div id="touch" class="hidden">
+  <div class="stick l" data-side="l"><div class="knob"></div><small>PEDAL · STEER</small></div>
+  <div class="stick r" data-side="r"><div class="knob"></div><small>WEIGHT · SPIN</small></div>
+  <div class="tjump">JUMP</div>
+  <div class="tbtns">
+    <button data-act="respawn" aria-label="Respawn">↺</button>
+  </div>
+</div>
+
+<!-- Pause -->
+<section id="scr-pause" class="screen hidden dim">
+  <div class="sheet narrow">
+    <header class="head"><span>Paused</span><button class="x" data-p="resume" aria-label="Close">×</button></header>
+    <div class="body col">
+      <div class="row2">
+        <button class="mbtn primary" data-p="resume">Resume</button>
+        <button class="mbtn accent" data-p="restart">Restart</button>
+      </div>
+      <button class="mbtn" data-p="home">Home</button>
+      <div id="pause-settings" class="settings"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Finish -->
+<section id="scr-finish" class="screen hidden dim">
+  <div class="sheet">
+    <header class="head"><span id="fin-title">Finished!</span></header>
+    <div class="body" id="fin-body"></div>
+    <footer class="foot">
+      <button class="mbtn" data-f="home">Home</button>
+      <button class="mbtn primary" data-f="again">Ride again</button>
+      <button class="mbtn" data-f="next">Next trail ›</button>
+    </footer>
+  </div>
+</section>
+
+<!-- Photo mode -->
+<div id="photo" class="hidden">
+  <div class="photo-bar">
+    <span>Photo mode · drag to move the camera · scroll to zoom</span>
+    <button class="mbtn small primary" id="photo-save">Save photo</button>
+    <button class="mbtn small" id="photo-exit">Done</button>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
