@@ -40,6 +40,8 @@ export interface SkyPreset {
   /** eye adaptation: target mean luminance after `exposure`, and the EV range it may move (calibrated so a typical
    *  outdoor view sits near 0 EV; interiors open up, looking at the sky dims a little) */
   adapt: [key: number, minEV: number, maxEV: number];
+  /** screen-space sun shafts strength (0 = none) */
+  shafts: number;
 }
 
 export const SKY_PRESETS: Record<TimeOfDay, SkyPreset> = {
@@ -51,7 +53,7 @@ export const SKY_PRESETS: Record<TimeOfDay, SkyPreset> = {
     fogNear: 50, fogFar: 420, exposure: 1.4, emissive: 2.5, lamp: 5, aoMin: 0.1, bloom: 0.35,
     saturation: 1.2, balance: [1.1, 1.0, 0.84],
     inscatter: 0.35, fogDensity: 0.65, fogThin: 1.5,
-    adapt: [0.2, -0.5, 1.2],
+    adapt: [0.2, -0.5, 1.2], shafts: 0.35,
   },
   sunset: {
     elevation: 16, sunColor: [1.0, 0.62, 0.32], sunIntensity: 4.4,
@@ -61,7 +63,7 @@ export const SKY_PRESETS: Record<TimeOfDay, SkyPreset> = {
     fogNear: 25, fogFar: 300, exposure: 1.4, emissive: 3.5, lamp: 9, aoMin: 0.12, bloom: 0.55,
     saturation: 1.15, balance: [1.1, 1.0, 0.84],
     inscatter: 0.9, fogDensity: 0.7, fogThin: 1.2,
-    adapt: [0.16, -0.5, 1.0],
+    adapt: [0.16, -0.5, 1.0], shafts: 0.8,
   },
   overcast: {
     elevation: 55, sunColor: [0.95, 0.97, 1.0], sunIntensity: 0.7,
@@ -71,7 +73,7 @@ export const SKY_PRESETS: Record<TimeOfDay, SkyPreset> = {
     fogNear: 15, fogFar: 200, exposure: 1.35, emissive: 3, lamp: 7, aoMin: 0.08, bloom: 0.3,
     saturation: 1.1, balance: [1.06, 1.0, 0.92],
     inscatter: 0.1, fogDensity: 0.5, fogThin: 0.8,
-    adapt: [0.18, -0.5, 1.0],
+    adapt: [0.18, -0.5, 1.0], shafts: 0,
   },
   night: {
     elevation: 38, sunColor: [0.55, 0.68, 1.0], sunIntensity: 0.5,
@@ -81,7 +83,7 @@ export const SKY_PRESETS: Record<TimeOfDay, SkyPreset> = {
     fogNear: 20, fogFar: 260, exposure: 1.7, emissive: 6, lamp: 14, aoMin: 0.2, bloom: 0.8,
     saturation: 1.05, balance: [0.97, 1.0, 1.03],
     inscatter: 0.25, fogDensity: 0.8, fogThin: 1.0,
-    adapt: [0.035, -0.7, 0.8],
+    adapt: [0.035, -0.7, 0.8], shafts: 0.15,
   },
 };
 

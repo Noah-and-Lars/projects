@@ -339,6 +339,16 @@ export class Renderer {
     const sm = this.three.shadowMap;
     sm.autoUpdate = !this.lite || fullSync || (this.frame & 1) === 0 || !this.sun.shadow.map;
     this.post.dt = dt;
+    // sun shafts: the sun's screen position; fade out as it leaves the view (and when it is behind the camera)
+    {
+      this.camera.updateMatrixWorld();
+      _v.copy(this.sunDir).negate().multiplyScalar(1000).add(this.camera.position).project(this.camera);
+      const behind = _v2.copy(this.sunDir).negate().dot(this.camera.getWorldDirection(_v3)) <= 0.05;
+      const off = Math.max(Math.abs(_v.x), Math.abs(_v.y));
+      const k = behind ? 0 : 1 - Math.min(1, Math.max(0, (off - 0.9) / 0.6));
+      this.post.shaftSun.set(_v.x * 0.5 + 0.5, _v.y * 0.5 + 0.5);
+      this.post.shaftStrength = this.preset.shafts * k;
+    }
     if (this.post.supported) this.post.render(this.scene, this.camera, this.preset.exposure * this.brightness, fullSync);
     else { this.three.setRenderTarget(null); this.three.render(this.scene, this.camera); }
   }
@@ -457,4 +467,4 @@ export class Renderer {
 }
 
 const _tmp2 = new THREE.Vector2();
-const _sunOut = new THREE.Vector3();
+const _sunOut = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3();

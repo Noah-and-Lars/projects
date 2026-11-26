@@ -17,9 +17,13 @@ const VIEWS = level === 'city'
   : { street: [0, 1.7, 0, 0, 0.0], high: [4, 12, 6, -0.4, -0.3], side: [0, 1.7, 0, 1.4, 0.0] };
 const cam = (v) => page.evaluate(([x, y, z, yaw, pitch]) => { window.__game.game.cameraOverride = { eye: { x, y, z }, yaw, pitch }; }, [sp.x + v[0], sp.y + v[1], sp.z + v[2], sp.yaw + v[3], v[4]]);
 const tag = perf === '1' ? 'perf' : quality;
+// a view looking toward the sun (sun shafts, fog glow), from 1.7 m at the spawn, slightly up; recomputed per preset
+const sunView = () => page.evaluate(() => { const r = window.__game.game.renderer, s = r.towardsSun ?? { x: -r.sunDir.x, y: -r.sunDir.y, z: -r.sunDir.z }; return [0, 1.7, 0, Math.atan2(-s.x, -s.z), 0.12]; });
 for (const tod of tods.split(',')) {
   await page.evaluate((t) => window.__game.game.renderer.setTimeOfDay(t), tod);
-  for (const [name, v] of Object.entries(VIEWS)) {
+  const views = { ...VIEWS, sun: await sunView() };
+  for (const [name, v0] of Object.entries(views)) {
+    const v = name === 'sun' ? [v0[0], v0[1], v0[2], v0[3] - sp.yaw, v0[4]] : v0;
     await cam(v); await frame(3);
     console.log(await snap(page, `${prefix}-${tag}-${level}-${tod}-${name}`));
   }

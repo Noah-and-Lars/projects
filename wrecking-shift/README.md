@@ -61,6 +61,14 @@ frame, 170 m draw distance with fog, simpler water, and lower caps for debris, f
 physics ticks per frame. If the game runs below ~24 fps for a while with it off, a small banner offers it (F7 or
 "Turn on"). Details and measurements: `DECISIONS.md` → "Performance mode".
 
+## Look
+Lighting is traced through the voxel world (sun shadows, AO, lamp shadows) and graded to match the genre's look,
+measured against reference screenshots (`docs/research/14-reference-match.md`): 90° horizontal field of view
+(Settings, 70–120°), an exponential tone curve with warm per-time-of-day colour balance, atmospheric fog that glows
+toward a low sun, screen-space sun shafts, eye adaptation (interiors open up after a moment, bright sky dims a little),
+and blast smoke that is sun-lit, rises as a column and lingers. URL switches for comparison: `?tone=agx`,
+`?autoexp=0`. Before / after renders: `docs/look/ref-*.png`.
+
 ## Mods
 123 original built-in mods (incl. two big composite maps) live in `mods/<category>/<id>.mod.ts` (props, tools, vehicles, maps, game modes, rule
 tweaks, looks); they are bundled at build time, so they also work in the single-file build.

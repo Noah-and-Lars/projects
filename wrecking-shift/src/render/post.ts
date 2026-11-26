@@ -6,6 +6,7 @@
  *         neighbourhood (YCoCg min / max box) so moving things do not ghost; replaces MSAA / FXAA
  *   composite : + bloom, exposure, tone curve (1 - exp(-c), per channel; AgX as an option), grade (saturation,
  *               colour balance, contrast), vignette, sRGB, dither -> RGBA8
+ *   sun shafts: radial blur of the bloom mask (1/4 res) toward the sun's screen position (screen-space god rays)
  *   auto-exposure: log luminance at 32x18 -> one 1x1 pass (centre-weighted average, eased toward the target, held
  *         once within 0.01 EV so a still camera converges to bit-identical frames) -> composite reads the 1x1 EV
  *   FXAA -> canvas
@@ -51,6 +52,22 @@ void main() {
   gl_FragColor = vec4(c / 6.0, 1.0);
 }`;
 
+// screen-space sun shafts: march from the pixel toward the sun over the thresholded bright mask (sun disc + glowing
+// sky); whatever blocks the bright area (buildings, smoke-free silhouettes) leaves dark streaks between the rays
+const SHAFTS = /* glsl */ `
+varying vec2 vUv; uniform sampler2D tSrc; uniform vec2 uSun; uniform float uLen;
+float ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
+void main() {
+  vec2 d = (uSun - vUv) * (uLen / 24.0);
+  vec2 p = vUv + d * ign(gl_FragCoord.xy);
+  vec3 s = vec3(0.0); float w = 1.0, ws = 0.0;
+  for (int i = 0; i < 24; i++) {
+    vec2 q = clamp(p, vec2(0.0), vec2(1.0));
+    s += min(texture2D(tSrc, q).rgb, vec3(8.0)) * w; ws += w; w *= 0.94; p += d;
+  }
+  gl_FragColor = vec4(s / ws, 1.0);
+}`;
+
 // log2 luminance of the (exposed) scene, 4 bilinear taps per texel (each covers a block of the scene)
 const LUM = /* glsl */ `
 varying vec2 vUv; uniform sampler2D tSrc; uniform vec2 uTexel; uniform float uExposure;
@@ -83,13 +100,16 @@ void main() {
 const COMPOSITE = /* glsl */ `
 varying vec2 vUv; uniform sampler2D tScene; uniform sampler2D tBloom;
 uniform float uBloom; uniform float uVignette; uniform float uContrast; uniform float uSaturationOut; uniform vec3 uBalance;
-uniform sampler2D tExposure;
+uniform sampler2D tExposure; uniform sampler2D tShafts; uniform float uShafts;
 ${THREE.ShaderChunk.tonemapping_pars_fragment}
 float ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
 void main() {
   vec3 c = texture2D(tScene, vUv).rgb;
   #ifdef USE_BLOOM
   c += uBloom * texture2D(tBloom, vUv).rgb;
+  #endif
+  #ifdef USE_SHAFTS
+  c += uShafts * texture2D(tShafts, vUv).rgb;
   #endif
   c = max(c, vec3(0.0)) * uBalance;
   #ifdef USE_AUTOEXP
@@ -252,6 +272,11 @@ export class PostFX {
   /** eye adaptation (see ADAPT): on/off, target mean luminance (after the preset exposure), EV range, speeds (1/s) */
   autoExposure = true;
   readonly adapt = { key: 0.2, minEV: -0.6, maxEV: 1.4, up: 2.2, down: 1.4 };
+  /** sun shafts: sun position in screen uv and strength (0 = off; the renderer fades it out as the sun leaves the view) */
+  readonly shaftSun = new THREE.Vector2(0.5, 0.5);
+  shaftStrength = 0;
+  private shaftRT: THREE.WebGLRenderTarget | null = null;
+  private mShafts!: THREE.ShaderMaterial;
   /** frame time for the adaptation speed (set by the renderer before render) */
   dt = 1 / 60;
   private lumRT: THREE.WebGLRenderTarget | null = null;
@@ -295,12 +320,13 @@ export class PostFX {
     this.mDown = mk(DOWN, { tSrc: tex(), uTexel: { value: new THREE.Vector2() } });
     this.mUp = mk(UP, { tSrc: tex(), uTexel: { value: new THREE.Vector2() } }, { blending: THREE.AdditiveBlending, transparent: true });
     this.mComp = mk(COMPOSITE, {
-      tScene: tex(), tBloom: tex(), tExposure: tex(), uBloom: { value: 0.4 }, uVignette: { value: 0.3 }, uContrast: { value: 1 }, uSaturationOut: { value: 1 }, uBalance: { value: new THREE.Vector3(1, 1, 1) },
+      tScene: tex(), tBloom: tex(), tExposure: tex(), tShafts: tex(), uShafts: { value: 0 }, uBloom: { value: 0.4 }, uVignette: { value: 0.3 }, uContrast: { value: 1 }, uSaturationOut: { value: 1 }, uBalance: { value: new THREE.Vector3(1, 1, 1) },
       toneMappingExposure: { value: 1 },
     });
     this.mFxaa = mk(FXAA, { tSrc: tex(), uTexel: { value: new THREE.Vector2() }, uSharpen: { value: 0 } });
     this.mTaa = mk(TAA, { tCur: tex(), tHist: tex(), tDepth: tex(), uInvVP: { value: new THREE.Matrix4() }, uPrevVP: { value: new THREE.Matrix4() }, uCamPos: { value: new THREE.Vector3() }, uPrevCamPos: { value: new THREE.Vector3() }, uTexel: { value: new THREE.Vector2() }, uBlend: { value: 1 }, uBlendStill: { value: 1 } });
     this.mTaaOut = mk(TAA_OUT, { tSrc: tex() });
+    this.mShafts = mk(SHAFTS, { tSrc: tex(), uSun: { value: new THREE.Vector2() }, uLen: { value: 0.85 } });
     this.mLum = mk(LUM, { tSrc: tex(), uTexel: { value: new THREE.Vector2() }, uExposure: { value: 1 } });
     this.mAdapt = mk(ADAPT, { tLum: tex(), tPrev: tex(), uKey: { value: 0.2 }, uMinEV: { value: -1 }, uMaxEV: { value: 1 }, uUp: { value: 0.05 }, uDown: { value: 0.05 }, uReset: { value: 1 } });
     this.quad = new THREE.Mesh(geo, this.mPre);
@@ -327,6 +353,7 @@ export class PostFX {
     for (const t of this.chain) t.dispose();
     for (const t of this.hist) t.dispose();
     this.lumRT?.dispose(); for (const t of this.expRT) t.dispose();
+    this.shaftRT?.dispose(); this.shaftRT = null;
     this.lumRT = null; this.expRT = []; this.expValid = false;
     this.scene = this.ldr = null; this.chain = []; this.hist = []; this.histValid = false;
   }
@@ -361,6 +388,7 @@ export class PostFX {
       }
     }
     const small = { type: THREE.HalfFloatType, format: THREE.RGBAFormat, depthBuffer: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false } as const;
+    if (this.chain.length >= 2) this.shaftRT = new THREE.WebGLRenderTarget(this.chain[1].width, this.chain[1].height, { ...small, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
     this.lumRT = new THREE.WebGLRenderTarget(32, 18, { ...small, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
     this.expRT = [new THREE.WebGLRenderTarget(1, 1, small), new THREE.WebGLRenderTarget(1, 1, small)];
     this.mComp.defines = o.bloom ? { USE_BLOOM: 1 } : {};
@@ -441,6 +469,12 @@ export class PostFX {
         this.mDown.uniforms.uTexel.value.set(1 / chain[i - 1].width, 1 / chain[i - 1].height);
         this.pass(this.mDown, chain[i]);
       }
+      // shafts read the 1/4-res bright mask before the up passes add the wider levels into it
+      if (this.shaftRT && this.shaftStrength > 0.001) {
+        this.mShafts.uniforms.tSrc.value = chain[1].texture;
+        this.mShafts.uniforms.uSun.value.copy(this.shaftSun);
+        this.pass(this.mShafts, this.shaftRT);
+      }
       for (let i = chain.length - 1; i > 0; i--) { // additive: chain[i-1] += up(chain[i])
         this.mUp.uniforms.tSrc.value = chain[i].texture;
         this.mUp.uniforms.uTexel.value.set(1 / chain[i].width, 1 / chain[i].height);
@@ -462,8 +496,11 @@ export class PostFX {
       this.expValid = true;
     }
     if (!!this.mComp.defines?.USE_AUTOEXP !== autoExp) { this.mComp.defines = { ...this.mComp.defines }; if (autoExp) this.mComp.defines.USE_AUTOEXP = 1; else delete this.mComp.defines.USE_AUTOEXP; this.mComp.needsUpdate = true; }
+    const shafts = !!this.shaftRT && this.shaftStrength > 0.001;
+    if (!!this.mComp.defines?.USE_SHAFTS !== shafts) { this.mComp.defines = { ...this.mComp.defines }; if (shafts) this.mComp.defines.USE_SHAFTS = 1; else delete this.mComp.defines.USE_SHAFTS; this.mComp.needsUpdate = true; }
     const fxaa = this.options.fxaa && !taa;
     const u = this.mComp.uniforms;
+    u.tShafts.value = shafts ? this.shaftRT!.texture : null; u.uShafts.value = this.shaftStrength;
     u.tExposure.value = autoExp ? this.expRT[0].texture : null;
     u.tScene.value = sceneTex; u.tBloom.value = chain.length ? chain[0].texture : null;
     u.uBloom.value = this.bloomStrength / Math.max(1, chain.length); u.uVignette.value = this.vignette;
@@ -500,7 +537,7 @@ export class PostFX {
 
   dispose(): void {
     this.disposeTargets();
-    for (const m of [this.mPre, this.mDown, this.mUp, this.mComp, this.mFxaa, this.mTaa, this.mTaaOut, this.mLum, this.mAdapt]) m.dispose();
+    for (const m of [this.mPre, this.mDown, this.mUp, this.mComp, this.mFxaa, this.mTaa, this.mTaaOut, this.mLum, this.mAdapt, this.mShafts]) m.dispose();
     this.quad.geometry.dispose();
   }
 }
