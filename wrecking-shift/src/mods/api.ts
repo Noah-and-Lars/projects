@@ -128,7 +128,7 @@ export interface VisualDef {
   bloom?: number;
   /** force a time-of-day preset */
   timeOfDay?: 'day' | 'sunset' | 'overcast' | 'night';
-  /** field of view override (degrees) */
+  /** field of view override (horizontal degrees, 50..120) */
   fov?: number;
   /** CSS filter laid over the canvas (cheap stylisation: 'sepia(.6)', 'hue-rotate(90deg)') */
   cssFilter?: string;

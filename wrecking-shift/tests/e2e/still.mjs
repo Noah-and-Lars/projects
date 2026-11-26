@@ -80,4 +80,38 @@ export async function runStillTests(url, test) {
     assert(errors.length === 0, 'console errors: ' + errors.join('\n'));
     } finally { await browser.close(); }
   });
+  // eye adaptation (src/render/post.ts ADAPT): a still view must converge to an exactly held exposure (bit-identical
+  // frames), and a dark interior must adapt brighter than the sunny yard
+  await test('auto-exposure: still view holds an exact value; interiors adapt brighter than outdoors', async () => {
+    const { browser, page, errors } = await openGame(url, 'test=1&level=testyard');
+    try {
+      const r = await page.evaluate(() => {
+        const g = window.__game, game = g.game, R = game.renderer, P = R.post;
+        R.setQuality('medium'); R.setTimeOfDay('day'); game.toolsEnabled = false;
+        const run = (eye, yaw, pitch, frames) => {
+          game.cameraOverride = { eye, yaw, pitch };
+          g.render(); // full frame = adaptation reset to the target
+          const reset = P.readExposureEV();
+          // jump from a bright view: the next frames must ease, then hold
+          const evs = [];
+          for (let i = 0; i < frames; i++) { for (const m of game.modules) m.frameUpdate?.(game, 1 / 60); game.draw(1 / 60, false); evs.push(P.readExposureEV()); }
+          return { reset, evs };
+        };
+        const out = run({ x: 1.5, y: 1.7, z: 3.5 }, 0.25, 0.02, 14);
+        const inn = run({ x: -2.6, y: 1.6, z: -12.6 }, -2.25, -0.12, 14);
+        // ease: from the outdoor value toward the interior one
+        game.cameraOverride = { eye: { x: 1.5, y: 1.7, z: 3.5 }, yaw: 0.25, pitch: 0.02 }; g.render();
+        game.cameraOverride = { eye: { x: -2.6, y: 1.6, z: -12.6 }, yaw: -2.25, pitch: -0.12 };
+        const ease = [];
+        for (let i = 0; i < 150; i++) { for (const m of game.modules) m.frameUpdate?.(game, 1 / 60); game.draw(1 / 60, false); if (i % 15 === 0) ease.push(P.readExposureEV()); }
+        return { out, inn, ease, final: P.readExposureEV() };
+      });
+      const tail = (a) => a.evs.slice(-8);
+      assert(new Set(tail(r.out)).size === 1 && new Set(tail(r.inn)).size === 1, 'exposure held exactly: ' + JSON.stringify([tail(r.out), tail(r.inn)]));
+      assert(r.inn.reset > r.out.reset + 0.4, 'interior adapts brighter: ' + r.out.reset + ' -> ' + r.inn.reset);
+      assert(r.ease[1] > r.ease[0] && r.ease[1] < r.inn.reset, 'adaptation eases over time: ' + r.ease.join(' '));
+      assert(Math.abs(r.final - r.inn.reset) < 0.05, 'converges to the interior target: ' + r.final + ' vs ' + r.inn.reset);
+      assert(errors.length === 0, 'console errors: ' + errors.join('\n'));
+    } finally { await browser.close(); }
+  });
 }

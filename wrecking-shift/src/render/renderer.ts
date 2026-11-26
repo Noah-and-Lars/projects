@@ -6,11 +6,14 @@ import { BodyViews, setMeshInflate } from './bodyViews';
 import { LampLights } from './lamps';
 import { ChipParticles } from './particles';
 import { PostFX } from './post';
+import { installFog, setFogAtmosphere } from './fog';
 import { SKY_PRESETS, Sky, type SkyPreset, type TimeOfDay } from './sky';
 import { gpuTrace } from './traceDebug';
 import { lookOf } from '../sim/tools/tool';
 import { VoxelVolumes } from './volumes';
 import { disposeVoxelMaterials, makeLookShared, makeVoxelMaterials, patchForeignMaterial, type LookConfig, type VoxelMaterials } from './worldMaterial';
+
+installFog(); // atmospheric fog chunks (must precede every material compile)
 
 export type Quality = 'low' | 'medium' | 'high';
 export type { TimeOfDay } from './sky';
@@ -152,6 +155,8 @@ export class Renderer {
   /** exposure multiplier (Settings -> brightness), 1 = the preset's own exposure */
   brightness = 1;
 
+  /** unit vector toward the sun (or moon) */
+  get towardsSun(): THREE.Vector3 { return _sunOut.copy(this.sunDir).negate(); }
   /** performance mode on? (see LITE) */
   get performanceMode(): boolean { return this.lite; }
   /** far plane in metres (fog is kept inside it) */
@@ -274,10 +279,13 @@ export class Renderer {
     this.camera.rotation.set(pitch + this.punch, yaw, roll + this.punch * 0.25, 'YXZ');
     this.camera.position.y += this.punch * 0.35;
     if (this.shake > 0.001) {
-      const s = this.shake * 0.05;
-      this.camera.rotation.x += (Math.random() - 0.5) * s;
-      this.camera.rotation.y += (Math.random() - 0.5) * s;
-      this.camera.rotation.z += (Math.random() - 0.5) * s;
+      // smooth shake (sum of sines at 11 / 17 / 23 Hz with fixed phases, "trauma" amplitude ~ shake^1.5) instead of
+      // per-frame white noise: reads as a rumble rather than jitter, and TAA history survives it far better
+      const a = 0.028 * Math.pow(Math.min(1.5, this.shake), 1.5), t = this.time;
+      const n = (p: number) => (Math.sin(t * 69.1 + p) * 0.5 + Math.sin(t * 106.8 + p * 1.7) * 0.3 + Math.sin(t * 144.5 + p * 2.3) * 0.2);
+      this.camera.rotation.x += n(0.3) * a;
+      this.camera.rotation.y += n(2.1) * a;
+      this.camera.rotation.z += n(4.4) * a * 0.6;
     }
   }
 
@@ -330,6 +338,7 @@ export class Renderer {
     // performance mode: the sun shadow map (dynamic objects + world within ~22 m) is refreshed every second frame
     const sm = this.three.shadowMap;
     sm.autoUpdate = !this.lite || fullSync || (this.frame & 1) === 0 || !this.sun.shadow.map;
+    this.post.dt = dt;
     if (this.post.supported) this.post.render(this.scene, this.camera, this.preset.exposure * this.brightness, fullSync);
     else { this.three.setRenderTarget(null); this.three.render(this.scene, this.camera); }
   }
@@ -406,10 +415,13 @@ export class Renderer {
     this.scene.background = null;
     this.three.setClearColor(fog.color, 1);
     this.sky.apply(p, _v.copy(this.sunDir).negate());
+    setFogAtmosphere(_v, p.glow, p.inscatter, p.fogDensity, p.fogThin);
     this.look.uEmissive.value = p.emissive; this.look.uAOMin.value = p.aoMin;
     this.look.uSkyZenith.value.setRGB(...p.zenith); this.look.uSkyHorizon.value.setRGB(...p.horizon);
     this.lamps.intensity = p.lamp;
     this.post.bloomStrength = p.bloom;
+    this.post.gradeSaturation = p.saturation; this.post.balance.set(...p.balance);
+    [this.post.adapt.key, this.post.adapt.minEV, this.post.adapt.maxEV] = p.adapt;
     this.three.toneMappingExposure = p.exposure * this.brightness;
   }
 
@@ -445,3 +457,4 @@ export class Renderer {
 }
 
 const _tmp2 = new THREE.Vector2();
+const _sunOut = new THREE.Vector3();

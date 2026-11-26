@@ -11,6 +11,7 @@ import { WaterSystem } from '../sim/water';
 import { Input } from './input';
 import { LoadingScreen } from './ui/loading';
 import { LEVELS } from './levels';
+import { verticalFov } from './progress';
 
 /**
  * A game module plugs a feature (HUD, audio, vehicles, missions ...) into the main loop without
@@ -67,7 +68,8 @@ export class Game {
   perf = { sim: 0, render: 0, fps: 0 };
   /** modules may take over the camera for a frame (vehicles, map, cutscene) */
   cameraOverride: CameraOverride | null = null;
-  fov = 80;
+  /** horizontal field of view in degrees (settings / mods / photo mode); converted to three's vertical FOV per frame */
+  fov = 90;
   /** additive first-person camera sway (head-bob, set by the UI module); ignored while cameraOverride is set */
   viewBob = { y: 0, roll: 0 };
   /** debug switch (`?bob=0`): ignore head bob / roll */
@@ -326,7 +328,8 @@ export class Game {
     const t0 = performance.now();
     const p = this.player;
     const cam = this.cameraOverride;
-    if (this.renderer.camera.fov !== this.fov) { this.renderer.camera.fov = this.fov; this.renderer.camera.updateProjectionMatrix(); }
+    const vfov = verticalFov(this.fov, this.renderer.camera.aspect);
+    if (this.renderer.camera.fov !== vfov) { this.renderer.camera.fov = vfov; this.renderer.camera.updateProjectionMatrix(); }
     if (cam) this.renderer.setCamera(cam.eye, cam.yaw, cam.pitch, cam.roll ?? 0);
     else { const e = p.eye; if (!this.noViewBob) e.y += this.viewBob.y; this.renderer.setCamera(e, p.yaw, p.pitch, this.noViewBob ? 0 : this.viewBob.roll); }
     this.renderer.render(this.sim, dt, full);

@@ -32,36 +32,56 @@ export interface SkyPreset {
   lamp: number;
   aoMin: number;
   bloom: number;
+  /** output grade: saturation multiplier and per-channel colour balance (linear, before the tone curve) */
+  saturation: number;
+  balance: [number, number, number];
+  /** fog: sun-glow strength in the haze (x `glow`), density scale (1 = default), thinning when looking up */
+  inscatter: number; fogDensity: number; fogThin: number;
+  /** eye adaptation: target mean luminance after `exposure`, and the EV range it may move (calibrated so a typical
+   *  outdoor view sits near 0 EV; interiors open up, looking at the sky dims a little) */
+  adapt: [key: number, minEV: number, maxEV: number];
 }
 
 export const SKY_PRESETS: Record<TimeOfDay, SkyPreset> = {
   day: {
-    elevation: 48, sunColor: [1.0, 0.95, 0.86], sunIntensity: 3.2,
-    skyLight: [0.55, 0.7, 1.0], groundLight: [0.45, 0.4, 0.33], ambient: 1.35,
-    zenith: [0.13, 0.3, 0.72], horizon: [0.56, 0.72, 0.92], glow: [1.0, 0.9, 0.7], disc: 40,
+    elevation: 48, sunColor: [1.0, 0.9, 0.72], sunIntensity: 3.6,
+    skyLight: [0.66, 0.72, 0.84], groundLight: [0.6, 0.5, 0.38], ambient: 1.15,
+    zenith: [0.2, 0.36, 0.7], horizon: [0.66, 0.75, 0.86], glow: [1.0, 0.9, 0.7], disc: 40,
     cloudCover: 0.42, cloudColor: [1.0, 1.0, 1.0], stars: 0,
-    fogNear: 50, fogFar: 420, exposure: 1.0, emissive: 2.5, lamp: 5, aoMin: 0.1, bloom: 0.35,
+    fogNear: 50, fogFar: 420, exposure: 1.4, emissive: 2.5, lamp: 5, aoMin: 0.1, bloom: 0.35,
+    saturation: 1.2, balance: [1.1, 1.0, 0.84],
+    inscatter: 0.35, fogDensity: 0.65, fogThin: 1.5,
+    adapt: [0.2, -0.5, 1.2],
   },
   sunset: {
     elevation: 16, sunColor: [1.0, 0.62, 0.32], sunIntensity: 4.4,
-    skyLight: [0.48, 0.58, 0.95], groundLight: [0.5, 0.38, 0.28], ambient: 1.5,
+    skyLight: [0.74, 0.62, 0.66], groundLight: [0.65, 0.44, 0.28], ambient: 1.65,
     zenith: [0.09, 0.17, 0.46], horizon: [0.82, 0.44, 0.2], glow: [1.0, 0.45, 0.12], disc: 30,
     cloudCover: 0.4, cloudColor: [0.85, 0.48, 0.34], stars: 0,
-    fogNear: 25, fogFar: 300, exposure: 1.0, emissive: 3.5, lamp: 9, aoMin: 0.12, bloom: 0.55,
+    fogNear: 25, fogFar: 300, exposure: 1.4, emissive: 3.5, lamp: 9, aoMin: 0.12, bloom: 0.55,
+    saturation: 1.15, balance: [1.1, 1.0, 0.84],
+    inscatter: 0.9, fogDensity: 0.7, fogThin: 1.2,
+    adapt: [0.16, -0.5, 1.0],
   },
   overcast: {
     elevation: 55, sunColor: [0.95, 0.97, 1.0], sunIntensity: 0.7,
-    skyLight: [0.72, 0.78, 0.88], groundLight: [0.4, 0.4, 0.4], ambient: 1.55,
+    skyLight: [0.8, 0.8, 0.82], groundLight: [0.45, 0.43, 0.4], ambient: 1.55,
     zenith: [0.42, 0.47, 0.54], horizon: [0.62, 0.66, 0.7], glow: [0.8, 0.8, 0.8], disc: 0,
     cloudCover: 1.0, cloudColor: [0.75, 0.78, 0.82], stars: 0,
-    fogNear: 15, fogFar: 200, exposure: 1.0, emissive: 3, lamp: 7, aoMin: 0.08, bloom: 0.3,
+    fogNear: 15, fogFar: 200, exposure: 1.35, emissive: 3, lamp: 7, aoMin: 0.08, bloom: 0.3,
+    saturation: 1.1, balance: [1.06, 1.0, 0.92],
+    inscatter: 0.1, fogDensity: 0.5, fogThin: 0.8,
+    adapt: [0.18, -0.5, 1.0],
   },
   night: {
-    elevation: 38, sunColor: [0.55, 0.68, 1.0], sunIntensity: 0.42,
-    skyLight: [0.2, 0.3, 0.6], groundLight: [0.08, 0.09, 0.14], ambient: 0.32,
+    elevation: 38, sunColor: [0.55, 0.68, 1.0], sunIntensity: 0.5,
+    skyLight: [0.26, 0.36, 0.5], groundLight: [0.12, 0.12, 0.14], ambient: 0.7,
     zenith: [0.006, 0.012, 0.04], horizon: [0.03, 0.05, 0.11], glow: [0.3, 0.4, 0.7], disc: 6,
     cloudCover: 0.3, cloudColor: [0.08, 0.1, 0.18], stars: 1,
-    fogNear: 20, fogFar: 260, exposure: 1.25, emissive: 6, lamp: 14, aoMin: 0.2, bloom: 0.8,
+    fogNear: 20, fogFar: 260, exposure: 1.7, emissive: 6, lamp: 14, aoMin: 0.2, bloom: 0.8,
+    saturation: 1.05, balance: [0.97, 1.0, 1.03],
+    inscatter: 0.25, fogDensity: 0.8, fogThin: 1.0,
+    adapt: [0.035, -0.7, 0.8],
   },
 };
 
@@ -77,7 +97,7 @@ const FRAG = /* glsl */ `
 varying vec3 vDir;
 uniform vec3 uZenith; uniform vec3 uHorizon; uniform vec3 uGlow; uniform vec3 uSunColor; uniform vec3 uCloudColor;
 uniform vec3 uSunDir; // towards the sun
-uniform float uDisc; uniform float uCloud; uniform float uStars; uniform float uTime;
+uniform float uDisc; uniform float uCloud; uniform float uStars; uniform float uTime; uniform float uInscatter;
 float hash21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float vnoise(vec2 p) {
   vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -91,7 +111,8 @@ void main() {
   vec3 col = mix(uHorizon, uZenith, pow(up, 0.55));
   // warm glow around the sun, strongest near the horizon
   float low = 1.0 - smoothstep(0.0, 0.55, d.y);
-  col += uGlow * (pow(sd, 6.0) * 0.35 * low + pow(sd, 48.0) * 0.5);
+  // (the low term is the same sun inscatter the fog adds to far geometry: src/render/fog.ts)
+  col += uGlow * (pow(sd, 6.0) * uInscatter * low + pow(sd, 48.0) * 0.5);
   // stars
   if (uStars > 0.0 && d.y > 0.0) {
     vec2 sp = d.xz / (d.y + 0.35) * 90.0;
@@ -127,7 +148,7 @@ export class Sky {
     uZenith: { value: new THREE.Color() }, uHorizon: { value: new THREE.Color() }, uGlow: { value: new THREE.Color() },
     uSunColor: { value: new THREE.Color() }, uCloudColor: { value: new THREE.Color() },
     uSunDir: { value: new THREE.Vector3(0, 1, 0) },
-    uDisc: { value: 1 }, uCloud: { value: 0.4 }, uStars: { value: 0 }, uTime: { value: 0 },
+    uDisc: { value: 1 }, uCloud: { value: 0.4 }, uStars: { value: 0 }, uTime: { value: 0 }, uInscatter: { value: 0.35 },
   };
 
   constructor() {
@@ -147,7 +168,7 @@ export class Sky {
     const u = this.uniforms;
     u.uZenith.value.setRGB(...p.zenith); u.uHorizon.value.setRGB(...p.horizon); u.uGlow.value.setRGB(...p.glow);
     u.uSunColor.value.setRGB(...p.sunColor); u.uCloudColor.value.setRGB(...p.cloudColor);
-    u.uDisc.value = p.disc; u.uCloud.value = p.cloudCover; u.uStars.value = p.stars;
+    u.uDisc.value = p.disc; u.uInscatter.value = p.inscatter; u.uCloud.value = p.cloudCover; u.uStars.value = p.stars;
     u.uSunDir.value.copy(towardsSun).normalize();
   }
 }

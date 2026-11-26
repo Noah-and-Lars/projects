@@ -103,13 +103,19 @@ uniform float uStretch;
 #ifdef SMOKE_LIT
 uniform vec3 uAmbient;
 uniform vec4 uFireLights[${MAX_LIGHTS}]; // xyz, intensity
+uniform vec3 uSunDir; uniform vec3 uSunLight; // toward the sun; sun radiance for smoke (0 = unlit rig: uAmbient only)
 varying vec3 vLit;
 #endif
 void main() {
-  vAge = iData.y; vSeed = iData.z; vKind = iData.w;
+  vAge = iData.y; vSeed = iData.z; vKind = floor(iData.w);
   #ifdef SMOKE_LIT
-    // per-particle lighting: scene light level + warm light from the nearby fires
-    vLit = uAmbient;
+    // per-particle lighting: sky fill + sun (visibility from CPU rays, packed in the fraction of iData.w) with
+    // forward scattering, so smoke between the viewer and a low sun glows + warm light from the nearby fires
+    float sunVis = fract(iData.w) / 0.9;
+    vec3 toP = normalize(iPos - cameraPosition);
+    float fwd = max(dot(toP, uSunDir), 0.0);
+    float phase = 0.55 + 0.35 * max(dot(-toP, uSunDir), 0.0) + 1.6 * pow(fwd, 5.0);
+    vLit = uAmbient + uSunLight * sunVis * phase;
     for (int i = 0; i < ${MAX_LIGHTS}; i++) {
       vec3 d = uFireLights[i].xyz - iPos;
       vLit += vec3(1.0, 0.5, 0.2) * uFireLights[i].w / (1.0 + dot(d, d) * 0.5);
@@ -190,8 +196,8 @@ void main() {
   } else {
     // blast smoke: grey with a short hot start
     col = mix(vec3(0.1, 0.095, 0.09), vec3(0.34, 0.33, 0.32), smoothstep(0.0, 0.7, t) * (0.4 + 0.6 * vSeed)) * L;
-    col += vec3(1.0, 0.45, 0.12) * 2.0 * pow(max(0.0, 1.0 - t * 8.0), 2.0);
-    a = smoothstep(0.0, 0.04, t) * (1.0 - smoothstep(0.4, 1.0, t)) * 0.7;
+    col += vec3(1.0, 0.45, 0.12) * 2.0 * pow(max(0.0, 1.0 - t * 12.0), 3.0);
+    a = smoothstep(0.0, 0.04, t) * (1.0 - smoothstep(0.5, 1.0, t)) * 0.7;
   }
   gl_FragColor = vec4(col, a * d);
   #include <tonemapping_fragment>
@@ -213,6 +219,8 @@ class Pool {
   readonly size1: Float32Array;
   readonly seed: Float32Array;
   readonly kind: Uint8Array;
+  /** sun visibility 0..1 (smoke lighting; 1 when nobody updates it) */
+  readonly vis: Float32Array;
   readonly mesh: THREE.Mesh;
   private aPos: THREE.InstancedBufferAttribute;
   private aData: THREE.InstancedBufferAttribute;
@@ -225,7 +233,7 @@ class Pool {
     this.p = new Float32Array(cap * 3); this.v = new Float32Array(cap * 3);
     this.life = new Float32Array(cap); this.max = new Float32Array(cap);
     this.size0 = new Float32Array(cap); this.size1 = new Float32Array(cap);
-    this.seed = new Float32Array(cap); this.kind = new Uint8Array(cap);
+    this.seed = new Float32Array(cap); this.kind = new Uint8Array(cap); this.vis = new Float32Array(cap).fill(1);
     this.order = new Uint16Array(cap); this.depth = new Float32Array(cap);
     const geo = new THREE.InstancedBufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0], 3));
@@ -245,6 +253,10 @@ class Pool {
     this.mesh.receiveShadow = false;
   }
 
+  /** extra buoyancy (m/s²) of kind-2 particles, decaying over ~2.5 s (blast smoke columns) */
+  blastLift = 0;
+  /** sun visibility given to particles added from now on */
+  spawnVis = 1;
   /** returns the new particle index or -1 when full */
   add(x: number, y: number, z: number, vx: number, vy: number, vz: number, life: number, s0: number, s1: number, kind: number): number {
     if (this.n >= this.limit) return -1;
@@ -253,7 +265,7 @@ class Pool {
     this.p[o] = x; this.p[o + 1] = y; this.p[o + 2] = z;
     this.v[o] = vx; this.v[o + 1] = vy; this.v[o + 2] = vz;
     this.life[i] = 0; this.max[i] = life; this.size0[i] = s0; this.size1[i] = s1;
-    this.seed[i] = Math.random(); this.kind[i] = kind;
+    this.seed[i] = Math.random(); this.kind[i] = kind; this.vis[i] = this.spawnVis;
     return i;
   }
 
@@ -264,7 +276,7 @@ class Pool {
     this.p[o] = this.p[q]; this.p[o + 1] = this.p[q + 1]; this.p[o + 2] = this.p[q + 2];
     this.v[o] = this.v[q]; this.v[o + 1] = this.v[q + 1]; this.v[o + 2] = this.v[q + 2];
     this.life[i] = this.life[j]; this.max[i] = this.max[j]; this.size0[i] = this.size0[j]; this.size1[i] = this.size1[j];
-    this.seed[i] = this.seed[j]; this.kind[i] = this.kind[j];
+    this.seed[i] = this.seed[j]; this.kind[i] = this.kind[j]; this.vis[i] = this.vis[j];
   }
 
   /** integrate: velocity damping, buoyancy, wind with height, swirl */
@@ -280,7 +292,9 @@ class Pool {
       const sx = swirl * Math.sin(time * 2.1 + sd + this.p[o + 1] * 1.7);
       const sz = swirl * Math.cos(time * 1.7 + sd * 1.3 + this.p[o + 1] * 1.3);
       this.v[o] = (this.v[o] - wind.x * w) * k + wind.x * w + sx * dt;
-      this.v[o + 1] = this.v[o + 1] * k + buoy * dt;
+      // blast smoke (kind 2 in the smoke pool) keeps rising as a column for the first seconds
+      const lift = this.blastLift > 0 && this.kind[i] === 2 ? this.blastLift * Math.exp(-this.life[i] / 2.5) : 0;
+      this.v[o + 1] = this.v[o + 1] * k + (buoy + lift) * dt;
       this.v[o + 2] = (this.v[o + 2] - wind.z * w) * k + wind.z * w + sz * dt;
       this.p[o] += this.v[o] * dt; this.p[o + 1] += this.v[o + 1] * dt; this.p[o + 2] += this.v[o + 2] * dt;
     }
@@ -310,7 +324,7 @@ class Pool {
       const t = this.life[i] / this.max[i];
       P[k * 3] = this.p[o]; P[k * 3 + 1] = this.p[o + 1]; P[k * 3 + 2] = this.p[o + 2];
       D[k * 4] = (this.size0[i] + (this.size1[i] - this.size0[i]) * sizeCurve(t));
-      D[k * 4 + 1] = t; D[k * 4 + 2] = this.seed[i]; D[k * 4 + 3] = this.kind[i];
+      D[k * 4 + 1] = t; D[k * 4 + 2] = this.seed[i]; D[k * 4 + 3] = this.kind[i] + Math.min(1, Math.max(0, this.vis[i])) * 0.9;
     }
     this.geo.instanceCount = n;
     if (n) {
@@ -348,6 +362,14 @@ export class FireFx {
    * scene's lights; set it yourself for special lighting.
    */
   readonly ambient = new THREE.Color(1, 1, 1);
+  /** direction toward the sun and the sun's radiance on smoke (black = the old unlit behaviour: `ambient` only) */
+  readonly sunDir = new THREE.Vector3(0, 1, 0);
+  readonly sunLight = new THREE.Color(0, 0, 0);
+  /** optional: is the sun visible from this point? (CPU ray through the world; smoke in shadow is not sun-lit) */
+  sunVisible: ((x: number, y: number, z: number) => boolean) | null = null;
+  /** how many smoke particles re-test sun visibility per frame (round robin) */
+  visPerFrame = 8;
+  private visCursor = 0;
   private fireLightU = Array.from({ length: MAX_LIGHTS }, () => new THREE.Vector4(0, -1000, 0, 0));
   quality: FxQuality = 'medium';
   /** max light intensity (candela) of one fire light */
@@ -382,6 +404,7 @@ export class FireFx {
       uniforms: {
         ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog), uTex: { value: smokeTex }, uStretch: { value: 0 }, uSpin: { value: 6.28 },
         uTint: { value: this.smokeTint }, uAmbient: { value: this.ambient }, uFireLights: { value: this.fireLightU },
+        uSunDir: { value: this.sunDir }, uSunLight: { value: this.sunLight },
       },
       defines: { SMOKE_LIT: 1 },
       vertexShader: 'uniform float uSpin;\n' + VERT,
@@ -390,6 +413,7 @@ export class FireFx {
     });
     this.flames = new Pool(MAX_FLAMES, this.flameMat, 20);
     this.smoke = new Pool(MAX_SMOKE, this.smokeMat, 21);
+    this.smoke.blastLift = 1.1;
     this.root.add(this.flames.mesh, this.smoke.mesh);
     for (let i = 0; i < MAX_LIGHTS; i++) {
       const light = new THREE.PointLight(0xff8a3a, 0, 16, 2);
@@ -421,13 +445,19 @@ export class FireFx {
   /** smoke + dust + fireball burst (explosion events) */
   explosion(pos: V3, size: number): void {
     const s = Math.max(0.3, Math.min(4, size));
+    // one sun-visibility ray for the whole burst; the round robin in update() refines it as the column rises
+    this.smoke.spawnVis = this.sunVisible ? (this.sunVisible(pos.x, pos.y + 1, pos.z) ? 1 : 0) : 1;
+    // the reference's blast smoke is a dense column that keeps rising and drifts for tens of seconds: a short-lived
+    // billow (3-6 s) plus a lingering part (12-25 s, larger, rises with `blastLift`)
     const nSmoke = Math.round(Math.min(90, 8 + s * 16));
     for (let i = 0; i < nSmoke; i++) {
       const [dx, dy, dz] = randDir(0.35);
       const r = Math.random() * s * 0.5;
       const sp = (0.6 + Math.random() * 1.6) * Math.sqrt(s);
-      this.smoke.add(pos.x + dx * r, pos.y + Math.abs(dy) * r * 0.6 + 0.1, pos.z + dz * r, dx * sp, Math.abs(dy) * sp + 0.6, dz * sp,
-        3 + Math.random() * 3, (0.6 + Math.random() * 0.6) * s, (1.6 + Math.random() * 1.4) * s, K_BLAST);
+      const linger = i % 3 === 0;
+      this.smoke.add(pos.x + dx * r, pos.y + Math.abs(dy) * r * 0.6 + 0.1, pos.z + dz * r, dx * sp * (linger ? 0.5 : 1), Math.abs(dy) * sp + (linger ? 1.2 : 0.6), dz * sp * (linger ? 0.5 : 1),
+        linger ? (12 + Math.random() * 8) * Math.min(1.25, 0.6 + s * 0.25) : 3 + Math.random() * 3,
+        (0.6 + Math.random() * 0.6) * s, (linger ? 3.0 + Math.random() * 2 : 1.6 + Math.random() * 1.4) * s, K_BLAST);
     }
     const nDust = Math.round(Math.min(40, 6 + s * 8));
     for (let i = 0; i < nDust; i++) {
@@ -448,6 +478,7 @@ export class FireFx {
       const sp = 3 + Math.random() * 6 * Math.sqrt(s);
       this.flames.add(pos.x, pos.y + 0.1, pos.z, dx * sp, Math.abs(dy) * sp + 2, dz * sp, 0.8 + Math.random() * 1.4, 0.05, 0.03, K_EMBER);
     }
+    this.smoke.spawnVis = 1;
     this.flash.x = pos.x; this.flash.y = pos.y + 0.5; this.flash.z = pos.z; this.flash.t = 0.35; this.flash.power = s;
   }
 
@@ -474,6 +505,17 @@ export class FireFx {
 
     this.flames.step(dt, 2.2, 2.5, this.wind, 0.35, 1.6, this.time);
     this.smoke.step(dt, 0.25, 0.9, this.wind, 1.0, 0.5, this.time);
+    // sun visibility: a few particles per frame re-test (eased, so a particle crossing a shadow edge fades)
+    const sm = this.smoke;
+    if (this.sunVisible && sm.n > 0) {
+      const m = Math.min(sm.n, this.visPerFrame);
+      for (let k = 0; k < m; k++) {
+        const i = this.visCursor = (this.visCursor + 1) % sm.n;
+        const o = i * 3;
+        const v = this.sunVisible(sm.p[o], sm.p[o + 1], sm.p[o + 2]) ? 1 : 0;
+        sm.vis[i] += (v - sm.vis[i]) * 0.6;
+      }
+    }
     this.flames.upload(null, flameSize);
     this.smoke.upload(this.frame % 2 === 0 || this.smoke.n < 200 ? camera : null, smokeSize);
     this.updateLights(dt);

@@ -46,6 +46,8 @@ export function createLookModule(): GameModule {
   const urlQuality = params.get('quality') as Quality | null;
   const urlTod = params.get('tod') as TimeOfDay | null;
   const urlRes = params.get('res');
+  const urlTone = params.get('tone');
+  const urlAutoExp = params.get('autoexp');
   let subscribed = false;
   let game: Game | null = null;
 
@@ -67,6 +69,8 @@ export function createLookModule(): GameModule {
     if (q && q !== g.renderer.quality) g.renderer.setQuality(q);
     const r = Number(urlRes ?? s?.resolutionScale);
     if (r > 0 && r !== g.renderer.resolutionScale) g.renderer.setResolutionScale(r);
+    if (urlTone === 'agx' || urlTone === 'exp') g.renderer.post.toneCurve = urlTone;
+    if (urlAutoExp !== null) g.renderer.post.autoExposure = urlAutoExp !== '0';
     if (s && !subscribed && typeof s.onChange === 'function') { subscribed = true; s.onChange(() => apply(g)); }
   };
   const applyDiag = (g: Game) => {

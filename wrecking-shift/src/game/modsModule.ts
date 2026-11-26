@@ -219,7 +219,7 @@ export function createModsModule(): GameModule {
       // visual tweaks (the last enabled mod wins per field)
       const R = g.renderer;
       const v: Required<Pick<import('../mods/api').VisualDef, 'saturation' | 'contrast' | 'vignette'>> & { cssFilter: string; fov?: number; tod?: string; bloom?: number } =
-        { saturation: R.performanceMode ? 1.06 : 1, contrast: R.performanceMode ? 1.09 : 1.02, vignette: 0.28, cssFilter: '' };
+        { saturation: 1, contrast: R.performanceMode ? 1.05 : 1.02, vignette: 0.28, cssFilter: '' };
       for (const m of state.enabled()) {
         const d = m.visual;
         if (!d) continue;
@@ -236,7 +236,7 @@ export function createModsModule(): GameModule {
       if (v.tod) { if (R.timeOfDay !== v.tod) R.setTimeOfDay(v.tod as any); todForced = true; }
       else if (todForced) { todForced = false; R.setTimeOfDay(g.level.sky ?? 'sunset', !!g.level.sky); }
       if (v.fov) { g.fov = v.fov; fovForced = true; }
-      else if (fovForced) { fovForced = false; g.fov = Number(g.ext.settings?.fov) || 80; }
+      else if (fovForced) { fovForced = false; g.fov = Number(g.ext.settings?.fov) || 90; }
       if (v.cssFilter !== filterApplied) { R.canvas.style.filter = v.cssFilter; filterApplied = v.cssFilter; }
     },
   };

@@ -4,7 +4,10 @@
  *   bloom : soft-threshold prefilter at 1/2 res, dual-filter down/up pyramid
  *   TAA (optional): sub-pixel jittered camera, history reprojected from depth, clamped to the current 3x3
  *         neighbourhood (YCoCg min / max box) so moving things do not ghost; replaces MSAA / FXAA
- *   composite : + bloom, exposure, filmic tone map (AgX), grade, vignette, sRGB, dither -> RGBA8
+ *   composite : + bloom, exposure, tone curve (1 - exp(-c), per channel; AgX as an option), grade (saturation,
+ *               colour balance, contrast), vignette, sRGB, dither -> RGBA8
+ *   auto-exposure: log luminance at 32x18 -> one 1x1 pass (centre-weighted average, eased toward the target, held
+ *         once within 0.01 EV so a still camera converges to bit-identical frames) -> composite reads the 1x1 EV
  *   FXAA -> canvas
  * Other people's scene objects (view models, particles, lights) need nothing special: they are drawn by the
  * normal scene pass into the HDR target.
@@ -48,9 +51,39 @@ void main() {
   gl_FragColor = vec4(c / 6.0, 1.0);
 }`;
 
+// log2 luminance of the (exposed) scene, 4 bilinear taps per texel (each covers a block of the scene)
+const LUM = /* glsl */ `
+varying vec2 vUv; uniform sampler2D tSrc; uniform vec2 uTexel; uniform float uExposure;
+void main() {
+  vec3 c = 0.25 * (texture2D(tSrc, vUv + uTexel * vec2(-0.25, -0.25)).rgb + texture2D(tSrc, vUv + uTexel * vec2(0.25, -0.25)).rgb
+                 + texture2D(tSrc, vUv + uTexel * vec2(-0.25, 0.25)).rgb + texture2D(tSrc, vUv + uTexel * vec2(0.25, 0.25)).rgb);
+  float l = dot(min(c, vec3(64.0)), vec3(0.2126, 0.7152, 0.0722)) * uExposure;
+  gl_FragColor = vec4(log2(max(l, 1e-4)), 0.0, 0.0, 1.0);
+}`;
+
+// 1x1: centre-weighted mean log luminance -> target EV offset, eased from the previous frame's value
+const ADAPT = /* glsl */ `
+uniform sampler2D tLum; uniform sampler2D tPrev;
+uniform float uKey; uniform float uMinEV; uniform float uMaxEV; uniform float uUp; uniform float uDown; uniform float uReset;
+void main() {
+  float s = 0.0, w = 0.0;
+  for (int j = 0; j < 9; j++) for (int i = 0; i < 16; i++) {
+    vec2 uv = (vec2(float(i), float(j)) + 0.5) / vec2(16.0, 9.0);
+    vec2 q = (uv - 0.5) * vec2(1.6, 2.0);
+    float k = 1.0 - 0.7 * clamp(dot(q, q), 0.0, 1.0);
+    s += texture2D(tLum, uv).r * k; w += k;
+  }
+  float target = clamp(log2(uKey) - s / w, uMinEV, uMaxEV);
+  float prev = texture2D(tPrev, vec2(0.5)).r;
+  float e = uReset > 0.5 ? target : mix(prev, target, target > prev ? uUp : uDown);
+  if (uReset < 0.5 && abs(target - prev) < 0.01) e = prev; // hold: a still view must stop changing
+  gl_FragColor = vec4(e, 0.0, 0.0, 1.0);
+}`;
+
 const COMPOSITE = /* glsl */ `
 varying vec2 vUv; uniform sampler2D tScene; uniform sampler2D tBloom;
-uniform float uBloom; uniform float uVignette; uniform float uContrast; uniform float uSaturationOut;
+uniform float uBloom; uniform float uVignette; uniform float uContrast; uniform float uSaturationOut; uniform vec3 uBalance;
+uniform sampler2D tExposure;
 ${THREE.ShaderChunk.tonemapping_pars_fragment}
 float ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
 void main() {
@@ -58,8 +91,17 @@ void main() {
   #ifdef USE_BLOOM
   c += uBloom * texture2D(tBloom, vUv).rgb;
   #endif
-  c = AgXToneMapping(max(c, vec3(0.0)));
-  // grade: a little contrast + saturation back after AgX's gentle desaturation
+  c = max(c, vec3(0.0)) * uBalance;
+  #ifdef USE_AUTOEXP
+  c *= exp2(texture2D(tExposure, vec2(0.5)).r);
+  #endif
+  #ifdef TONE_AGX
+  c = AgXToneMapping(c);
+  #else
+  // per-channel exponential curve: keeps saturated mid-tones and rolls highlights off to a soft white (the genre
+  // reference's look; AgX desaturates bright colours on purpose and made every frame milky)
+  c = 1.0 - exp(-c * toneMappingExposure);
+  #endif
   c = clamp(c, 0.0, 1.0);
   // contrast as a power curve around mid grey (log space). The old linear mix(0.5, c, k) pushed every value below
   // 0.5 - 0.5 / k (0.0098 for k = 1.02, i.e. sRGB < 23/255) negative, so sun-shadowed corners clipped to pure black
@@ -201,6 +243,21 @@ export class PostFX {
   vignette = 0.28;
   contrast = 1.02;
   saturation = 1.0;
+  /** time-of-day grade (renderer presets): saturation multiplier and per-channel colour balance (applied in linear
+   *  light before the tone curve) */
+  gradeSaturation = 1.0;
+  readonly balance = new THREE.Vector3(1, 1, 1);
+  /** 'exp' (default, 1 - exp(-c)) or 'agx' (the older filmic curve, kept for comparison: ?tone=agx) */
+  toneCurve: 'exp' | 'agx' = 'exp';
+  /** eye adaptation (see ADAPT): on/off, target mean luminance (after the preset exposure), EV range, speeds (1/s) */
+  autoExposure = true;
+  readonly adapt = { key: 0.2, minEV: -0.6, maxEV: 1.4, up: 2.2, down: 1.4 };
+  /** frame time for the adaptation speed (set by the renderer before render) */
+  dt = 1 / 60;
+  private lumRT: THREE.WebGLRenderTarget | null = null;
+  private expRT: THREE.WebGLRenderTarget[] = [];
+  private mLum!: THREE.ShaderMaterial; private mAdapt!: THREE.ShaderMaterial;
+  private expValid = false;
   private scene: THREE.WebGLRenderTarget | null = null;
   private ldr: THREE.WebGLRenderTarget | null = null;
   private chain: THREE.WebGLRenderTarget[] = [];
@@ -238,12 +295,14 @@ export class PostFX {
     this.mDown = mk(DOWN, { tSrc: tex(), uTexel: { value: new THREE.Vector2() } });
     this.mUp = mk(UP, { tSrc: tex(), uTexel: { value: new THREE.Vector2() } }, { blending: THREE.AdditiveBlending, transparent: true });
     this.mComp = mk(COMPOSITE, {
-      tScene: tex(), tBloom: tex(), uBloom: { value: 0.4 }, uVignette: { value: 0.3 }, uContrast: { value: 1 }, uSaturationOut: { value: 1 },
+      tScene: tex(), tBloom: tex(), tExposure: tex(), uBloom: { value: 0.4 }, uVignette: { value: 0.3 }, uContrast: { value: 1 }, uSaturationOut: { value: 1 }, uBalance: { value: new THREE.Vector3(1, 1, 1) },
       toneMappingExposure: { value: 1 },
     });
     this.mFxaa = mk(FXAA, { tSrc: tex(), uTexel: { value: new THREE.Vector2() }, uSharpen: { value: 0 } });
     this.mTaa = mk(TAA, { tCur: tex(), tHist: tex(), tDepth: tex(), uInvVP: { value: new THREE.Matrix4() }, uPrevVP: { value: new THREE.Matrix4() }, uCamPos: { value: new THREE.Vector3() }, uPrevCamPos: { value: new THREE.Vector3() }, uTexel: { value: new THREE.Vector2() }, uBlend: { value: 1 }, uBlendStill: { value: 1 } });
     this.mTaaOut = mk(TAA_OUT, { tSrc: tex() });
+    this.mLum = mk(LUM, { tSrc: tex(), uTexel: { value: new THREE.Vector2() }, uExposure: { value: 1 } });
+    this.mAdapt = mk(ADAPT, { tLum: tex(), tPrev: tex(), uKey: { value: 0.2 }, uMinEV: { value: -1 }, uMaxEV: { value: 1 }, uUp: { value: 0.05 }, uDown: { value: 0.05 }, uReset: { value: 1 } });
     this.quad = new THREE.Mesh(geo, this.mPre);
     this.quad.frustumCulled = false;
   }
@@ -267,6 +326,8 @@ export class PostFX {
     this.scene?.dispose(); this.ldr?.dispose();
     for (const t of this.chain) t.dispose();
     for (const t of this.hist) t.dispose();
+    this.lumRT?.dispose(); for (const t of this.expRT) t.dispose();
+    this.lumRT = null; this.expRT = []; this.expValid = false;
     this.scene = this.ldr = null; this.chain = []; this.hist = []; this.histValid = false;
   }
 
@@ -299,6 +360,9 @@ export class PostFX {
         if (bw <= 4 || bh <= 4) break;
       }
     }
+    const small = { type: THREE.HalfFloatType, format: THREE.RGBAFormat, depthBuffer: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false } as const;
+    this.lumRT = new THREE.WebGLRenderTarget(32, 18, { ...small, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
+    this.expRT = [new THREE.WebGLRenderTarget(1, 1, small), new THREE.WebGLRenderTarget(1, 1, small)];
     this.mComp.defines = o.bloom ? { USE_BLOOM: 1 } : {};
     this.mComp.needsUpdate = true;
     this.dirty = false;
@@ -383,12 +447,31 @@ export class PostFX {
         this.pass(this.mUp, chain[i - 1]);
       }
     }
+    const autoExp = this.autoExposure && !!this.lumRT;
+    if (autoExp) {
+      const l = this.mLum.uniforms, a = this.mAdapt.uniforms, A = this.adapt;
+      l.tSrc.value = sceneTex; l.uTexel.value.set(1 / 32, 1 / 18); l.uExposure.value = exposure;
+      this.pass(this.mLum, this.lumRT!);
+      const dt = Math.min(Math.max(this.dt, 0), 0.25);
+      a.tLum.value = this.lumRT!.texture; a.tPrev.value = this.expRT[0].texture;
+      a.uKey.value = A.key; a.uMinEV.value = A.minEV; a.uMaxEV.value = A.maxEV;
+      a.uUp.value = 1 - Math.exp(-dt * A.up); a.uDown.value = 1 - Math.exp(-dt * A.down);
+      a.uReset.value = reset || !this.expValid ? 1 : 0;
+      this.pass(this.mAdapt, this.expRT[1]);
+      [this.expRT[0], this.expRT[1]] = [this.expRT[1], this.expRT[0]];
+      this.expValid = true;
+    }
+    if (!!this.mComp.defines?.USE_AUTOEXP !== autoExp) { this.mComp.defines = { ...this.mComp.defines }; if (autoExp) this.mComp.defines.USE_AUTOEXP = 1; else delete this.mComp.defines.USE_AUTOEXP; this.mComp.needsUpdate = true; }
     const fxaa = this.options.fxaa && !taa;
     const u = this.mComp.uniforms;
+    u.tExposure.value = autoExp ? this.expRT[0].texture : null;
     u.tScene.value = sceneTex; u.tBloom.value = chain.length ? chain[0].texture : null;
     u.uBloom.value = this.bloomStrength / Math.max(1, chain.length); u.uVignette.value = this.vignette;
-    u.uContrast.value = this.contrast; u.uSaturationOut.value = this.saturation;
+    u.uContrast.value = this.contrast; u.uSaturationOut.value = this.saturation * this.gradeSaturation;
+    u.uBalance.value.copy(this.balance);
     u.toneMappingExposure.value = exposure;
+    const agx = this.toneCurve === 'agx';
+    if (!!this.mComp.defines?.TONE_AGX !== agx) { this.mComp.defines = { ...this.mComp.defines }; if (agx) this.mComp.defines.TONE_AGX = 1; else delete this.mComp.defines.TONE_AGX; this.mComp.needsUpdate = true; }
     this.pass(this.mComp, ldr);
     const sharpen = this.options.sharpen > 0;
     const d = this.mFxaa.defines ?? {};
@@ -404,12 +487,20 @@ export class PostFX {
     three.shadowMap.autoUpdate = prevShadowAuto;
   }
 
+  /** the current adapted exposure offset in EV (reads the 1x1 target back: tests / debugging only) */
+  readExposureEV(): number {
+    if (!this.expValid) return 0;
+    const buf = new Uint16Array(4);
+    this.three.readRenderTargetPixels(this.expRT[0], 0, 0, 1, 1, buf);
+    return THREE.DataUtils.fromHalfFloat(buf[0]);
+  }
+
   /** scene target size (for stats) */
   get renderSize(): [number, number] { return this.scene ? [this.scene.width, this.scene.height] : [0, 0]; }
 
   dispose(): void {
     this.disposeTargets();
-    for (const m of [this.mPre, this.mDown, this.mUp, this.mComp, this.mFxaa, this.mTaa, this.mTaaOut]) m.dispose();
+    for (const m of [this.mPre, this.mDown, this.mUp, this.mComp, this.mFxaa, this.mTaa, this.mTaaOut, this.mLum, this.mAdapt]) m.dispose();
     this.quad.geometry.dispose();
   }
 }

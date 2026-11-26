@@ -510,3 +510,31 @@ Gaps 3 / 4 / 8 / Top-10 #5, #8, #9, #10 of `docs/research/10-gap-analysis.md`, b
   mode in Settings. Renders at full resolution (device pixel ratio still 1) with TAA and the sharpening upscale off,
   adaptive resolution disabled; all other performance-mode savings stay. Costs more GPU (≈1.6x the pixels of the 80 %
   default), so it is opt-in.
+
+## Look matched to reference screenshots (2026-11-26)
+User: "find photos/screenshots of the actual game and tweak Wrecking Shift's look to match them". Measurements and
+sources: `docs/research/14-reference-match.md`; renders: `tests/e2e/refmatch.mjs`, before/after in `docs/look/`.
+Reference images were downloaded only for analysis (not committed). Guesses made without asking:
+- **FOV is horizontal, default 90°** (the reference's API calls its FOV horizontal; 90 is its default). `game.fov` and
+  the setting are horizontal degrees (slider 70–120), converted per frame to three's vertical FOV
+  (`verticalFov`, vertical kept within 40–100° for very wide / portrait windows). Old saves stored vertical degrees:
+  the untouched old default 80 becomes 90; any other value is converted at 16:9 so the view keeps its width (60 → 91).
+  Saves now carry `fovH: true`. Mods' `fov` is horizontal too (Wide Lens: 105 vertical → 120 horizontal). Photo mode
+  zooms 20–130.
+- **Tone curve `1 − exp(−c)` per channel** instead of AgX (AgX desaturates bright colours by design; the reference
+  keeps saturated mid-tones). AgX stays available as `?tone=agx`. Per-preset `saturation` and `balance` (linear
+  colour balance before the curve). Every reference image is warm (mean R − B = +0.09; shadows brown, highlights
+  cream, never blue or pure white), so all daytime presets get a warm balance; night gets a slight teal.
+- **Ambient re-balanced**: the sky fill light was saturated blue, which made shadows navy and sunset streets nearly
+  black (shadow : lit 0.02 vs the reference's ~0.1). Fill is now near-neutral (day) / warm (sunset), exposure raised
+  1.0 → 1.35–1.4 to suit the exp curve; material desaturation 0.72 → 0.92. Day sky paler (reference skies are hazy).
+  Performance mode no longer adds its own +6 % saturation (the grade already saturates); contrast 1.09 → 1.05.
+- **Atmospheric fog** (`src/render/fog.ts`): three's fog chunks replaced globally — radial distance, exponential
+  build-up that still closes at `fog.far` (draw-distance culling relies on it), thinner looking up, and sun
+  inscatter with the sky dome's own horizon-glow term so far buildings melt into the glow at golden hour. Uniforms
+  are shared plain objects (three keeps those by reference when cloning uniforms). Densities per preset.
+- **Auto-exposure** (eye adaptation) in the post chain on every tier including performance mode: log luminance at
+  32 × 18, one 1 × 1 pass (centre-weighted, eased 2.2 /s brighter, 1.4 /s darker), held once within 0.01 EV so a
+  still view converges to bit-identical frames. Per-preset key and EV range calibrated so typical outdoor views sit
+  near 0 EV; interiors open up by about +1.2 EV; night may move only −0.7…+0.8 EV so it stays night. `?autoexp=0`
+  turns it off. A full (test / level-load) frame snaps to the target.

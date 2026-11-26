@@ -45,6 +45,25 @@ export class FireModule implements GameModule {
    * grey at night. Works with any light rig built from standard three.js lights (renderer is being reworked).
    */
   private estimateAmbient(game: Game): void {
+    // the renderer's own rig: sky fill as ambient, the sun as a separate directional term (smoke gets sun-lit,
+    // shadowed by the world, and glows when the sun is behind it)
+    const R = game.renderer as Partial<typeof game.renderer>;
+    if (R.hemi && R.sun && R.towardsSun) {
+      const h = R.hemi, s = R.sun, k = 0.45, ks = 0.3;
+      this.fx.ambient.setRGB(Math.max(0.03, h.color.r * h.intensity * k), Math.max(0.03, h.color.g * h.intensity * k), Math.max(0.03, h.color.b * h.intensity * k));
+      this.fx.sunLight.setRGB(s.color.r * s.intensity * ks, s.color.g * s.intensity * ks, s.color.b * s.intensity * ks);
+      this.fx.sunDir.copy(R.towardsSun);
+      if (!this.fx.sunVisible) {
+        const d = { x: 0, y: 1, z: 0 }, o = { x: 0, y: 0, z: 0 };
+        const staticOnly = (b: { dynamic: boolean }) => !b.dynamic;
+        this.fx.sunVisible = (x, y, z) => {
+          d.x = this.fx.sunDir.x; d.y = this.fx.sunDir.y; d.z = this.fx.sunDir.z;
+          o.x = x; o.y = y; o.z = z;
+          return !game.sim.raycast(o, d, 60, null, staticOnly);
+        };
+      }
+      return;
+    }
     const fxRoot = this.fx.root;
     const sum = { r: 0, g: 0, b: 0 };
     game.renderer.scene.traverseVisible((o) => {

@@ -258,7 +258,7 @@ export class Menus {
     return this.win('Settings', `<div class="ws-form">` +
       range('sensitivity', 'Mouse sensitivity', 0.2, 3, 0.05, (v) => v.toFixed(2) + '×') +
       check('invertY', 'Invert mouse Y') +
-      range('fov', 'Field of view', 60, 110, 1, (v) => v + '°') +
+      range('fov', 'Field of view (horizontal)', 70, 120, 1, (v) => v + '°') +
       range('headBobAmount', 'Head bob', 0, 1, 0.05, pct) +
       range('masterVolume', 'Master volume', 0, 1, 0.01, pct) +
       range('musicVolume', 'Music volume', 0, 1, 0.01, pct) +

@@ -2,7 +2,7 @@
  * Photo mode (P, or the pause-menu button): freezes the sim, hides HUD + view model and gives a free
  * camera through `game.cameraOverride`.
  *   WASD move · mouse look (pointer lock, or drag / arrow keys without it) · Space/E up · Ctrl/Q down
- *   Shift fast · wheel or +/- = FOV 20–110 · Z/X roll (R resets) · H hides the hint · F flashlight
+ *   Shift fast · wheel or +/- = horizontal FOV 20–130 · Z/X roll (R resets) · H hides the hint · F flashlight
  *   P or Esc leaves and restores camera, pause state, controls, HUD, FOV and graphics settings.
  * While active the renderer runs the 'high' tier at full resolution when it was on 'medium'.
  *
@@ -146,10 +146,10 @@ export function createPhotoModule(): GameModule {
       // look
       const dx = inp.mouseDX + dragX, dy = inp.mouseDY + (inp.invertY ? -dragY : dragY);
       dragX = dragY = 0;
-      const sens = LOOK * (g.fov / 80);
+      const sens = LOOK * (g.fov / 90);
       cam.yaw -= dx * sens;
       cam.pitch -= dy * sens;
-      const kl = KEY_LOOK * dt * (g.fov / 80);
+      const kl = KEY_LOOK * dt * (g.fov / 90);
       if (k('ArrowLeft')) cam.yaw += kl;
       if (k('ArrowRight')) cam.yaw -= kl;
       if (k('ArrowUp')) cam.pitch += kl;
@@ -161,7 +161,7 @@ export function createPhotoModule(): GameModule {
       // fov
       const w = inp.wheel + wheel + (inp.hit('Equal') || inp.hit('NumpadAdd') ? -1 : 0) + (inp.hit('Minus') || inp.hit('NumpadSubtract') ? 1 : 0);
       wheel = 0;
-      if (w) g.fov = Math.max(20, Math.min(110, Math.round(g.fov + w * 5)));
+      if (w) g.fov = Math.max(20, Math.min(130, Math.round(g.fov + w * 5)));
       // move (fly along the view direction)
       const sp = (k('ShiftLeft') || k('ShiftRight') ? FAST : SPEED) * dt;
       const fx = -Math.sin(cam.yaw) * Math.cos(cam.pitch), fy = Math.sin(cam.pitch), fz = -Math.cos(cam.yaw) * Math.cos(cam.pitch);

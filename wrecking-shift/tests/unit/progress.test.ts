@@ -26,7 +26,7 @@ describe('progress', () => {
     const p = new Progress(s);
     expect(p.totalScore()).toBe(0);
     expect(p.cash).toBe(0);
-    expect(p.settings.fov).toBe(110);
+    expect(p.settings.fov).toBe(120);
     expect(p.settings.quality).toBe('medium');
     const broken: StorageLike = { getItem() { throw new Error('denied'); }, setItem() { throw new Error('denied'); } };
     const q = new Progress(broken);
@@ -90,7 +90,7 @@ describe('progress', () => {
     const seen: string[] = [];
     const off = p.settings.onChange((_st, k) => seen.push(String(k)));
     p.settings.set('fov', 30);
-    expect(p.settings.fov).toBe(60);
+    expect(p.settings.fov).toBe(70);
     p.settings.set('masterVolume', 0.25);
     off();
     p.settings.set('headBob', false);
@@ -98,5 +98,29 @@ describe('progress', () => {
     const p2 = new Progress(s);
     expect(p2.settings.masterVolume).toBe(0.25);
     expect(p2.settings.headBob).toBe(false);
+  });
+});
+
+describe('field of view (horizontal since 2026-11-26)', () => {
+  it('defaults to 90° horizontal and migrates old vertical saves once', async () => {
+    const { migrateFov, verticalFov, DEFAULT_SETTINGS } = await import('../../src/game/progress');
+    expect(DEFAULT_SETTINGS.fov).toBe(90);
+    // the untouched old default (80° vertical) becomes the new default; a chosen value keeps its width at 16:9
+    const s = new Mem();
+    s.setItem(SAVE_KEY, JSON.stringify({ settings: { fov: 80 } }));
+    expect(new Progress(s).settings.fov).toBe(90);
+    s.setItem(SAVE_KEY, JSON.stringify({ settings: { fov: 60 } }));
+    const p = new Progress(s);
+    expect(p.settings.fov).toBe(Math.round(migrateFov(60)!));
+    expect(p.settings.fov).toBe(91);
+    // once saved by this version the value is horizontal and is not converted again
+    p.settings.set('fov', 100);
+    expect(JSON.parse(s.getItem(SAVE_KEY)!).settings.fovH).toBe(true);
+    expect(new Progress(s).settings.fov).toBe(100);
+    // conversion to three's vertical FOV
+    expect(verticalFov(90, 16 / 9)).toBeCloseTo(58.72, 1);
+    expect(verticalFov(90, 1)).toBeCloseTo(90, 5);
+    expect(verticalFov(120, 0.5)).toBe(100);
+    expect(verticalFov(70, 4)).toBe(40);
   });
 });

@@ -68,8 +68,11 @@ export interface SettingsData {
   /** mouse sensitivity multiplier 0.2..3 (1 = default) */
   sensitivity: number;
   invertY: boolean;
-  /** vertical field of view, degrees 60..110 */
+  /** horizontal field of view, degrees 70..120 (default 90). Saves before 2026-11-26 stored vertical degrees: see
+   *  `migrateFov` (they carry no `fovH` marker) */
   fov: number;
+  /** marker: `fov` is horizontal (always true once saved by this version) */
+  fovH: boolean;
   headBob: boolean;
   /** 0..1 */
   masterVolume: number;
@@ -101,17 +104,32 @@ export interface SettingsData {
   toolbarExpanded: boolean;
 }
 export const DEFAULT_SETTINGS: SettingsData = {
-  sensitivity: 1, invertY: false, fov: 80, headBob: true, masterVolume: 0.8, musicVolume: 0.6, sfxVolume: 0.9, quality: 'medium',
+  sensitivity: 1, invertY: false, fov: 90, fovH: true, headBob: true, masterVolume: 0.8, musicVolume: 0.6, sfxVolume: 0.9, quality: 'medium',
   perfMode: false, perfHintOff: false, perfSharp: false,
   assistAlarm: 'normal', assistAmmo: 1, assistToughness: 1, assistJobs: false, brightness: 1, headBobAmount: 1, keys: {}, toolbarExpanded: false,
 };
+
+/** old saves stored the vertical FOV (default 80 = 112° horizontal at 16:9). The untouched old default becomes the new
+ *  default (90° horizontal); a value the player chose is converted at 16:9 so the view keeps its width. */
+export function migrateFov(v: any): number | undefined {
+  if (typeof v !== 'number' || !isFinite(v)) return undefined;
+  if (v === 80) return DEFAULT_SETTINGS.fov;
+  return (2 * Math.atan(Math.tan((v * Math.PI) / 360) * (16 / 9)) * 180) / Math.PI;
+}
+
+/** horizontal FOV (degrees) -> the vertical FOV a perspective camera with this aspect needs; the vertical angle is
+ *  kept within 40..100° so very wide or portrait windows stay sane */
+export function verticalFov(hfovDeg: number, aspect: number): number {
+  const v = (2 * Math.atan(Math.tan((hfovDeg * Math.PI) / 360) / Math.max(0.2, aspect)) * 180) / Math.PI;
+  return Math.min(100, Math.max(40, v));
+}
 
 function sanitizeSettings(raw: any): SettingsData {
   const s = { ...DEFAULT_SETTINGS };
   if (!raw || typeof raw !== 'object') return s;
   const num = (v: any, lo: number, hi: number, d: number) => (typeof v === 'number' && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
   s.sensitivity = num(raw.sensitivity, 0.2, 3, s.sensitivity);
-  s.fov = Math.round(num(raw.fov, 60, 110, s.fov));
+  s.fov = Math.round(num(raw.fovH === true ? raw.fov : migrateFov(raw.fov), 70, 120, s.fov));
   s.masterVolume = num(raw.masterVolume, 0, 1, s.masterVolume);
   s.musicVolume = num(raw.musicVolume, 0, 1, s.musicVolume);
   s.sfxVolume = num(raw.sfxVolume, 0, 1, s.sfxVolume);
@@ -142,6 +160,7 @@ export class Settings implements SettingsData {
   sensitivity = DEFAULT_SETTINGS.sensitivity;
   invertY = DEFAULT_SETTINGS.invertY;
   fov = DEFAULT_SETTINGS.fov;
+  fovH = true;
   headBob = DEFAULT_SETTINGS.headBob;
   masterVolume = DEFAULT_SETTINGS.masterVolume;
   musicVolume = DEFAULT_SETTINGS.musicVolume;
@@ -185,6 +204,7 @@ export class Settings implements SettingsData {
     const { sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality, perfMode, perfHintOff, perfSharp } = this;
     const { assistAlarm, assistAmmo, assistToughness, assistJobs, brightness, headBobAmount, toolbarExpanded } = this;
     return {
+      fovH: true,
       sensitivity, invertY, fov, headBob, masterVolume, musicVolume, sfxVolume, quality, perfMode, perfHintOff, perfSharp,
       assistAlarm, assistAmmo, assistToughness, assistJobs, brightness, headBobAmount, keys: { ...this.keys }, toolbarExpanded,
     };

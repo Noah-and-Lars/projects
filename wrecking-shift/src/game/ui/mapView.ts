@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { verticalFov } from '../progress';
 import type { CameraOverride, Game } from '../game';
 import type { V3 } from '../../sim/vec';
 import { el, esc, setHtml, show } from './dom';
@@ -50,7 +51,7 @@ export class MapView {
     const hx = (b.max.x - b.min.x) / 2, hz = (b.max.z - b.min.z) / 2;
     const w = window.innerWidth || 640, h = window.innerHeight || 360;
     const aspect = w / h;
-    const fov = game.fov;
+    const fov = verticalFov(game.fov, aspect);
     const t = Math.tan((fov * Math.PI) / 360);
     const ground = Math.max(b.min.y, Math.min(0, game.level.spawn.y));
     const height = (Math.max(hz, hx / aspect) / t) * 1.06 + ground;
