@@ -59,7 +59,7 @@ window.GAMES = [
     path: 'closing-time/index.html',
     thumb: 'closing-time/thumb.jpg',
     added: '2026-11-23T08:55:00+11:00',
-    updated: '2026-11-23T08:55:00+11:00',
+    updated: '2026-11-26T16:05:00+11:00',
     stat() { const s = readSave('es-stats', true); return s && s.best ? 'Best ' + s.best + (s.best === 1 ? ' night' : ' nights') : null; },
   },
   {
