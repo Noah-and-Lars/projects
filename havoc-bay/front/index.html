@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Havoc Bay: Island Front</title>
+<style>
+:root { --blue: #4d8dff; --red: #ff5a4a; --guard: #c9d48a; --ink: #eef2ea; --dim: #a9b4ab; --panel: rgba(16, 22, 19, .82); --line: rgba(255, 255, 255, .14); --amber: #f2b23a; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0d1210; color: var(--ink); font: 14px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; user-select: none; -webkit-user-select: none; }
+#gl { position: fixed; inset: 0; }
+#gl canvas { display: block; width: 100%; height: 100%; }
+.hidden { display: none !important; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.ov { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 20; padding: 20px; }
+.ov.dim { background: rgba(6, 10, 8, .62); backdrop-filter: blur(3px); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 22px; max-width: 980px; width: 100%; max-height: 100%; overflow: auto; }
+h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: .02em; }
+.btn { background: rgba(255, 255, 255, .07); border: 1px solid var(--line); border-radius: 4px; padding: 9px 14px; }
+.btn:hover { background: rgba(255, 255, 255, .14); }
+.btn.on { border-color: var(--amber); box-shadow: inset 0 -3px 0 var(--amber); }
+.btn.go { background: #c6862a; border-color: #e3a246; color: #18110a; font-weight: 700; }
+.btn.go:hover { background: #dc9733; }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--amber); }
+.mut { color: var(--dim); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.lbl { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin: 14px 0 6px; }
+
+/* title */
+#title { background: radial-gradient(ellipse at 70% 30%, rgba(30, 60, 55, .35), transparent 60%), linear-gradient(180deg, rgba(8, 12, 10, .55), rgba(8, 12, 10, .9)); }
+.logo { font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: .03em; }
+.logo small { display: block; font-size: 14px; font-weight: 600; letter-spacing: .3em; color: var(--dim); margin-top: 6px; }
+.maps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 760px) { .maps { grid-template-columns: minmax(0, 1fr); } }
+.mapcard { text-align: left; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); border-radius: 5px; padding: 12px; display: grid; gap: 4px; }
+.mapcard b { font-size: 16px; }
+.mapcard span { font-size: 12.5px; color: var(--dim); }
+.mapcard.on { border-color: var(--amber); background: rgba(242, 178, 58, .08); }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 18px; }
+@media (max-width: 760px) { .grid3 { grid-template-columns: minmax(0, 1fr); } }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13px; }
+.keys kbd { font: 600 11px ui-monospace, Menlo, monospace; background: rgba(255, 255, 255, .1); border: 1px solid var(--line); border-radius: 3px; padding: 1px 6px; justify-self: start; white-space: nowrap; }
+
+/* deploy */
+.classes { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.cls { text-align: left; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); border-radius: 5px; padding: 11px; display: grid; gap: 3px; }
+.cls b { font-size: 15px; } .cls span { font-size: 12px; color: var(--dim); }
+.cls.on { border-color: var(--amber); background: rgba(242, 178, 58, .1); }
+.cls:disabled { opacity: .4; }
+#dMap { width: 100%; max-width: 560px; aspect-ratio: 751 / 496; border: 1px solid var(--line); border-radius: 4px; display: block; cursor: pointer; }
+
+/* HUD */
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+#cross { position: absolute; left: 50%; top: 50%; width: 24px; height: 24px; transform: translate(-50%, -50%); }
+#cross::before, #cross::after { content: ""; position: absolute; background: rgba(255, 255, 255, .9); box-shadow: 0 0 2px #000; }
+#cross::before { left: 11px; top: 0; width: 2px; height: 24px; clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%, 0 65%, 100% 65%, 100% 100%, 0 100%); }
+#cross::after { top: 11px; left: 0; height: 2px; width: 24px; clip-path: polygon(0 0, 35% 0, 35% 100%, 0 100%, 0 0, 65% 0, 100% 0, 100% 100%, 65% 100%); }
+#gunMark { position: absolute; width: 14px; height: 14px; border: 2px solid rgba(255, 210, 120, .9); border-radius: 50%; transform: translate(-50%, -50%); display: none; }
+#hitm { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; transform: translate(-50%, -50%) rotate(45deg); opacity: 0; transition: opacity .15s; }
+#hitm::before, #hitm::after { content: ""; position: absolute; background: #fff; }
+#hitm::before { left: 14px; top: 0; width: 2px; height: 30px; clip-path: polygon(0 0, 100% 0, 100% 30%, 0 30%, 0 70%, 100% 70%, 100% 100%, 0 100%); }
+#hitm::after { top: 14px; left: 0; height: 2px; width: 30px; clip-path: polygon(0 0, 30% 0, 30% 100%, 0 100%, 0 0, 70% 0, 100% 0, 100% 100%, 70% 100%); }
+#hitm.kill::before, #hitm.kill::after { background: #ff5a4a; }
+#scope { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0 32vmin, rgba(0, 0, 0, .9) 32.3vmin); display: none; }
+#cpbar { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 5px; background: rgba(10, 14, 12, .6); padding: 6px 8px; border-radius: 5px; border: 1px solid var(--line); }
+.cp { width: 46px; height: 40px; border-radius: 3px; border: 1px solid rgba(255, 255, 255, .25); position: relative; display: grid; place-items: center; font-weight: 800; font-size: 15px; background: rgba(120, 130, 110, .25); overflow: hidden; }
+.cp i { position: absolute; left: 0; bottom: 0; height: 4px; background: #fff; }
+.cp small { position: absolute; top: 1px; right: 3px; font-size: 9.5px; font-weight: 700; color: var(--guard); }
+.cp em { position: absolute; bottom: 4px; left: 3px; font-style: normal; font-size: 9px; opacity: .8; }
+.cp.blue { background: rgba(60, 120, 230, .55); } .cp.red { background: rgba(220, 70, 55, .55); }
+.cp.big { width: 58px; }
+.cp.lock::after { content: "🔒"; position: absolute; top: 1px; left: 2px; font-size: 9px; opacity: .75; }
+.hq { font-size: 11px; font-weight: 800; letter-spacing: .1em; padding: 0 4px; }
+#clock { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); font: 600 12px ui-monospace, Menlo, monospace; color: var(--dim); text-shadow: 0 1px 2px #000; }
+#capMsg { position: absolute; left: 50%; top: 64%; transform: translateX(-50%); text-align: center; font-weight: 700; letter-spacing: .06em; text-shadow: 0 1px 3px #000; }
+#capMsg .bar { width: 260px; height: 6px; background: rgba(255, 255, 255, .2); margin: 6px auto 0; border-radius: 3px; overflow: hidden; }
+#capMsg .bar i { display: block; height: 100%; background: var(--amber); }
+#msg { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); text-align: center; font-size: 26px; font-weight: 800; text-shadow: 0 2px 6px #000; transition: opacity .6s; max-width: 90vw; }
+#msg small { display: block; font-size: 14px; font-weight: 500; color: var(--dim); }
+#prompt { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); background: rgba(0, 0, 0, .55); padding: 5px 12px; border-radius: 4px; font-weight: 600; }
+#status { position: absolute; left: 16px; bottom: 16px; width: 280px; display: grid; gap: 6px; }
+.bar2 { height: 9px; background: rgba(255, 255, 255, .15); border-radius: 2px; overflow: hidden; }
+.bar2 i { display: block; height: 100%; background: #7fd27a; transform-origin: left; }
+.who { font-weight: 700; font-size: 15px; text-shadow: 0 1px 2px #000; }
+.who small { color: var(--dim); font-weight: 500; }
+#ammo { position: absolute; right: 16px; bottom: 16px; text-align: right; text-shadow: 0 1px 3px #000; }
+#ammo b { font-size: 30px; font-weight: 800; } #ammo small { color: var(--dim); }
+#mini { position: absolute; top: 10px; right: 10px; width: 210px; height: 210px; border-radius: 4px; border: 1px solid var(--line); background: #1f4f6e; }
+#feed { position: absolute; top: 228px; right: 12px; display: grid; gap: 3px; justify-items: end; font-size: 12.5px; }
+#feed div { background: rgba(0, 0, 0, .5); padding: 2px 8px; border-radius: 3px; }
+.tag { position: absolute; transform: translate(-50%, -100%); font-size: 11px; font-weight: 700; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+.tag::after { content: "▼"; display: block; text-align: center; font-size: 9px; }
+#dmgFlash { position: absolute; inset: 0; box-shadow: inset 0 0 120px rgba(200, 0, 0, .7); opacity: 0; transition: opacity .3s; }
+#bigmap { z-index: 15; }
+#bigmap canvas { max-width: 96vw; max-height: 86vh; border: 1px solid var(--line); border-radius: 4px; }
+#help2 { position: absolute; left: 16px; top: 12px; font-size: 12px; color: var(--dim); text-shadow: 0 1px 2px #000; line-height: 1.6; }
+#hitInfo { position: absolute; left: 50%; top: calc(50% + 34px); transform: translateX(-50%); font: 700 13px ui-monospace, Menlo, monospace; letter-spacing: .06em; text-shadow: 0 1px 3px #000; opacity: 0; transition: opacity .4s; white-space: nowrap; }
+#vehMsg { position: absolute; left: 16px; bottom: 150px; font-weight: 600; text-shadow: 0 1px 3px #000; opacity: 0; transition: opacity .5s; color: #ffd8a0; }
+#sightInfo { position: absolute; left: 50%; bottom: 18%; transform: translateX(-50%); font: 600 12.5px ui-monospace, Menlo, monospace; color: #b8ffb0; text-shadow: 0 0 4px #000; display: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 3px; }
+.chip { font: 700 10.5px ui-monospace, Menlo, monospace; padding: 2px 5px; border-radius: 2px; background: rgba(0,0,0,.45); border: 1px solid; }
+.chip.ok { color: #9fe39a; border-color: rgba(127,210,122,.5); } .chip.dmg { color: #ffd060; border-color: #c49a2a; background: rgba(90,70,0,.5); }
+.chip.dead { color: #fff; border-color: #e0583a; background: rgba(170,40,20,.75); } .chip.vac { color: #777; border-color: #555; text-decoration: line-through; }
+.vnote { font-size: 12px; color: var(--dim); text-shadow: 0 1px 2px #000; } .warn { color: #ff7a5a; font-weight: 700; }
+#ammo .am { font-size: 12.5px; color: var(--dim); } #ammo .am.sel { color: #fff; font-weight: 700; } #ammo .am small { color: var(--dim); font-weight: 400; }
+#scope .ret { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+#scope .ret i { position: absolute; background: #c8ffb8; box-shadow: 0 0 2px #000; }
+body.realistic #gl canvas { filter: contrast(1.05) saturate(1.08); }
+body.realistic #gl::after { content: ""; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.28) 100%); }
+#loading { z-index: 30; background: #0d1210; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.endstats { display: grid; grid-template-columns: repeat(3, auto); gap: 4px 20px; justify-content: start; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div id="gl"></div>
+
+<div id="hud" class="hidden">
+  <div id="cpbar"></div>
+  <div id="clock"></div>
+  <div id="scope"><div class="ret"><i style="left:-180px;top:-1px;width:160px;height:2px"></i><i style="left:20px;top:-1px;width:160px;height:2px"></i><i style="left:-1px;top:14px;width:2px;height:150px"></i><i style="left:-8px;top:0;width:16px;height:2px;transform:rotate(35deg);transform-origin:left"></i><i style="left:-14px;top:0;width:16px;height:2px;transform:rotate(-35deg);transform-origin:right"></i><i style="left:-30px;top:40px;width:60px;height:1px"></i><i style="left:-20px;top:80px;width:40px;height:1px"></i><i style="left:-12px;top:120px;width:24px;height:1px"></i></div></div>
+  <div id="cross"></div>
+  <div id="gunMark"></div>
+  <div id="hitm"></div>
+  <div id="dmgFlash"></div>
+  <div id="tags"></div>
+  <div id="msg"></div>
+  <div id="capMsg"></div>
+  <div id="prompt" class="hidden"></div>
+  <div id="hitInfo"></div>
+  <div id="vehMsg"></div>
+  <div id="sightInfo"></div>
+  <canvas id="mini" width="420" height="420"></canvas>
+  <div id="feed"></div>
+  <div id="status"></div>
+  <div id="ammo"></div>
+  <div id="help2"></div>
+</div>
+
+<div id="title" class="ov">
+  <div class="panel">
+    <div class="eyebrow">Havoc Bay · new mode · early test</div>
+    <div class="logo">ISLAND FRONT<small>Air, land, infantry and sea on one big island</small></div>
+    <p class="mut" style="max-width:70ch">Fight from your base along a chain of five neutral checkpoints: small, medium, the main base, medium, small. Each is held by guards who shoot both sides and never come back once killed. Clear the guards, then stand in the checkpoint to take it. Take all five to win.</p>
+    <div class="lbl">Map</div>
+    <div class="maps" id="mapPick"></div>
+    <div class="grid3">
+      <div><div class="lbl">Your team</div><div class="row" id="teamPick"><button class="btn" data-v="0" style="color:var(--blue)">Blue</button><button class="btn" data-v="1" style="color:var(--red)">Red</button></div></div>
+      <div><div class="lbl">Bots per team</div><div class="row" id="botPick"><button class="btn" data-v="4">4</button><button class="btn" data-v="8">8</button><button class="btn" data-v="12">12</button></div></div>
+      <div><div class="lbl">Difficulty</div><div class="row" id="diffPick"><button class="btn" data-v="0">Easy</button><button class="btn" data-v="1">Normal</button><button class="btn" data-v="2">Hard</button></div></div>
+      <div><div class="lbl">Graphics</div><div class="row" id="gfxPick"><button class="btn" data-v="optimised" title="The lighter map: runs on most computers">Optimised</button><button class="btn" data-v="realistic" title="Textured ground, grass, detailed trees, wave water, clouds. Needs a good graphics card">Realistic</button></div></div>
+    </div>
+    <div class="row" style="margin-top:18px;align-items:center"><button class="btn go" id="startBtn">▶ Start battle</button><a class="btn" href="../index.html" style="text-decoration:none;color:inherit">← Back to Havoc Bay</a><span class="mut" style="font-size:12.5px">Offline against bots. Keyboard and mouse.</span></div>
+    <div class="lbl">Controls</div>
+    <div class="grid3">
+      <div class="keys"><kbd>W A S D</kbd><span>Move / drive</span><kbd>Mouse</kbd><span>Look and aim</span><kbd>Left click</kbd><span>Fire</span><kbd>Right click</kbd><span>Aim / gun sight</span></div>
+      <div class="keys"><kbd>Shift</kbd><span>Sprint</span><kbd>C</kbd><span>Crouch</span><kbd>Space</kbd><span>Jump</span><kbd>R</kbd><span>Reload</span><kbd>1 / 2</kbd><span>Rifle / rocket launcher</span></div>
+      <div class="keys"><kbd>E</kbd><span>Get in or out of a vehicle</span><kbd>1 2 3</kbd><span>Choose shell (in a vehicle)</span><kbd>F / T</kbd><span>Machine gun / missile</span><kbd>G R X</kbd><span>Smoke · repair · put out fire</span><kbd>M</kbd><span>Big map</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="loading" class="ov hidden"><div id="loadText">Building the island…</div></div>
+
+<div id="deploy" class="ov dim hidden">
+  <div class="panel">
+    <div class="eyebrow" id="dEye">Deploy</div>
+    <h2 id="dTitle">Choose how to go in</h2>
+    <div class="lbl">Unit</div>
+    <div class="classes" id="dClasses"></div>
+    <div class="lbl">Where</div>
+    <div class="row" id="dWhere"></div>
+    <div class="lbl">Map <span class="mut" style="text-transform:none;letter-spacing:0">(click a place you hold to spawn there)</span></div>
+    <canvas id="dMap" width="751" height="496"></canvas>
+    <div class="row" style="margin-top:14px"><button class="btn go" id="dGo">Deploy</button><span id="dWait" class="mut" style="align-self:center"></span></div>
+  </div>
+</div>
+
+<div id="pause" class="ov dim hidden">
+  <div class="panel" style="max-width:420px">
+    <h2>Paused</h2>
+    <p class="mut">Click Resume to take the mouse back.</p>
+    <div class="row"><button class="btn go" id="pResume">Resume</button><button class="btn" id="pRedeploy">Redeploy</button><button class="btn" id="pQuit">Quit to menu</button></div>
+  </div>
+</div>
+
+<div id="bigmap" class="ov dim hidden"><canvas id="bigCv" width="1502" height="992"></canvas></div>
+
+<div id="end" class="ov dim hidden">
+  <div class="panel" style="max-width:520px">
+    <h1 id="endTitle">VICTORY</h1>
+    <p id="endWhy" class="mut"></p>
+    <div class="endstats" id="endStats"></div>
+    <div class="row" style="margin-top:16px"><button class="btn go" id="eAgain">Play again</button><button class="btn" id="eMenu">Menu</button></div>
+  </div>
+</div>
+
+<script src="three.r128.js"></script>
+<script src="maps.js"></script>
+<script src="world.js"></script>
+<script src="realistic.js"></script>
+<script src="units.js"></script>
+<script src="vehicles.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
