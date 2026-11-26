@@ -455,6 +455,13 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
 
 ## Games
 
+- `wrecking-shift/`: Wrecking Shift (2026-11-27), first-person voxel-destruction heists (three.js + Rapier, WebAssembly
+  inlined). The file is a build: source in Noah-and-Lars/projects, branch `teardown-voxel-game`, folder `wrecking-shift/`
+  (TypeScript + Vite; `npm test` there). To update: `npm run build && node scripts/make-artifact.mjs <dir>`, then inline
+  `<dir>/assets/game.js` into `<dir>/wrecking-shift.html` in place of its module script tag (escape `</script`) and copy
+  the result over `wrecking-shift/index.html`. Saves (all synced as one group by account.js): `wrecking-shift-save-v1`
+  (missions {id: {best, completed}}, cash, settings), `wrecking-shift-mods`, `wrecking-shift-diag`,
+  `wrecking-shift:fireQuality`. Desktop only (keyboard + mouse or gamepad, pointer lock). `window.__game` is a test hook.
 - `throttle-ridge/`: Throttle Ridge, side-scrolling motocross against three computer riders (Three.js + planck.js
   bundled into the file). The file is a build: its source (plain ES modules in `throttle-ridge/src/`), the build script
   (`throttle-ridge/tools/build.mjs`, esbuild) and a headless test (`tools/test.cjs`) live on the `main` branch, not

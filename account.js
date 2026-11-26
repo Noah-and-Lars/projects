@@ -30,6 +30,7 @@
 
   /* ---------- which saved entries belong to which game ---------- */
   var GROUPS = [
+    ['wrecking-shift', /^wrecking-shift[-:]/],
     ['snow-rider-3d', /^snowrider3d\./],
     ['mile-zero', /^milezero\./],
     ['closing-time', /^es-(ach|name|settings|shirt|solo|stats)$/],

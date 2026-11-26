@@ -24,6 +24,26 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'wrecking-shift',
+    title: 'Wrecking Shift',
+    category: 'Sandbox',
+    tagline: 'Smash through a fully destructible voxel city, pull off heists before the alarm runs out, then get away.',
+    description: 'A first-person heist game where every wall, roof and car can be broken voxel by voxel. Plan a route with hammers, explosives and vehicles, trigger the alarm, grab the targets and escape before time runs out. Single player, with a free sandbox.',
+    controls: 'Keyboard + mouse or controller',
+    keys: [['W A S D', 'Move'], ['Mouse', 'Look (click to capture)'], ['Space / Ctrl / Shift', 'Jump / crouch / sprint'], ['Left click', 'Use tool'], ['Right click (hold)', 'Grab · left click throws'], ['1–6 · wheel · Q', 'Tools · swap back'], ['E', 'Take loot · get in / out of vehicles'], ['Tab', 'Map'], ['F', 'Flashlight'], ['F5 / F9', 'Quicksave / quickload'], ['B', 'Spawn menu (sandbox)'], ['Esc', 'Pause · settings']],
+    path: 'wrecking-shift/index.html',
+    thumb: 'wrecking-shift/thumb.jpg',
+    added: '2026-11-27T10:45:00+11:00',
+    updated: '2026-11-27T10:45:00+11:00',
+    // career score = sum of each heist's best (the game's own rank screen), plus heists completed
+    stat() {
+      const s = readSave('wrecking-shift-save-v1', true); if (!s || !s.missions) return null;
+      let score = 0, done = 0;
+      for (const k in s.missions) { const r = s.missions[k]; if (r && r.best > 0) score += r.best; if (r && r.completed) done++; }
+      return score > 0 ? 'Score ' + score.toLocaleString('en-US') + (done ? ' · ' + done + (done === 1 ? ' heist' : ' heists') : '') : null;
+    },
+  },
+  {
     id: 'snow-rider-3d',
     title: 'Snow Rider 3D',
     category: 'Racing',
@@ -439,6 +459,7 @@ window.COMING_SOON = [
 ];
 
 window.NEWS = [
+  { date: '2026-11-27', game: 'wrecking-shift', imgs: ['wrecking-shift/news/1.0-blast.jpg', 'wrecking-shift/news/1.0-sunset.jpg'], headline: 'Wrecking Shift is out', text: 'New game: Wrecking Shift. A first-person heist game in a fully destructible voxel world: knock through walls with hammers, explosives and vehicles, grab the targets and get out before the alarm runs out. There is a free sandbox with a whole city to wreck.', post: "\ud83d\udca5 NEW GAME: WRECKING SHIFT!\n\n\ud83e\uddf1 Every wall, roof and car breaks voxel by voxel\n\ud83d\udcb0 Plan a heist, trip the alarm, grab the loot and escape\n\ud83d\udca3 Hammers, bombs, rockets, cars and a wheel loader\n\ud83c\udf06 A whole city to wreck in the sandbox\n\nWhat will you knock down first? \ud83d\udc47\n\n#WreckingShift #TheArcade #NewGame" },
   { date: '2026-11-27', game: 'snow-rider-3d', imgs: ['snow-rider-3d/news/1.1-leaderboard.jpg'], headline: 'Snow Rider 3D leaderboard', text: 'Snow Rider 3D 1.1: an online leaderboard. Your best run goes on the board with your Arcade account and follows you to every device. Tap the Leaderboard button in the game to see who is on top.', post: "\ud83c\udfc6 SNOW RIDER 3D now has a LEADERBOARD!\n\n\ud83d\udef7 Your best run goes on the board for everyone to see\n\ud83d\udcf1 Your best follows your Arcade account to every device\n\ud83e\udd47 Tap \ud83c\udfc6 Leaderboard in the game to see who's on top\n\nCan you take #1? \ud83d\udc47\n\n#snowrider3d #TheArcade #Leaderboard" },
   { date: '2026-11-26', game: 'snow-rider-3d', imgs: ['snow-rider-3d/news/1.0-title.jpg', 'snow-rider-3d/news/1.0-ride.jpg', 'snow-rider-3d/news/1.0-menu.jpg'], headline: 'Snow Rider 3D is out', text: 'New game: Snow Rider 3D. Ride a sled down a snowy mountain that never ends, steer around trees, rocks and snowmen and jump over obstacles. Collect gifts on the way and spend them in the shop.', post: "\u2744\ufe0f SNOW RIDER 3D is out now!\n\n\ud83d\udef7 Sled down a mountain that never ends\n\ud83c\udf32 Dodge trees, rocks and snowmen\n\u2b06\ufe0f Jump the obstacles\n\ud83c\udf81 Grab gifts and spend them in the shop\n\nHow far can you ride? \ud83d\udc47\n\n#snowrider3d #TheArcade #NewGame" },
   { date: '2026-11-25', href: 'players.html', imgs: ['news/players-standby.jpg'], headline: 'New: Standby', text: "Players tab: when someone switches to another tab or app, they now show as Standby (with an orange dot) instead of Online or the game they're playing. They still count towards the players online, and it goes back to normal as soon as they come back to the tab.",
