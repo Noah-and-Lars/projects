@@ -66,18 +66,18 @@ Every shopper can whistle; it isn't an item.
 On a phone or tablet the whistle is a button (hold it for a long whistle); on
 a controller it's Y.
 
-## The week
+## Days and nights
 
 | | |
 | --- | --- |
 | Day | 6 minutes, 08:00 to 22:00 on the clock. The staff are harmless. The last 5 seconds tick down. |
 | Night | 5 minutes on the first night, and **4 seconds longer every night after** (day 10: 5 min 36 s; day 60: about 9 minutes). 22:00 to 08:00 on the clock. The overhead lights cut out with a clunk, and only the emergency lights (orange) and lamps stay lit. |
-| Week | Days run Monday to Sunday. **Food and first aid restock at the start of every Monday and Friday**, not daily. Food is plentiful: wherever the store stocks something, there are usually four of it together. |
+| Restocks | **Food and first aid restock every 2 nights** (the mornings of day 3, 5, 7 and so on), not daily; the day's title says "Restock day". Food is plentiful: wherever the store stocks something, there are usually four of it together. |
 
-There are no special days: just day and night, every day.
+There are no special days: just day and night, every day. The screen shows the day number only. The real week only matters for public stores, whose builds reset at the start of Sunday in Sydney.
 
-Each weekday has its own gentle tune, and the odd Friday plays a livelier
-take on it. Night has a low drone; being hunted brings in a pulsing chase
+Each day of a seven-day cycle has its own gentle tune, and now and then one
+plays a livelier take on it. Night has a low drone; being hunted brings in a pulsing chase
 beat; when you're badly hurt everything goes slow and muffled. The music,
 like everything else, is generated as it plays. Twice a day the PA chimes and
 reads out a (not very reassuring) announcement. On your very first day, tips
@@ -480,7 +480,7 @@ cd tools && npm install && npm run build
 | `physics.js` | Standing-body movement against boxes: step-up, climbing, gravity, ceilings |
 | `fall.js` | Pieces falling or thrown on their own: a rigid box with gravity, tumbling, bounces and friction against the world's boxes; balls as bouncing, rolling spheres |
 | `net.js` | Rooms, presence, host election, messages |
-| `env.js` | Day/night timing, the week and restocks, events, store clock, lighting levels |
+| `env.js` | Day/night timing, restocks, events, store clock, lighting levels |
 | `models.js` | Shopper and staff models, walk cycle, name tags, carried furniture |
 | `mats.js` | Surface types, detail texture, the store material (shader patch with ceiling lighting), contact shadows, light fittings, dust |
 | `geo.js` | Merged vertex-coloured geometry from boxes, cylinders and spheres |
@@ -515,8 +515,7 @@ node tools/test-pub.cjs
   touching something (it stays), shoving staff down, standing room inside a
   wardrobe, throwing, dropping food, crouching, a beanbag softening a fall,
   a tap of E not picking things up but holding it doing so, the grid pillar
-  at the centre and nights growing longer, and the Monday and Friday restock
-  days;
+  at the centre and nights growing longer, and restocks every 2 nights;
 - that the staff can't reach you on a wardrobe, or on two stacked crates,
   but can on the floor, and climb up to you once there's a step beside the
   crates;

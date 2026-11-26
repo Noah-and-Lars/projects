@@ -15,7 +15,7 @@ import { makeShopper, makeStaff, animate, setHeld, nameTag, nameHash, SHIRT_COLO
 import { makeBody, stepBody, bodyPose, bodyMatrix, makeBall, stepBall, ballMatrix } from './fall.js';
 import { initAudio, sfx, setAmbience, setVolume, setMusic, setMusicVolume, musicState } from './audio.js';
 import * as audioMod from './audio.js';
-import { DAY_LEN, DAY_SCALE, setDayScale, cycleLen, nightLen, cascade, isNight, isHostile, clockText, lightLevel, applyLight, weekday, isRestockDay, restockEpoch } from './env.js';
+import { DAY_LEN, DAY_SCALE, setDayScale, cycleLen, nightLen, cascade, isNight, isHostile, clockText, lightLevel, applyLight, isRestockDay, restockEpoch } from './env.js';
 import { clamp, lerp, angLerp } from './rng.js';
 import * as ach from './achievements.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -204,7 +204,8 @@ function showDayTitle() {
   const el = $('daytitle');
   el.innerHTML = '';
   const a = document.createElement('div'); a.className = 'dt-day'; a.textContent = `DAY ${clock.day}`;
-  const b = document.createElement('div'); b.className = 'dt-week'; b.textContent = weekday(clock.day);
+  // (the weekday isn't shown: only the public stores' Sunday reset follows the real week, in Sydney)
+  const b = document.createElement('div'); b.className = 'dt-week'; b.textContent = isRestockDay(clock.day) ? 'Restock day' : net.on && net.isPublic ? 'Public store · builds reset Sunday (Sydney time)' : '';
   el.append(a, b);
   el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
 }
@@ -412,7 +413,7 @@ function loadSolo() { try { const s = JSON.parse(localStorage.getItem('es-solo')
 function refreshContinue() {
   const sv = loadSolo(), b = $('b-continue');
   b.classList.toggle('hidden', !sv);
-  if (sv) b.textContent = `Continue Solo · Day ${sv.day} (${weekday(sv.day)})`;
+  if (sv) b.textContent = `Continue Solo · Day ${sv.day}`;
 }
 refreshContinue();
 setInterval(() => { if (mode === 'play' && !net.on && P.alive) saveSolo(); }, 20000);
@@ -815,7 +816,7 @@ const CHAT_TIPS = [
   'Crouch while sprinting to slide under a gap.',
   'Read the pillar screens to tell your friends where you are.',
   'Nights get a little longer every day.',
-  'Food comes back on Mondays and Fridays.',
+  'Food and first aid come back every second morning.',
   'A closed door stops the staff. They can\'t open it.',
   'Broken glass in the garden rooms will hurt you if you use it.',
   'Light strips that touch each other change colour together.',
@@ -1517,7 +1518,7 @@ function updateHud(dt) {
   updateMarks();
   const night = isNight(clock.t);
   $('clock').classList.toggle('night', isHostile(clock.t));
-  $('clock-day').textContent = `Day ${clock.day} · ${weekday(clock.day)}`;
+  $('clock-day').textContent = `Day ${clock.day}`;
   $('clock-time').textContent = clockText(clock.t, clock.day);
   const tm = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   $('clock-phase').textContent = night ? `Closed · opens in ${tm(cycleLen(clock.day) - clock.t)}` : `Open · closes in ${tm(DAY_LEN - clock.t)}`;

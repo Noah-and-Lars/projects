@@ -301,9 +301,9 @@ fs.mkdirSync(out, { recursive: true });
   console.log((climbSetup && aloneHp === 100 ? 'ok   ' : 'FAIL ') + `two crates high is out of reach (hp ${aloneHp})`);
   console.log((climbSetup && stepHp < 100 ? 'ok   ' : 'FAIL ') + `with a step beside it, the staff climb up (hp ${stepHp})`);
 
-  // Food restocks on Mondays and Fridays only.
-  const rs = await g(() => [1, 2, 4, 5, 7, 8, 12].map((d) => __game.restockEpoch(d)).join(','));
-  console.log((rs === '1,1,1,2,2,3,4' ? 'ok   ' : 'FAIL ') + 'restock days (' + rs + ')');
+  // Food restocks every 2 nights: the mornings of day 3, 5, 7...
+  const rs = await g(() => [1, 2, 3, 4, 5, 6, 7].map((d) => __game.restockEpoch(d)).join(','));
+  console.log((rs === '1,1,2,2,3,3,4' ? 'ok   ' : 'FAIL ') + 'restock every 2 nights (' + rs + ')');
 
   // Standing on a wardrobe keeps you out of reach.
   const perch = await g(() => {

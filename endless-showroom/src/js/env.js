@@ -1,10 +1,11 @@
 // Store hours and the week.
 //
 // A day is 6 minutes; the first night is 5 and every night after it runs 4
-// seconds longer than the one before, so an old store has long nights. Days
-// run Monday to Sunday; the food and first aid kits are restocked at the start
-// of every Monday and Friday. Everything here follows from the day number, so
-// every screen agrees without being told.
+// seconds longer than the one before, so an old store has long nights. The
+// food and first aid kits are restocked every 2 nights. Everything here
+// follows from the day number, so every screen agrees without being told.
+// (Days still have weekday names, for the music; the only thing that follows
+// the real week is a public store's Sunday reset, in Sydney time: net.js.)
 import * as THREE from 'three';
 import { uniforms } from './mats.js';
 
@@ -22,12 +23,11 @@ export const cycleLen = (day) => DAY_LEN + nightLen(day);
 export const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 export const weekday = (day) => WEEKDAYS[(day - 1) % 7];
 
-// How many restocks have happened by this day (one each Monday and Friday).
-export function restockEpoch(day) {
-  const w = Math.floor((day - 1) / 7), r = (day - 1) % 7;
-  return w * 2 + (r >= 4 ? 2 : 1);
-}
-export const isRestockDay = (day) => { const r = (day - 1) % 7; return r === 0 || r === 4; };
+// How many restocks have happened by this day: one every 2 nights (the
+// mornings of day 3, 5, 7...).
+export const RESTOCK_EVERY = 2;
+export function restockEpoch(day) { return Math.floor((Math.max(1, day) - 1) / RESTOCK_EVERY) + 1; }
+export const isRestockDay = (day) => day > 1 && (day - 1) % RESTOCK_EVERY === 0;
 
 export const isNight = (t) => t >= DAY_LEN;
 export const isHostile = (t) => isNight(t);
