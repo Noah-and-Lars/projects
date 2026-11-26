@@ -37,7 +37,7 @@ Script: `imgstats.py` (scratch, logic below). Images resized to 480×270. `L` = 
 | reference sunny (T1,T2,T4,T7) | 0.41 | 0.13 | 0.39 | 0.78 | 0.20 | 0.38 | 0.11 | 0.1 % | 0.4 % | +0.15 |
 | reference dusk/overcast (T9,T11,T12) | 0.39 | 0.09 | 0.35 | 0.71 | 0.22 | 0.22 | 0.08 | 2.2 % | 0 | +0.06 |
 | reference night (T8) | 0.24 | 0.07 | 0.23 | 0.46 | 0.13 | 0.32 | 0.16 | 0.3 % | 0 | −0.07 |
-| WS before, city, medium (21 views, 4 presets) | 0.34 | 0.12 | 0.35 | 0.61 | 0.17 | **0.21** | 0.09 | 6 % | 0 | **−0.03** |
+| WS before, city, medium (16 views, 4 presets) | 0.32 | 0.09 | 0.32 | 0.59 | 0.18 | 0.25 | 0.07 | **8 %** | 0 | **−0.04** |
 | WS before, day only | 0.42 | 0.14 | 0.41 | 0.71 | 0.20 | **0.16** | 0.12 | 0 | 0 | **−0.04** |
 | WS before, sunset only | 0.33 | 0.07 | 0.35 | 0.63 | 0.20 | 0.30 | **0.03** | 0 | 0 | −0.01 |
 | WS before, night street | **0.13** | 0.003 | 0.14 | 0.25 | 0.10 | 0.38 | 0.03 | **28 %** | 0 | −0.07 |
@@ -84,9 +84,34 @@ Colour of the darkest 10 % / brightest 5 % of pixels (sRGB 0–1):
    the sky dome's horizon glow.
 4. **Auto-exposure** (`post.ts`): eye adaptation with per-preset key / range; bit-identical when still.
 
-After the changes (WS city, medium, same views — numbers from `tests/e2e/refmatch.mjs` renders, see §5):
-see the "after" rows appended below once measured.
+5. **Screen-space sun shafts** (`post.ts` SHAFTS): radial blur of the 1/4-res bloom mask toward the sun's screen
+   position, faded as the sun leaves the view; strongest at sunset. Cheap enough for performance mode.
+6. **Smoke** (`fireFx.ts`, `fireModule.ts`): sun-lit with forward scattering (glows when backlit), shadowed by the
+   world via CPU rays (one per blast + 8 particles per frame round robin), sky fill from the hemisphere light; a third
+   of the blast smoke lingers 12–25 s, grows 3–5x and keeps rising (decaying buoyancy) into a column.
+7. **Smooth camera shake** (`renderer.ts`): sum of 11 / 17 / 23 Hz sines, amplitude ∝ shake^1.5, instead of
+   per-frame white noise.
+
+After the changes (same 16 city views, medium; `tests/e2e/refmatch.mjs`):
+
+| set | mean L | p5 | p50 | p95 | contrast | sat | shadow:lit | black | clipped | warm |
+|---|---|---|---|---|---|---|---|---|---|---|
+| reference T1–T13 mean | 0.36 | 0.11 | 0.32 | 0.71 | 0.20 | 0.32 | 0.12 | 0.9 % | 0.5 % | +0.09 |
+| WS after, all presets | 0.39 | 0.15 | 0.40 | 0.64 | 0.17 | 0.22 | 0.19 | 0 | 0.1 % | +0.04 |
+| WS after, day | 0.47 | 0.18 | 0.47 | 0.79 | 0.21 | 0.17 | 0.14 | 0 | 0.1 % | +0.06 |
+| WS after, sunset | 0.43 | 0.15 | 0.45 | 0.72 | 0.19 | 0.29 | 0.19 | 0 | 0.1 % | +0.16 |
+| WS after, night street | 0.21 | 0.05 | 0.23 | 0.30 | 0.09 | 0.32 | 0.32 | 0.2 % | 0.1 % | −0.07 |
+
+Night went from 28 % pure black pixels to 0.2 % and from mean 0.13 to 0.21 (reference night 0.24); sunset shadows
+from 3 % to 19 % of lit; every daytime preset is now warm. Remaining gaps (known): overall saturation 0.22 vs 0.32 —
+the city map is mostly grey concrete and asphalt, the reference's maps are full of foliage, painted wood and
+machinery (a content difference, not a grade one; pushing saturation further made brick neon orange); shadows are a
+little lighter than the reference's (0.19 vs 0.12) because eye adaptation lifts shaded streets; day highlights are
+neutral white rather than cream (day balance pushed warmer once more after this measurement).
 
 ## 5. Before / after renders
 
-`docs/look/ref-*.png` (our own renders only): same view before and after, per time of day, plus performance mode.
+`docs/look/ref-*.jpg` (our own renders only, before left / after right): `day-corner`, `sunset-sun`, `sunset-high`,
+`sunset-back`, `overcast-street`, `night-street`, `blast-1s` / `blast-4s` / `blast-11s` (explosion sequence),
+`perf-sunset-high`, `perf-day-corner` (performance mode). Reproduce: `node tests/e2e/refmatch.mjs <prefix> medium`
+(add `low day,sunset 1` for performance mode; `WS_DIST=<dir>` for another build).

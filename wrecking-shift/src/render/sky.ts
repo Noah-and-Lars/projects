@@ -51,9 +51,9 @@ export const SKY_PRESETS: Record<TimeOfDay, SkyPreset> = {
     zenith: [0.2, 0.36, 0.7], horizon: [0.66, 0.75, 0.86], glow: [1.0, 0.9, 0.7], disc: 40,
     cloudCover: 0.42, cloudColor: [1.0, 1.0, 1.0], stars: 0,
     fogNear: 50, fogFar: 420, exposure: 1.4, emissive: 2.5, lamp: 5, aoMin: 0.1, bloom: 0.35,
-    saturation: 1.2, balance: [1.1, 1.0, 0.84],
+    saturation: 1.2, balance: [1.12, 1.0, 0.82],
     inscatter: 0.35, fogDensity: 0.65, fogThin: 1.5,
-    adapt: [0.2, -0.5, 1.2], shafts: 0.35,
+    adapt: [0.2, -0.5, 0.8], shafts: 0.35,
   },
   sunset: {
     elevation: 16, sunColor: [1.0, 0.62, 0.32], sunIntensity: 4.4,
@@ -63,7 +63,7 @@ export const SKY_PRESETS: Record<TimeOfDay, SkyPreset> = {
     fogNear: 25, fogFar: 300, exposure: 1.4, emissive: 3.5, lamp: 9, aoMin: 0.12, bloom: 0.55,
     saturation: 1.15, balance: [1.1, 1.0, 0.84],
     inscatter: 0.9, fogDensity: 0.7, fogThin: 1.2,
-    adapt: [0.16, -0.5, 1.0], shafts: 0.8,
+    adapt: [0.16, -0.5, 0.8], shafts: 0.8,
   },
   overcast: {
     elevation: 55, sunColor: [0.95, 0.97, 1.0], sunIntensity: 0.7,
@@ -73,7 +73,7 @@ export const SKY_PRESETS: Record<TimeOfDay, SkyPreset> = {
     fogNear: 15, fogFar: 200, exposure: 1.35, emissive: 3, lamp: 7, aoMin: 0.08, bloom: 0.3,
     saturation: 1.1, balance: [1.06, 1.0, 0.92],
     inscatter: 0.1, fogDensity: 0.5, fogThin: 0.8,
-    adapt: [0.18, -0.5, 1.0], shafts: 0,
+    adapt: [0.18, -0.5, 0.7], shafts: 0,
   },
   night: {
     elevation: 38, sunColor: [0.55, 0.68, 1.0], sunIntensity: 0.5,

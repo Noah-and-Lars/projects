@@ -67,7 +67,7 @@ measured against reference screenshots (`docs/research/14-reference-match.md`): 
 (Settings, 70–120°), an exponential tone curve with warm per-time-of-day colour balance, atmospheric fog that glows
 toward a low sun, screen-space sun shafts, eye adaptation (interiors open up after a moment, bright sky dims a little),
 and blast smoke that is sun-lit, rises as a column and lingers. URL switches for comparison: `?tone=agx`,
-`?autoexp=0`. Before / after renders: `docs/look/ref-*.png`.
+`?autoexp=0`. Before / after renders: `docs/look/ref-*.jpg`.
 
 ## Mods
 123 original built-in mods (incl. two big composite maps) live in `mods/<category>/<id>.mod.ts` (props, tools, vehicles, maps, game modes, rule

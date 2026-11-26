@@ -102,7 +102,8 @@ export async function runLookTests(url, test) {
   await test('look: interiors are dark, a blast hole lets the sun in on the next frame', async () => {
     const { browser, page, errors } = await openGame(url, 'test=1&level=testyard');
     await look(page, 'medium', 'day');
-    // outside vs inside brightness
+    // outside vs inside brightness of the traced lighting itself (eye adaptation off; checked separately below)
+    await page.evaluate(() => { window.__game.game.renderer.post.autoExposure = false; });
     await setCam(page, 'street');
     await snap(page, 'look-medium-day-street');
     const outside = await meanLuma(page, 40, 240, 600, 350);
@@ -111,6 +112,15 @@ export async function runLookTests(url, test) {
     const inside = await meanLuma(page, 200, 250, 440, 350);
     console.log('     mean luma outside ground', outside.toFixed(1), 'inside floor', inside.toFixed(1));
     assert(inside < outside * 0.75, `interior darker than outside (${inside} vs ${outside})`);
+    // with eye adaptation the interior opens up, but stays darker than the sunny street (as in the reference)
+    await page.evaluate(() => { window.__game.game.renderer.post.autoExposure = true; });
+    await setCam(page, 'street'); await snap(page, 'look-medium-day-street-ae');
+    const outsideAE = await meanLuma(page, 40, 240, 600, 350);
+    await setCam(page, 'interior'); await snap(page, 'look-medium-day-interior-ae');
+    const insideAE = await meanLuma(page, 200, 250, 440, 350);
+    console.log('     with eye adaptation: outside', outsideAE.toFixed(1), 'inside', insideAE.toFixed(1));
+    assert(insideAE > inside * 1.15 && insideAE < outsideAE * 0.95, `adapted interior brighter than unadapted, still darker than outside (${inside} -> ${insideAE} vs ${outsideAE})`);
+    await page.evaluate(() => { window.__game.game.renderer.post.autoExposure = false; });
         // golden-hour sun is low: a hole in the sun-facing wall throws a long shaft across the room
     await look(page, 'medium', 'sunset');
     await setCam(page, 'interior');
@@ -125,7 +135,7 @@ export async function runLookTests(url, test) {
     after.forEach((v, i) => { gain = Math.max(gain, v - before[i]); });
     console.log('     largest luma gain of a floor/wall cell after the blast:', gain.toFixed(1));
     assert(gain > 10, `sunlight enters through the new hole (gain ${gain})`);
-    await page.evaluate(() => window.__game.step(90));
+    await page.evaluate(() => { window.__game.step(90); window.__game.game.renderer.post.autoExposure = true; });
     await look(page, 'medium', 'day');
     for (const v of ['blast', 'debris', 'interior']) { await setCam(page, v); await snap(page, 'look-medium-day-' + v + '-blast'); }
     assert(errors.length === 0, 'console errors: ' + errors.join('\n'));
