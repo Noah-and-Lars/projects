@@ -47,9 +47,11 @@ const TIERS: Record<Quality, Tier> = {
  * smaller area refreshed every second frame, two lamp lights, and a shorter draw distance (the far plane culls
  * chunk meshes behind the fog, which saves draw calls on the CPU too). See DECISIONS.md "Performance mode".
  */
-const LITE: Partial<Tier> = { shadowSize: 1024, shadowExtent: 22, bloom: false, msaa: 0, fxaa: true, taa: false, lamps: 2 };
+// v2 (user: 'performance mode should not look bad'): TAA at the reduced resolution (smooths the speckle / shimmer a low
+// resolution without anti-aliasing showed), small bloom, 1536 shadow map over +-30 m, longer draw distance
+const LITE: Partial<Tier> = { shadowSize: 1536, shadowExtent: 30, bloom: true, msaa: 0, fxaa: true, taa: true, lamps: 2 };
 /** far plane / fog limit in performance mode (m) */
-export const LITE_DRAW_DISTANCE = 170;
+export const LITE_DRAW_DISTANCE = 240;
 
 const _v = new THREE.Vector3(), _r = new THREE.Vector3(), _u = new THREE.Vector3();
 
@@ -161,9 +163,11 @@ export class Renderer {
     this.three.setPixelRatio(this.post.supported ? this.basePixelRatio : this.basePixelRatio * this.resScale);
     this.camera.far = on ? LITE_DRAW_DISTANCE : 600;
     this.camera.updateProjectionMatrix();
-    this.post.configure({ sharpen: on ? 0.6 : 0, lowRes: on });
+    this.post.configure({ sharpen: on ? 0.45 : 0, lowRes: on });
+    this.bodies.maxDynamicDist = on ? 90 : Infinity;
     this.resize();
     this.setQuality(this.requested);
+    this.applyTimeOfDay();
   }
 
   /** scene resolution relative to the canvas (0.5 .. 1); traced lighting cost is linear in pixels */
@@ -385,8 +389,8 @@ export class Renderer {
 
   private applyTimeOfDay(): void {
     const p = this.preset;
-    this.sun.color.setRGB(...p.sunColor); this.sun.intensity = p.sunIntensity;
-    this.hemi.color.setRGB(...p.skyLight); this.hemi.groundColor.setRGB(...p.groundLight); this.hemi.intensity = p.ambient;
+    this.sun.color.setRGB(...p.sunColor); this.sun.intensity = p.sunIntensity * (this.lite ? 1.1 : 1);
+    this.hemi.color.setRGB(...p.skyLight); this.hemi.groundColor.setRGB(...p.groundLight); this.hemi.intensity = p.ambient * (this.lite ? 0.78 : 1); // lite: no sky occlusion, so less flat fill light
     const fog = this.scene.fog as THREE.Fog;
     fog.color.setRGB(...p.horizon); fog.near = p.fogNear; fog.far = p.fogFar;
     this.scene.background = null;

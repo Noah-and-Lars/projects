@@ -498,3 +498,11 @@ Gaps 3 / 4 / 8 / Top-10 #5, #8, #9, #10 of `docs/research/10-gap-analysis.md`, b
   flicker; switching it off in Diagnostics fixed it for the user. Default is now off; stored diagnostics from
   before (version < 2) drop their saved crack-hiding value so existing players get the fix too. The switch
   remains in Esc → Settings → Diagnostics for anyone who sees thin cracks at terrace steps instead.
+- **Performance mode v2** (2026-11-26, user: "performance mode should not look bad while being more optimised").
+  Side-by-side screenshots showed three problems: washed-out fog (170 m draw distance), flat unshadowed buildings
+  beyond 22 m, and speckle / shimmer at the reduced resolution without anti-aliasing. Changes: TAA at the reduced
+  resolution (≈19 fetches per scene pixel, cheaper than rendering more pixels and it removes the shimmer), a small
+  bloom (5-level pyramid at half the reduced resolution), 1536 shadow map over ±30 m (still refreshed every second
+  frame), draw distance 240 m with the fog pushed back, starting resolution 80 % (adaptive 55–90 %), less ambient
+  fill + a little more sun and contrast (the low tier has no sky occlusion, so shaded sides looked as bright as lit
+  ones). Paid for on the CPU by not drawing dynamic bodies (props, debris, parked cars) farther than 90 m.

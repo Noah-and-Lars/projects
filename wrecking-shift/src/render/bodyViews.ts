@@ -27,6 +27,8 @@ export class BodyViews {
   private views = new Map<number, View>();
   /** remesh time budget per frame (ms) */
   budgetMs = 8;
+  /** dynamic bodies (props, debris, vehicles) farther than this from the camera are not drawn (performance mode) */
+  maxDynamicDist = Infinity;
   stats = { remeshed: 0, meshes: 0, quads: 0 };
   /** is this body lit from the occupancy volume? (set by the renderer; default: nothing is) */
   classify: (body: VoxelBody) => boolean = () => false;
@@ -156,7 +158,13 @@ export class BodyViews {
     order.length = 0;
     for (const body of sim.bodies.values()) {
       const v = this.ensure(body);
-      if (body.dynamic) this.place(v);
+      if (body.dynamic) {
+        this.place(v);
+        if (this.maxDynamicDist < Infinity && focus) {
+          const p = v.group.position;
+          v.group.visible = (p.x - focus.x) ** 2 + (p.z - focus.z) ** 2 < this.maxDynamicDist ** 2;
+        } else if (!v.group.visible) v.group.visible = true;
+      }
       if (body.allDirty) {
         body.allDirty = false;
         const [nx, ny, nz] = chunkDims(body.grid);

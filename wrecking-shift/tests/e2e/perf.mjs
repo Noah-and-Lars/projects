@@ -19,7 +19,7 @@ export async function runPerfTests(url, test) {
     assert(!s.perf && s.debris === 260 && s.sub === 3, 'off by default: ' + JSON.stringify(s));
     await page.click('#ws-perfMode');
     s = await stats(page);
-    assert(s.perf && s.setting && s.q === 'low' && s.pr === 1 && s.shadow === 1024 && s.scale <= 0.85 && s.debris === 110 && s.fires === 450 && s.sub === 2 && s.chips === 900 && s.budget === 4,
+    assert(s.perf && s.setting && s.q === 'low' && s.pr === 1 && s.shadow === 1536 && s.scale <= 0.9 && s.debris === 110 && s.fires === 450 && s.sub === 2 && s.chips === 900 && s.budget === 4,
       'applied live: ' + JSON.stringify(s));
     assert(/Performance mode is on/.test(await page.textContent('.ws-menu, #ui')), 'menu note updated');
     await shot(page, 'perf-01-settings-on');
@@ -40,7 +40,7 @@ export async function runPerfTests(url, test) {
     await shot(page, 'perf-02-yard-play');
     // the far plane follows the mode and the fog sits in front of it
     const f = await page.evaluate(() => { const G = window.__game; for (const m of G.game.modules) m.frameUpdate?.(G.game, 1 / 60); return { far: G.game.renderer.camera.far, fog: G.game.renderer.scene.fog.far }; });
-    assert(f.far === 170 && f.fog < f.far, 'draw distance + fog: ' + JSON.stringify(f));
+    assert(f.far === 240 && f.fog < f.far, 'draw distance + fog: ' + JSON.stringify(f));
     // the big harbour map in performance mode (water uses the simple shader)
     await page.evaluate(() => { window.__game.game.ext.mission.startSandbox('harbor'); window.__game.ui.closeMenus(); window.__game.step(5); });
     await page.evaluate(() => { const G = window.__game; for (const m of G.game.modules) m.frameUpdate?.(G.game, 1 / 60); G.step(2); });

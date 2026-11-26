@@ -219,7 +219,7 @@ export function createModsModule(): GameModule {
       // visual tweaks (the last enabled mod wins per field)
       const R = g.renderer;
       const v: Required<Pick<import('../mods/api').VisualDef, 'saturation' | 'contrast' | 'vignette'>> & { cssFilter: string; fov?: number; tod?: string; bloom?: number } =
-        { saturation: 1, contrast: 1.02, vignette: 0.28, cssFilter: '' };
+        { saturation: R.performanceMode ? 1.06 : 1, contrast: R.performanceMode ? 1.09 : 1.02, vignette: 0.28, cssFilter: '' };
       for (const m of state.enabled()) {
         const d = m.visual;
         if (!d) continue;

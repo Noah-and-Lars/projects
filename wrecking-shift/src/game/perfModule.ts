@@ -34,7 +34,7 @@ export const PERF_CAPS = {
   lite: { maxDebris: 110, maxFires: 450, chips: 900, budgetMs: 4, substeps: 2 },
 };
 /** adaptive resolution range and the frame-time band it aims for */
-export const LITE_SCALE = { start: 0.75, min: 0.5, max: 0.85, slowMs: 1000 / 28, fastMs: 1000 / 50 };
+export const LITE_SCALE = { start: 0.8, min: 0.55, max: 0.9, slowMs: 1000 / 28, fastMs: 1000 / 50 };
 /** suggest performance mode when the frame rate stays below this for SLOW_WINDOW seconds of play */
 const SLOW_FPS = 24, SLOW_WINDOW = 12;
 
