@@ -3,8 +3,9 @@
 // whistle (cooldown and energy), someone else's help whistle showing as a
 // marker at the edge of the screen, sitting on a chair and standing up, a TV
 // lighting the room, kicking a ball by walking into it (it rolls away and
-// stops), a noisy toy, jumping on a piece you're holding not lifting you, and
-// dropping your whole inventory.
+// stops), a noisy toy, jumping on a piece you're holding not lifting you,
+// dropping your whole inventory, a quick tap of F throwing, a fast ball not
+// passing through a crate, and a new store starting clean.
 const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch();
@@ -105,6 +106,32 @@ const { chromium } = require('playwright');
     return { inv: P.inv.filter(Boolean).length, down: [0, 1, 2].map((i) => !w.items.get('test:food' + i).g) };
   });
   ok(dropped.inv === 0 && dropped.down.every(Boolean), `drop all empties the inventory onto the floor (${JSON.stringify(dropped)})`);
+  // a tap of F so quick that no frame sees it held (a slow phone, a slow test
+  // browser) still throws what you're holding
+  const tapGot = await g(() => { const P = __game.P, w = __game.world; w.applyState('test:box', { t: 'box', k: 'f', v: 0, x: P.x + 1.2, y: 0, z: P.z, r: 0 }); P.pitch = 0.2; return __game.grabForTest('test:box'); });
+  await waitGame(0.3);
+  await g(() => { for (const type of ['keydown', 'keyup']) dispatchEvent(new KeyboardEvent(type, { code: 'KeyF', key: 'f' })); });
+  await waitGame(0.3);
+  const tapThrow = await g(() => ({ carrying: !!__game.P.carry, flying: __game.flying.length }));
+  ok(tapGot && !tapThrow.carrying, `a quick tap of F throws what you hold (${JSON.stringify(tapThrow)})`);
+  await page.waitForFunction(() => !__game.flying.length, null, { timeout: 400000, polling: 500 });
+
+  // a small ball sent very fast at a crate bounces off it, not through it
+  const wall = await g(() => {
+    const P = __game.P, w = __game.world;
+    w.applyState('test:crate', { t: 'crate', k: 'f', v: 0, x: P.x + 3, y: 0, z: P.z, r: 0, a: 1 });
+    w.applyState('test:bouncy', { t: 'bouncyBall', k: 'f', v: 0, x: P.x + 1.5, y: 0.2, z: P.z, r: 0 });
+    const b = w.itemBox(w.items.get('test:crate'));
+    return { ok: __game.launchForTest('test:bouncy', 40, 0, 0), x0: b.x0 };
+  });
+  await page.waitForFunction(() => !__game.flying.length, null, { timeout: 400000, polling: 500 });
+  const bx = await g(() => +__game.world.items.get('test:bouncy').x.toFixed(2));
+  ok(wall.ok && bx < wall.x0, `a fast bouncy ball doesn't pass through a crate (ball x ${bx}, crate starts at ${wall.x0.toFixed(2)})`);
+
+  // leaving and starting a new store: nothing from the last one carries over
+  await g(() => { const P = __game.P, w = __game.world; w.applyState('test:ball3', { t: 'playBall', k: 'f', v: 0, x: P.x + 1, y: 0, z: P.z, r: 0 }); __game.launchForTest('test:ball3', 0, 6, 0); P.life = { placed: 7, eaten: 3 }; });
+  const fresh = await g(() => { const had = __game.flying.length; __game.leaveForTest(); __game.startSolo(); return { had, flying: __game.flying.length, life: JSON.stringify(__game.P.life || {}) }; });
+  ok(fresh.had > 0 && fresh.flying === 0 && fresh.life === '{}', `a new store starts with nothing in the air and a fresh life (${JSON.stringify(fresh)})`);
   console.log(errors.length ? 'ERRORS ' + errors.join(' | ') : 'no console errors');
   console.log(`${passed} items ok`);
   await browser.close();

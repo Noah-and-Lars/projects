@@ -1253,6 +1253,22 @@ export class World {
     return it;
   }
 
+  // What the store itself put at an id (its kind and type, from the seed), or
+  // null for an id it didn't generate. cache: chunk key -> items, for many lookups.
+  genSpec(id, cache) {
+    const m = /^(-?\d+),(-?\d+):(\d+)$/.exec(String(id));
+    if (!m) return null;
+    const key = m[1] + ',' + m[2];
+    let items = cache && cache.get(key);
+    if (!items) {
+      const ch = this.chunks.get(key);
+      items = ch ? ch.gen.items : new ChunkGen(this, +m[1], +m[2]).run().moreFood().items;
+      if (cache) cache.set(key, items);
+    }
+    const sp = items[+m[3]];
+    return sp ? { t: sp.t, k: sp.k === 'i' ? 'i' : 'f' } : null;
+  }
+
   // Everything modded, for a newcomer.
   allMods() { const out = []; for (const [id, s] of this.mods) { const tm = this.modTime.get(id); out.push([id, tm ? Object.assign({ tm }, s) : s]); } return out; }
 

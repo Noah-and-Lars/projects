@@ -129,7 +129,7 @@ turn that off).
 | Badly hurt | At 10 health or less you hear your heartbeat, your vision clouds over and the music goes quiet. |
 | Inventory | 16 slots (G). Slots 1 to 8 are the hotbar. Click to use, and right-click (or Q) to put an item down, to stock your base. **Drop all** (the button in the inventory, or Shift+Q) puts everything down in a little pile at your feet. |
 | First aid | +30 health, takes 2.5 seconds to use. |
-| Sitting | Press **F** on a chair, stool, bench, sofa, armchair, ottoman, beanbag, bed or mattress to sit on it, where you aim along it. You get your breath back half again as fast sitting (3 energy a second). Move, jump or crouch to stand up; you step off the front, or wherever there's room. You can't sit on something lying on its side or with something just above the seat. |
+| Sitting | Press **F** on a chair, stool, bench, sofa, armchair, ottoman, beanbag, bed or mattress to sit on it, where you aim along it. You get your breath back half again as fast sitting (3 energy a second). Move, jump or crouch (C or Ctrl) to stand up; you step off the front, or wherever there's room. You can't sit on something lying on its side or with something just above the seat. |
 | Falling | Landing faster than 13 m/s (about a 4 m drop) hurts. Landing **on top of** a bed, sofa, armchair, ottoman or mattress softens it a lot; a **beanbag** or an **exercise ball** softens it from any side, even more, and a **giant plush bear** takes the whole fall. A long drop onto a bed bounces you. |
 | Death | You lose your inventory and what you carry. The screen shows what you did that life (furniture placed, staff shoved, things eaten, your favourite food, distance walked, your highest point); press **Wake up** (or Space) to wake 40 to 100 m away. A red marker shows where you were caught. |
 
@@ -191,8 +191,10 @@ turn that off).
   it there.
 - The **mouse wheel** moves it closer or farther (1.5 to 4.5 m from you). **Hold F** to wind up a
   throw and let go of F to throw it: the longer you hold, the further it
-  goes. It leaves your hands turning end over end and lands, bounces and
-  tumbles by the same physics. Settings can snap held pieces to a 25 cm, 50 cm or 1 m grid.
+  goes (a quick tap is a short throw). It leaves your hands turning end over
+  end and lands, bounces and tumbles by the same physics. However fast you
+  swing a piece about, it never leaves your hands faster than a hard throw
+  (16 m/s). Settings can snap held pieces to a 25 cm, 50 cm or 1 m grid.
 - **Get lifted**: a friend can put a piece they're holding under your feet
   and raise it, and you go up with it. You can't ride a piece you're holding
   yourself (you walk through it), and while you're carrying something, other
@@ -412,6 +414,16 @@ the staff.
   only has an older version of from a saved copy. A change made live while
   the host has been there is never overridden by an offered copy. So builds
   come back as long as anyone who saw them comes back during the week.
+- An offered copy is checked: it can move things and mark them taken, but
+  every piece must be the kind the store itself put there (the host
+  regenerates the chunk from the seed to check), anything new must have come
+  out of a gift box, and the day it brings can't be further on than real time
+  this week allows.
+- Each player's presence carries the week of the store they're in. Someone
+  whose clock has already reached Sunday, joining a host that hasn't opened
+  the new store yet, takes on the host's store *and week*, so they still move
+  with everyone when the host opens it. A guest also moves when it sees the
+  host's presence switch to a newer week, in case the `rs` message is lost.
 - At the start of Sunday the host sends everyone the new week's seed (`rs`),
   and everyone moves into the fresh store and throws away last week's copy.
 
@@ -476,8 +488,8 @@ cd tools && npm install && npm run build
 | `achievements.js` | The achievements, their counters, and saving them |
 | `tools/build.mjs` | Builds the single-file `index.html` |
 | `tools/test.cjs` | Solo smoke test (see below) |
-| `tools/test-items.cjs` | Whistling, sitting, TV light, kicking a ball, noisy toys, no flying on a held piece, drop all |
-| `tools/test-pub.cjs` | Public stores: this week's seed, builds surviving an empty store and merging back, the Sunday reset |
+| `tools/test-items.cjs` | Whistling, sitting, TV light, kicking a ball, noisy toys, no flying on a held piece, drop all, a tapped throw, a fast ball against a crate, a new store starting clean |
+| `tools/test-pub.cjs` | Public stores: this week's seed, builds surviving an empty store and merging back, the Sunday reset, forged copies rejected, a newcomer whose clock is a week ahead |
 | `tools/test-mp.cjs`, `tools/mock-rt.js` | Two-player test with a stand-in realtime server |
 | `tools/shots.cjs` | Screenshots of the look: day, close-up, night, lamps, staff, third person, a grid pillar, a cafeteria hall, a warehouse street |
 | `tools/soak.cjs` | Runs through every day and night transition, including an old store's long nights, checking for errors |
@@ -533,10 +545,9 @@ place of the realtime server). It checks:
 ## Not done yet
 
 - Not on the arcade site yet. It isn't linked from the site's game list.
-- No persistent bases between sessions: a room's store lasts as long as
-  someone is in it.
+- Private rooms don't keep their builds: a private room's store lasts as long
+  as someone is in it (public stores keep theirs for the week).
 - Staff don't pile on top of each other, and there are no special staff.
-- Dropped furniture falls straight down; nothing topples, slides or rolls.
 - Lit screens glow, but lamps don't cast shadows.
 - Touch controls have only been checked in an emulated iPhone.
 - If frames run slow for a few seconds, the game draws at a lower resolution

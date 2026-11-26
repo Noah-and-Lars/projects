@@ -23,6 +23,8 @@ fs.mkdirSync(out, { recursive: true });
   await page.waitForTimeout(2500);
   await page.screenshot({ path: path.join(out, '02-start.png') });
   const g = (fn, a) => page.evaluate(fn, a);
+  // wait for game time to pass (frames come slowly on the test machine; a wait in wall-clock time may see none)
+  const waitGame = (secs) => g(() => __game.clock.t).then((t0) => page.waitForFunction((t) => __game.clock.t > t, t0 + secs, { timeout: 200000, polling: 100 }));
 
   await page.keyboard.down('KeyW'); await page.waitForTimeout(1200); await page.keyboard.up('KeyW');
   console.log('after walk', await g(() => ({ x: __game.P.x, z: __game.P.z, items: __game.world.items.size, chunks: __game.world.chunks.size })));
@@ -89,7 +91,7 @@ fs.mkdirSync(out, { recursive: true });
   await g((id) => __game.grabForTest(id), air); // in case the aim missed
   const carried = await g(() => !!__game.P.carry);
   // turn it 45° on the upright axis, then on the side axis
-  await page.keyboard.press('KeyR'); await page.keyboard.press('Digit1'); await page.keyboard.press('KeyR'); await page.waitForTimeout(400);
+  await page.keyboard.press('KeyR'); await page.keyboard.press('Digit1'); await page.keyboard.press('KeyR'); await waitGame(0.2);
   const turned = await g(() => __game.P.carry && __game.P.carry.o);
   console.log((turned && Math.abs(turned[3]) < 0.99 ? 'ok   ' : 'FAIL ') + 'R turns a held piece on the chosen axis (' + JSON.stringify(turned) + ')');
   // aim into open air (nothing touching it), let go: it drops and isn't fixed
@@ -123,9 +125,9 @@ fs.mkdirSync(out, { recursive: true });
     s.x = P.x - Math.sin(P.yaw) * 1.8; s.z = P.z - Math.cos(P.yaw) * 1.8; s.y = P.y; s.mode = 'wander'; s.target = null; s.senseT = 5;
     return s.id;
   });
-  await page.waitForTimeout(600);
+  await waitGame(0.1); // the staff's drawn position catches up
   await g(() => __game.shoveForTest());
-  await page.waitForTimeout(300);
+  await waitGame(0.05);
   const stun = await g((id) => { const s = __game.staff.staff.get(id); return s ? +s.stunT.toFixed(2) : -1; }, shoved);
   console.log((stun > 0 ? 'ok   ' : 'FAIL ') + 'a shove knocks staff down (stun ' + stun + ' s)');
 
@@ -169,15 +171,15 @@ fs.mkdirSync(out, { recursive: true });
     P.inv[0] = it.t; P.invId[0] = it.id; P.sel = 0;
     return it.id;
   });
-  await page.keyboard.press('KeyQ'); await page.waitForTimeout(500);
+  await page.keyboard.press('KeyQ'); await waitGame(0.2);
   const back = await g((id) => { const it = __game.world.items.get(id); return it ? { active: __game.world.active(it), d: +Math.hypot(it.x - __game.P.x, it.z - __game.P.z).toFixed(2), slot: __game.P.inv[0] } : null; }, dropped);
   console.log((back && back.active && back.d < 1.5 && !back.slot ? 'ok   ' : 'FAIL ') + 'dropped food lands at your feet (' + JSON.stringify(back) + ')');
 
   // Crouching makes you short enough for low gaps (on open floor, so there's room to stand again).
   await g(() => { const P = __game.P; __game.spawnAt(P.x, P.z, 8); });
-  await page.keyboard.down('KeyC'); await page.waitForTimeout(600);
+  await page.keyboard.down('KeyC'); await waitGame(0.2);
   const crouchH = await g(() => __game.P.height);
-  await page.keyboard.up('KeyC'); await page.waitForTimeout(600);
+  await page.keyboard.up('KeyC'); await waitGame(0.2);
   const standH = await g(() => __game.P.height);
   console.log((crouchH < 1.2 && standH > 1.7 ? 'ok   ' : 'FAIL ') + `crouching lowers you (${crouchH} then ${standH})`);
 
@@ -189,7 +191,7 @@ fs.mkdirSync(out, { recursive: true });
     return out;
   });
   const dropFrom = async (x, z, y) => { await g(([x, z, y]) => { const P = __game.P; P.x = x; P.z = z; P.y = y; P.vy = 0; P.hp = 100; P.onGround = false; }, [x, z, y]); await page.waitForFunction(() => __game.P.onGround, null, { timeout: 60000 }); await page.waitForTimeout(300); return g(() => __game.P.hp); };
-  const spot = await g(() => { const P = __game.P, w = __game.world; for (let i = 0; i < 60; i++) { const x = P.x + (Math.random() - 0.5) * 30, z = P.z + (Math.random() - 0.5) * 30; if (w.fits({ x0: x - 0.6, x1: x + 0.6, z0: z - 0.6, z1: z + 0.6, y0: 0, y1: 6.4 })) return [x, z]; } return null; });
+  const spot = await g(() => { const P = __game.P, w = __game.world; for (let i = 0; i < 300; i++) { const x = P.x + (Math.random() - 0.5) * (30 + i / 5), z = P.z + (Math.random() - 0.5) * (30 + i / 5); if (w.fits({ x0: x - 0.6, x1: x + 2.3, z0: z - 0.6, z1: z + 0.6, y0: 0, y1: 6.4 })) return [x, z]; } return null; }); // room for the bare floor and the beanbag beside it
   const floorHp = spot ? await dropFrom(spot[0], spot[1], 6.3) : null;
   let bagHp = null;
   if (spot) { // a beanbag of our own on the same open floor

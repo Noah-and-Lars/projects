@@ -101,12 +101,13 @@ export function createNet(h) {
   }
 
   // Join a room. Resolves 'ok' (with api.seed set to the room's store) or 'full'.
-  function enter(name, fixedSeed) {
+  function enter(name, fixedSeed, week = 0) {
     return new Promise((res, rej) => {
       drop();
       const joinedAt = Date.now();
       api.seed = fixedSeed != null ? fixedSeed >>> 0 : (Math.random() * 4294967296) >>> 0;
       me = { id: myId, n: myName(), t: joinedAt, sd: api.seed, lk: myShirt() };
+      if (week) me.wk = week;
       ch = client.channel(BASE + '-' + name, { config: { broadcast: { self: false, ack: false }, presence: { key: myId } } });
       const c = ch;
       let done = false;
@@ -132,7 +133,9 @@ export function createNet(h) {
               me.t = Math.max(...others.map((m) => +m.t || 0)) + 1;
               members = listMembers().map((m) => (m.id === myId ? Object.assign({}, m, { t: me.t }) : m)).sort((a, b) => (a.t - b.t) || (a.id < b.id ? -1 : 1));
             }
-            if (members[0] && members[0].id !== myId && members[0].sd) { api.seed = members[0].sd >>> 0; me.sd = api.seed; }
+            // a public store's host may still be on an earlier week's store (it
+            // opens the new one at its next check): take on its week with its seed
+            if (members[0] && members[0].id !== myId && members[0].sd) { api.seed = members[0].sd >>> 0; me.sd = api.seed; if (me.wk && (members[0].wk | 0) > 0) me.wk = members[0].wk | 0; }
             track();
             hostId = members[0].id;
             res('ok');
@@ -174,7 +177,7 @@ export function createNet(h) {
     await getClient();
     for (let n = 1; n <= 20; n++) {
       const week = storeWeek();
-      if (await enter('pub' + n, publicSeed('pub' + n, week)) === 'ok') { api.on = true; api.room = 'pub' + n; api.isPublic = true; api.week = week; return 'ok'; }
+      if (await enter('pub' + n, publicSeed('pub' + n, week), week) === 'ok') { api.on = true; api.room = 'pub' + n; api.isPublic = true; api.week = me.wk !== week || api.seed === publicSeed('pub' + n, week) ? me.wk : week - 1; return 'ok'; }
     }
     return 'full';
   };

@@ -171,7 +171,8 @@ export function makeBall(r, bounce, c, vel) {
 }
 export function stepBall(b, dt, boxes, ceil) {
   let impact = 0;
-  const n = Math.min(12, Math.max(1, Math.ceil(b.v.length() * dt / (b.r * 0.5))));
+  // at most half the radius a step, or a small fast ball goes through walls
+  const n = Math.min(64, Math.max(1, Math.ceil(b.v.length() * dt / (b.r * 0.5))));
   const h = dt / n;
   // slower than a step's worth of gravity, a contact doesn't bounce (or a ball
   // lying on the floor would hop on its own when the frame rate is low)

@@ -4,7 +4,9 @@
 // the store is this week's store (the same seed for everyone); something built
 // is still there after everyone leaves and someone comes back; a change only
 // one player has a copy of comes back when they join, merged into the host's
-// store; and the Sunday reset gives everyone a fresh store.
+// store; the Sunday reset gives everyone a fresh store; an offered copy can't
+// change what things are; and someone whose clock is a week ahead follows the
+// host's store and week.
 const { chromium } = require('playwright');
 const path = require('path');
 const url = `http://localhost:8790/${process.argv.includes('--src') ? 'src/' : ''}index.html`;
@@ -89,6 +91,39 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   check(gone.every((g) => g.every((v) => !v)), `the Sunday reset clears the builds on both screens (${JSON.stringify(gone)})`);
   check(await B.evaluate(() => !localStorage.getItem('es-pub-pub1')), "the guest's saved copy of last week's store is thrown away");
   check(await A.evaluate(() => !!localStorage.getItem('es-name')) && !(await A.evaluate(() => localStorage.getItem('es-name'))).includes('Bravo'), 'each player keeps their own storage');
+
+  // A copy offered to the host can move things, but not turn one thing into
+  // another, add things the store never had, or push the day far ahead.
+  const forged = await A.evaluate(() => {
+    const w = __game.world, P = __game.P, now = Date.now();
+    const real = [...w.items.values()].filter((i) => i.k === 'f' && w.active(i) && !i.c && !w.mods.has(i.id) && /^-?\d+,-?\d+:\d+$/.test(i.id) && __game.TYPES[i.t] && i.t !== 'safe').sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z));
+    const [mv, swap] = real;
+    const st = (it, patch) => Object.assign(w.stateOf(it), { tm: now - 1000 }, patch);
+    const day0 = __game.clock.day, x0 = mv.x;
+    __game.offerForTest('someone', { i: 0, n: 1, d: 9999, t: 10, m: [
+      [mv.id, st(mv, { x: mv.x + 0.7 })],
+      [swap.id, st(swap, { t: 'safe' })],
+      ['made:up', { t: 'medkit', k: 'i', v: 0, x: P.x, y: 0, z: P.z, r: 0, tm: now - 1000 }],
+      ['gift:' + mv.id + ':1', { t: 'medkit', k: 'i', v: 0, x: P.x, y: 0, z: P.z, r: 0, tm: now - 1000 }],
+    ] });
+    return { moved: Math.abs(w.items.get(mv.id).x - (x0 + 0.7)) < 0.01 && w.mods.has(mv.id), swapT: w.items.get(swap.id).t, madeUp: w.items.has('made:up'), gift: w.items.has('gift:' + mv.id + ':1'), day0, day: __game.clock.day };
+  });
+  check(forged.moved && forged.swapT !== 'safe' && !forged.madeUp && !forged.gift && forged.day < 9999, `an offered copy can't change what things are, add things or jump the day (${JSON.stringify(forged)})`);
+
+  // Someone whose clock is already in next week joins while the host is still
+  // in this week's store: they take on the host's store and week, and move
+  // with everyone when the host opens the new week.
+  await leave(B);
+  const ahead = () => { const real = Date.now; Date.now = () => real() + 7 * 864e5; };
+  await B.evaluate(ahead);
+  await join(B);
+  const bw = await Promise.all([A, B].map((p) => p.evaluate(() => ({ seed: __game.world.seed, week: __game.net.week }))));
+  check(bw[0].seed === bw[1].seed && bw[0].week === bw[1].week, `a newcomer whose clock is a week ahead takes on the host's store and week (${JSON.stringify(bw)})`);
+  await A.evaluate(ahead);
+  await A.evaluate(() => __game.weekCheckForTest());
+  await B.waitForFunction((s) => __game.world.seed !== s, bw[1].seed, { timeout: 30000 }).catch(() => {});
+  const nw = await Promise.all([A, B].map((p) => p.evaluate(() => ({ seed: __game.world.seed, week: __game.net.week, want: __game.publicSeed(__game.net.room, __game.storeWeek()) }))));
+  check(nw[0].seed === nw[0].want && nw[1].seed === nw[0].seed && nw[1].week === nw[0].week, `...and moves into the new week's store with the host (${JSON.stringify(nw)})`);
 
   check(!errors.length, errors.length ? 'console errors: ' + errors.slice(0, 5).join(' | ') : 'no console errors');
   console.log(failed ? `${failed} failed` : 'public store ok');

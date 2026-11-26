@@ -307,14 +307,15 @@ function pubLoad() {
 function pubSave() {
   if (!net.on || !net.isPublic || mode !== 'play' || storeWeek() !== net.week) return;
   try {
-    localStorage.setItem(PUB_KEY + net.room, JSON.stringify({ v: 1, week: net.week, seed: world.seed >>> 0, day: clock.day, t: +clock.t.toFixed(1), at: Date.now(), mods: world.allMods().map(([id, st]) => [id, st.c ? Object.assign({}, st, { c: 0 }) : st]) }));
-    // copies of other weeks are no use any more
+    // copies of other weeks are no use any more (cleared first, so a full
+    // storage they fill up doesn't stop this week's copy being saved)
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const k = localStorage.key(i);
       if (!k || !k.startsWith(PUB_KEY) || k === PUB_KEY + net.room) continue;
       let c = null; try { c = JSON.parse(localStorage.getItem(k)); } catch (_) {}
       if (!c || c.week !== net.week) localStorage.removeItem(k);
     }
+    localStorage.setItem(PUB_KEY + net.room, JSON.stringify({ v: 1, week: net.week, seed: world.seed >>> 0, day: clock.day, t: +clock.t.toFixed(1), at: Date.now(), mods: world.allMods().map(([id, st]) => [id, st.c ? Object.assign({}, st, { c: 0 }) : st]) }));
   } catch (_) {}
 }
 // First into an empty public store: bring back our copy of it. Returns how many changes.
@@ -336,11 +337,22 @@ function pubOffer() {
 // an older version of from a saved copy. Changes made live win.
 function onOffer(from, p) {
   if (!net.isPublic || mode !== 'play' || !Array.isArray(p.m)) return;
-  const now = Date.now(), weekStart = (net.week * 864e5) - 14 * 3600e3, u = [];
+  const now = Date.now(), weekStart = (net.week * 864e5) - 14 * 3600e3, u = [], gen = new Map();
+  // A copy can move things and mark them taken, but it can't change what
+  // anything is or add things the store never had: the kind and type must be
+  // the store's own (or, for what came out of a gift box, food from a gift box).
+  const kindOf = (id) => world.mods.get(id) || world.items.get(id) || world.genSpec(id, gen);
+  const genuine = (id, s) => {
+    const k = s.k === 'i' ? 'i' : 'f';
+    if (id.startsWith('gift:')) { const box = kindOf(id.slice(5, id.lastIndexOf(':'))); return k === 'i' && !!box && box.t === 'giftBox'; }
+    const own = kindOf(id);
+    return !!own && own.t === s.t && (own.k === 'i' ? 'i' : 'f') === k;
+  };
   for (const e of p.m.slice(0, 80)) {
     if (!Array.isArray(e) || typeof e[0] !== 'string' || !e[1] || typeof e[1] !== 'object') continue;
     const id = e[0], tm = +e[1].tm;
     if (!(tm > weekStart && tm < now + 60000) || liveIds.has(id) || tm <= (world.modTime.get(id) || 0)) continue;
+    if (!genuine(id, e[1])) continue;
     const cur = world.items.get(id);
     if (cur && cur.c) continue; // someone's holding it right now
     if (!world.applyState(id, Object.assign({}, e[1], { c: 0, tm }))) continue;
@@ -348,7 +360,10 @@ function onOffer(from, p) {
   }
   for (let i = 0; i < u.length; i += 80) net.send('w', { u: u.slice(i, i + 80) });
   // a store that started again from day 1 takes the day the copy had got to
-  if ((p.i | 0) === 0 && (p.d | 0) > clock.day) { clock.day = Math.min(9999, p.d | 0); clock.t = clamp(num(p.t), 0, cycleLen(clock.day) - 1); world.setDay(clock.day); }
+  // (no further on than this week's real time allows, at the shortest day and night)
+  const maxDay = 1 + Math.ceil((now - weekStart) / (cycleLen(1) * 1000));
+  const day = Math.min(maxDay, p.d | 0);
+  if ((p.i | 0) === 0 && day > clock.day) { clock.day = day; clock.t = clamp(num(p.t), 0, cycleLen(clock.day) - 1); world.setDay(clock.day); }
   if (u.length) toast(`Someone brought back ${u.length} change${u.length === 1 ? '' : 's'} to this week's store.`);
 }
 // Sunday: the host opens this week's fresh store, and everyone moves into it.
@@ -369,7 +384,7 @@ function onWeekReset(p) {
 }
 function newWeek(sd, wk) {
   try { localStorage.removeItem(PUB_KEY + net.room); } catch (_) {}
-  net.week = wk; net.seed = sd; net.set({ sd });
+  net.week = wk; net.seed = sd; net.set({ sd, wk });
   startGame(sd, false);
   announce('A new week', "The store has been reset for the week. Everything built last week is gone.", 7);
 }
@@ -452,7 +467,12 @@ function startGame(seed, waitForState, save) {
   remotes.forEach((r) => { scene.remove(r.model.root); if (r.heldMesh) scene.remove(r.heldMesh); }); remotes.clear();
   staffViews.forEach((s) => scene.remove(s.model.root)); staffViews.clear();
   staffSim = net.isHost() ? new StaffSim(world) : null;
-  Object.assign(P, { hp: 100, food: 100, en: 100, alive: true, carry: null, inv: new Array(INV).fill(null), invId: new Array(INV).fill(null), sel: 0, nights: 0, vy: 0, hurtT: 99, using: null, whistleT: 0, whistleHold: null, sit: null });
+  Object.assign(P, { hp: 100, food: 100, en: 100, alive: true, carry: null, inv: new Array(INV).fill(null), invId: new Array(INV).fill(null), sel: 0, nights: 0, vy: 0, hurtT: 99, using: null, whistleT: 0, whistleHold: null, sit: null,
+    life: {}, torchOn: false, crouch: false, height: 1.75, slideT: 0, pickId: null, eatCd: 0 });
+  // nothing from the last store carries over: pieces still in the air (they'd
+  // land in this store as whatever has the same id here), markers, requests
+  for (const f of flying) scene.remove(f.mesh);
+  flying.length = 0; beacons.length = 0; pending.clear(); kickedAt.clear();
   waypoints.length = 0;
   if (save && save.P) {
     const sp = save.P;
@@ -527,6 +547,9 @@ function onMembers(list) {
   }
   updateRoster();
   $('room-tag').textContent = `${roomText()} · ${list.length} player${list.length === 1 ? '' : 's'}`;
+  // the host has opened a newer week's public store (in case its 'rs' never reached us)
+  const h = list[0];
+  if (h && h.id !== net.id && net.isPublic && mode === 'play' && (h.wk | 0) > net.week && h.sd && (h.sd >>> 0) !== (world.seed >>> 0)) onWeekReset({ sd: h.sd, wk: h.wk });
 }
 // The host lets go of anything held by someone who has left: it drops where
 // it was picked up from.
@@ -836,7 +859,7 @@ function updatePlayer(dt) {
   if (P.sit) {
     const it = world.items.get(P.sit.id);
     const gone = !P.alive || !it || !world.active(it) || it.c || Math.abs(it.x - P.sit.ix) > 0.01 || Math.abs(it.y - P.sit.iy) > 0.01 || Math.abs(it.z - P.sit.iz) > 0.01;
-    if (gone || (!busy && (moving || k.has('Space') || k.has('KeyC')))) standUp(gone ? null : it);
+    if (gone || (!busy && (moving || k.has('Space') || k.has('KeyC') || (!P.carry && (k.has('ControlLeft') || k.has('ControlRight')))))) standUp(gone ? null : it);
     else { P.x = P.sit.x; P.y = P.sit.y; P.z = P.sit.z; P.vy = 0; P.onGround = true; }
   }
   // Crouch (C or Ctrl): low enough to get through gaps the staff can't.
@@ -1027,8 +1050,9 @@ function updateInteraction(dt) {
     }
     if (input.wheel) P.carryDist = clamp(P.carryDist - input.wheel * 0.4, 1.5, 4.5);
     // hold F to wind up a throw, let go to throw it
+    // (a tap so quick that no frame saw it held, as on a slow phone, is a short throw)
     if (input.keys.has('KeyF')) c.charge = Math.min(1, (c.charge || 0) + dt / 1.1);
-    else if (c.charge > 0) { const k = c.charge; c.charge = 0; throwCarry(k); return; }
+    else if (c.charge > 0 || input.pressed.has('KeyF')) { const k = c.charge || 0; c.charge = 0; throwCarry(k); return; }
     const [w, h, d] = itemDims(c.t, 0, 0, c.o);
     const hit = raycast(ex, ey, ez, dx, dy, dz, P.carryDist, false);
     const hp = [ex + dx * hit.t, ey + dy * hit.t, ez + dz * hit.t];
@@ -1317,7 +1341,7 @@ function dropSelected(slot = P.sel, k = 0) {
 }
 // Throw what you're carrying: it flies in an arc and lands where it lands.
 // Without energy you can't throw far.
-const flying = [];
+const flying = [], MAX_LAUNCH = 16;
 function throwCarry(charge = 1) {
   const c = P.carry; if (!c) return;
   const [dx, dy, dz] = lookDir(), power = (P.en > 5 ? 3 + 8 * charge : 3.5);
@@ -1334,6 +1358,9 @@ function throwCarry(charge = 1) {
 // mid-air; everyone else sees it fall as our "held" piece.
 function launchBody(c, vel, spin) {
   const t = TYPES[c.t];
+  // a quick swing of the view can whip a held piece along much faster than any
+  // throw: keep it to a throw's speed (fast pieces could otherwise pass through things)
+  if (vel.length() > MAX_LAUNCH) vel.setLength(MAX_LAUNCH);
   const mesh = new THREE.Mesh(furnitureGeometry(c.t, c.v), furnitureMaterialRef);
   mesh.matrixAutoUpdate = false; scene.add(mesh);
   if (t.ball) { // a ball: a bouncing, rolling sphere
@@ -2084,6 +2111,7 @@ requestAnimationFrame(frame);
 
 // Test hook for tools/test.cjs.
 window.__game = { P, clock, world, net, renderer, TYPES, ITEMS, get music() { return musicState(); }, get notes() { return audioMod.noteCount; }, get mode() { return mode; }, staffViews, remotes, startSolo: () => $('b-solo').click(),
-  placeForTest: (x, y, z) => { if (!P.carry) return false; placeCarry({ x, y, z, o: P.carry.o, a: 1 }); return true; },   pubSaveForTest: () => pubSave(), leaveForTest: () => leaveGame(), weekForTest: () => { net.week -= 1; weekCheckT = 0; checkWeek(0); return net.week; }, storeWeek, publicSeed,
+  placeForTest: (x, y, z) => { if (!P.carry) return false; placeCarry({ x, y, z, o: P.carry.o, a: 1 }); return true; },   pubSaveForTest: () => pubSave(), leaveForTest: () => leaveGame(), weekForTest: () => { net.week -= 1; weekCheckT = 0; checkWeek(0); return net.week; }, weekCheckForTest: () => { weekCheckT = 0; checkWeek(0); return net.week; }, offerForTest: (from, p) => onOffer(from, p), storeWeek, publicSeed,
+  launchForTest: (id, vx, vy, vz) => { const it = world.items.get(id); if (!it || !world.active(it)) return false; if (!net.isHost()) world.edit(it, { c: net.id }); request({ a: 'take', id }); launchBody({ id, t: it.t, v: it.v, x: it.x, y: it.y, z: it.z, o: [0, 0, 0, 1] }, new THREE.Vector3(vx, vy, vz), new THREE.Vector3()); return true; },
   sitForTest: (id) => { const it = world.items.get(id); if (it) sitDown(it, it.x, it.z); return !!P.sit; }, get beacons() { return beacons; }, whistleForTest: (from, p) => onWhistle(from, p), dropAllForTest: () => dropAll(),
   useItemForTest: (id) => { const it = world.items.get(id); if (it) useItem(it); }, nightLen, roomNames: () => ROOMS.map((r) => [r.name, 'showroom']).concat(GARDEN_ROOMS.map((r) => [r.name, 'garden'])), useForTest: () => useSelected(), shoveForTest: () => { const id = staffInReach(); if (id != null) shove(id); return id; }, restockEpoch, spawnAt, get placement() { return placement; }, grabForTest: (id) => { const it = world.items.get(id); if (it && world.active(it) && !P.carry) pickUp(it); return !!P.carry; }, setClock: (t, d) => { clock.t = t; if (d) { clock.day = d; world.setDay(d); } }, get staff() { return staffSim; }, get flying() { return flying.map((f) => ({ t: f.carry.t, age: +f.body.age.toFixed(2), v: +f.body.v.length().toFixed(3), w: f.body.w ? +f.body.w.length().toFixed(3) : 0, ball: !!f.body.ball, still: +f.body.still.toFixed(2), y: +f.body.p.y.toFixed(3), touching: !!f.body.touching })); } };
