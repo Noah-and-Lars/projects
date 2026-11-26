@@ -493,3 +493,8 @@ Gaps 3 / 4 / 8 / Top-10 #5, #8, #9, #10 of `docs/research/10-gap-analysis.md`, b
   would float when the lower one is destroyed. Budget: 675 bodies, 49 M voxels, ~14 s to build in Node (about
   3.5x the harbour); the ground is 0.2 m thick (bedrock + surface). Load time on a real machine is unmeasured
   (35 s in the software-rendered test container, all meshing included). Performance mode is recommended on laptops.
+- **Crack hiding off by default** (2026-11-26, user: the camera issue was "crack hiding"). The quad overlap
+  (fixed 1 mm in the mesh + a view-distance-proportional overlap in the vertex shader) made overlap strips
+  flicker; switching it off in Diagnostics fixed it for the user. Default is now off; stored diagnostics from
+  before (version < 2) drop their saved crack-hiding value so existing players get the fix too. The switch
+  remains in Esc → Settings → Diagnostics for anyone who sees thin cracks at terrace steps instead.

@@ -14,8 +14,9 @@ interface View {
   dist: number;
 }
 
-const VOL_OPTS: MeshOptions = { bakeAO: false, inflate: 0.01 };
-const BAKED_OPTS: MeshOptions = { bakeAO: true, inflate: 0.01 };
+// quad overlap ("crack hiding") is off by default; Diagnostics can switch it on (lookModule)
+const VOL_OPTS: MeshOptions = { bakeAO: false, inflate: 0 };
+const BAKED_OPTS: MeshOptions = { bakeAO: true, inflate: 0 };
 /** quad overlap (voxels) that hides T-junction cracks of the greedy meshes */
 export function setMeshInflate(v: number): void { VOL_OPTS.inflate = v; BAKED_OPTS.inflate = v; }
 const S = CHUNK * 0.1;

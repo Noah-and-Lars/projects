@@ -56,7 +56,7 @@ export function makeLookShared(): LookShared {
   return {
     uBits: { value: null }, uDens: { value: null },
     uVolSize: { value: new THREE.Vector3(4, 4, 4) }, uVolOrigin: { value: new THREE.Vector3() }, uInvVoxel: { value: 1 / VOXEL },
-    uEmissive: { value: 3 }, uDebugAO: { value: 0 }, uGrain: { value: 1 }, uAOMin: { value: 0.12 }, uSunSpread: { value: 0.012 }, uSaturation: { value: 0.72 }, uInflate: { value: 0.0015 },
+    uEmissive: { value: 3 }, uDebugAO: { value: 0 }, uGrain: { value: 1 }, uAOMin: { value: 0.12 }, uSunSpread: { value: 0.012 }, uSaturation: { value: 0.72 }, uInflate: { value: 0 },
     uSkyZenith: { value: new THREE.Color(0.2, 0.4, 0.8) }, uSkyHorizon: { value: new THREE.Color(0.7, 0.8, 0.9) },
   };
 }

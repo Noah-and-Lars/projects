@@ -23,7 +23,11 @@ import type { Quality, TimeOfDay } from './renderer';
 export interface DiagState {
   camdebug: boolean; taa: boolean; grain: boolean; dynshadow: boolean; near: number; inflate: boolean; bob: boolean;
 }
-export const DIAG_DEFAULTS: DiagState = { camdebug: false, taa: true, grain: true, dynshadow: true, near: 0.1, inflate: true, bob: true };
+// crack hiding is off by default since 2026-11-26: players saw the overlap strips flicker as the camera moved
+// (turning it off fixed it); it stays available as a switch for anyone who sees cracks instead
+export const DIAG_DEFAULTS: DiagState = { camdebug: false, taa: true, grain: true, dynshadow: true, near: 0.1, inflate: false, bob: true };
+/** stored diagnostics older than this version keep everything except the old crack-hiding default */
+const DIAG_VERSION = 2;
 /** menu description of the switches (label, key, options for non-boolean ones) */
 export const DIAG_ITEMS: { key: keyof DiagState; label: string; options?: number[] }[] = [
   { key: 'camdebug', label: 'Camera motion readout (F4)' },
@@ -47,7 +51,11 @@ export function createLookModule(): GameModule {
 
   // diagnostics state: defaults <- localStorage <- URL
   const diag: DiagState = { ...DIAG_DEFAULTS };
-  try { Object.assign(diag, sanitize(JSON.parse(localStorage.getItem(STORE) ?? '{}'))); } catch { /* no storage */ }
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE) ?? '{}');
+    if (raw && typeof raw === 'object' && (raw.v ?? 1) < DIAG_VERSION) delete raw.inflate; // old saves stored the old default
+    Object.assign(diag, sanitize(raw));
+  } catch { /* no storage */ }
   const url: Partial<DiagState> = {};
   for (const k of ['camdebug', 'taa', 'grain', 'dynshadow', 'inflate', 'bob'] as const) if (params.has(k)) url[k] = params.get(k) !== '0';
   if (params.has('near')) url.near = Number(params.get('near'));
@@ -74,7 +82,7 @@ export function createLookModule(): GameModule {
   };
   const set = <K extends keyof DiagState>(k: K, v: DiagState[K]) => {
     Object.assign(diag, sanitize({ [k]: v }));
-    try { localStorage.setItem(STORE, JSON.stringify(diag)); } catch { /* no storage */ }
+    try { localStorage.setItem(STORE, JSON.stringify({ ...diag, v: DIAG_VERSION })); } catch { /* no storage */ }
     if (game) applyDiag(game);
   };
 
