@@ -297,7 +297,10 @@ $('b-continue').onclick = () => { const sv = loadSolo(); if (!sv) return; initAu
 // the start of Sunday the host opens a fresh store for everyone.
 const PUB_KEY = 'es-pub-';
 const liveIds = new Set(); // changed live while we've been here: an offered copy never overrides these
-let offered = false, weekCheckT = 0;
+// offerSent: our saved copy has been offered to the host (or brought back
+// ourselves). Until then we don't save over it: the store we joined doesn't have
+// our builds in it yet, and saving it would lose them for good.
+let offered = false, offerSent = false, weekCheckT = 0;
 function pubLoad() {
   try {
     const c = JSON.parse(localStorage.getItem(PUB_KEY + net.room) || 'null');
@@ -305,7 +308,7 @@ function pubLoad() {
   } catch (_) { return null; }
 }
 function pubSave() {
-  if (!net.on || !net.isPublic || mode !== 'play' || storeWeek() !== net.week) return;
+  if (!net.on || !net.isPublic || mode !== 'play' || storeWeek() !== net.week || !offerSent) return;
   try {
     // copies of other weeks are no use any more (cleared first, so a full
     // storage they fill up doesn't stop this week's copy being saved)
@@ -328,10 +331,12 @@ function pubRestore() {
 }
 // Joining a public store that has people in it: offer the host our copy.
 function pubOffer() {
-  if (!net.on || !net.isPublic || net.isHost() || mode !== 'play') return;
-  const c = pubLoad(); if (!c) return;
-  const m = c.mods.filter((e) => Array.isArray(e) && typeof e[0] === 'string' && e[1] && +e[1].tm > 0), size = 80, n = Math.ceil(m.length / size);
-  for (let i = 0; i < n; i++) net.send('of', { i, n, m: m.slice(i * size, (i + 1) * size), d: c.day | 0, t: +c.t || 0 });
+  if (!net.on || !net.isPublic || mode !== 'play' || offerSent) return;
+  const c = pubLoad();
+  const m = c ? c.mods.filter((e) => Array.isArray(e) && typeof e[0] === 'string' && e[1] && +e[1].tm > 0) : [], size = 80, n = Math.ceil(m.length / size);
+  // the host left before we could offer it, and we're hosting now: merge it ourselves
+  for (let i = 0; i < n; i++) { const p = { i, n, m: m.slice(i * size, (i + 1) * size), d: c.day | 0, t: +c.t || 0 }; if (net.isHost()) onOffer(net.id, p); else net.send('of', p); }
+  offerSent = true;
 }
 // The host merges an offered copy: what it doesn't know about, or only knows
 // an older version of from a saved copy. Changes made live win.
@@ -461,7 +466,7 @@ function startGame(seed, waitForState, save) {
     clock.day = Math.max(1, save.day | 0); clock.t = clamp(+save.t || 30, 0, cycleLen(clock.day) - 1);
     world.setDay(clock.day);
   }
-  liveIds.clear(); offered = false;
+  liveIds.clear(); offered = false; offerSent = !waitForState; // first in: our copy is the store
   let restored = 0;
   if (net.on && net.isPublic && !waitForState) restored = pubRestore();
   remotes.forEach((r) => { scene.remove(r.model.root); if (r.heldMesh) scene.remove(r.heldMesh); }); remotes.clear();
@@ -563,6 +568,7 @@ function onHostChanged(isMe) {
   if (isMe && mode === 'play') {
     staffSim = new StaffSim(world);
     releaseOrphans();
+    if (net.isPublic && !offerSent) pubOffer();
     staffViews.forEach((s) => scene.remove(s.model.root)); staffViews.clear();
     toast('You are now hosting this store.');
   } else if (!isMe) staffSim = null;

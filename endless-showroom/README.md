@@ -408,7 +408,9 @@ the staff.
   Sydney time), so a public store that empties comes back as the same store.
 - Every player's browser keeps a copy of the week's store (every change, and
   the day and time) every 20 seconds and when they leave. The first person
-  back into an empty store brings their copy back.
+  back into an empty store brings their copy back. Someone joining a store
+  that has people in it doesn't save over their copy until they've offered it
+  to the host (or else their builds, not yet in the store, would be lost).
 - The host stamps every change with the time it was made. Someone joining
   offers their copy to the host, which takes whatever it doesn't have, or
   only has an older version of from a saved copy. A change made live while

@@ -125,7 +125,15 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   check(bc.length === 1 && bc[0].name === 'Bravo' && bc[0].long, `the guest's long whistle shows on the host's screen as a help marker (${JSON.stringify(bc)})`);
   // Bravo sits on a chair: Alpha sees them sitting
   const before = await B.evaluate(() => [__game.P.x, __game.P.y, __game.P.z]);
-  const seat = await B.evaluate(() => { const P = __game.P, w = __game.world; w.applyState('mp:chair', { t: 'chair', k: 'f', v: 0, x: P.x + 40, y: 0, z: P.z + 40, r: 0 }); const it = w.items.get('mp:chair'); const ok = __game.sitForTest('mp:chair'); return ok; });
+  // (on clear floor: a chair dropped inside or under something has no room to sit on)
+  const seat = await B.evaluate(() => {
+    const P = __game.P, w = __game.world; let at = null;
+    for (let k = 0; k < 400 && !at; k++) { const x = P.x + (Math.random() - 0.5) * 40, z = P.z + (Math.random() - 0.5) * 40; if (w.fits({ x0: x - 0.8, x1: x + 0.8, z0: z - 0.8, z1: z + 0.8, y0: 0.02, y1: 2.2 })) at = [x, z]; }
+    if (!at) return false;
+    w.applyState('mp:chair', { t: 'chair', k: 'f', v: 0, x: at[0], y: 0, z: at[1], r: 0 });
+    P.onGround = true; P.vy = 0;
+    return __game.sitForTest('mp:chair');
+  });
   if (seat) await A.waitForFunction(() => { const r = [...__game.remotes.values()][0]; return !!(r && r.st && r.st.si); }, null, { timeout: 30000 }).catch(() => {});
   check(seat && await A.evaluate(() => { const r = [...__game.remotes.values()][0]; return !!(r && r.st && r.st.si); }), 'the guest sitting down shows as sitting on the host\'s screen');
   // back where Bravo was, and the test chair (only on Bravo's screen) taken away again

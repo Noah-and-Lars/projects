@@ -78,9 +78,14 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   // Alpha comes back first: their build is back. Then Bravo joins and brings theirs.
   await join(A);
   check(await at(A, x1), "after the store emptied, Alpha's build is still there when Alpha comes back");
-  await join(B);
+  // the autosave going off the moment Bravo is in (before Bravo's copy is offered) mustn't overwrite that copy
+  await B.click('#b-online');
+  await B.waitForFunction(() => window.__game.mode === 'play', null, { timeout: 90000 });
+  await B.evaluate(() => __game.pubSaveForTest());
+  await B.waitForTimeout(2500);
   await A.waitForFunction((b) => { const it = __game.world.items.get(b[0]); return !!it && Math.abs(it.x - b[1]) < 0.02; }, x2, { timeout: 60000 }).catch(() => {});
-  check(await at(A, x2) && await at(B, x2), "Bravo's build comes back when Bravo joins (merged into the host's store)");
+  const where = async (p) => p.evaluate((b) => { const it = __game.world.items.get(b[0]); return it ? [+it.x.toFixed(2), +it.z.toFixed(2), it.c || 0, __game.world.modTime.get(b[0]) || 0] : null; }, x2);
+  check(await at(A, x2) && await at(B, x2), `Bravo's build comes back when Bravo joins (merged into the host's store) (want ${x2.slice(1)}; host ${JSON.stringify(await where(A))}, Bravo ${JSON.stringify(await where(B))}, Bravo's copy ${await B.evaluate((id) => { const c = JSON.parse(localStorage.getItem('es-pub-pub1') || 'null'); return c ? JSON.stringify((c.mods.find((e) => e[0] === id) || [])[1] || 'missing') : 'none'; }, x2[0])})`);
   check(await at(B, x1), "Bravo sees Alpha's build too");
 
   // Sunday: the host opens a fresh store for everyone
