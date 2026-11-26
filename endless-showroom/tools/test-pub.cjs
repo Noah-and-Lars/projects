@@ -89,7 +89,9 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   await B.waitForTimeout(4000);
   const gone = await Promise.all([A, B].map((p) => p.evaluate((ids) => ids.map((id) => __game.world.mods.has(id)), [x1[0], x2[0]])));
   check(gone.every((g) => g.every((v) => !v)), `the Sunday reset clears the builds on both screens (${JSON.stringify(gone)})`);
-  check(await B.evaluate(() => !localStorage.getItem('es-pub-pub1')), "the guest's saved copy of last week's store is thrown away");
+  // (the copy saved every 20 s may already hold the new store: that's fine, as long as last week's is gone)
+  const bCopy = await B.evaluate((ids) => { const c = JSON.parse(localStorage.getItem('es-pub-pub1') || 'null'); return c ? { mods: c.mods.length, old: c.mods.filter((e) => ids.includes(e[0])).length } : null; }, [x1[0], x2[0]]);
+  check(!bCopy || bCopy.old === 0, `the guest's saved copy of last week's store is thrown away (${JSON.stringify(bCopy)})`);
   check(await A.evaluate(() => !!localStorage.getItem('es-name')) && !(await A.evaluate(() => localStorage.getItem('es-name'))).includes('Bravo'), 'each player keeps their own storage');
 
   // A copy offered to the host can move things, but not turn one thing into
