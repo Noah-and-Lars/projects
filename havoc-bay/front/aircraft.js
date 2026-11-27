@@ -421,7 +421,7 @@ function heliPhysics(a, inp, dt) {
   // attitude: the stick tilts the disc; at speed the helicopter banks into its turns like an aeroplane
   const ctl = rotorOK ? sstep(.35, .8, a.rpm) : .05, sp = sstep(8, 25, Math.abs(vfw));
   const tr = D.tailRotor ? pOK(a.part('trot')) && pOK(a.part('boom')) : pOK(a.part('boom'));
-  const yawMax = lerp(1.2, Math.min(1.2, g * Math.tan(.7) / Math.max(1, Math.abs(vfw))), sstep(10, 30, Math.abs(vfw)));
+  const yawMax = lerp(1.2, Math.min(1.2, g * Math.tan(.5) / Math.max(1, Math.abs(vfw))), sstep(10, 30, Math.abs(vfw))); // (at speed a turn is flown at up to about 30 degrees of bank)
   let hr = clamp(angDiffA(a.hdg, inp.hdg) * 2, -yawMax, yawMax) * ctl;
   if (tr) a.spin *= Math.pow(.2, dt);
   else if (D.tailRotor) { // nothing to counter the rotor's torque: it spins, harder the more power is pulled; at speed the fin holds it nearly straight
@@ -430,8 +430,8 @@ function heliPhysics(a, inp, dt) {
   a.hdg += hr * dt; a.hdgRate = hr;
   // full forward stick asks for more nose-down than the engines can hold level: ease it off as the torque reaches its limit (unless diving on purpose)
   if (a.tiltLim === undefined) a.tiltLim = .38;
-  const pw = Pav > 0 ? Peng / Pav : 0; a.tiltLim = clamp(a.tiltLim + (inp.up < 0 ? .2 : pw > .97 && vfw > 45 ? -.12 : pw < .9 || vfw < 40 ? .1 : 0) * dt, .06, .38);
-  let pitT = inp.manual ? clamp(inp.pit, -.6, .45) : -clamp(inp.fwd, -1, a.tiltLim / .38) * .38, rolT = inp.side * (inp.manual ? .42 : .32) + clamp(Math.atan(vfw * hr / g), -.7, .7) * sp * (tr ? 1 : 0);
+  const pw = Pav > 0 ? Peng / Pav : 0; a.tiltLim = clamp(a.tiltLim + (inp.up < 0 ? .2 : !inp.manual && a.vel.y < -3 && agl < 150 ? -.4 : pw > .97 && vfw > 45 ? -.12 : pw < .9 || vfw < 40 ? .1 : 0) * dt, .06, .38); // (sinking when it should not be: raise the nose and trade speed for lift)
+  let pitT = inp.manual ? clamp(inp.pit, -.6, .45) : -clamp(inp.fwd, -1, a.tiltLim / .38) * .38, rolT = inp.side * (inp.manual ? .42 : .32) + clamp(Math.atan(vfw * hr / g), -.52, .52) * sp * (tr ? 1 : 0) * (inp.manual ? 1 : 1 - .6 * sstep(.92, 1, pw));
   if (vfw > D.vne) pitT += (vfw - D.vne) * .03; // past its limit speed the retreating blade stalls and the nose rises
   if (vrs > .2) { pitT += Math.sin(GAME.time * 9) * .04 * vrs; rolT += Math.sin(GAME.time * 7.3) * .05 * vrs; }
   a.pit += clamp((pitT - a.pit) * 3.2, -1, 1) * dt * ctl; a.rol += clamp((rolT - a.rol) * 3.2, -1.3, 1.3) * dt * ctl;
@@ -749,7 +749,7 @@ function airBotThink(b, a, dt) {
         if (an < .08 && d < 4200 + sk.aim * 600 && a.ammo[2] > 0 && Math.random() < dt * 2) { fire = 2; fo.target = tg; } // (some fire from too far out)
         else if (an < .05 && d < 1100 && a.ammo[0] > 0) fire = 0;
         if (a.ammo[3] > 0 && tg.kind === 'vehicle') { const cp = ccipPoint(a, new V3()); if (cp && cp.distanceTo(tp) < 20 + sk.aim * 25) fire = 3; }
-        const pull = 260 + 120 * (1 - sk.nerve) * (Math.random() < .03 ? -2 : 1); // now and then one fixates and pulls out too late
+        const pull = 330 + 120 * (1 - sk.nerve) * (Math.random() < .03 ? -2 : 1); // now and then one fixates and pulls out too late
         if (alt < pull || d < 450) { R.phase = 'out'; R.t = 7 + Math.random() * 4; }
       } else { want = a.vel.clone().normalize(); want.y = .35; if ((R.t -= dt) <= 0) { R.phase = 'in'; ai.target = null; } }
     } else { const c = GAME.cps[targetCpFor(team)]; want = new V3(c.p.x * 1000 - a.pos.x + Math.sin(GAME.time * .1 + b.lane) * 1500, 0, c.p.y * 1000 - a.pos.z + Math.cos(GAME.time * .1 + b.lane) * 1500).normalize(); want.y = clamp((cruise - alt) / 600, -.25, .3); }
@@ -767,7 +767,7 @@ function airBotThink(b, a, dt) {
     if (!ai.goHome) { if (!ai.post || (ai.postT -= dt) <= 0) { const r = 1500 + Math.random() * 900, a0 = Math.atan2(bz - cz, bx - cx) + (Math.random() - .5) * 1.2; ai.post = new V3(cx + Math.cos(a0) * r, 0, cz + Math.sin(a0) * r); ai.postT = 18 + Math.random() * 14; } want = ai.post.clone().sub(a.pos); }
     const hd = Math.hypot(want.x, want.z), wantAlt = 45 + sk.aim * 15, hdgWant = tg && hd < 400 ? Math.atan2(tg.pos.z - a.pos.z, tg.pos.x - a.pos.x) : Math.atan2(want.z, want.x);
     const fwdC = hd > 60 ? clamp(hd / 300, .2, 1) * Math.cos(angDiffA(a.hdg, Math.atan2(want.z, want.x))) : 0;
-    a.inp = { fwd: clamp(fwdC, -.4, 1), side: clamp(Math.sin(angDiffA(a.hdg, Math.atan2(want.z, want.x))) * (hd > 60 ? .6 : 0), -.5, .5), up: clamp((wantAlt - alt) / 15, -1, 1), hdg: hdgWant + (Math.sin(GAME.time * .6 + b.lane) * .05) };
+    a.inp = { fwd: clamp(fwdC, -.4, .72), side: clamp(Math.sin(angDiffA(a.hdg, Math.atan2(want.z, want.x))) * (hd > 60 ? .6 : 0), -.5, .5), up: clamp((wantAlt - alt) / 15, -1, 1), hdg: hdgWant + (Math.sin(GAME.time * .6 + b.lane) * .05) };
     if (tg && tg.kind !== 'air' && hd < 400) {
       const tp = aimCenter(tg, new V3()), d = tp.distanceTo(a.pos);
       if (d < 4500 && lineOfSight(a.pos, tp)) {

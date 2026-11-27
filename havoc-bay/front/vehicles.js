@@ -15,8 +15,8 @@ const AMMO = {
   m792: { name: 'M792', type: 'HEI-T', kind: 'he', v: 1100, pen: [8, 8], main: 0, op: .6, splash: 3, splashDmg: 70, fragPen: 6, rate: .3, look: 'tracer', cal: 25 },
   ubr6: { name: '3UBR6', type: 'APBC', kind: 'ap', v: 970, pen: [58, 26], main: 70, spall: [5, .25, 2, 26], rico: 70, rate: .12, look: 'tracer', cal: 30 },
   uof8: { name: '3UOF8', type: 'HEI', kind: 'he', v: 960, pen: [7, 7], main: 0, op: .6, splash: 3, splashDmg: 70, fragPen: 6, rate: .12, look: 'tracer', cal: 30 },
-  tow2a: { name: 'TOW-2A', type: 'ATGM', kind: 'heat', v: 280, pen: [900, 900], tandem: true, main: 220, spall: [14, .2, 3.5, 45], rico: 86, splash: 4, splashDmg: 160, fragPen: 15, guided: true, life: 14, look: 'missile', cal: 152 },
-  konkurs: { name: '9M113M', type: 'ATGM', kind: 'heat', v: 208, pen: [750, 750], tandem: true, main: 220, spall: [13, .2, 3.5, 45], rico: 86, splash: 4, splashDmg: 160, fragPen: 15, guided: true, life: 14, look: 'missile', cal: 135 },
+  tow2a: { name: 'TOW-2A', type: 'ATGM', kind: 'heat', v: 280, pen: [900, 900], tandem: true, main: 220, spall: [14, .2, 3.5, 45], rico: 86, splash: 4, splashDmg: 160, fragPen: 15, guided: true, saclos: true, life: 14, look: 'missile', cal: 152 },
+  konkurs: { name: '9M113M', type: 'ATGM', kind: 'heat', v: 208, pen: [750, 750], tandem: true, main: 220, spall: [13, .2, 3.5, 45], rico: 86, splash: 4, splashDmg: 160, fragPen: 15, guided: true, saclos: true, life: 14, look: 'missile', cal: 135 },
   cal50: { name: 'M2 .50 API', type: 'API', kind: 'bullet', v: 890, pen: [26, 12], main: 34, rico: 68, rate: .09, spread: .007, range: 1500 },
   kord: { name: 'Kord 12.7', type: 'API', kind: 'bullet', v: 860, pen: [25, 11], main: 34, rico: 68, rate: .09, spread: .008, range: 1500 },
   m240: { name: 'M240 7.62', type: 'Ball', kind: 'bullet', v: 850, pen: [11, 4], main: 20, rico: 65, rate: .075, spread: .006, range: 1000 },
@@ -34,6 +34,7 @@ const VEH = {
     name: 'M1A2 Abrams', short: 'Abrams', cls: 'mbt', crew: ['driver', 'gunner', 'commander', 'loader'],
     mass: 62, kw: 1120, vmax: 18.6, vrev: 9, pivot: .55, turret: .7, elev: [-.16, .35], len: 7.9, wid: 3.66, hgt: 2.44, eye: 3.1, cam: 13,
     reload: 6.2, autoloader: false, ammo: ['m829a2', 'm830a1'], mg: 'm240', smoke: 2, ford: 1.2,
+    load: { m829a2: 26, m830a1: 16 }, rack: 18, lrf: true, thermal: 2, // 42 rounds, 18 in the ready rack; laser rangefinder, second-generation thermal sight
     info: 'Thick turret front and hull lower plate. The ammo in the turret bustle has blow-out panels. Weak upper glacis bounces most darts.',
     armor: {
       hull: { x: [-3.85, 3.95], y: [.45, 1.62], z: 1.83, front: { ke: 50, ce: 60, slope: 82 }, frontLow: { ke: 560, ce: 850, slope: 30, y: 1.28 }, side: { ke: 70, ce: 220 }, rear: { ke: 35, ce: 35 }, top: { ke: 30, ce: 30 }, bottom: { ke: 25, ce: 25 } },
@@ -53,6 +54,7 @@ const VEH = {
     name: 'T-90A', short: 'T-90A', cls: 'mbt', crew: ['driver', 'gunner', 'commander'],
     mass: 46.5, kw: 735, vmax: 16.7, vrev: 1.4, pivot: .5, turret: .42, elev: [-.1, .24], len: 6.9, wid: 3.78, hgt: 2.23, eye: 2.9, cam: 12.5,
     reload: 7.1, autoloader: true, ammo: ['bm42', 'bk29', 'of26'], mg: 'pkt', smoke: 2, ford: 1.2,
+    load: { bm42: 18, bk29: 12, of26: 13 }, rack: 22, lrf: true, thermal: 2, shtora: true, lws: true, ess: true, // 43 rounds, 22 in the autoloader carousel; Shtora-1 with laser warning; engine smoke
     info: 'Small and fast-loading, with Kontakt-5 reactive armour. Its ammo carousel sits under the turret: a hit there usually blows the turret off. Very slow in reverse.',
     armor: {
       hull: { x: [-3.45, 3.43], y: [.42, 1.5], z: 1.75, front: { ke: 230, ce: 330, slope: 68 }, frontLow: { ke: 100, ce: 110, slope: 55, y: 1.0 }, side: { ke: 80, ce: 220 }, rear: { ke: 40, ce: 40 }, top: { ke: 30, ce: 30 }, bottom: { ke: 20, ce: 20 } },
@@ -71,6 +73,7 @@ const VEH = {
     name: 'M2A2 Bradley', short: 'Bradley', cls: 'ifv', crew: ['driver', 'gunner', 'commander'],
     mass: 30, kw: 450, vmax: 18.3, vrev: 6, pivot: .7, turret: .9, elev: [-.17, 1.03], len: 6.55, wid: 3.6, hgt: 2.98, eye: 3.4, cam: 12,
     reload: 0, ammo: ['m791', 'm792'], mg: 'm240', atgm: 'tow2a', atgmN: 2, atgmReload: 14, smoke: 2, ford: 1.0,
+    load: { m791: 225, m792: 675 }, atgmLoad: 7, lrf: true, thermal: 1,
     info: '25 mm Bushmaster and a twin TOW launcher. Its armour stops heavy machine guns, not tank shells.',
     armor: {
       hull: { x: [-3.25, 3.3], y: [.45, 2.05], z: 1.65, front: { ke: 45, ce: 60, slope: 60 }, frontLow: { ke: 35, ce: 40, slope: 50, y: 1.2 }, side: { ke: 30, ce: 45 }, rear: { ke: 25, ce: 25 }, top: { ke: 20, ce: 20 }, bottom: { ke: 15, ce: 15 } },
@@ -90,6 +93,7 @@ const VEH = {
     name: 'BMP-2', short: 'BMP-2', cls: 'ifv', crew: ['driver', 'gunner', 'commander'],
     mass: 14.3, kw: 220, vmax: 18, vrev: 4, pivot: .8, turret: 1.0, elev: [-.09, 1.3], len: 6.72, wid: 3.15, hgt: 2.45, eye: 2.9, cam: 11,
     reload: 0, ammo: ['ubr6', 'uof8'], mg: 'pkt', atgm: 'konkurs', atgmN: 1, atgmReload: 18, smoke: 1, ford: 1.6,
+    load: { ubr6: 160, uof8: 340 }, atgmLoad: 4, ess: true,
     info: 'Light and fast with a quick-firing 30 mm and a Konkurs missile. Thin armour: heavy machine guns go through the sides, and the fuel tanks are in the rear doors.',
     armor: {
       hull: { x: [-3.35, 3.37], y: [.4, 1.7], z: 1.55, front: { ke: 7, ce: 7, slope: 80 }, frontLow: { ke: 19, ce: 19, slope: 57, y: .9 }, side: { ke: 16, ce: 16 }, rear: { ke: 16, ce: 16 }, top: { ke: 6, ce: 6 }, bottom: { ke: 6, ce: 6 } },
@@ -139,7 +143,7 @@ const VEH = {
   },
 };
 const TEAM_VEH = [{ mbt: 'm1a2', ifv: 'm2a2', jeep: 'humvee' }, { mbt: 't90a', ifv: 'bmp2', jeep: 'tigr' }];
-const MOD_NAME = { driver: 'Driver', gunner: 'Gunner', commander: 'Commander', loader: 'Loader', engine: 'Engine', trans: 'Transmission', fuel: 'Fuel tank', ammo: 'Ammo rack', breech: 'Breech', drive: 'Turret drive', optics: 'Gun sight', barrel: 'Barrel', track: 'Track' };
+const MOD_NAME = { hdrive: 'Turret traverse', vdrive: 'Gun elevation', radiator: 'Radiator', autoloader: 'Autoloader', fcs: 'Fire control', driver: 'Driver', gunner: 'Gunner', commander: 'Commander', loader: 'Loader', engine: 'Engine', trans: 'Transmission', fuel: 'Fuel tank', ammo: 'Ammo rack', breech: 'Breech', drive: 'Turret drive', optics: 'Gun sight', barrel: 'Barrel', track: 'Track' };
 
 /* ---------------- materials: one camo shader per team ---------------- */
 const CAMO = [
@@ -412,6 +416,17 @@ class Vehicle extends Ent {
     this.sel = this.def.ammo[0]; this.loaded = this.def.ammo[0]; this.reload = 0; this.atgmReady = this.def.atgmN || 0; this.atgmT = 0; this.smoke = this.def.smoke || 0; this.smokeT = 0;
     this.mods = this.def.mods.map(m => ({ ...m, hp: m.kind === 'crew' ? 100 : m.hp, max: m.kind === 'crew' ? 100 : m.hp }));
     this.mods.push({ id: 'trackL', kind: 'track', hp: 100, max: 100, side: -1 }, { id: 'trackR', kind: 'track', hp: 100, max: 100, side: 1 }, { id: 'barrel', kind: 'barrel', hp: 60, max: 60 });
+    if (this.cls !== 'jeep') { // traverse and elevation are separate drives; a radiator sits over the engine; the fire control by the sight
+      const dr = this.mods.find(m => m.kind === 'drive'), br = this.mod('breech'), en = this.mods.find(m => m.kind === 'engine'), op = this.mod('optics'), add = (id, t, b, hp) => this.mods.push({ id, kind: id, t, b, hp, max: hp });
+      if (dr) { dr.id = 'hdrive'; dr.kind = 'hdrive'; }
+      if (br && br.b) add('vdrive', 1, [br.b[0], br.b[1] - .22, br.b[2], br.b[0] + .55, br.b[1], br.b[5]], 60);
+      if (en && en.b) add('radiator', 0, [en.b[0], en.b[4] - .22, en.b[2], en.b[3], en.b[4], en.b[5]], 45);
+      if (op && op.b) add('fcs', 1, [op.b[0] - .5, op.b[1] - .3, Math.min(op.b[2], op.b[5]), op.b[0], op.b[1], Math.max(op.b[2], op.b[5])], 40);
+      const ca = this.mod('carousel'); if (this.def.autoloader && ca) add('autoloader', 0, [ca.b[0] + .2, ca.b[4], ca.b[2] + .2, ca.b[3] - .2, ca.b[4] + .22, ca.b[5] - .2], 70);
+    }
+    this.load = this.def.load ? { ...this.def.load } : null; this.rackN = this.def.rack || 0; this.rackT = 0; this.atgmLoad = this.def.atgmLoad ?? 99;
+    if (this.load && this.def.reload) { this.load[this.loaded]--; if (this.rackN) this.rackN--; } // one round is in the breech
+    this.fpe = this.cls === 'jeep' ? 1 : 2; this.heat = 0; this.trackT = 0; this.supT = 0; this.sightR = 0; this.essT = 0; this.ess = this.def.ess ? 3 : 0;
     this.roles = {}; for (const r of this.def.crew) this.roles[r] = this.mods.find(m => m.id === r);
     this.swapT = 0; this.fire = 0; this.extT = 0; this.repairT = 0; this.hp = 1; // hp kept for code that only asks "alive?"
     this.model = VMODEL[type]();
@@ -424,17 +439,27 @@ class Vehicle extends Ent {
 // what still works
 function vState(v) {
   const ok = id => { const m = v.mod(id); return !m || m.hp > 0; }, r = v.roles;
-  const has = role => r[role] && r[role].hp > 0;
+  const has = role => r[role] && r[role].hp > 0, eff = role => has(role) ? .6 + .4 * r[role].hp / 100 : 0; // a wounded man works, but slower
   const eng = v.mods.find(m => m.kind === 'engine'), trans = v.mods.find(m => m.kind === 'trans');
+  const power = (!eng ? 1 : eng.hp <= 0 ? 0 : eng.hp < eng.max * .5 ? .55 : 1) * (!trans || trans.hp >= trans.max * .5 ? 1 : .6) * (v.heat > 1 ? .7 : 1); // (a damaged gearbox loses drive; an overheated engine loses power)
   return {
     drive: has('driver') && (!eng || eng.hp > 0) && (!trans || trans.hp > 0) && ok('trackL') && ok('trackR'),
-    power: !eng ? 1 : eng.hp <= 0 ? 0 : eng.hp < eng.max * .5 ? .55 : 1,
+    power: power * (has('driver') ? .75 + .25 * eff('driver') : 1),
     fire: has('gunner') && ok('breech') && ok('barrel'),
-    traverse: !v.mods.find(m => m.kind === 'drive') || v.mod('drive').hp > 0 ? 1 : .15,
+    traverse: ok('hdrive') ? (has('gunner') ? .7 + .3 * eff('gunner') : 1) : 0, // a dead drive freezes that axis: turn the hull to aim
+    elevate: ok('vdrive') ? 1 : 0,
     optics: ok('optics'),
-    loader: v.def.autoloader || has('loader') || !v.def.crew.includes('loader'),
+    fcs: ok('fcs') && ok('optics'), // rangefinder, thermal sight, stabiliser
+    loader: v.def.autoloader ? ok('autoloader') : has('loader') || !v.def.crew.includes('loader'),
+    loadEff: v.def.autoloader ? 1 : v.def.crew.includes('loader') ? (has('loader') ? eff('loader') : 0) : 1,
     crew: v.mods.filter(m => m.kind === 'crew' && m.hp > 0).length,
   };
+}
+/* how long the next round takes to load: the ready rack is quick; once it is empty the rounds come from deeper stowage
+   (by hand on an autoloader tank, which is much slower); a wounded loader is slower, a dead one slower still */
+function reloadTime(v) {
+  const D = v.def, st = vState(v);
+  return D.reload * (D.autoloader ? 1 : st.loadEff > 0 ? 1 / (.55 + .45 * st.loadEff) : 1.8) * (st.crew < D.crew.length ? 1.15 : 1) * (D.rack && v.rackN <= 0 ? (D.autoloader ? 2.2 : 1.4) : 1);
 }
 const ROLE_ORDER = ['gunner', 'driver', 'commander', 'loader'];
 function crewStep(v, dt) { // crew fill empty seats, fires burn, repairs tick
@@ -453,12 +478,45 @@ function crewStep(v, dt) { // crew fill empty seats, fires burn, repairs tick
     if (vState(v).crew < 2) destroyVehicle(v, v.lastAttacker, 'fire', 'burned out');
   }
   if (v.extT > 0) v.extT -= dt;
+  // wounded crew recover slowly once they have not been hit for a while
+  for (const m of v.mods) if (m.kind === 'crew') { if (m.hp < (m._hp ?? m.hp) - .01) m.hitT = GAME.time; if (m.hp > 0 && m.hp < 100 && GAME.time - (m.hitT ?? -99) > 20 && v.fire <= 0) m.hp = Math.min(100, m.hp + 2 * dt); m._hp = m.hp; }
+  // a holed radiator: the engine overheats as it works, then starts to wreck itself
+  { const rad = v.mod('radiator'), e = v.mods.find(m => m.kind === 'engine');
+    if (rad && e && e.hp > 0) { const hot = rad.hp <= 0 && (Math.abs(v.speed) > .5 || Math.abs(v.accel) > .3); v.heat = clamp(v.heat + (hot ? dt / 40 : -dt / 25), 0, 1.6);
+      if (v.heat > 1) { e.hp = Math.max(0, e.hp - 5 * dt); if (!v.heatMsg) { v.heatMsg = true; vMsg(v, 'Engine overheating: the radiator is holed. Stop and repair'); } } else if (v.heat < .6) v.heatMsg = false; } }
+  // a thrown track goes back on by itself once the vehicle has stood still for a few seconds
+  { const broken = v.mods.find(m => m.kind === 'track' && m.hp <= 0);
+    if (broken && Math.abs(v.speed) < .2 && v.fire <= 0 && v.mods.some(m => m.kind === 'crew' && m.hp > 0)) { if ((v.trackT += dt) >= 8) { broken.hp = broken.max; v.trackT = 0; vMsg(v, 'Track repaired'); } } else v.trackT = 0; }
+  // on a checkpoint your side holds, or at base: ammunition, smoke and extinguishers are topped up while you stand still
+  { const D = v.def, home = typeof friendlyPoint === 'function' && Math.abs(v.speed) < .4 && friendlyPoint(v); v.atHome = !!home;
+    if (home && (v.supT += dt) >= 2.5) { v.supT = 0; let got = false;
+      if (v.load) for (const k of D.ammo) if (v.load[k] < D.load[k]) { v.load[k] = Math.min(D.load[k], v.load[k] + Math.max(1, Math.round(D.load[k] / 12))); got = true; }
+      if (v.fpe < (v.cls === 'jeep' ? 1 : 2)) { v.fpe++; got = true; } if (v.smoke < (D.smoke || 0)) { v.smoke++; got = true; } if (D.atgm && v.atgmLoad < D.atgmLoad) { v.atgmLoad++; got = true; } if (D.ess && v.ess < 3) { v.ess++; got = true; }
+      if (got) vMsg(v, 'Resupplying'); } else if (!home) v.supT = 0; }
+  // the ready rack is refilled from the rest of the stowage while the gun is loaded and idle
+  if (v.def.rack && v.loaded && v.rackN < v.def.rack && v.load) { const stowed = v.def.ammo.reduce((n, k) => n + v.load[k], 0); if (stowed > v.rackN) { if ((v.rackT += dt) >= 6) { v.rackT = 0; v.rackN++; } } } else v.rackT = 0;
+  if (v.essT > 0) { v.essT -= dt; if (typeof essPuff === 'function') essPuff(v, dt); }
   if (v.repairT > 0) {
     if (Math.abs(v.speed) > .4) { v.repairT = 0; vMsg(v, 'Repair stopped: you moved'); }
     else if ((v.repairT -= dt) <= 0) {
-      for (const m of v.mods) if (m.kind !== 'crew' && m.kind !== 'ammo' && m.hp < m.max) m.hp = m.kind === 'track' ? m.max : Math.max(m.hp, m.max * .55);
-      vMsg(v, 'Repairs done');
+      const full = v.atHome; // in the field a repair gets things working again; on a checkpoint you hold it makes them good as new
+      for (const m of v.mods) if (m.kind !== 'crew' && m.kind !== 'ammo' && m.hp < m.max) m.hp = full || m.kind === 'track' || m.kind === 'radiator' ? m.max : Math.max(m.hp, m.max * .55);
+      v.heat = Math.min(v.heat, .5); vMsg(v, full ? 'Fully repaired' : 'Field repairs done');
     }
+  }
+}
+/* Shtora-1 (soft-kill protection): infra-red dazzlers either side of the gun. A wire-guided missile is steered by a tracker at the
+   launcher that watches a flare on the missile's tail; inside the dazzlers' arc the tracker locks onto them instead and steers the
+   missile off. It does nothing to laser-guided or beam-riding missiles, or to shells. */
+function shtoraJam(p, tgt, dt) {
+  for (const v of ENTS) {
+    if (v.kind !== 'vehicle' || !v.alive || !v.def.shtora || v.team === p.team || !vState(v).fcs) continue;
+    if (v.pos.distanceToSquared(tgt) > 30 * 30) continue; // the missile has to be coming for this tank
+    const d = p.pos.distanceTo(v.pos); if (d > 2800 || d < 40) continue;
+    const a = v.yaw + v.tYaw, toM = Math.atan2(p.pos.z - v.pos.z, p.pos.x - v.pos.x); let off = Math.abs(toM - a) % TAU; if (off > Math.PI) off = TAU - off;
+    if (off > .35) continue; // about 20 degrees either side of the gun
+    if (!p.jam) { p.jam = new V3(rand(-1, 1), rand(.1, .8), rand(-1, 1)).normalize().multiplyScalar(rand(14, 30)); vMsg(v, 'Shtora: incoming missile dazzled'); const o = p.owner && p.owner.driver; if (o && o.isPlayer && typeof playerVehMsg === 'function') playerVehMsg('Missile guidance lost: the target is dazzling it'); }
+    tgt.add(p.jam); return;
   }
 }
 function vMsg(v, text) { if (v.driver && v.driver.isPlayer && typeof playerVehMsg === 'function') playerVehMsg(text); }

@@ -242,7 +242,9 @@ function driveVehicle(v, inp, dt) {
   // turret and gun (no gunner: nobody turns it)
   const trav = st.fire || st.optics ? D.turret * st.traverse : 0;
   v.tYaw = turnTo(v.tYaw, angDiff(v.yaw, inp.aimYaw), (st.crew && v.roles.gunner && v.roles.gunner.hp > 0 ? trav : 0) * dt);
-  v.gPitch += clamp(clamp(inp.aimPitch, D.elev[0], D.elev[1]) - v.gPitch, -.35 * dt, .35 * dt);
+  const sway = !st.fcs && D.cls !== 'jeep' ? Math.min(1, Math.abs(v.speed) / 8) : 0; // no stabiliser: the gun rides the hull's bumps
+  v.gPitch += clamp(clamp(inp.aimPitch + Math.sin(GAME.time * 6.3 + v.pos.x) * .012 * sway, D.elev[0], D.elev[1]) - v.gPitch, -.35 * dt, .35 * dt) * st.elevate;
+  if (sway > 0) v.tYaw += Math.sin(GAME.time * 4.1 + v.pos.z) * .004 * sway * dt * 8;
   placeVehicle(v, dt);
   const near = Math.abs(v.pos.x - camera.position.x) + Math.abs(v.pos.z - camera.position.z) < 260;
   updateRunningGear(v, near ? dt : 0, false);
@@ -255,17 +257,34 @@ function driveVehicle(v, inp, dt) {
   if (!v.def.wheeled && vState(v).crew > 0 && (v.mod('engine') ? v.mod('engine').hp < v.mod('engine').max * .5 : false) && Math.random() < dt * 3) sprite(_v.copy(v.pos).setY(v.pos.y + D.hgt), 1.4, 4, 2.5, 0x3a3836, false, 3, .7);
   // guns
   v.cool -= dt; v.cool2 -= dt; v.smokeT -= dt;
-  if (D.reload && v.loaded === null) { v.reload -= dt; if (v.reload <= 0) { v.loaded = v.sel; v.reload = 0; } }
-  if (D.atgm && v.atgmReady < D.atgmN) { v.atgmT -= dt; if (v.atgmT <= 0) { v.atgmReady++; v.atgmT = D.atgmReload; } }
+  if (D.reload && v.loaded === null) {
+    if (v.load && v.load[v.sel] <= 0) { const other = D.ammo.find(k => v.load[k] > 0); if (other) { v.sel = other; vMsg(v, `Out of ${AMMO[v.loading || v.sel].name}: loading ${AMMO[other].name}`); } } // out of that type: load what is left
+    const have = !v.load || v.load[v.sel] > 0;
+    if (have && st.loader) { if (v.loading !== v.sel) { v.loading = v.sel; v.reload = reloadTime(v); v.reloadOf = v.reload; } v.reload -= dt;
+      if (v.reload <= 0) { v.loaded = v.sel; v.loading = null; v.reload = 0; if (v.load) v.load[v.sel]--; if (v.rackN > 0) v.rackN--; } }
+  }
+  if (D.atgm && v.atgmReady < D.atgmN && v.atgmLoad > 0) { v.atgmT -= dt; if (v.atgmT <= 0) { v.atgmReady++; v.atgmLoad--; v.atgmT = D.atgmReload; } }
   if (inp.fire && st.fire) fireMain(v);
   if (inp.fire2 && D.mg && st.fire && v.cool2 <= 0) fireMG(v);
   if (inp.fire3 && D.atgm && st.fire && v.atgmReady > 0 && v.cool <= 0) fireATGM(v, inp.guide);
   if (inp.smoke && v.smoke > 0 && v.smokeT <= 0) popSmoke(v);
+  if (inp.ess && D.ess && v.ess > 0 && v.essT <= 0 && st.power > 0) { v.ess--; v.essT = 9; vMsg(v, 'Engine smoke'); }
+}
+function friendlyPoint(v) { // on a checkpoint this side holds, or at its base: repairs are complete and stores are topped up
+  const M = GAME.M, b = M.bases[v.team]; if (b && Math.hypot(v.pos.x - b.x * 1000, v.pos.z - b.y * 1000) < 480) return true;
+  return GAME.cps.some(c => c.owner === v.team && inZone(c, v.pos));
+}
+function essPuff(v, dt) { // engine smoke: fuel sprayed into the exhaust lays a screen behind the vehicle
+  if ((v.essP = (v.essP || 0) - dt) > 0) return; v.essP = .35;
+  const c = Math.cos(v.yaw), s = Math.sin(v.yaw), x = v.pos.x - c * (v.def.len * .5 + 2), z = v.pos.z - s * (v.def.len * .5 + 2), y = groundY(x, z) + 2.5;
+  SMOKES.push({ pos: new V3(x, y, z), r: 7, t: 0, life: 22 });
+  for (let i = 0; i < 3; i++) sprite(new V3(x + rand(-2, 2), y + rand(-1, 2.5), z + rand(-2, 2)), 5, 9, 20 + Math.random() * 4, 0xdcdcd6, false, .2, .9);
 }
 function selectAmmo(v, key) {
   if (!v.def.ammo.includes(key) || v.sel === key) return;
   v.sel = key;
-  if (v.def.reload && v.loaded && v.loaded !== key) { v.loaded = null; v.reload = v.def.reload * (vState(v).loader ? 1 : 1.8); } // unload and load the new round
+  if (v.def.reload && v.loaded && v.loaded !== key && (!v.load || v.load[key] > 0)) { if (v.load) v.load[v.loaded]++; v.loaded = null; v.loading = null; } // unload (the round goes back in the rack) and load the new type
+  else if (v.def.reload && !v.loaded) v.loading = null; // changed our mind mid-load: start again with the new type
 }
 function muzzleOf(v, out, dir) {
   v.model.root.updateMatrixWorld(true);
@@ -275,8 +294,12 @@ function muzzleOf(v, out, dir) {
 function fireMain(v) {
   const D = v.def, from = new V3(), dir = new V3(); muzzleOf(v, from, dir);
   let key;
-  if (D.reload) { if (!v.loaded) return; key = v.loaded; v.loaded = null; v.reload = D.reload * (vState(v).loader ? 1 : 1.8) * (vState(v).crew < D.crew.length ? 1.15 : 1); }
-  else { if (v.cool > 0) return; key = v.sel; v.cool = AMMO[key].rate || .2; }
+  if (D.reload) { if (!v.loaded || v.cool > 0) return;
+    const br = v.mod('breech'), bar = v.mod('barrel');
+    if (br && br.hp < br.max * .5 && Math.random() < .25) { v.cool = 1.5; vMsg(v, 'Misfire: the breech is damaged'); Sound.at('pop', v.pos, .5); return; } // a damaged breech does not always fire
+    key = v.loaded; v.loaded = null; v.loading = null;
+    if (bar && bar.hp < bar.max * .5 && Math.random() < .3) { bar.hp = 0; vMsg(v, 'The damaged barrel burst'); } } // firing through a damaged barrel can finish it
+  else { if (v.cool > 0) return; key = v.sel; if (v.load) { if (v.load[key] <= 0) { const other = D.ammo.find(k => v.load[k] > 0); if (!other) return; key = v.sel = other; } v.load[key]--; } v.cool = AMMO[key].rate || .2; }
   const A = AMMO[key];
   if (A.kind === 'bullet') { hitscan(key, v, v.team, from, dir, A.spread); Sound.at('mg', from, .9); sprite(from, .5, .3, .05, 0xffffff, true); return; }
   launch(key, v, v.team, from, dir);
@@ -668,6 +691,8 @@ function botThink(b, u, dt) {
       }
     }
     if (u.smoke > 0 && u.smokeT <= 0 && ai.threat && ai.threat.alive && ai.threat.kind === 'vehicle' && vState(u).crew < u.def.crew.length) { inp.smoke = true; ai.threat = null; }
+    if (u.fire > 0 && u.fpe > 0 && Math.random() < dt * (.25 + .5 * sk.nerve)) { u.fpe--; u.fire = 0; } // the crew gets to the extinguisher (a rattled crew takes longer)
+    if (u.lwsT && GAME.time - u.lwsT < 1.5 && u.smoke > 0 && u.smokeT <= 0 && Math.random() < sk.aware) { inp.smoke = true; u.lwsT = 0; } // laser warning: someone is ranging us
     driveVehicle(u, inp, dt);
   } else {
     const s = u, inp = { fwd: 0, side: 0, sprint: false, crouch: false, jump: false };
@@ -691,10 +716,10 @@ function botThink(b, u, dt) {
 function hullTilt(v) { // how far the turret's forward line is tipped up by the slope the hull sits on
   return Math.asin(clamp(_n.set(Math.cos(v.tYaw), 0, Math.sin(v.tYaw)).applyQuaternion(v.quat).y, -1, 1));
 }
-function aimSolution(v, p, A) { // turret yaw and gun pitch (hull-relative) to put the round on p
+function aimSolution(v, p, A, sightR) { // turret yaw and gun pitch (hull-relative) to put the round on p. With sightR, the gun is laid for that range along the line of sight instead.
   const mz = new V3(), d = new V3(); muzzleOf(v, mz, d);
   const R = Math.hypot(p.x - mz.x, p.z - mz.z), yaw = Math.atan2(p.z - mz.z, p.x - mz.x);
-  const pitch = A.kind === 'bullet' || A.guided ? Math.atan2(p.y - mz.y, R) : ballisticPitch(R, p.y - mz.y, A.v, A.g ?? 9.8);
+  const pitch = A.kind === 'bullet' || A.guided ? Math.atan2(p.y - mz.y, R) : sightR ? Math.atan2(p.y - mz.y, R) + ballisticPitch(sightR, 0, A.v, A.g ?? 9.8) : ballisticPitch(R, p.y - mz.y, A.v, A.g ?? 9.8);
   return { yaw, pitch: pitch - hullTilt(v), range: Math.hypot(R, p.y - mz.y) };
 }
 function botWeapon(v, tg, d) { // what to shoot with
@@ -718,7 +743,8 @@ function playerStep(dt) {
     const v = s.veh;
     if (!v.alive) return;
     const inp = { throttle: (KEYS.KeyW ? 1 : 0) - (KEYS.KeyS ? 1 : 0), steer: (KEYS.KeyD ? 1 : 0) - (KEYS.KeyA ? 1 : 0), fire: MOUSE.l && locked, fire2: !!KEYS.KeyF && locked, fire3: !!KEYS.KeyT && locked, smoke: !!KEYS.KeyG, guide: () => CAM.aim.clone() };
-    const A = AMMO[v.def.reload ? (v.loaded || v.sel) : v.sel], sol = aimSolution(v, CAM.aim, A); inp.aimYaw = sol.yaw; inp.aimPitch = sol.pitch; CAM.range = sol.range;
+    const A = AMMO[v.def.reload ? (v.loaded || v.sel) : v.sel], lased = v.def.lrf && vState(v).fcs && v.sightR > 0 && GAME.time - v.lrfT < 45, sol = aimSolution(v, CAM.aim, A, v.cls === 'jeep' ? 0 : lased ? v.sightR : 400); inp.aimYaw = sol.yaw; inp.aimPitch = sol.pitch; CAM.range = sol.range; CAM.lased = lased;
+    inp.ess = !!KEYS.KeyH;
     driveVehicle(v, inp, dt);
     s.pos.copy(v.pos);
     Sound.engine(vState(v).power > 0, Math.abs(v.speed) / v.def.vmax + (inp.throttle ? .15 : 0), !v.def.wheeled, v.def.kw > 1000);
@@ -750,14 +776,36 @@ function resupply(s, dt) { // at your base or a checkpoint you hold: ammo and he
   const p = (s.veh || s).pos, M = GAME.M, b = M.bases[s.team];
   const home = Math.hypot(p.x - b.x * 1000, p.z - b.y * 1000) < 480 || GAME.cps.some(c => c.owner === s.team && inZone(c, p));
   if (!home) return;
-  if (s.veh) { const v = s.veh; if (v.def.reload && v.loaded === null && v.reload > 0) v.reload -= dt * .25; if ((v.resT = (v.resT || 0) + dt) > 3) { v.resT = 0; v.smoke = Math.min(v.def.smoke || 0, v.smoke + 1); } }
-  else { s.hp = Math.min(SOLDIER_HP, s.hp + 8 * dt); if ((s.resT = (s.resT || 0) + dt) > 4) { s.resT = 0; s.ammo = Math.min(210, s.ammo + 30); s.rpg = Math.min(3, s.rpg + 1); } }
+  if (s.veh) return; // (vehicles restock through crewStep: ammunition, smoke, extinguishers, and full repairs)
+  { s.hp = Math.min(SOLDIER_HP, s.hp + 8 * dt); if ((s.resT = (s.resT || 0) + dt) > 4) { s.resT = 0; s.ammo = Math.min(210, s.ammo + 30); s.rpg = Math.min(3, s.rpg + 1); } }
+}
+
+/* ---------------- thermal sight (gunner's sight only, as in War Thunder) ----------------
+   The picture goes grey, the sky goes dark, and anything warm shows white: running vehicles, people, aircraft, fires. A first-generation sight is blurrier. */
+const THERMAL = { want: false, on: false, t: 0, swapped: new Map() };
+const HOT_MAT = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 2.6, 2.6), toneMapped: false, fog: false }), WARM_MAT = new THREE.MeshBasicMaterial({ color: new THREE.Color(.55, .55, .55), toneMapped: false, fog: false });
+function thermalUpdate(dt) {
+  const s = PLAYER.s, v = s && s.alive && s.veh && s.veh.kind === 'vehicle' ? s.veh : null;
+  const on = !!(THERMAL.want && v && v.alive && CAM.zoom && v.def.thermal && vState(v).fcs);
+  if (on !== THERMAL.on) {
+    THERMAL.on = on; const c = renderer.domElement;
+    if (on) { c.style.filter = `grayscale(1) contrast(1.35) brightness(.8) blur(${v.def.thermal >= 2 ? .3 : 1.1}px)`; THERMAL.sky = [SKY.visible, REAL.sky ? REAL.sky.visible : false]; SKY.visible = false; if (REAL.sky) REAL.sky.visible = false; THERMAL.bg = scene.background; scene.background = new THREE.Color(0x0b0b0b); THERMAL.t = 0; }
+    else { c.style.filter = ''; SKY.visible = THERMAL.sky[0]; if (REAL.sky) REAL.sky.visible = THERMAL.sky[1]; scene.background = THERMAL.bg; for (const [o, m] of THERMAL.swapped) o.material = m; THERMAL.swapped.clear(); }
+  }
+  if (!on || (THERMAL.t -= dt) > 0) return; THERMAL.t = .5;
+  for (const e of ENTS) {
+    const root = e.model && e.model.root; if (!root) continue;
+    const hot = e.alive ? (e.kind === 'soldier' ? !e.veh : e.kind === 'vehicle' || e.kind === 'air') : (e.fire > 0 || e.burnT > 0); if (!hot) continue;
+    const m = e.kind === 'vehicle' && e.alive && !e.driver ? WARM_MAT : HOT_MAT; // a parked vehicle has cooled
+    root.traverse(o => { if (o.isMesh && !THERMAL.swapped.has(o) && o.material && !o.material.transparent) { THERMAL.swapped.set(o, o.material); o.material = m; } });
+  }
 }
 
 /* ---------------- camera ---------------- */
 function updateCamera(dt) {
   const s = PLAYER.s;
   CAM.zoom = MOUSE.r && locked;
+  thermalUpdate(dt);
   let fov = 65;
   pilotG(s && s.alive && s.veh && s.veh.alive && s.veh.kind === 'air' ? s.veh : null, dt);
   if (s && s.veh && s.veh.alive && s.veh.kind === 'air') fov = airCamera(s.veh, dt);
@@ -813,9 +861,11 @@ function chip(label, m, vacant) {
 function vehStatusHTML(v) {
   const D = v.def, st = vState(v), r = v.roles;
   const crew = D.crew.map(role => chip(role[0].toUpperCase(), r[role], !r[role] || r[role].hp <= 0)).join('');
-  const mods = [['ENG', v.mods.find(m => m.kind === 'engine')], ['TRN', v.mods.find(m => m.kind === 'trans')], ...(D.wheeled ? [] : [['TRK L', v.mod('trackL')], ['TRK R', v.mod('trackR')]]), ['BRL', v.mod('barrel')], ['BRC', v.mod('breech')], ['TUR', v.mods.find(m => m.kind === 'drive')], ['SGT', v.mod('optics')]].filter(([, m]) => m).map(([l, m]) => chip(l, m)).join('');
+  const mods = [['ENG', v.mods.find(m => m.kind === 'engine')], ['TRN', v.mods.find(m => m.kind === 'trans')], ...(D.wheeled ? [] : [['TRK L', v.mod('trackL')], ['TRK R', v.mod('trackR')]]), ['BRL', v.mod('barrel')], ['BRC', v.mod('breech')], ['TRV', v.mod('hdrive')], ['ELV', v.mod('vdrive')], ['SGT', v.mod('optics')], ['FCS', v.mod('fcs')], ['RAD', v.mod('radiator')], ['ALD', v.mod('autoloader')]].filter(([, m]) => m).map(([l, m]) => chip(l, m)).join('');
   const notes = [];
-  if (v.fire > 0) notes.push(`<span class="warn">FIRE${v.extT > 0 ? '' : ' · X to put it out'}</span>`);
+  if (v.fire > 0) notes.push(`<span class="warn">FIRE${v.fpe > 0 ? ` · X: extinguisher (${v.fpe} left)` : ' · no extinguishers'}</span>`);
+  if (v.def.lws && PROJS.some(p => p.team !== v.team && p.A.guided && !p.A.saclos && p.guide && (() => { const t = p.guide(); return t && t.distanceToSquared(v.pos) < 30 * 30; })())) notes.push('<span class="warn">LASER WARNING · G: smoke</span>');
+  if (v.heat > 1) notes.push('<span class="warn">ENGINE OVERHEATING</span>'); if (v.atHome) notes.push('on a friendly point: full repair, resupply'); if (v.trackT > 0) notes.push(`track back on in ${Math.ceil(8 - v.trackT)} s`);
   if (v.repairT > 0) notes.push(`repairing ${Math.ceil(v.repairT)} s`);
   else if (v.mods.some(m => m.kind !== 'crew' && m.kind !== 'ammo' && m.hp < m.max * .6)) notes.push('R: repair (stand still)');
   if (!st.drive) notes.push('<span class="warn">immobilised</span>');
@@ -824,12 +874,12 @@ function vehStatusHTML(v) {
 }
 function vehAmmoHTML(v) {
   const D = v.def;
-  const list = D.ammo.map((k, i) => `<div class="am${v.sel === k ? ' sel' : ''}">${i + 1} · ${AMMO[k].type} <small>${AMMO[k].name}${D.reload && v.loaded === k ? ' · loaded' : ''}</small></div>`).join('');
+  const list = D.ammo.map((k, i) => `<div class="am${v.sel === k ? ' sel' : ''}">${i + 1} · ${AMMO[k].type} <small>${AMMO[k].name}${v.load ? ' ×' + v.load[k] : ''}${D.reload && v.loaded === k ? ' · loaded' : ''}</small></div>`).join('');
   let state;
   if (!vState(v).fire) state = '<b class="warn">GUN OUT</b>';
-  else if (D.reload) state = v.loaded ? '<b>READY</b>' : `<b>${Math.round((1 - v.reload / D.reload) * 100)}%</b> <small>loading</small>`;
+  else if (D.reload) state = v.loaded ? '<b>READY</b>' : !vState(v).loader ? '<b class="warn">CANNOT LOAD</b>' : v.load && D.ammo.every(k => v.load[k] <= 0) ? '<b class="warn">NO AMMO</b>' : `<b>${Math.round((1 - v.reload / (v.reloadOf || D.reload)) * 100)}%</b> <small>loading${D.rack && v.rackN <= 0 ? ' (rack empty: slow)' : ''}</small>`;
   else state = '<b>READY</b>';
-  const extra = [D.mg ? `F: ${AMMO[D.mg].name}` : '', D.atgm ? `T: ${AMMO[D.atgm].name} ×${v.atgmReady}` : '', D.smoke ? `G: smoke ×${v.smoke}` : ''].filter(Boolean).join('<br>');
+  const extra = [D.rack ? `ready rack ${v.rackN}/${D.rack}` : '', D.mg ? `F: ${AMMO[D.mg].name}` : '', D.atgm ? `T: ${AMMO[D.atgm].name} ×${v.atgmReady} (+${v.atgmLoad})` : '', D.smoke ? `G: smoke ×${v.smoke}` : '', D.ess ? `H: engine smoke ×${v.ess}` : '', D.lrf ? 'V: rangefinder' : '', D.thermal ? 'N: thermal' : ''].filter(Boolean).join('<br>');
   return `${list}${state}<br><small>${extra}</small>`;
 }
 function renderCpBar() {
@@ -869,7 +919,7 @@ function updateHUD(dt) {
   $('gunMark').style.display = gm ? 'block' : 'none';
   const si = $('sightInfo'), showSi = alive && s.veh && !inAir && CAM.zoom;
   si.style.display = showSi ? 'block' : 'none';
-  if (showSi) { const v = s.veh, k = v.def.reload ? (v.loaded || v.sel) : v.sel; si.textContent = `RNG ${Math.round(CAM.range || 0)} m · ${AMMO[k].type} ${AMMO[k].name}${v.def.reload ? (v.loaded ? ' · LOADED' : ' · LOADING') : ''}`; }
+  if (showSi) { const v = s.veh, k = v.def.reload ? (v.loaded || v.sel) : v.sel; si.textContent = `${v.cls === 'jeep' ? '' : CAM.lased ? `RNG ${Math.round(v.sightR)} m (lased)` : v.def.lrf ? 'RNG 400 m (battle sight) · V: lase' : 'RNG 400 m (battle sight)'} · ${AMMO[k].type} ${AMMO[k].name}${v.def.reload ? (v.loaded ? ' · LOADED' : ' · LOADING') : ''}`; }
   // status and ammo
   if (alive) {
     if (s.veh) {
@@ -1002,8 +1052,8 @@ addEventListener('keydown', e => {
   // test cheat: press 0 six times in a row for 10,000 spawn points
   if (e.code === 'Digit0' || e.code === 'Numpad0') { const t = performance.now(); GAME.zeroN = t - (GAME.zeroT || 0) < 1500 ? (GAME.zeroN || 0) + 1 : 1; GAME.zeroT = t; if (GAME.zeroN >= 6) { GAME.zeroN = 0; PLAYER.sp += 10000; spPop('+10000 SP · test'); if (!$('deploy').classList.contains('hidden')) refreshDeploy(); } } else GAME.zeroN = 0;
   if (e.code === 'KeyE') interact();
-  if (e.code === 'KeyR' && !pv && PLAYER.s && PLAYER.s.mag < 30 && PLAYER.s.ammo > 0 && PLAYER.s.reload <= 0) PLAYER.s.reload = RIFLE.reload;
   const pv = PLAYER.s && PLAYER.s.alive && PLAYER.s.veh;
+  if (e.code === 'KeyR' && !pv && PLAYER.s && PLAYER.s.mag < 30 && PLAYER.s.ammo > 0 && PLAYER.s.reload <= 0) PLAYER.s.reload = RIFLE.reload;
   if (pv && pv.kind === 'air') {
     if (e.code === 'KeyJ') { interact(true); return; }
     if (e.code === 'KeyB' && pv.cls === 'jet') { pv.airbrake = !pv.airbrake; playerVehMsg(pv.airbrake ? 'Airbrake out' : 'Airbrake in'); }
@@ -1012,8 +1062,17 @@ addEventListener('keydown', e => {
     if (e.code === 'KeyX' && pv.fire > 0 && pv.extT <= 0) { pv.fire = 0; pv.extT = 60; playerVehMsg('Fire handle pulled: fire out'); }
   } else if (pv) {
     const n = +e.code.replace('Digit', ''); if (n >= 1 && n <= pv.def.ammo.length) selectAmmo(pv, pv.def.ammo[n - 1]);
-    if (e.code === 'KeyR') { if (Math.abs(pv.speed) < .5 && vState(pv).crew >= 2 && pv.repairT <= 0) { pv.repairT = 12 * (vState(pv).crew < pv.def.crew.length ? 1.5 : 1); playerVehMsg('Repairing: stay still'); } }
-    if (e.code === 'KeyX' && pv.fire > 0 && pv.extT <= 0) { pv.fire = 0; pv.extT = 40; playerVehMsg('Fire put out'); }
+    if (e.code === 'KeyR') { if (Math.abs(pv.speed) < .5 && vState(pv).crew >= 2 && pv.repairT <= 0) { pv.repairT = 12 * (vState(pv).crew < pv.def.crew.length ? 1.5 : 1) * (friendlyPoint(pv) ? .5 : 1); playerVehMsg(friendlyPoint(pv) ? 'Full repair: stay still' : 'Field repair: stay still'); } }
+    if (e.code === 'KeyX' && pv.fire > 0) { if (pv.fpe > 0) { pv.fpe--; pv.fire = 0; playerVehMsg(`Fire put out · ${pv.fpe} extinguisher${pv.fpe === 1 ? '' : 's'} left`); } else playerVehMsg('No extinguishers left'); }
+    if (e.code === 'KeyV') { // laser rangefinder: sets the sight to the range of what the crosshair is on
+      const st = vState(pv);
+      if (!pv.def.lrf) playerVehMsg('No rangefinder: use the impact marker');
+      else if (!st.fcs) playerVehMsg('Fire control damaged: no rangefinder');
+      else if (CAM.range > 5000 || CAM.range < 20) playerVehMsg('No range');
+      else { pv.sightR = Math.max(200, CAM.range); pv.lrfT = GAME.time; Sound.play('ui'); playerVehMsg(`Range ${Math.round(pv.sightR)} m`);
+        const t = CAM.aimEnt; if (t && t.kind === 'vehicle' && t.alive && t.def.lws && t.team !== pv.team) t.lwsT = GAME.time; } // a tank with a laser warning receiver knows it has been ranged
+    }
+    if (e.code === 'KeyN') { const st = vState(pv); if (!pv.def.thermal) playerVehMsg('No thermal sight'); else if (!st.fcs) playerVehMsg('Fire control damaged: no thermal sight'); else { THERMAL.want = !THERMAL.want; playerVehMsg(THERMAL.want ? 'Thermal sight on (in the gun sight)' : 'Thermal sight off'); } }
   } else {
     if (e.code === 'Digit1' && PLAYER.s) PLAYER.s.slot = 0;
     if (e.code === 'Digit2' && PLAYER.s && PLAYER.s.rpg > 0) PLAYER.s.slot = 1;

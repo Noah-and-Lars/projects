@@ -56,7 +56,33 @@ There are no health bars:
 - Rounds have real-ish muzzle velocities and penetration that falls off with range (APFSDS, HEAT, HE, APDS, ATGMs, machine guns).
 - A penetrating hit throws spall through the inside and can knock out crew, the engine, transmission, breech, turret drive, sight, fuel tanks or ammo racks. Ammo can detonate (the T-90A's carousel throws the turret), fuel and engines can catch fire, tracks and barrels can be shot off.
 - Crew swap seats when someone is knocked out. Two crew lost destroys the vehicle.
-- Keys in a vehicle: 1-3 shell type, F machine gun, T missile (steers to your aim), G smoke screen, R repair (stand still), X put out a fire, Shift in the gun sight for more zoom.
+- Keys in a vehicle: 1-3 shell type, F machine gun, T missile (steers to your aim), G smoke grenades, H engine smoke, V laser rangefinder, N thermal sight, R repair (stand still), X fire extinguisher, Shift in the gun sight for more zoom.
+
+The ground vehicles follow War Thunder's Ground Realistic Battles. The research, with sources and the points that could not be confirmed, is in `docs/wt-tank-mechanics.md`.
+
+- **Modules:**
+  - Turret traverse and gun elevation are separate drives. A destroyed one freezes that axis, so you aim by turning the hull.
+  - A holed radiator overheats the engine as it works, and the engine then wrecks itself unless you stop and repair.
+  - A damaged transmission loses drive.
+  - A damaged breech misfires about one shot in four, and a damaged barrel can burst when fired.
+  - The T-90A's autoloader is a module: when it is out the gun can't be reloaded, but a round already loaded still fires.
+  - With the fire control out you lose the rangefinder, the thermal sight and the stabiliser, so the gun sways on the move.
+- **Crew:** a wounded crewman works slower: the loader loads slower, the gunner traverses slower, the driver gets less out of the engine. Crew recover slowly once they have gone 20 seconds without being hit.
+- **Tracks:** a thrown track goes back on by itself after 8 seconds standing still.
+- **Fire:** tanks and IFVs carry two extinguisher charges, jeeps one.
+- **Repair:** in the field, R gets modules working again (55 %). On a checkpoint your side holds, or at base, the repair is complete and takes half as long.
+- **Resupply:** ammunition, smoke, extinguishers and missiles are topped up while you stand still on a checkpoint you hold or at base.
+- **Ammunition:** guns carry real loads and can run out. The Abrams has 42 rounds, the T-90A 43, the Bradley 900 and the BMP-2 500.
+- **Ready rack:** the Abrams keeps 18 rounds ready and the T-90A 22 in its autoloader. Once the ready rounds are gone, loading is slower (1.4 times on the Abrams, 2.2 times on the T-90A, which must then be loaded by hand). The rack refills one round every 6 seconds while the gun is loaded and idle.
+- **Changing shell:** the loaded round goes back in the rack and the new type is loaded.
+- **Sights:**
+  - The gun is laid for the range set on the sight: 400 m until you lase.
+  - V lases what the crosshair is on, and the gun takes the right elevation for that range for 45 seconds.
+  - The marker still shows where the shell will land.
+  - The BMP-2 has no rangefinder.
+- **Thermal sight:** N switches it on in the gun sight of the Abrams, T-90A and Bradley. The picture goes grey and warm things show white: running vehicles, soldiers, aircraft, fires. The Bradley's older sight is blurrier.
+- **Shtora:** the T-90A's dazzlers throw off wire-guided missiles (TOW, Konkurs) that come from within about 20° of where its gun points. They do nothing against laser-guided missiles or shells. Its laser warning tells you when a laser-guided missile is coming, and a bot T-90A that you lase may pop smoke.
+- **Engine smoke:** the T-90A and BMP-2 can lay a smoke screen from the exhaust, three times, for 9 seconds each.
 
 ## Aircraft
 
