@@ -46,7 +46,7 @@ There are no health bars:
 
 Blue flies the Mitsubishi F-2A and the AH-64D Apache. Red flies the Su-30SM and the Ka-52 Alligator.
 
-- **Jets** start at the end of your runway. Take off at full throttle and pull up past 230 km/h. The mouse flies the jet, W/S set the throttle and A/D roll. 1-4 choose a weapon, F fires the gun, G drops flares and X pulls the fire handle. Land on your runway to rearm, which takes 15 seconds.
+- **Jets** start at the end of your runway. Take off at full throttle and look up past 250 km/h; the jet lifts off at about 290 km/h. The mouse flies the jet, W/S set the throttle and A/D roll. 1-4 choose a weapon, F fires the gun, G drops flares and X pulls the fire handle. Land on your runway to rearm, which takes 15 seconds.
 - **Helicopters** start at your base. Space climbs, C descends, W/S move forward and back, and A/D move sideways. The gun follows your aim. Land at your base to rearm.
 - **Missiles** lock on before you fire. AIM-9X and R-73 chase heat and can be decoyed by flares. Maverick and Kh-29T lock onto ground targets. Hellfire and Vikhr follow your crosshair. Jets also carry bombs, aimed with a falling-bomb sight.
 - **Damage** is tracked per part, not as one health bar:
@@ -56,6 +56,54 @@ Blue flies the Mitsubishi F-2A and the AH-64D Apache. Red flies the Su-30SM and 
   - An Apache that loses its tail rotor spins. A dead transmission forces an autorotation landing.
   - Fires spread until they burn out. E ejects you, and you come down on a parachute.
 - **The F-2A** is a downloaded 3D model (`models/f2.js`). `gltf-models.js` reads it without a loader, so the game still opens straight from disk. It cuts the one-piece airframe into the damageable parts above, with hit areas fitted to the real shape. The model keeps its own JASDF blue camouflage, and its landing gear retracts after take-off.
+
+### Flight model
+
+The flight physics are written for this game (`aircraft.js`). They use real figures for weight, wing area, thrust and rotor size, and they are tuned against the real aircraft's performance.
+
+**Jets**
+
+- **Air:** density falls with height, which thins lift, drag and thrust. Speed is also tracked as a Mach number, and drag rises sharply near Mach 1.
+- **Engines:** they take about 3 seconds to spool from idle to full dry power, and the afterburner lights above 85 % throttle. Thrust falls with height and gains a little from speed.
+- **Lift and drag:** lift follows the wing's angle to the airflow up to the stall, then falls away. Pulling g costs speed, so a hard turn bleeds energy until the jet settles at the turn it can sustain.
+- **Fly-by-wire:** as on the real jets, the stick asks the flight computer for g. The computer holds 1 g hands-off, caps the pull at 9 g and stops at its angle-of-attack limit, so a healthy jet won't stall or overstress.
+- **Mouse aim:** the jet rolls until its lift points where it needs to go and pulls that much g. It holds height in a turn if the wing can manage it. Below about 400 km/h the crosshair leads the flight path instead of the nose, so pointing at the runway threshold takes you there.
+- **Runway:** the nose lifts only once the tail has enough air over it. Ground effect cushions the flare. The gear lowers itself when low and slow. Throttle right back gives the airbrake in the air and wheel brakes on the ground.
+- **Landing:** touch down level at under 5.5 m/s sink and under 410 km/h. Between 3.6 and 5.5 m/s is a hard landing that damages the fuselage.
+- **Pilot:** holding 8-9 g for several seconds greys the view in from the edges. Strong negative g reddens it.
+- **Damage:**
+  - A damaged wing rolls the jet towards it, harder the more g you pull. A jet with a whole wing gone can limp level but can barely turn.
+  - Losing one tailplane slows the pitch response. Losing both leaves almost no pitch control.
+  - Losing the fin makes the jet weave.
+  - Losing the nose sensors, or both tailplanes, takes the flight computer out. The stick then sets angle of attack directly, so you can stall, and pulling well past 9 g bends the wings.
+
+| | F-2A | Su-30SM | Real aircraft |
+| --- | --- | --- | --- |
+| Top speed at low level, afterburner | Mach 1.05 | Mach 1.05 | about Mach 1.1 |
+| Top speed at low level, dry | Mach 0.95 | Mach 0.95 | about Mach 0.95 |
+| Take-off run, afterburner | 320 m | 380 m | 300-550 m |
+| Landing roll | 690 m | 680 m | 600-900 m |
+| Roll rate | 250°/s | 215°/s | 180-270°/s |
+
+**Helicopters**
+
+- **Power:** the engines must supply the power the rotor asks for.
+  - Hovering costs the most: about 75 % torque.
+  - At 100-150 km/h the rotor works in cleaner air, so there is power to spare for climbing.
+  - Flat out, fuselage drag sets the top speed.
+- **Rotor speed:** ask for more than the engines can give and the rotor slows, and lift falls with the square of its speed. The HUD shows rotor RPM and torque.
+- **Collective:** Space and C ask for a climb or descent rate, and the collective lever is worked for you.
+- **Ground effect:** close to the ground the rotor needs less power.
+- **Turning:** at speed the helicopter banks into its turns and can't spin on the spot. In the hover it turns freely.
+- **Vortex ring:** dropping straight down too fast sinks the rotor into its own downwash and it loses lift. Fly forward to get out. The descent assist keeps you out of it unless you force it.
+- **One engine out:** the helicopter can't hover out of ground effect, but it flies on if you keep 100 km/h or more.
+- **Both engines out (autorotation):** the air coming up through the rotor keeps it turning, and you come down at about 12 m/s at 150 km/h. Pull back (S) from about 25 m to flare, then hold Space in the last few metres to spend the rotor's spin on a soft touchdown. A run-on landing at up to 100 km/h is survivable.
+- **Tail rotor lost:** the Apache spins in the hover, harder the more power you pull. At speed the fin holds it nearly straight.
+
+| | Apache | Ka-52 | Real aircraft |
+| --- | --- | --- | --- |
+| Top speed | 303 km/h | 305 km/h | 293 and 300 km/h |
+| Vertical climb | 8.4 m/s | 7.1 m/s | 8-12 m/s |
 
 ## Spawn points
 
@@ -128,7 +176,7 @@ Blue's F-2A: This work is based on "Mitsubishi F-2 - Fighter Jet - Free" (https:
 
 ```js
 IF_TEST.start(0, 0, 8, 'realistic')   // map, team, bots per team, graphics
-IF_TEST.deploy('mbt')    // 'inf' | 'mbt' | 'ifv' | 'jeep'
+IF_TEST.deploy('mbt')    // 'inf' | 'mbt' | 'ifv' | 'jeep' | 'heli' | 'jet'
 IF_TEST.sim(120)         // run 120 simulated seconds
 IF_TEST.state()          // checkpoint owners, guards left, units alive
 ```

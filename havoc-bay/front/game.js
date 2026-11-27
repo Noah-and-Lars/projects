@@ -88,7 +88,7 @@ function deployPlayer(cls, where) {
     const [x, z] = spawnSpot(team, where); s.pos.set(x, groundY(x, z) + .1, z); s.yaw = CAM.yaw = GAME.M.bases[team].ang;
   } else if (cls === 'jet' || cls === 'heli') {
     const a = airSpawn(cls, team); enterVehicle(s, a); CAM.yaw = a.hdg; CAM.pitch = cls === 'jet' ? .02 : -.08;
-    showMsg(cls === 'jet' ? 'Take off: full throttle, pull up past 230 km/h' : 'Space: climb · C: descend', cls === 'jet' ? 'Mouse flies the jet · W/S throttle · A/D roll · 1-4 weapons · F gun · G flares. Land on your runway to rearm.' : 'Mouse turns and aims · W/S forward/back · A/D sideways · 1-3 weapons · G flares. Land at base to rearm.');
+    showMsg(cls === 'jet' ? 'Take off: full throttle, look up past 250 km/h' : 'Space: climb · C: descend', cls === 'jet' ? 'Mouse flies the jet · W/S throttle (S right back: airbrake, wheel brakes) · A/D roll · 1-4 weapons · F gun · G flares. Land on your runway to rearm.' : 'Mouse turns and aims · W/S forward/back · A/D sideways · 1-3 weapons · G flares. Land at base to rearm.');
   } else {
     const v = makeVehicle(cls, team); enterVehicle(s, v); CAM.yaw = v.yaw;
   }
@@ -757,6 +757,7 @@ function updateCamera(dt) {
   const s = PLAYER.s;
   CAM.zoom = MOUSE.r && locked;
   let fov = 65;
+  pilotG(s && s.alive && s.veh && s.veh.alive && s.veh.kind === 'air' ? s.veh : null, dt);
   if (s && s.veh && s.veh.alive && s.veh.kind === 'air') fov = airCamera(s.veh, dt);
   else if (s && s.veh && s.veh.alive) {
     const v = s.veh, piv = _v.set(v.pos.x, v.pos.y + v.T.eye, v.pos.z);

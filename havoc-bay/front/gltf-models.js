@@ -119,7 +119,7 @@ function modelF2(team) {
 }
 if (window.MODEL_DATA && MODEL_DATA.f2) {
   AIR.f2 = Object.assign({}, AIR.f16, {
-    name: 'Mitsubishi F-2A', short: 'F-2A', model: modelF2, mass: 13000, S: 34.8, gear: 2.0, len: 15.5, wid: 11.1, R: 9.5, cam: 22,
+    name: 'Mitsubishi F-2A', short: 'F-2A', model: modelF2, mass: 13000, S: 34.8, kInd: .11, gear: 2.0, len: 15.5, wid: 11.1, R: 9.5, cam: 22,
     info: 'F-16-based multirole fighter with a bigger wing: M61 cannon, 2 AIM-9, 2 Maverick, 2 Mk 82. Takes off from your airfield, lands there to rearm.',
     parts: AIR.f16.parts.map(p => ({ ...p })),
   });
