@@ -7,7 +7,16 @@ const MATCH_S = 30 * 60;
 const DIFF = [{ aim: .03, guard: .55, react: 1.1 }, { aim: .018, guard: .85, react: .75 }, { aim: .01, guard: 1.15, react: .5 }];
 const BOT_NAMES = ['Viper', 'Hollis', 'Raptor', 'Kestrel', 'Boone', 'Mako', 'Drift', 'Saber', 'Tundra', 'Lark', 'Rook', 'Hatch', 'Quill', 'Brigg', 'Onyx', 'Fable', 'Cobalt', 'Wren', 'Torque', 'Ash', 'Sully', 'Pike', 'Gale', 'Juno'];
 const GAME = { on: false, over: false, paused: false, time: 0, map: 0, team: 0, bots: 8, diff: 1, M: null, cps: [], guns: [], botsList: [], winner: -1, deployT: 0, sel: { cls: 'mbt', where: -1 } };
-const PLAYER = { s: null, kills: 0, deaths: 0, caps: 0, dmg: 0 };
+const PLAYER = { s: null, kills: 0, deaths: 0, caps: 0, dmg: 0, sp: 0 };
+/* spawn points: earned on the ground, spent on bigger kit. Only ground units can take checkpoints, so the air can't win alone. */
+const SP_START = 150, SP_COST = { inf: 0, jeep: 0, ifv: 50, mbt: 150, heli: 400, jet: 500 };
+const SP_AWARD = { soldier: 60, guard: 50, jeep: 80, ifv: 150, mbt: 200, gun: 120, capture: 150 };
+function awardSP(by, n, why) {
+  if (!by || n <= 0) return;
+  if (by.isPlayer) { PLAYER.sp += n; spPop(`+${n} ${why}`); }
+  else if (by.bot) by.bot.sp = (by.bot.sp || 0) + n;
+}
+function spPop(t) { const el = $('vehMsg'); if (!el) return; const d = document.createElement('div'); d.className = 'sppop'; d.textContent = t; $('hud').appendChild(d); setTimeout(() => d.remove(), 1600); }
 const CAM = { yaw: 0, pitch: -.05, zoom: false, shake: 0, pos: new V3(), aim: new V3(), aimEnt: null };
 const KEYS = {}, MOUSE = { l: false, r: false };
 let locked = false;
@@ -34,8 +43,8 @@ function startMatch(mapIdx, team, bots, diff) {
   M.bases.forEach((b, t) => b.gunSpots.forEach(([x, z]) => { const h = new Howitzer(t, x, z, groundY(x, z), b.ang); h.home = [x, z]; GAME.guns.push(h); }));
   GAME.botsList = [];
   let n = 0;
-  for (const t of [0, 1]) for (let k = 0; k < bots - (t === team ? 1 : 0); k++) GAME.botsList.push({ team: t, name: BOT_NAMES[n++ % BOT_NAMES.length], unit: null, soldier: null, respawn: 1 + k * 1.5, lane: (k % 5 - 2) * 7, ai: {} });
-  PLAYER.s = null; PLAYER.kills = PLAYER.deaths = PLAYER.caps = 0;
+  for (const t of [0, 1]) for (let k = 0; k < bots - (t === team ? 1 : 0); k++) GAME.botsList.push({ team: t, name: BOT_NAMES[n++ % BOT_NAMES.length], unit: null, soldier: null, respawn: 1 + k * 1.5, lane: (k % 5 - 2) * 7, ai: {}, sp: SP_START, skill: botSkill() });
+  PLAYER.s = null; PLAYER.kills = PLAYER.deaths = PLAYER.caps = 0; PLAYER.sp = SP_START;
   const b = M.bases[team]; CAM.yaw = b.ang; CAM.pitch = -.1;
   CAM.pos.set(b.x * 1000, b.zone.y0 + 40, b.y * 1000);
   $('hud').classList.remove('hidden');
@@ -74,14 +83,18 @@ function frontCp(team) { // the owned checkpoint nearest the enemy
 function deployPlayer(cls, where) {
   const team = GAME.team;
   const s = new Soldier(team, { player: true, name: 'You' }); PLAYER.s = s;
+  const cost = SP_COST[cls] || 0; PLAYER.sp = Math.max(0, PLAYER.sp - cost);
   if (cls === 'inf') {
     const [x, z] = spawnSpot(team, where); s.pos.set(x, groundY(x, z) + .1, z); s.yaw = CAM.yaw = GAME.M.bases[team].ang;
+  } else if (cls === 'jet' || cls === 'heli') {
+    const a = airSpawn(cls, team); enterVehicle(s, a); CAM.yaw = a.hdg; CAM.pitch = cls === 'jet' ? .02 : -.08;
+    showMsg(cls === 'jet' ? 'Take off: full throttle, pull up past 230 km/h' : 'Space: climb · C: descend', cls === 'jet' ? 'Mouse flies the jet · W/S throttle · A/D roll · 1-4 weapons · F gun · G flares. Land on your runway to rearm.' : 'Mouse turns and aims · W/S forward/back · A/D sideways · 1-3 weapons · G flares. Land at base to rearm.');
   } else {
     const v = makeVehicle(cls, team); enterVehicle(s, v); CAM.yaw = v.yaw;
   }
-  CAM.pitch = -.05;
+  if (!(cls === 'jet' || cls === 'heli')) CAM.pitch = -.05;
   $('deploy').classList.add('hidden'); GAME.deploying = false;
-  showMsg(GAME.time < 2 ? 'Take the checkpoints' : 'Deployed', GAME.time < 2 ? 'Clear each checkpoint\'s guards, then stand inside it. Start with the one nearest your base.' : '');
+  if (!(cls === 'jet' || cls === 'heli')) showMsg(GAME.time < 2 ? 'Take the checkpoints' : 'Deployed', GAME.time < 2 ? 'Clear each checkpoint\'s guards, then stand inside it. Start with the one nearest your base.' : '');
   requestLock();
 }
 function enterVehicle(s, v) { s.veh = v; v.driver = s; s.model.root.visible = false; s.pos.copy(v.pos); }
@@ -96,9 +109,9 @@ function exitVehicle(s) {
 }
 
 /* ---------------- damage and death ---------------- */
-function creditOf(src) { return !src ? null : src.kind === 'vehicle' ? src.driver : src; }
+function creditOf(src) { return !src ? null : src.kind === 'vehicle' || src.kind === 'air' ? src.driver : src; }
 function damage(e, amt, src, wk) {
-  if (!e.alive || amt <= 0 || e.kind === 'vehicle') return; // vehicles take damage through their armour (vehicles.js)
+  if (!e.alive || amt <= 0 || e.kind === 'vehicle' || e.kind === 'air') return; // vehicles take damage through their armour (vehicles.js), aircraft part by part (aircraft.js)
   const srcTeam = src ? src.team : -1;
   if (src && srcTeam === e.team && creditOf(src) !== e) return; // no friendly fire
   if (e === PLAYER.s) flashDamage();
@@ -106,7 +119,7 @@ function damage(e, amt, src, wk) {
   const by = creditOf(src);
   if (by && by.isPlayer && e.team !== GAME.team) { PLAYER.dmg += amt; hitMarker(e.hp <= 0); }
   if (e.npc) alertGuards(e, src);
-  if (e.bot && src) e.bot.ai.threat = src;
+  if (e.bot && src) { e.bot.ai.threat = src; e.bot.ai.threatT = GAME.time; }
   if (e.hp <= 0) kill(e, src, wk);
 }
 function logDeath(e, by, wk) { const key = (e.kind === 'vehicle' ? e.type : e.npc ? 'guard' : e.kind) + '<' + (wk || '?') + (by && by.team === 2 ? '(guard)' : ''); GAME.deaths = GAME.deaths || {}; GAME.deaths[key] = (GAME.deaths[key] || 0) + 1; }
@@ -114,6 +127,7 @@ function kill(e, src, wk) {
   e.alive = false; e.dead = 0;
   const by = creditOf(src);
   if (by && by.isPlayer && e.team !== GAME.team && e !== PLAYER.s) PLAYER.kills++;
+  if (by && by.team !== e.team && by !== e) awardSP(by, e.kind === 'gun' ? SP_AWARD.gun : e.npc ? SP_AWARD.guard : SP_AWARD.soldier, e.kind === 'gun' ? 'howitzer' : 'kill');
   addFeed(by, e, wk); logDeath(e, by, wk);
   if (e.kind === 'soldier') onSoldierDead(e);
   else if (e.kind === 'gun') { explosion(_v.copy(e.pos).setY(e.pos.y + 1), 6); e.model.root.traverse(o => { if (o.isMesh) o.material = mat(0x262422); }); e.respawnT = 120; }
@@ -125,6 +139,7 @@ function destroyVehicle(v, src, wk, how, toss) { // called by the damage model (
   const by = creditOf(src);
   if (by && by.isPlayer && v.team !== GAME.team) { PLAYER.kills++; hitInfo(how === 'ammo detonation' ? 'AMMO DETONATION · TARGET DESTROYED' : 'TARGET DESTROYED', '#ff8a6a'); }
   logDeath(v, by, wk);
+  if (by && by.team !== v.team) awardSP(by, SP_AWARD[v.cls] || 100, 'vehicle');
   const big = how === 'ammo detonation';
   explosion(_v.copy(v.pos).setY(v.pos.y + 1.8), big ? 14 : 6); Sound.at(big ? 'bigboom' : 'boom', v.pos);
   v.model.root.traverse(o => { if (o.isMesh && !o.isInstancedMesh) o.material = CHAR; });
@@ -153,7 +168,7 @@ function hitReport(owner, target, res) {
     if (res.pen || mods.length) hitMarker(false);
   }
   if (me) { flashDamage(); if (res.pen || mods.length) playerVehMsg(`Hit: ${res.text.toLowerCase()}${list}`); else playerVehMsg(res.rico ? 'A round bounced off' : 'Hit, no penetration'); }
-  if (target.bot && owner) target.bot.ai.threat = creditOf(owner) ? (creditOf(owner).veh || creditOf(owner)) : owner;
+  if (target.bot && owner) { target.bot.ai.threat = creditOf(owner) ? (creditOf(owner).veh || creditOf(owner)) : owner; target.bot.ai.threatT = GAME.time; }
 }
 
 /* ---------------- vehicles ---------------- */
@@ -309,12 +324,13 @@ function moveSoldier(s, inp, dt) {
   const k = s.onGround || inWater ? clamp(dt * 12, 0, 1) : clamp(dt * 2, 0, 1);
   s.vel.x += (mx * spd - s.vel.x) * k; s.vel.z += (mz * spd - s.vel.z) * k;
   if (inWater) { s.vel.y = 0; s.pos.y += (-1.15 - s.pos.y) * clamp(dt * 4, 0, 1); }
-  else { s.vel.y -= 19 * dt; if (inp.jump && s.onGround) { s.vel.y = 5.6; s.onGround = false; } }
+  else { s.vel.y -= 19 * dt; if (inp.jump && s.onGround) { s.vel.y = 5.6; s.onGround = false; } if (s.chute) { s.vel.y = Math.max(s.vel.y, -5.5); s.vel.x *= Math.pow(.6, dt); s.vel.z *= Math.pow(.6, dt); } }
   const ox = s.pos.x, oz = s.pos.z;
   s.pos.x += s.vel.x * dt; s.pos.z += s.vel.z * dt; if (!inWater) s.pos.y += s.vel.y * dt;
   pushOutCircle(s.pos, .35, s.pos.y + .35, s.pos.y + 1.7);
   // steep slopes push you back
   let g = groundY(s.pos.x, s.pos.z, s.pos.y); const top = standTop(s.pos.x, s.pos.z, s.pos.y); if (top !== null && top > g) g = top;
+  if (s.chute && s.onGround) s.chute = false;
   const gOld = groundY(ox, oz, s.pos.y), climb = (g - gOld) / Math.max(.001, Math.hypot(s.pos.x - ox, s.pos.z - oz));
   if (climb > 1.4 && g > s.pos.y + .3 && top === null) { s.pos.x = ox; s.pos.z = oz; g = gOld; }
   if (!inWater) { if (s.pos.y <= g) { s.pos.y = g; s.vel.y = 0; s.onGround = true; } else if (s.pos.y > g + .15) s.onGround = false; if (s.onGround && s.vel.y <= 0 && s.pos.y - g < .5) s.pos.y = g; }
@@ -450,7 +466,7 @@ function howitzersStep(dt) {
 function pickArtyTarget(h) {
   const list = [];
   for (const e of ENTS) {
-    if (!e.alive || e.team === h.team || e.team === 2 || (e.kind === 'soldier' && e.veh)) continue;
+    if (!e.alive || e.team === h.team || e.team === 2 || e.kind === 'air' || (e.kind === 'soldier' && e.veh)) continue;
     const d = Math.hypot(e.pos.x - h.pos.x, e.pos.z - h.pos.z); if (d > HOW_RANGE || d < 300) continue;
     list.push([e, e.kind === 'vehicle' ? 3 : e.kind === 'gun' ? .5 : 1]);
   }
@@ -492,7 +508,7 @@ function checkpointsStep(dt) {
     const z = c.p.zone, cs = Math.cos(z.ang), sn = Math.sin(z.ang), hx = z.hx * 1000, hz = z.hy * 1000, cx = z.x * 1000, cz = z.y * 1000;
     c.inside = [0, 0]; c.guardsLeft = c.guards.filter(g => g.alive).length;
     for (const e of ENTS) {
-      if (!e.alive || e.team > 1 || e.kind === 'gun' || (e.kind === 'soldier' && e.veh) || (e.kind === 'vehicle' && !e.driver)) continue;
+      if (!e.alive || e.team > 1 || e.kind === 'gun' || e.kind === 'air' || (e.kind === 'soldier' && e.veh) || (e.kind === 'vehicle' && !e.driver)) continue; // aircraft never count: only troops and ground vehicles take checkpoints
       const dx = e.pos.x - cx, dz = e.pos.z - cz;
       if (Math.abs(dx * cs + dz * sn) < hx && Math.abs(-dx * sn + dz * cs) < hz) c.inside[e.team]++;
     }
@@ -506,7 +522,7 @@ function checkpointsStep(dt) {
     c.val = clamp(c.val + dir * rate * (c.owner === -1 || c.owner === team ? 1 : 2), -1, 1);
     if (c.owner === 1 - team && (dir > 0 ? c.val >= 0 : c.val <= 0)) c.owner = -1;
     if (c.val >= 1) c.owner = 0; else if (c.val <= -1) c.owner = 1;
-    if (c.owner !== before) onCpChange(c, before);
+    if (c.owner !== before) { onCpChange(c, before); if (c.owner >= 0) for (const e of ENTS) if (e.alive && e.team === c.owner && e.kind !== 'air' && !(e.kind === 'soldier' && e.veh) && inZone(c, e.pos)) awardSP(e.kind === 'vehicle' ? e.driver : e, SP_AWARD.capture, 'capture'); }
   }
   checkWin();
 }
@@ -542,6 +558,8 @@ function endMatch(winner, why) {
 }
 
 /* ---------------- bots ---------------- */
+// every bot is a different person: how well it aims, how fast it reacts, how much it notices, how it holds up under fire, how it drives
+function botSkill() { const r = () => Math.random(); return { aim: .7 + r() * .9, react: .7 + r() * .9, aware: .55 + r() * .4, nerve: .25 + r() * .75, drive: .4 + r() * .6 }; }
 function targetCpFor(team) { // the checkpoint this team should push next
   const C = GAME.cps;
   if (team === 0) { for (let i = 0; i < 5; i++) if (C[i].owner !== 0) return i; return 4; }
@@ -550,12 +568,18 @@ function targetCpFor(team) { // the checkpoint this team should push next
 function spawnBot(b) {
   const roll = Math.random(), team = b.team;
   const vehCount = ENTS.filter(e => e.kind === 'vehicle' && e.alive && e.team === team && e.driver).length;
-  const type = vehCount >= Math.ceil(GAME.bots * .6) ? 'inf' : roll < .35 ? 'mbt' : roll < .57 ? 'ifv' : roll < .72 ? 'jeep' : 'inf';
+  let type = vehCount >= Math.ceil(GAME.bots * .6) ? 'inf' : roll < .35 ? 'mbt' : roll < .57 ? 'ifv' : roll < .72 ? 'jeep' : 'inf';
+  // a bot with points to spend sometimes takes an aircraft (no limit on how many), otherwise the ground kit it can afford
+  const r2 = Math.random();
+  if (b.sp >= SP_COST.jet && r2 < .35) type = 'jet'; else if (b.sp >= SP_COST.heli && r2 < .6) type = 'heli';
+  if ((SP_COST[type] || 0) > b.sp) type = b.sp >= SP_COST.ifv && Math.random() < .5 ? 'ifv' : Math.random() < .3 ? 'jeep' : 'inf';
+  b.sp -= SP_COST[type] || 0;
   const s = new Soldier(team, { bot: b, name: b.name }); b.soldier = s; s.bot = b;
   if (type === 'inf') {
     const where = Math.random() < .8 ? frontCp(team) : -1; const [x, z] = spawnSpot(team, where);
     s.pos.set(x, groundY(x, z) + .1, z); s.yaw = GAME.M.bases[team].ang; b.unit = s;
-  } else { const v = makeVehicle(type, team); enterVehicle(s, v); b.unit = v; }
+  } else if (type === 'jet' || type === 'heli') { const a = airSpawn(type, team); enterVehicle(s, a); b.unit = a; }
+  else { const v = makeVehicle(type, team); enterVehicle(s, v); b.unit = v; }
   b.ai = { t: Math.random(), target: null, stuck: 0, rev: 0, goal: null, think: 0, lastS: 0, holdT: 0 };
 }
 function routePoint(s, lane, out) { // point on the route at distance s, shifted sideways by lane
@@ -575,12 +599,12 @@ function botsStep(dt) {
       continue;
     }
     const u = b.unit = b.soldier.veh || b.soldier;
-    botThink(b, u, dt);
+    if (u.kind === 'air') { if (u.alive) airBotThink(b, u, dt); } else botThink(b, u, dt);
   }
 }
 function botThink(b, u, dt) {
-  const ai = b.ai, D = DIFF[GAME.diff], M = GAME.M, team = b.team, isV = u.kind === 'vehicle';
-  ai.t -= dt;
+  const ai = b.ai, D = DIFF[GAME.diff], M = GAME.M, team = b.team, isV = u.kind === 'vehicle', sk = b.skill || (b.skill = botSkill());
+  ai.t -= dt; ai.settle = Math.max(1, (ai.settle || 1) - dt * .9);
   const range = isV ? (u.cls === 'mbt' ? 1600 : u.cls === 'ifv' ? 1100 : 650) : 380;
   const from = isV ? _w.set(u.pos.x, u.pos.y + u.def.hgt, u.pos.z) : u.eye;
   if (ai.t <= 0) {
@@ -589,14 +613,19 @@ function botThink(b, u, dt) {
     if (!ai.target) {
       let best = null, bs = 1e9;
       for (const e of ENTS) {
-        if (!e.alive || !hostile(team, e.team) || e.team === team || (e.kind === 'soldier' && e.veh) || (e.kind === 'vehicle' && !e.driver && e.team !== 2)) continue;
+        if (!e.alive || !hostile(team, e.team) || e.team === team || (e.kind === 'soldier' && e.veh) || (e.kind === 'vehicle' && !e.driver && e.team !== 2) || (e.kind === 'air' && !e.driver)) continue;
         const d = e.pos.distanceTo(u.pos); if (d > range) continue;
-        let score = d * (e.kind === 'vehicle' && isV && u.cls !== 'jeep' ? .55 : 1) * (e.kind === 'vehicle' && u.cls === 'jeep' && e.cls !== 'jeep' ? 4 : 1) * (e.team === 2 ? 1.2 : 1);
+        // people miss things: far, still or hidden targets often go unnoticed for a while
+        const moving = e.vel && e.vel.lengthSq() > 4, notice = sk.aware * (1 - d / range * .55) * (moving ? 1.15 : .75) * (e.kind === 'soldier' && e.crouch ? .7 : 1) * (e.kind === 'air' ? 1.2 : 1);
+        if (Math.random() > notice) continue;
+        let score = (e.kind === 'air' ? (e.cls === 'heli' ? 1.6 : 5) : 1) * d * (e.kind === 'vehicle' && isV && u.cls !== 'jeep' ? .55 : 1) * (e.kind === 'vehicle' && u.cls === 'jeep' && e.cls !== 'jeep' ? 4 : 1) * (e.team === 2 ? 1.2 : 1);
         if (score < bs && lineOfSight(from, aimCenter(e, _v))) { best = e; bs = score; }
       }
-      if (best) { ai.target = best; ai.react = D.react; }
+      if (best) { ai.target = best; ai.react = D.react * sk.react + (Math.random() < .08 ? 1 + Math.random() * 1.2 : 0); ai.settle = 2.6; ai.wrongAmmo = Math.random() < .07; } // some freeze for a moment; first shots go wide
     }
-    ai.aimErr = new V3((Math.random() - .5), (Math.random() - .5) * .5, (Math.random() - .5)).multiplyScalar(D.aim * 2); // a new wobble every think
+    const flinch = GAME.time - (u.lastHurt ?? (b.soldier.lastHurt ?? -99)) < 1.8 || (ai.threat && ai.threatT > GAME.time - 1.8) ? 1 + 2.2 * (1 - sk.nerve) : 1;
+    ai.aimErr = new V3((Math.random() - .5), (Math.random() - .5) * .5, (Math.random() - .5)).multiplyScalar(D.aim * 2 * sk.aim * (ai.settle || 1) * flinch); // a new wobble every think: worse just after spotting you and when under fire
+    if (Math.random() < .015 * (1.4 - sk.drive)) b.lane = (Math.random() - .5) * 28; // drifting out of formation
     // objective
     const ti = targetCpFor(team), c = GAME.cps[ti];
     ai.cp = ti;
@@ -616,7 +645,7 @@ function botThink(b, u, dt) {
     ai.react -= dt;
     aimP = aimCenter(tg, new V3());
     const d = aimP.distanceTo(from);
-    if (isV) ai.key = botWeapon(u, tg, d);
+    if (isV) { ai.key = botWeapon(u, tg, d); if (ai.wrongAmmo && u.def.ammo.length > 1 && ai.key !== 'mg' && ai.key !== 'atgm') ai.key = u.def.ammo.find(k => k !== ai.key) || ai.key; } // the wrong shell loaded in a hurry
     if (tg.vel) { const sp = isV ? AMMO[ai.key === 'atgm' ? u.def.atgm : ai.key === 'mg' ? u.def.mg : ai.key].v : 0; if (sp && ai.key !== 'atgm') aimP.addScaledVector(tg.vel, d / sp); }
     aimP.addScaledVector(ai.aimErr, d);
   }
@@ -625,7 +654,7 @@ function botThink(b, u, dt) {
     if (ai.goal) {
       const dx = ai.goal.x - u.pos.x, dz = ai.goal.z - u.pos.z, dist = Math.hypot(dx, dz), want = Math.atan2(dz, dx), da = angDiff(u.yaw, want);
       if (ai.rev > 0) { ai.rev -= dt; inp.throttle = -1; inp.steer = ai.revSteer; }
-      else if (!(ai.atCp && dist < 12)) { inp.steer = clamp(da * 2, -1, 1); inp.throttle = Math.abs(da) > 1.2 ? .25 : Math.abs(da) > .5 ? .6 : 1; if (tg && u.cls === 'mbt' && aimP.distanceTo(u.pos) < 1100) inp.throttle *= .4; }
+      else if (!(ai.atCp && dist < 12)) { const want = clamp(da * 2, -1, 1) + Math.sin(GAME.time * .8 + b.lane) * .2 * (1 - sk.drive); ai.steerS = (ai.steerS || 0) + (want - (ai.steerS || 0)) * Math.min(1, dt * (1.5 + 3 * sk.drive)); inp.steer = clamp(ai.steerS, -1, 1); /* late, sloppy steering overshoots turns */ inp.throttle = Math.abs(da) > 1.2 ? .25 : Math.abs(da) > .5 ? .6 : 1; if (tg && u.cls === 'mbt' && aimP.distanceTo(u.pos) < 1100) inp.throttle *= .4; }
     }
     if (aimP) {
       const key = ai.key, A = AMMO[key === 'atgm' ? u.def.atgm : key === 'mg' ? u.def.mg : key];
@@ -648,7 +677,8 @@ function botThink(b, u, dt) {
     if (tg) {
       const d = aimP.distanceTo(s.eye);
       s.yaw = turnTo(s.yaw, Math.atan2(aimP.z - s.pos.z, aimP.x - s.pos.x), 5 * dt); s.pitch = Math.atan2(aimP.y - s.eye.y, Math.hypot(aimP.x - s.pos.x, aimP.z - s.pos.z));
-      if (d > 50 && (!ai.goal || ai.atCp)) { inp.fwd = 0; inp.crouch = true; }
+      if (d > 50 && (!ai.goal || ai.atCp)) { inp.fwd = 0; inp.crouch = sk.nerve > .4 || Math.random() < .5; } // the nervous ones forget to get down
+      if (s.slot === 0 && s.mag < 20 && s.reload <= 0 && Math.random() < dt * .25 * (1.3 - sk.nerve)) s.reload = RIFLE.reload; // reloading at a bad moment
       s.slot = tg.kind === 'vehicle' && s.rpg > 0 && d < 230 ? 1 : 0;
       if (s.slot === 1) aimP.y += d * d * .5 * AMMO.rpg7.g / (AMMO.rpg7.v ** 2);
       ai.burstT = (ai.burstT ?? .3) - dt; if (ai.burstT < -(.5 + Math.random() * .5)) ai.burstT = .2 + Math.random() * .3;
@@ -668,6 +698,7 @@ function aimSolution(v, p, A) { // turret yaw and gun pitch (hull-relative) to p
 }
 function botWeapon(v, tg, d) { // what to shoot with
   const D = v.def, armoured = tg.kind === 'vehicle' && tg.cls !== 'jeep';
+  if (tg.kind === 'air') return D.cls === 'ifv' ? D.ammo.find(k => AMMO[k].kind === 'he') || D.ammo[0] : D.mg || D.ammo.find(k => AMMO[k].kind === 'he') || D.ammo[0]; // autocannon or machine gun at aircraft
   if (armoured) {
     if (D.atgm && v.atgmReady > 0 && d > 350 && (tg.cls === 'mbt' || D.cls === 'ifv')) return 'atgm';
     return D.ammo.find(k => AMMO[k].kind === 'ap') || D.ammo[0];
@@ -681,6 +712,7 @@ function ballisticPitch(R, dy, v, g) { const v2 = v * v, d = v2 * v2 - g * (g * 
 function playerStep(dt) {
   const s = PLAYER.s; if (!s || !s.alive) return;
   updateAim();
+  if (s.veh && s.veh.kind === 'air') { if (s.veh.alive) { airPlayer(s.veh, dt); s.pos.copy(s.veh.pos); } return; }
   if (s.veh) {
     const v = s.veh;
     if (!v.alive) return;
@@ -706,6 +738,7 @@ function updateAim() { // what the middle of the screen points at
 }
 function interact() {
   const s = PLAYER.s; if (!s || !s.alive) return;
+  if (s.veh && s.veh.kind === 'air') { const a = s.veh, slow = a.onGround && a.vel.length() < 4; s.veh = null; a.driver = null; s.model.root.visible = true; s.pos.copy(a.pos); s.pos.y += slow ? 0 : -1.5; if (slow) { s.pos.x += Math.cos(a.hdg + Math.PI / 2) * 3; s.pos.z += Math.sin(a.hdg + Math.PI / 2) * 3; s.pos.y = groundY(s.pos.x, s.pos.z) + .1; s.vel.set(0, 0, 0); } else { s.vel.copy(a.vel).multiplyScalar(.3); s.vel.y = 8; s.chute = true; a.pilotDead = true; a.lastAttacker = a.lastAttacker || null; showMsg('Bailed out', 'Your parachute opens'); } Sound.engine(false, 0); return; }
   if (s.veh) { exitVehicle(s); return; }
   const v = nearbyVehicle(s); if (v) enterVehicle(s, v);
 }
@@ -724,7 +757,8 @@ function updateCamera(dt) {
   const s = PLAYER.s;
   CAM.zoom = MOUSE.r && locked;
   let fov = 65;
-  if (s && s.veh && s.veh.alive) {
+  if (s && s.veh && s.veh.alive && s.veh.kind === 'air') fov = airCamera(s.veh, dt);
+  else if (s && s.veh && s.veh.alive) {
     const v = s.veh, piv = _v.set(v.pos.x, v.pos.y + v.T.eye, v.pos.z);
     const dir = _w.set(Math.cos(CAM.yaw) * Math.cos(CAM.pitch), Math.sin(CAM.pitch), Math.sin(CAM.yaw) * Math.cos(CAM.pitch));
     if (CAM.zoom) { // gunner's sight
@@ -748,6 +782,7 @@ function updateCamera(dt) {
     camera.lookAt(_v.set(CAM.pos.x + Math.cos(CAM.yaw) * 100, CAM.pos.y - 30, CAM.pos.z + Math.sin(CAM.yaw) * 100));
   }
   const gy = groundY(camera.position.x, camera.position.z) + .6; if (camera.position.y < gy) camera.position.y = gy;
+  if (camera.position.y < .6 && terrainY(camera.position.x, camera.position.z) < 0) camera.position.y = .6;
   if (CAM.shake > 0) { CAM.shake = Math.max(0, CAM.shake - dt * 1.5); camera.position.x += (Math.random() - .5) * CAM.shake; camera.position.y += (Math.random() - .5) * CAM.shake; }
   if (Math.abs(camera.fov - fov) > .1) { camera.fov += (fov - camera.fov) * clamp(dt * 14, 0, 1); camera.updateProjectionMatrix(); }
   Sound.listener.copy(camera.position);
@@ -759,10 +794,10 @@ let msgT = 0;
 function showMsg(big, small) { $('msg').innerHTML = big + (small ? `<small>${small}</small>` : ''); $('msg').style.opacity = 1; msgT = 4; }
 function hitMarker(kill) { const h = $('hitm'); h.classList.toggle('kill', kill); h.style.opacity = 1; clearTimeout(h._t); h._t = setTimeout(() => h.style.opacity = 0, kill ? 350 : 120); Sound.play('hit', kill ? 1.4 : .8); }
 function flashDamage() { const d = $('dmgFlash'); d.style.opacity = .8; clearTimeout(d._t); d._t = setTimeout(() => d.style.opacity = 0, 200); }
-const WNAME = { m829a2: '120 mm APFSDS', m830a1: '120 mm HEAT', bm42: '125 mm APFSDS', bk29: '125 mm HEAT', of26: '125 mm HE', m791: '25 mm', m792: '25 mm HE', ubr6: '30 mm', uof8: '30 mm HE', tow2a: 'TOW', konkurs: 'Konkurs', cal50: '.50 cal', kord: 'Kord', m240: 'MG', pkt: 'MG', rpg7: 'RPG', he155: 'artillery', crew: 'crew knocked out', ap: 'APFSDS', heat: 'HEAT', he: 'HE', bullet: 'MG', fire: 'fire', ammo: 'ammo detonation',  rifle: 'rifle', npcRifle: 'rifle', rpg: 'rocket', cannon: '120 mm', coax: 'MG', auto30: '30 mm', hmg: 'HMG', howitzer: 'artillery', splash: 'blast', roadkill: 'run over' };
-function nameOf(e) { if (!e) return 'Something'; if (e.kind === 'gun') return `${TEAMS[e.team].name} howitzer`; if (e.kind === 'vehicle') return e.driver ? e.driver.name : e.def.short; return e.isPlayer ? 'You' : e.name || 'Guard'; }
+const WNAME = { m829a2: '120 mm APFSDS', m830a1: '120 mm HEAT', bm42: '125 mm APFSDS', bk29: '125 mm HEAT', of26: '125 mm HE', m791: '25 mm', m792: '25 mm HE', ubr6: '30 mm', uof8: '30 mm HE', tow2a: 'TOW', konkurs: 'Konkurs', cal50: '.50 cal', kord: 'Kord', m240: 'MG', pkt: 'MG', rpg7: 'RPG', he155: 'artillery', crew: 'crew knocked out', ap: 'APFSDS', heat: 'HEAT', he: 'HE', bullet: 'MG', fire: 'fire', ammo: 'ammo detonation',  rifle: 'rifle', npcRifle: 'rifle', rpg: 'rocket', cannon: '120 mm', coax: 'MG', auto30: '30 mm', hmg: 'HMG', howitzer: 'artillery', splash: 'blast', roadkill: 'run over' , m61: '20 mm cannon', gsh301: '30 mm cannon', m230: '30 mm chain gun', a42: '30 mm cannon', aim9x: 'AIM-9X', r73: 'R-73', agm65: 'Maverick', kh29t: 'Kh-29T', hellfire: 'Hellfire', vikhr: 'Vikhr', hydra: 'Hydra rockets', s8: 'S-8 rockets', mk82: 'Mk 82 bomb', fab250: 'FAB-250 bomb', crash: 'crash', aircraft: 'aircraft', cockpit: 'cockpit hit'};
+function nameOf(e) { if (!e) return 'Something'; if (e.kind === 'gun') return `${TEAMS[e.team].name} howitzer`; if (e.kind === 'vehicle' || e.kind === 'air') return e.driver ? e.driver.name : e.def.short; return e.isPlayer ? 'You' : e.name || 'Guard'; }
 function addFeed(by, victim, wk) {
-  if (victim.kind === 'vehicle') return;
+  if (victim.kind === 'vehicle' || victim.kind === 'air') return;
   const d = document.createElement('div'), col = e => e ? TEAMS[e.team].css : '#ccc';
   d.innerHTML = `<b style="color:${col(by)}">${nameOf(by)}</b> <span class="mut">[${WNAME[wk] || wk || '?'}]</span> <b style="color:${col(victim)}">${nameOf(victim)}</b>`;
   $('feed').prepend(d); while ($('feed').children.length > 6) $('feed').lastChild.remove();
@@ -811,11 +846,16 @@ function updateHUD(dt) {
   hudT -= dt; if (hudT <= 0) { hudT = .2; renderCpBar(); }
   const left = Math.max(0, MATCH_S - GAME.time); $('clock').textContent = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
   const s = PLAYER.s, alive = s && s.alive;
-  $('cross').style.display = alive && !(s.veh && CAM.zoom) ? '' : 'none';
-  $('scope').style.display = alive && s.veh && CAM.zoom ? 'block' : 'none';
+  const inAir = alive && s.veh && s.veh.kind === 'air';
+  $('cross').style.display = alive && (inAir || !(s.veh && CAM.zoom)) ? '' : 'none';
+  $('scope').style.display = alive && s.veh && !inAir && CAM.zoom ? 'block' : 'none';
   // where the gun points right now (the turret lags behind your aim)
   let gm = false;
-  if (alive && s.veh && s.veh.alive) {
+  if (inAir && s.veh.alive) { // jets: the gun pipper, or where a bomb would land
+    const a = s.veh, W = a.def.weapons[a.sel], A = AMMO[W.k];
+    let p = null; if (A.look === 'bomb') p = ccipPoint(a, new V3()); else if (a.cls === 'jet' && W.k === a.def.weapons[0].k) { axes(a); p = a.pos.clone().addScaledVector(_ax, 700).addScaledVector(_ay, 8); }
+    if (p) { _v.copy(p).project(camera); if (_v.z < 1) { gm = true; const el = $('gunMark'); el.style.left = ((_v.x + 1) / 2 * innerWidth) + 'px'; el.style.top = ((1 - _v.y) / 2 * innerHeight) + 'px'; } }
+  } else if (alive && s.veh && s.veh.alive) {
     const v = s.veh, mz = new V3(), dir = new V3(); muzzleOf(v, mz, dir);
     const Wp = AMMO[v.def.reload ? (v.loaded || v.sel) : v.sel], Dh = Math.max(60, Math.hypot(CAM.aim.x - mz.x, CAM.aim.z - mz.z)), hz = Math.max(.05, Math.hypot(dir.x, dir.z));
     if (Wp.kind !== 'bullet') { const t = Dh / (Wp.v * hz); _v.copy(mz).addScaledVector(dir, Wp.v * t); _v.y -= .5 * (Wp.g ?? 9.8) * t * t; } // where the shell would come down
@@ -824,13 +864,13 @@ function updateHUD(dt) {
     if (_v.z < 1) { gm = true; const el = $('gunMark'); el.style.left = ((_v.x + 1) / 2 * innerWidth) + 'px'; el.style.top = ((1 - _v.y) / 2 * innerHeight) + 'px'; }
   }
   $('gunMark').style.display = gm ? 'block' : 'none';
-  const si = $('sightInfo'), showSi = alive && s.veh && CAM.zoom;
+  const si = $('sightInfo'), showSi = alive && s.veh && !inAir && CAM.zoom;
   si.style.display = showSi ? 'block' : 'none';
   if (showSi) { const v = s.veh, k = v.def.reload ? (v.loaded || v.sel) : v.sel; si.textContent = `RNG ${Math.round(CAM.range || 0)} m · ${AMMO[k].type} ${AMMO[k].name}${v.def.reload ? (v.loaded ? ' · LOADED' : ' · LOADING') : ''}`; }
   // status and ammo
   if (alive) {
     if (s.veh) {
-      const v = s.veh; $('status').innerHTML = vehStatusHTML(v); $('ammo').innerHTML = vehAmmoHTML(v);
+      const v = s.veh; if (v.kind === 'air') { $('status').innerHTML = airStatusHTML(v); $('ammo').innerHTML = airAmmoHTML(v); } else { $('status').innerHTML = vehStatusHTML(v); $('ammo').innerHTML = vehAmmoHTML(v); }
     } else {
       $('status').innerHTML = `<div class="who">Rifleman <small>${s.swim ? 'swimming' : s.crouch ? 'crouched' : ''}</small></div><div class="bar2"><i style="transform:scaleX(${s.hp / 100});background:${s.hp < 35 ? '#e0583a' : '#7fd27a'}"></i></div>`;
       $('ammo').innerHTML = s.slot === 1 ? `<small>Rocket launcher</small><br><b>${s.rpg}</b> <small>rockets</small>` : `<small>Rifle${s.reload > 0 ? ' · reloading' : ''}</small><br><b>${s.mag}</b> <small>/ ${s.ammo}</small><br><small>2: rockets (${s.rpg})</small>`;
@@ -854,17 +894,17 @@ function updateHUD(dt) {
   if (alive && !s.veh) { const v = nearbyVehicle(s); if (v) pr = `E: drive the ${v.T.name}`; }
   else if (alive && s.veh) pr = '';
   $('prompt').textContent = pr; $('prompt').classList.toggle('hidden', !pr);
-  $('help2').innerHTML = alive ? (s.veh ? 'W/S drive · A/D steer · mouse aims · right click: gun sight (Shift: more zoom) · 1-3 ammo · F MG · T missile · G smoke · R repair · X extinguish · E: get out · M: map' : 'WASD move · Shift sprint · C crouch · 1/2 weapons · R reload · E: get in · M: map') : '';
+  $('help2').innerHTML = alive ? (inAir ? (s.veh.cls === 'jet' ? 'Mouse flies · W/S throttle · A/D roll · left click: fire weapon · 1-4 weapons · F gun · G flares · X fire handle · right click: cockpit view · E: eject · M: map' : 'Mouse turns and aims · W/S forward/back · A/D sideways · Space/C up/down · left click: fire · 1-3 weapons · F gun · G flares · right click: zoom · E: get out (landed) or bail out · M: map') + `<br>${PLAYER.sp} SP` : s.veh ? 'W/S drive · A/D steer · mouse aims · right click: gun sight (Shift: more zoom) · 1-3 ammo · F MG · T missile · G smoke · R repair · X extinguish · E: get out · M: map' : 'WASD move · Shift sprint · C crouch · 1/2 weapons · R reload · E: get in · M: map') : '';
   // ally tags
   let n = 0;
   if (alive) for (const e of ENTS) {
     if (!e.alive || e.team !== GAME.team || e === s || e === s.veh || (e.kind === 'soldier' && e.veh) || e.kind === 'gun') continue;
-    const d = e.pos.distanceTo(camera.position); if (d > 700) continue;
-    _v.set(e.pos.x, e.pos.y + (e.kind === 'vehicle' ? e.T.hgt + 1.2 : 2.1), e.pos.z).project(camera);
+    const d = e.pos.distanceTo(camera.position); if (d > (e.kind === 'air' ? 4000 : 700)) continue;
+    _v.set(e.pos.x, e.pos.y + (e.kind === 'vehicle' || e.kind === 'air' ? e.T.hgt + 1.2 : 2.1), e.pos.z).project(camera);
     if (_v.z > 1 || Math.abs(_v.x) > 1 || Math.abs(_v.y) > 1) continue;
     let el = tagEls[n]; if (!el) { el = document.createElement('div'); el.className = 'tag'; $('tags').appendChild(el); tagEls[n] = el; }
     el.style.display = ''; el.style.left = ((_v.x + 1) / 2 * innerWidth) + 'px'; el.style.top = ((1 - _v.y) / 2 * innerHeight) + 'px'; el.style.color = TEAMS[GAME.team].css;
-    const nm = e.kind === 'vehicle' ? (e.driver ? e.driver.name : '') : e.name; if (el._n !== nm) { el.textContent = nm; el._n = nm; }
+    const nm = e.kind === 'vehicle' || e.kind === 'air' ? (e.driver ? e.driver.name : '') : e.name; if (el._n !== nm) { el.textContent = nm; el._n = nm; }
     if (++n >= 30) break;
   }
   for (let i = n; i < tagEls.length; i++) tagEls[i].style.display = 'none';
@@ -885,10 +925,11 @@ function drawMapLayer(g, x0, z0, scale, W2, H2, big) { // world (x0,z0) at canva
   for (const e of ENTS) {
     if (!e.alive || (e.kind === 'soldier' && e.veh) || e === me) continue;
     const ally = e.team === GAME.team; if (e.team === 2) continue;
-    if (!ally && !(me && e.pos.distanceTo(me.pos) < 350)) continue;
+    if (!ally && !(me && e.pos.distanceTo(me.pos) < (e.kind === 'air' ? 2500 : 350))) continue;
     const [x, y] = P(e.pos.x, e.pos.z);
     g.fillStyle = ally ? TEAMS[GAME.team].css : TEAMS[e.team].css;
-    if (e.kind === 'vehicle') { g.save(); g.translate(x, y); g.rotate(e.yaw); g.fillRect(-5, -3, 10, 6); g.restore(); } else if (e.kind === 'gun') { g.fillRect(x - 2, y - 2, 4, 4); } else { g.beginPath(); g.arc(x, y, 2.6, 0, TAU); g.fill(); }
+    if (e.kind === 'air') { const h = Math.atan2(e.vel.z, e.vel.x) || e.hdg; g.save(); g.translate(x, y); g.rotate(h); g.beginPath(); g.moveTo(7, 0); g.lineTo(-5, 5); g.lineTo(-3, 0); g.lineTo(-5, -5); g.closePath(); g.fill(); g.restore(); }
+    else if (e.kind === 'vehicle') { g.save(); g.translate(x, y); g.rotate(e.yaw); g.fillRect(-5, -3, 10, 6); g.restore(); } else if (e.kind === 'gun') { g.fillRect(x - 2, y - 2, 4, 4); } else { g.beginPath(); g.arc(x, y, 2.6, 0, TAU); g.fill(); }
   }
   if (me) { const [x, y] = P(me.pos.x, me.pos.z); g.save(); g.translate(x, y); g.rotate(CAM.yaw); g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(8, 0); g.lineTo(-5, 5); g.lineTo(-2, 0); g.lineTo(-5, -5); g.closePath(); g.fill(); g.stroke(); g.restore(); }
 }
@@ -904,28 +945,31 @@ function drawBig() { const cv = $('bigCv'), g = cv.getContext('2d'); drawMapLaye
 const CLASSES = [
   { id: 'inf', name: 'Rifleman', info: 'Rifle and 3 rockets. Can spawn at checkpoints you hold.' },
   { id: 'mbt', veh: true }, { id: 'ifv', veh: true }, { id: 'jeep', veh: true },
-  { id: 'heli', name: 'Attack helicopter', info: 'Next update', off: true }, { id: 'jet', name: 'Jet', info: 'Next update', off: true }, { id: 'boat', name: 'Patrol boat', info: 'Next update', off: true },
+  { id: 'heli', air: true }, { id: 'jet', air: true }, { id: 'boat', name: 'Patrol boat', info: 'Next update', off: true },
 ];
 function openDeploy(why) {
   GAME.deploying = true; document.exitPointerLock && document.exitPointerLock();
   if (PLAYER.s && !PLAYER.s.alive) { const s = PLAYER.s; setTimeout(() => { if (PLAYER.s !== s) removeEnt(s); }, 8000); PLAYER.s = null; }
   if (why === 'redeploy' && PLAYER.s) { const s = PLAYER.s; if (s.veh) { exitVehicle(s); } removeEnt(s); PLAYER.s = null; }
   $('dEye').textContent = why === 'dead' ? 'You were killed' : why === 'start' ? `${GAME.M.name} · you are ${TEAMS[GAME.team].name}` : 'Redeploy';
-  $('dTitle').textContent = 'Choose how to go in';
   renderDeploy(); $('deploy').classList.remove('hidden');
 }
 function renderDeploy() {
   const sel = GAME.sel;
   if (sel.cls !== 'inf') sel.where = -1;
   if (sel.where >= 0 && !canSpawnAt(GAME.team, sel.where)) sel.where = -1;
-  $('dClasses').innerHTML = CLASSES.map(c => { const d = c.veh ? VEH[TEAM_VEH[GAME.team][c.id]] : null, name = d ? d.name : c.name, info = d ? `${Math.round(d.vmax * 3.6)} km/h · ${d.mass} t · ${d.ammo.map(k => AMMO[k].type).join(' / ')}${d.atgm ? ' · ' + AMMO[d.atgm].name : ''}. ${d.info}` : c.info; return `<button class="cls${sel.cls === c.id ? ' on' : ''}" data-c="${c.id}" ${c.off ? 'disabled' : ''}><b>${name}</b><span>${info}</span></button>`; }).join('');
+  if ((SP_COST[sel.cls] || 0) > PLAYER.sp) sel.cls = 'inf';
+  $('dClasses').innerHTML = CLASSES.map(c => { const d = c.veh ? VEH[TEAM_VEH[GAME.team][c.id]] : c.air ? AIR[TEAM_AIR[GAME.team][c.id]] : null, name = d ? d.name : c.name, cost = SP_COST[c.id] || 0, poor = cost > PLAYER.sp;
+    const info = c.veh ? `${Math.round(d.vmax * 3.6)} km/h · ${d.mass} t · ${d.ammo.map(k => AMMO[k].type).join(' / ')}${d.atgm ? ' · ' + AMMO[d.atgm].name : ''}. ${d.info}` : c.air ? d.info : c.info;
+    return `<button class="cls${sel.cls === c.id ? ' on' : ''}" data-c="${c.id}" ${c.off || poor ? 'disabled' : ''}><b>${name}</b><span>${c.off ? '' : `<em class="spc">${cost ? cost + ' SP' : 'free'}</em> `}${info}</span></button>`; }).join('');
+  $('dTitle').innerHTML = `Choose how to go in <small class="mut" style="font-size:14px;font-weight:600">· ${PLAYER.sp} spawn points</small>`;
   const spots = [{ i: -1, n: `${TEAMS[GAME.team].name} base` }, ...GAME.cps.filter(c => canSpawnAt(GAME.team, c.i)).map(c => ({ i: c.i, n: `${c.i + 1} · ${c.p.name}` }))];
   $('dWhere').innerHTML = spots.map(s => `<button class="btn${sel.where === s.i ? ' on' : ''}" data-w="${s.i}" ${s.i >= 0 && sel.cls !== 'inf' ? 'disabled title="Vehicles start at your base"' : ''}>${s.n}</button>`).join('');
-  $('dWhere')._key = spots.map(s => s.i).join();
+  $('dWhere')._key = spots.map(s => s.i).join() + '|' + PLAYER.sp;
   refreshDeploy();
 }
 function refreshDeploy() { // the parts that change while you look at it (rebuilding the buttons would eat clicks)
-  const key = [-1, ...GAME.cps.filter(c => canSpawnAt(GAME.team, c.i)).map(c => c.i)].join();
+  const key = [-1, ...GAME.cps.filter(c => canSpawnAt(GAME.team, c.i)).map(c => c.i)].join() + '|' + PLAYER.sp;
   if (key !== $('dWhere')._key) return renderDeploy();
   const g = $('dMap').getContext('2d'); drawMapLayer(g, 0, 0, $('dMap').width / WORLD_W, 751, 496, true);
   const wait = Math.max(0, GAME.deployT); $('dGo').disabled = wait > 0; $('dWait').textContent = wait > 0 ? `Ready in ${Math.ceil(wait)} s` : '';
@@ -955,7 +999,10 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyE') interact();
   if (e.code === 'KeyR' && !pv && PLAYER.s && PLAYER.s.mag < 30 && PLAYER.s.ammo > 0 && PLAYER.s.reload <= 0) PLAYER.s.reload = RIFLE.reload;
   const pv = PLAYER.s && PLAYER.s.alive && PLAYER.s.veh;
-  if (pv) {
+  if (pv && pv.kind === 'air') {
+    const n = +e.code.replace('Digit', ''); if (n >= 1 && n <= pv.def.weapons.length) { pv.sel = n - 1; Sound.play('ui'); }
+    if (e.code === 'KeyX' && pv.fire > 0 && pv.extT <= 0) { pv.fire = 0; pv.extT = 60; playerVehMsg('Fire handle pulled: fire out'); }
+  } else if (pv) {
     const n = +e.code.replace('Digit', ''); if (n >= 1 && n <= pv.def.ammo.length) selectAmmo(pv, pv.def.ammo[n - 1]);
     if (e.code === 'KeyR') { if (Math.abs(pv.speed) < .5 && vState(pv).crew >= 2 && pv.repairT <= 0) { pv.repairT = 12 * (vState(pv).crew < pv.def.crew.length ? 1.5 : 1); playerVehMsg('Repairing: stay still'); } }
     if (e.code === 'KeyX' && pv.fire > 0 && pv.extT <= 0) { pv.fire = 0; pv.extT = 40; playerVehMsg('Fire put out'); }
@@ -1006,6 +1053,7 @@ function step(dt) {
     if (e.kind === 'vehicle' && !e.alive && e.turretFly && e.turretFly.t < 6) { const f = e.turretFly, tr = e.model.turret; f.t += dt; f.vel.y -= 9.8 * dt; tr.position.addScaledVector(f.vel, dt); tr.rotation.x += f.spin.x * dt; tr.rotation.z += f.spin.z * dt; const w = tr.getWorldPosition(new V3()); if (w.y < groundY(w.x, w.z) + .5 && f.vel.y < 0) { f.vel.set(0, 0, 0); f.spin.set(0, 0, 0); f.t = 99; } }
     if (e.kind === 'vehicle' && !e.alive) { if ((e.burnT -= dt) > 0) { if (Math.random() < dt * 10) sprite(_v.copy(e.pos).setY(e.pos.y + 2), 2, 8, 3, 0x2a2826, false, 4, .7); if (Math.random() < dt * 6) sprite(_v.copy(e.pos).setY(e.pos.y + 1.5), 1.5, 1, .4, 0xffffff, true, 2); } else removeEnt(e); }
   }
+  airsStep(dt);
   updateProjectiles(dt); shellWarnings(); smokeStep(dt);
   checkpointsStep(dt);
   resupply(PLAYER.s, dt);

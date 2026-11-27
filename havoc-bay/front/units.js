@@ -143,6 +143,7 @@ function segUnit(a, b, e) { // fraction along a->b where it hits unit e, or null
     for (const y of [.45, .95, 1.4, h - .15]) { const t = segSphere(a, b, _l0.set(e.pos.x, e.pos.y + y, e.pos.z), y > 1.5 ? .17 : .3); if (t !== null && (best === null || t < best)) best = t; }
     return best;
   }
+  if (e.kind === 'air') return segUnitAir(a, b, e);
   const T = e.kind === 'gun' ? { len: 8, wid: 3, hgt: 2.4 } : e.T;
   vehLocal(e, a, _l0); vehLocal(e, b, _l1);
   let t0 = 0, t1 = 1;
@@ -162,7 +163,8 @@ function traceAll(a, b, skip, exclude) { // nearest hit: {t, ent|null, ground|wa
   if (a.y > 0 !== b.y > 0 || b.y < 0) { const tw = a.y > 0 ? a.y / (a.y - b.y) : 0; if (tw < best.t && terrainY(lerp(a.x, b.x, tw), lerp(a.z, b.z, tw)) < 0) best = { t: tw, ent: null, what: 'water' }; }
   const minx = Math.min(a.x, b.x) - 6, maxx = Math.max(a.x, b.x) + 6, minz = Math.min(a.z, b.z) - 6, maxz = Math.max(a.z, b.z) + 6;
   for (const e of ENTS) {
-    if (!e.alive || e === skip || (exclude && exclude.includes(e)) || (skip && skip.veh === e) || (skip && e.veh === skip) || e.pos.x < minx || e.pos.x > maxx || e.pos.z < minz || e.pos.z > maxz) continue;
+    const er = e.R || 0;
+    if (!e.alive || e === skip || (exclude && exclude.includes(e)) || (skip && skip.veh === e) || (skip && e.veh === skip) || e.pos.x < minx - er || e.pos.x > maxx + er || e.pos.z < minz - er || e.pos.z > maxz + er) continue;
     const t = segUnit(a, b, e); if (t !== null && t < best.t) best = { t, ent: e, what: 'unit' };
   }
   return best.t <= 1 ? best : null;
@@ -229,6 +231,7 @@ function sparks(pt, n = 4) { for (let i = 0; i < n; i++) sprite(pt.clone().add(n
 // a round meets a unit; returns false if it slipped past (the vehicle's armour boxes weren't touched)
 function hitUnit(e, key, owner, a, b, range) {
   const A = AMMO[key];
+  if (e.kind === 'air') return airShot(e, A, owner, a, b);
   if (e.kind === 'vehicle') {
     const res = shotVehicle(e, a, b, key, owner, range); if (!res) return false;
     if (typeof hitReport === 'function') hitReport(owner, e, res);
@@ -263,13 +266,14 @@ function updateProjectiles(dt) {
   for (let i = PROJS.length - 1; i >= 0; i--) {
     const p = PROJS[i], A = p.A; p.t += dt;
     if (A.guided && p.guide) { // wire-guided: steer toward where the gunner is aiming
-      const tgt = p.guide(); if (tgt) { const want = tgt.clone().sub(p.pos).normalize(), cur = p.vel.clone().normalize(), ang = cur.angleTo(want), k = Math.min(1, 1.6 * dt / Math.max(ang, 1e-3)); p.vel.copy(cur.lerp(want, k).normalize().multiplyScalar(A.v)); }
+      const tgt = p.guide(); if (tgt) { const want = tgt.clone().sub(p.pos).normalize(), cur = p.vel.clone().normalize(), ang = cur.angleTo(want), k = Math.min(1, (A.turn || 1.6) * dt / Math.max(ang, 1e-3)); p.vel.copy(cur.lerp(want, k).normalize().multiplyScalar(Math.max(A.v, p.vel.length() * (1 - dt * .05)))); }
     } else p.vel.y -= p.g * dt;
     p.prev.copy(p.pos); p.pos.addScaledVector(p.vel, dt); p.dist += p.vel.length() * dt;
     if ((A.look === 'rocket' || A.look === 'missile') && (p.trail -= dt) <= 0) { p.trail = .03; sprite(p.prev, .7, 1.6, .8, 0xcfcac0, false, .3, .6); }
     if (p.key === 'he155' && (p.trail -= dt) <= 0) { p.trail = .12; sprite(p.prev, 1.2, 2.5, 1.6, 0xb8b2a6, false, 0, .35); }
     if (p.m) { p.m.position.copy(p.pos); p.m.quaternion.setFromUnitVectors(_UP, _l0.copy(p.vel).normalize()); }
     let hit = traceAll(p.prev, p.pos, p.owner, p.skip), res = true;
+    if (!hit && A.prox && p.target && p.target.alive && segSphere(p.prev, p.pos, p.target.pos, A.prox) !== null) hit = { t: 1, ent: null, what: 'prox' }; // proximity fuse
     while (hit && hit.ent) { // a vehicle's outline was touched: check its armour, or fly on past
       res = hitUnit(hit.ent, p.key, p.owner, p.prev.clone().lerp(p.pos, Math.max(0, hit.t - .01)), p.pos.clone().addScaledVector(p.vel, .006), p.dist);
       if (res !== false) break;
@@ -291,6 +295,7 @@ function splash(pt, A, owner, skip) {
   for (const e of ENTS) {
     if (!e.alive || e === skip || (e.kind === 'soldier' && e.veh)) continue;
     if (e.kind === 'vehicle') { if (e.pos.distanceTo(pt) < A.splash + 6) blastNearVehicle(e, pt, A, owner); continue; }
+    if (e.kind === 'air') { if (e.pos.distanceTo(pt) < A.splash + e.R) airSplash(e, pt, A, owner); continue; }
     const c = e.kind === 'soldier' ? e.chest : _l0.copy(e.pos).setY(e.pos.y + 1.2), d = c.distanceTo(pt);
     if (d > A.splash) continue;
     const f = 1 - d / A.splash; damage(e, A.splashDmg * f * f * (e.kind === 'soldier' ? 1 : .6), owner, 'splash');
@@ -330,7 +335,7 @@ const Sound = (() => {
   };
   function play(name, vol = 1) { if (ctx && DEF[name]) DEF[name](vol); }
   function at(name, pos, vol = 1) { const d = pos.distanceTo(listener), range = name === 'bigboom' || name === 'howitzer' ? 9000 : name === 'boom' || name === 'cannon' ? 4000 : 1200; if (d < range) play(name, vol * Math.pow(1 - d / range, 2) * (d < 30 ? 1 : 30 / Math.max(30, d * .35) * 2 + .1)); }
-  function engine(on, rpm, heavy, turbine) { // engine and running-gear noise: rumble, firing pulses or turbine air, track clatter; no pure tones
+  function engine(on, rpm, heavy, turbine, rotor = 0) { // engine and running-gear noise: rumble, firing pulses or turbine air, track clatter, rotor blade slap; no pure tones
     if (!ctx) return;
     if (!eng) {
       const src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
@@ -356,7 +361,8 @@ const Sound = (() => {
     eng.o.frequency.setTargetAtTime(firing, t, .2); eng.lfo.frequency.setTargetAtTime(firing / 4, t, .2);
     const pv = on && !turbine ? (heavy ? .07 : .05) * (.5 + r * .5) : on ? .015 : 0;
     eng.pulse.gain.setTargetAtTime(pv, t, .25); eng.lfoG.gain.setTargetAtTime(pv * .7, t, .25);
-    if (on && heavy && r > .08 && t >= eng.nextClank) { // track links slapping over the wheels
+    if (on && rotor > .2 && t >= (eng.nextSlap || 0)) { thump(.12 * rotor, .09, 95); burst(.05 * rotor, .07, 500, .8); eng.nextSlap = t + 1 / (4.6 * rotor); } // rotor blades slapping the air
+    if (on && heavy && rotor === 0 && r > .08 && t >= eng.nextClank) { // track links slapping over the wheels
       burst(.06 + r * .05, .05, 700 + Math.random() * 300, 1.2, 'bandpass'); thump(.05 * r, .05, 70);
       eng.nextClank = t + clamp(.16 / r, .05, .5) * (.8 + Math.random() * .4);
     }

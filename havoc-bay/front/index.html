@@ -110,6 +110,9 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: .02em; }
 body.realistic #gl canvas { filter: contrast(1.05) saturate(1.08); }
 body.realistic #gl::after { content: ""; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.28) 100%); }
 #loading { z-index: 30; background: #0d1210; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.sppop { position: absolute; left: 50%; top: 40%; transform: translateX(-50%); font: 800 15px ui-monospace, Menlo, monospace; color: #f2b23a; text-shadow: 0 1px 3px #000; animation: sppop 1.6s ease-out forwards; }
+@keyframes sppop { from { opacity: 1; margin-top: 0; } to { opacity: 0; margin-top: -40px; } }
+.spc { font-style: normal; font-weight: 700; color: var(--amber); }
 .endstats { display: grid; grid-template-columns: repeat(3, auto); gap: 4px 20px; justify-content: start; margin-top: 10px; }
 </style>
 </head>
@@ -206,6 +209,7 @@ body.realistic #gl::after { content: ""; position: fixed; inset: 0; pointer-even
 <script src="real-soldier.js"></script>
 <script src="tank-models.js"></script>
 <script src="vehicles.js"></script>
+<script src="aircraft.js"></script>
 <script src="game.js"></script>
 </body>
 </html>
