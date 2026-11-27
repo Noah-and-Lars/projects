@@ -12,6 +12,8 @@ Object.assign(AMMO, {
   a42: { name: '2A42 30 mm', type: 'HEI', kind: 'he', v: 960, pen: [20, 14], main: 20, op: .5, splash: 3.5, splashDmg: 85, fragPen: 7, rate: .11, look: 'tracer', cal: 30, life: 4 },
   aim9x: { name: 'AIM-9X', type: 'IR missile', kind: 'he', v: 850, pen: [10, 10], main: 0, splash: 10, splashDmg: 260, fragPen: 10, guided: true, turn: 4.5, prox: 9, life: 14, look: 'missile', cal: 127, aa: true },
   r73: { name: 'R-73', type: 'IR missile', kind: 'he', v: 800, pen: [10, 10], main: 0, splash: 10, splashDmg: 270, fragPen: 10, guided: true, turn: 5, prox: 9, life: 13, look: 'missile', cal: 170, aa: true },
+  stinger: { name: 'FIM-92 Stinger (ATAS)', type: 'IR missile', kind: 'he', v: 750, pen: [8, 8], main: 0, splash: 6, splashDmg: 150, fragPen: 8, guided: true, turn: 4, prox: 6, life: 8, look: 'missile', cal: 70, aa: true },
+  igla: { name: '9M39 Igla-V', type: 'IR missile', kind: 'he', v: 600, pen: [8, 8], main: 0, splash: 6, splashDmg: 140, fragPen: 8, guided: true, turn: 4, prox: 6, life: 9, look: 'missile', cal: 72, aa: true },
   agm65: { name: 'AGM-65D Maverick', type: 'IR AGM', kind: 'heat', v: 330, pen: [900, 900], main: 250, spall: [14, .2, 3.5, 45], rico: 88, splash: 7, splashDmg: 300, fragPen: 20, guided: true, turn: 1.3, life: 30, look: 'missile', cal: 305, ag: true },
   kh29t: { name: 'Kh-29T', type: 'TV AGM', kind: 'heat', v: 400, pen: [850, 850], main: 260, spall: [14, .2, 3.5, 45], rico: 88, splash: 9, splashDmg: 360, fragPen: 22, guided: true, turn: 1.1, life: 28, look: 'missile', cal: 400, ag: true },
   hellfire: { name: 'AGM-114K Hellfire', type: 'Laser ATGM', kind: 'heat', v: 420, pen: [1000, 1000], tandem: true, main: 230, spall: [14, .2, 3.5, 45], rico: 88, splash: 5, splashDmg: 200, fragPen: 15, guided: true, turn: 1.8, life: 22, look: 'missile', cal: 178, ag: true },
@@ -70,6 +72,7 @@ function modelAH64(team) {
     const en = part(M, sd < 0 ? 'engL' : 'engR'); mesh(en, fuseGeo([[1.2, .3, .32, 0], [-.4, .36, .38, 0], [-1.6, .3, .3, 0]]), OD, 0, 2.05, sd * .92); mesh(en, BOX, DK, -1.65, 2.05, sd * 1.1, [.2, .5, .3]);
     const wg = part(M, sd < 0 ? 'stubL' : 'stubR'); wingPart(wg, [[1.4, sd * .6], [.2, sd * .6], [.3, sd * 2.4], [1.2, sd * 2.4]], 1.3, .14, OD);
     for (const [zz, kind] of [[1.25, 'pod'], [2.15, 'hf']]) { mesh(wg, BOX, DK, .8, 1.1, sd * zz, [.6, .3, .08]); if (kind === 'pod') store(M, 1, podModel(1.6, .2), .8, .82, sd * zz); else for (let k = 0; k < 4; k++) store(M, 2, missileModel(1.6, .09, 0x4a5038, .1), .9, .72 - (k >> 1) * .24, sd * zz + (k % 2 ? .14 : -.14)); }
+    for (let k = 0; k < 2; k++) store(M, 3, missileModel(1.5, .035, 0x7a8068, .06), .85, 1.28 - k * .12, sd * 2.62); // air-to-air Stingers on the wingtips
     mesh(fu, gCyl(.22, .22, 12), 0x1c1c1a, 1.7, .3, sd * 1.15, [1, .14, 1], [Math.PI / 2, 0, 0]); tube(fu, [1.7, .3, sd * 1.15], [1.6, .95, sd * .5], .04, 0x2a2a28); // main wheels
   }
   mesh(fu, gCyl(.13, .13, 10), 0x1c1c1a, -7.3, .2, 0, [1, .1, 1], [Math.PI / 2, 0, 0]);
@@ -95,6 +98,7 @@ function modelKa52(team) {
     const wg = part(M, sd < 0 ? 'stubL' : 'stubR'); wingPart(wg, [[1.4, sd * .9], [.2, sd * .9], [.35, sd * 2.9], [1.15, sd * 2.9]], 1.25, .14, G2);
     mesh(wg, BOX, DK, .8, 1.05, sd * 1.6, [.6, .3, .08]); store(M, 1, podModel(1.7, .23), .8, .76, sd * 1.6);
     mesh(wg, BOX, DK, .8, 1.05, sd * 2.5, [.6, .3, .08]); for (let k = 0; k < 6; k++) store(M, 2, missileModel(2.7, .07, 0x5a6050, .08), .9, .8 - (k % 2) * .16, sd * 2.5 + ((k >> 1) - 1) * .13);
+    for (let k = 0; k < 2; k++) store(M, 3, missileModel(1.6, .036, 0x6a7060, .06), .85, 1.22 - k * .12, sd * 2.95); // Igla air-to-air missiles outboard
   }
   const gun = new THREE.Group(); gun.position.set(1.6, .95, .95); M.root.add(gun); mesh(gun, BOX, DK, .3, 0, 0, [1.2, .35, .35]); cylAlongX(gun, .8, 2.9, .05, .045, 0, 0, 0x1c1c1a, 8); M.gunPivot = gun;
   part(M, 'trans'); part(M, 'fuel');
@@ -116,15 +120,15 @@ const AIR = {
       P_('eng1', 'engine', [-5.4, .35, 0], .8, 75), P_('wingLi', 'wing', [-1.3, .25, -1.9], 1.05, 90, { side: -1, seg: 'in' }), P_('wingLo', 'wing', [-2.8, .25, -3.7], .85, 55, { side: -1, seg: 'out' }), P_('wingRi', 'wing', [-1.3, .25, 1.9], 1.05, 90, { side: 1, seg: 'in' }), P_('wingRo', 'wing', [-2.8, .25, 3.7], .85, 55, { side: 1, seg: 'out' }),
       P_('stabL', 'stab', [-6.4, .3, -1.8], .75, 40, { side: -1 }), P_('stabR', 'stab', [-6.4, .3, 1.8], .75, 40, { side: 1 }), P_('fin', 'fin', [-6.0, 2.3, 0], .9, 45)] },
   ah64: { name: 'AH-64D Apache Longbow', short: 'Apache', cls: 'heli', model: modelAH64, mass: 8000, power: 2.1e6, rotorR: 7.3, f: 3.6, tmax: 1.6, pprof: 3.0e5, rotE: 2.3e6, vne: 95, len: 17.7, wid: 5, R: 8.5, cam: 17, flares: 30, tailRotor: true, skid: 0,
-    info: 'Armoured attack helicopter: M230 chain gun (follows your aim), 38 Hydra rockets, 8 Hellfire (laser: keep the crosshair on the target). Rearms at your base.',
-    weapons: [{ k: 'm230', n: 1200, turret: [-1.75, 1.75, -1.05, .19] }, { k: 'hydra', n: 38 }, { k: 'hellfire', n: 8 }],
-    parts: [P_('cockpit', 'cockpit', [2.9, 1.8, 0], .9, 85), P_('nose', 'nose', [4.8, .95, 0], .45, 40), P_('fuse', 'fuse', [.8, 1.45, 0], 1.15, 170), P_('fuel', 'fuel', [.2, 1.1, 0], .75, 70),
+    info: 'Armoured attack helicopter: M230 chain gun (follows your aim), 38 Hydra rockets, 8 Hellfire (laser: keep the crosshair on the target), 4 Stinger air-to-air missiles. Two crew: it flies on with one. Rearms at your base.',
+    weapons: [{ k: 'm230', n: 1200, turret: [-1.75, 1.75, -1.05, .19] }, { k: 'hydra', n: 38 }, { k: 'hellfire', n: 8 }, { k: 'stinger', n: 4 }], thermal: 2,
+    parts: [P_('cockpit', 'cockpit', [2.3, 2.0, 0], .62, 60), P_('gunner', 'cockpit', [3.5, 1.6, 0], .62, 60), P_('nose', 'nose', [4.8, .95, 0], .45, 40), P_('fuse', 'fuse', [.8, 1.45, 0], 1.15, 170), P_('fuel', 'fuel', [.2, 1.1, 0], .75, 70),
       P_('engL', 'engine', [-.3, 2.05, -.95], .55, 60), P_('engR', 'engine', [-.3, 2.05, .95], .55, 60), P_('trans', 'trans', [.6, 2.5, 0], .55, 70), P_('rotor', 'rotor', [.6, 3.95, 0], 1.4, 80),
       P_('boom', 'boom', [-4.6, 1.75, 0], .7, 70), P_('trot', 'trot', [-8.2, 2.9, .35], .8, 35), P_('stubL', 'stub', [.8, 1.35, -1.6], .7, 50), P_('stubR', 'stub', [.8, 1.35, 1.6], .7, 50)] },
   ka52: { name: 'Ka-52 Alligator', short: 'Ka-52', cls: 'heli', model: modelKa52, mass: 10400, power: 2.65e6, rotorR: 7.25, coax: true, f: 4.3, tmax: 1.55, pprof: 3.8e5, rotE: 2.9e6, vne: 92, len: 16, wid: 6, R: 8.5, cam: 17, flares: 30, tailRotor: false, skid: 0,
-    info: 'Coaxial-rotor attack helicopter: 2A42 30 mm cannon (narrow arc), 40 S-8 rockets, 12 Vikhr (beam-riding: keep the crosshair on the target). No tail rotor to lose. Rearms at your base.',
-    weapons: [{ k: 'a42', n: 460, turret: [-.06, .17, -.6, .05] }, { k: 's8', n: 40 }, { k: 'vikhr', n: 12 }],
-    parts: [P_('cockpit', 'cockpit', [3.2, 1.6, 0], 1.1, 90), P_('nose', 'nose', [4.4, 2.2, 0], .4, 40), P_('fuse', 'fuse', [.6, 1.45, 0], 1.3, 180), P_('fuel', 'fuel', [.0, 1.1, 0], .8, 70),
+    info: 'Coaxial-rotor attack helicopter: 2A42 30 mm cannon (narrow arc), 40 S-8 rockets, 12 Vikhr (beam-riding: keep the crosshair on the target), 4 Igla air-to-air missiles. Two crew, no tail rotor to lose. Rearms at your base.',
+    weapons: [{ k: 'a42', n: 460, turret: [-.06, .17, -.6, .05] }, { k: 's8', n: 40 }, { k: 'vikhr', n: 12 }, { k: 'igla', n: 4 }], thermal: 2,
+    parts: [P_('cockpit', 'cockpit', [3.2, 1.6, -.42], .62, 60), P_('gunner', 'cockpit', [3.2, 1.6, .42], .62, 60), P_('nose', 'nose', [4.4, 2.2, 0], .4, 40), P_('fuse', 'fuse', [.6, 1.45, 0], 1.3, 180), P_('fuel', 'fuel', [.0, 1.1, 0], .8, 70),
       P_('engL', 'engine', [-.2, 2.35, -1.0], .55, 60), P_('engR', 'engine', [-.2, 2.35, 1.0], .55, 60), P_('trans', 'trans', [.6, 2.8, 0], .55, 70), P_('rotor', 'rotor', [.6, 4.7, 0], 1.6, 90),
       P_('boom', 'boom', [-4.4, 1.8, 0], .7, 70), P_('fin', 'fin', [-6.8, 2.2, 0], 1.0, 40), P_('stubL', 'stub', [.8, 1.3, -1.9], .7, 50), P_('stubR', 'stub', [.8, 1.3, 1.9], .7, 50)] },
 };
@@ -543,7 +547,10 @@ function partDamage(a, p, dmg, owner, A) {
   const me = a.driver && a.driver.isPlayer, say = t => { if (me) playerVehMsg(t); };
   const hide = id => { const g = a.model.parts[id]; if (g) g.visible = false; };
   switch (p.kind) {
-    case 'cockpit': if (a.driver) { const d = a.driver; kill(d, owner, 'cockpit'); } a.pilotDead = true; break;
+    case 'cockpit': { // a helicopter has two crew and either can fly it (as in War Thunder); both gone and nobody is flying
+      const seats = a.parts.filter(q => q.kind === 'cockpit');
+      if (seats.some(q => q.hp > 0)) { say(p.id === 'gunner' ? 'Gunner hit: you are on your own' : 'Pilot hit: the gunner has the controls'); break; }
+      if (a.driver) { const d = a.driver; kill(d, owner, 'cockpit'); } a.pilotDead = true; break; }
     case 'fuse': breakUp(a, owner); break;
     case 'fuel': a.fire = Math.max(a.fire, 30); a.leak = true; say('Fuel tank hit: on fire'); break;
     case 'engine': say(`${p.id.endsWith('L') ? 'Left' : p.id.endsWith('R') ? 'Right' : ''} engine destroyed`.trim()); if (Math.random() < .5) a.fire = Math.max(a.fire, 15); break;
@@ -669,7 +676,7 @@ function airCamera(a, dt) {
 function airStatusHTML(a) {
   const D = a.def, V = a.vel.length(), alt = a.pos.y - Math.max(0, groundY(a.pos.x, a.pos.z));
   const groups = D.cls === 'jet' ? [['CKPT', 'cockpit'], ['FUS', 'fuseF', 'fuseR'], ['FUEL', 'fuel'], ...a.parts.filter(p => p.kind === 'engine').map(p => [p.id === 'eng1' ? 'ENG' : p.id === 'engL' ? 'ENG L' : 'ENG R', p.id]), ['WING L', 'wingLi', 'wingLo'], ['WING R', 'wingRi', 'wingRo'], ['TAIL', ...a.parts.filter(p => p.kind === 'stab' || p.kind === 'fin').map(p => p.id)]]
-    : [['CKPT', 'cockpit'], ['FUS', 'fuse'], ['FUEL', 'fuel'], ['ENG L', 'engL'], ['ENG R', 'engR'], ['XMSN', 'trans'], ['ROTOR', 'rotor'], ['TAIL', 'boom', ...(D.tailRotor ? ['trot'] : ['fin'])]];
+    : [['PILOT', 'cockpit'], ['GUNNER', 'gunner'], ['FUS', 'fuse'], ['FUEL', 'fuel'], ['ENG L', 'engL'], ['ENG R', 'engR'], ['XMSN', 'trans'], ['ROTOR', 'rotor'], ['TAIL', 'boom', ...(D.tailRotor ? ['trot'] : ['fin'])]];
   const chips = groups.map(([l, ...ids]) => { const ps = ids.map(i => a.part(i)).filter(Boolean), worst = Math.min(...ps.map(p => p.hp / p.max)); return `<span class="chip ${worst <= 0 ? 'dead' : worst < .6 ? 'dmg' : 'ok'}">${l}</span>`; }).join('');
   const notes = []; if (a.fire > 0) notes.push(`<span class="warn">FIRE${a.extT > 0 ? '' : ' · X: fire handle'}</span>`); if (incoming(a)) notes.push('<span class="warn">MISSILE · G: flares</span>');
   if (a.cls === 'heli' && a.spin > .5) notes.push('<span class="warn">SPINNING</span>'); if (a.onGround && a.rearmT > 0) notes.push('rearming');
@@ -690,6 +697,7 @@ function airStatusHTML(a) {
     extra = ` · COLL ${Math.round((a.lever ?? a.col ?? 0) * 100)}% · ${a.vel.y >= 0 ? '+' : ''}${a.vel.y.toFixed(1)} m/s · RPM ${Math.round(a.rpm * 100)}% · TQ ${Math.round((a.tq || 0) * 100)}%`;
     const dead = a.parts.filter(p => p.kind === 'engine').every(p => !pOK(p)) || !pOK(a.part('trans'));
     if (a.hover) notes.push('HOVER MODE · H: off');
+    for (const pr of PROJS) if (pr.owner === a && pr.A.guided && pr.guide) { const g = pr.guide(); if (g) { notes.push(`missile: ${Math.max(0, g.distanceTo(pr.pos) / Math.max(50, pr.vel.length())).toFixed(0)} s to impact · keep the crosshair on the target`); break; } }
     if (dead && !a.onGround) notes.push('<span class="warn">NO POWER · autorotate: lower the collective (C), keep 120+ km/h, flare, then raise it (Space) at the bottom</span>');
     else if (a.rpm < .9 && !a.onGround) notes.push('<span class="warn">LOW ROTOR RPM · lower the collective</span>');
     if (a.vrs > .3) notes.push('<span class="warn">SINKING IN OWN DOWNWASH · fly forward</span>');
@@ -699,6 +707,11 @@ function airStatusHTML(a) {
 function airAmmoHTML(a) {
   const list = a.def.weapons.map((w, i) => `<div class="am${a.sel === i ? ' sel' : ''}">${i + 1} · ${AMMO[w.k].type} <small>${AMMO[w.k].name} ×${a.ammo[i]}</small></div>`).join('');
   return `${list}<small>F: gun · G: flares ×${a.flares}</small>`;
+}
+function rocketPoint(a, A, out) { // the ballistic computer: where a rocket fired now would land (rockets leave along the nose)
+  axes(a); const p = airGunWorld(a, new V3()), v = _ax.clone().multiplyScalar(A.v).add(a.vel), dt = .05, g = A.g ?? 9.8;
+  for (let k = 0; k < 160; k++) { v.y -= g * dt; p.addScaledVector(v, dt); if (p.y < groundY(p.x, p.z)) return out.copy(p); }
+  return out.copy(p);
 }
 function ccipPoint(a, out) { // where a bomb released now would land
   const p = a.pos.clone(), v = a.vel.clone(), dt = .1;
@@ -768,6 +781,7 @@ function airBotThink(b, a, dt) {
     const hd = Math.hypot(want.x, want.z), wantAlt = 45 + sk.aim * 15, hdgWant = tg && hd < 400 ? Math.atan2(tg.pos.z - a.pos.z, tg.pos.x - a.pos.x) : Math.atan2(want.z, want.x);
     const fwdC = hd > 60 ? clamp(hd / 300, .2, 1) * Math.cos(angDiffA(a.hdg, Math.atan2(want.z, want.x))) : 0;
     a.inp = { fwd: clamp(fwdC, -.4, .72), side: clamp(Math.sin(angDiffA(a.hdg, Math.atan2(want.z, want.x))) * (hd > 60 ? .6 : 0), -.5, .5), up: clamp((wantAlt - alt) / 15, -1, 1), hdg: hdgWant + (Math.sin(GAME.time * .6 + b.lane) * .05) };
+    if (tg && tg.kind === 'air' && a.ammo[3] > 0) { const d = tg.pos.distanceTo(a.pos), an = _ax.set(1, 0, 0).applyQuaternion(a.quat).angleTo(tg.pos.clone().sub(a.pos)); if (d < 4200 && an < .5 && Math.random() < dt * (.5 + sk.aware)) { fire = 3; fo.target = tg; } }
     if (tg && tg.kind !== 'air' && hd < 400) {
       const tp = aimCenter(tg, new V3()), d = tp.distanceTo(a.pos);
       if (d < 4500 && lineOfSight(a.pos, tp)) {

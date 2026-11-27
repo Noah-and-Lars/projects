@@ -89,7 +89,7 @@ function deployPlayer(cls, where) {
     const [x, z] = spawnSpot(team, where); s.pos.set(x, groundY(x, z) + .1, z); s.yaw = CAM.yaw = GAME.M.bases[team].ang;
   } else if (cls === 'jet' || cls === 'heli') {
     const a = airSpawn(cls, team); enterVehicle(s, a); CAM.yaw = a.hdg; CAM.pitch = cls === 'jet' ? .02 : -.08;
-    showMsg(cls === 'jet' ? 'Take off: full throttle, look up past 250 km/h' : 'Hold Space to raise the collective and lift off', cls === 'jet' ? 'The jet follows your aim · W/S throttle · A/D roll · Q/E rudder · B airbrake · 1-4 weapons · F gun · G flares · J bail out. Land on your runway to rearm and refuel.' : 'The nose follows your aim: look down to fly forward · W/S nose down/up · A/D roll · Space/C collective up/down · H hover mode · 1-3 weapons · G flares · J bail out. Land at base to rearm.');
+    showMsg(cls === 'jet' ? 'Take off: full throttle, look up past 250 km/h' : 'Hold Space to raise the collective and lift off', cls === 'jet' ? 'The jet follows your aim · W/S throttle · A/D roll · Q/E rudder · B airbrake · 1-4 weapons · F gun · G flares · J bail out. Land on your runway to rearm and refuel.' : 'The nose follows your aim: look down to fly forward · W/S nose down/up · A/D roll · Space/C collective up/down · H hover mode · 1-4 weapons · G flares · J bail out. Land at base to rearm.');
   } else {
     const v = makeVehicle(cls, team); enterVehicle(s, v); CAM.yaw = v.yaw;
   }
@@ -785,8 +785,8 @@ function resupply(s, dt) { // at your base or a checkpoint you hold: ammo and he
 const THERMAL = { want: false, on: false, t: 0, swapped: new Map() };
 const HOT_MAT = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.6, 2.6, 2.6), toneMapped: false, fog: false }), WARM_MAT = new THREE.MeshBasicMaterial({ color: new THREE.Color(.55, .55, .55), toneMapped: false, fog: false });
 function thermalUpdate(dt) {
-  const s = PLAYER.s, v = s && s.alive && s.veh && s.veh.kind === 'vehicle' ? s.veh : null;
-  const on = !!(THERMAL.want && v && v.alive && CAM.zoom && v.def.thermal && vState(v).fcs);
+  const s = PLAYER.s, v = s && s.alive && s.veh && (s.veh.kind === 'vehicle' || s.veh.cls === 'heli') ? s.veh : null;
+  const on = !!(THERMAL.want && v && v.alive && CAM.zoom && v.def.thermal && (v.kind === 'air' ? pOK(v.part('nose')) : vState(v).fcs)); // (a helicopter's sight sits in its nose)
   if (on !== THERMAL.on) {
     THERMAL.on = on; const c = renderer.domElement;
     if (on) { c.style.filter = `grayscale(1) contrast(1.35) brightness(.8) blur(${v.def.thermal >= 2 ? .3 : 1.1}px)`; THERMAL.sky = [SKY.visible, REAL.sky ? REAL.sky.visible : false]; SKY.visible = false; if (REAL.sky) REAL.sky.visible = false; THERMAL.bg = scene.background; scene.background = new THREE.Color(0x0b0b0b); THERMAL.t = 0; }
@@ -906,7 +906,7 @@ function updateHUD(dt) {
   let gm = false;
   if (inAir && s.veh.alive) { // jets: the gun pipper, or where a bomb would land
     const a = s.veh, W = a.def.weapons[a.sel], A = AMMO[W.k];
-    let p = null; if (A.look === 'bomb') p = ccipPoint(a, new V3()); else if (a.cls === 'jet' && W.k === a.def.weapons[0].k) { axes(a); p = a.pos.clone().addScaledVector(_ax, 700).addScaledVector(_ay, 8); }
+    let p = null; if (A.look === 'bomb') p = ccipPoint(a, new V3()); else if (A.look === 'rocket') p = rocketPoint(a, A, new V3()); else if (a.cls === 'jet' && W.k === a.def.weapons[0].k) { axes(a); p = a.pos.clone().addScaledVector(_ax, 700).addScaledVector(_ay, 8); }
     if (p) { _v.copy(p).project(camera); if (_v.z < 1) { gm = true; const el = $('gunMark'); el.style.left = ((_v.x + 1) / 2 * innerWidth) + 'px'; el.style.top = ((1 - _v.y) / 2 * innerHeight) + 'px'; } }
   } else if (alive && s.veh && s.veh.alive) {
     const v = s.veh, mz = new V3(), dir = new V3(); muzzleOf(v, mz, dir);
@@ -947,7 +947,7 @@ function updateHUD(dt) {
   if (alive && !s.veh) { const v = nearbyVehicle(s); if (v) pr = `E: drive the ${v.T.name}`; }
   else if (alive && s.veh) pr = '';
   $('prompt').textContent = pr; $('prompt').classList.toggle('hidden', !pr);
-  $('help2').innerHTML = alive ? (inAir ? (s.veh.cls === 'jet' ? 'Aim to fly · W/S throttle · A/D roll · Q/E rudder · B airbrake · left click: fire weapon · 1-4 weapons · F gun · G flares · X fire handle · right click: cockpit view · J: bail out · M: map' : 'Nose follows your aim · W/S nose down/up · A/D roll · Space/C collective · H: hover mode · left click: fire · 1-3 weapons · F gun · G flares · right click: zoom · E: get out (landed) · J: bail out · M: map') + `<br>${PLAYER.sp} SP` : s.veh ? 'W/S drive · A/D steer · mouse aims · right click: gun sight (Shift: more zoom) · 1-3 ammo · F MG · T missile · G smoke · R repair · X extinguish · E: get out · M: map' : 'WASD move · Shift sprint · C crouch · 1/2 weapons · R reload · E: get in · M: map') : '';
+  $('help2').innerHTML = alive ? (inAir ? (s.veh.cls === 'jet' ? 'Aim to fly · W/S throttle · A/D roll · Q/E rudder · B airbrake · left click: fire weapon · 1-4 weapons · F gun · G flares · X fire handle · right click: cockpit view · J: bail out · M: map' : 'Nose follows your aim · W/S nose down/up · A/D roll · Space/C collective · H: hover mode · left click: fire · 1-4 weapons · F gun · N thermal (zoomed) · G flares · right click: zoom · E: get out (landed) · J: bail out · M: map') + `<br>${PLAYER.sp} SP` : s.veh ? 'W/S drive · A/D steer · mouse aims · right click: gun sight (Shift: more zoom) · 1-3 ammo · F MG · T missile · G smoke · R repair · X extinguish · E: get out · M: map' : 'WASD move · Shift sprint · C crouch · 1/2 weapons · R reload · E: get in · M: map') : '';
   // ally tags
   let n = 0;
   if (alive) for (const e of ENTS) {
@@ -1057,6 +1057,7 @@ addEventListener('keydown', e => {
   if (pv && pv.kind === 'air') {
     if (e.code === 'KeyJ') { interact(true); return; }
     if (e.code === 'KeyB' && pv.cls === 'jet') { pv.airbrake = !pv.airbrake; playerVehMsg(pv.airbrake ? 'Airbrake out' : 'Airbrake in'); }
+    if (e.code === 'KeyN' && pv.cls === 'heli') { THERMAL.want = !THERMAL.want; playerVehMsg(!pOK(pv.part('nose')) ? 'Sight destroyed: no thermal view' : THERMAL.want ? 'Thermal sight on (in the zoomed view)' : 'Thermal sight off'); }
     if (e.code === 'KeyH' && pv.cls === 'heli') { pv.hover = !pv.hover; playerVehMsg(pv.hover ? 'Hover mode on: it holds its place and height' : 'Hover mode off: you have the collective'); }
     const n = +e.code.replace('Digit', ''); if (n >= 1 && n <= pv.def.weapons.length) { pv.sel = n - 1; Sound.play('ui'); }
     if (e.code === 'KeyX' && pv.fire > 0 && pv.extT <= 0) { pv.fire = 0; pv.extT = 60; playerVehMsg('Fire handle pulled: fire out'); }
