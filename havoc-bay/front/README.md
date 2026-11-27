@@ -76,6 +76,8 @@ You earn SP on the ground:
 
 Only ground units can capture checkpoints, so a team still needs tanks and infantry to win.
 
+For testing, press 0 six times in a row (each press within 1.5 seconds of the last) to get 10,000 SP. It works in a match and on the deploy screen.
+
 Bots earn and spend SP the same way. Each bot has its own skill level, and bots make human mistakes:
 
 - They are slow to notice targets, and their aim takes time to settle.

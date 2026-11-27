@@ -996,6 +996,8 @@ addEventListener('mousemove', e => {
 addEventListener('keydown', e => {
   if (e.repeat) return; KEYS[e.code] = true;
   if (!GAME.on) return;
+  // test cheat: press 0 six times in a row for 10,000 spawn points
+  if (e.code === 'Digit0' || e.code === 'Numpad0') { const t = performance.now(); GAME.zeroN = t - (GAME.zeroT || 0) < 1500 ? (GAME.zeroN || 0) + 1 : 1; GAME.zeroT = t; if (GAME.zeroN >= 6) { GAME.zeroN = 0; PLAYER.sp += 10000; spPop('+10000 SP · test'); if (!$('deploy').classList.contains('hidden')) refreshDeploy(); } } else GAME.zeroN = 0;
   if (e.code === 'KeyE') interact();
   if (e.code === 'KeyR' && !pv && PLAYER.s && PLAYER.s.mag < 30 && PLAYER.s.ammo > 0 && PLAYER.s.reload <= 0) PLAYER.s.reload = RIFLE.reload;
   const pv = PLAYER.s && PLAYER.s.alive && PLAYER.s.veh;
