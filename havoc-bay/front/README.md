@@ -98,7 +98,7 @@ Both sides fly the Mitsubishi F-2A; Red's wear a darker paint. Blue also has the
   - Losing an outer wing makes the jet roll towards that side.
   - A twin-engined jet with one engine out yaws but keeps flying on the other (the code supports it; the F-2A has one engine).
   - An Apache that loses its tail rotor spins. A dead transmission forces an autorotation landing.
-  - Fires spread until they burn out. J bails you out, and you come down on a parachute. E gets you out once you have landed. In a jet E is also the right rudder, so it only lets you out once the jet has stopped.
+  - Fires spread until they burn out. J bails you out, and you come down on a parachute. E gets you out once you have landed. In a jet E is also the right rudder, so it only lets you out once the jet has stopped. An aircraft you have parked stays where it is, and E beside it puts you back in the cockpit.
 - **The battle area:** fly more than 2.5 km past the edge of the map and you are warned to turn back. Nothing else happens; bot pilots turn round at 3 km.
 - **The F-2A** is a downloaded 3D model (`models/f2.js`). `gltf-models.js` reads it without a loader, so the game still opens straight from disk. It cuts the one-piece airframe into the damageable parts above, with hit areas fitted to the real shape. The model keeps its own JASDF blue camouflage, and its landing gear retracts after take-off.
 

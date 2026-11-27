@@ -790,11 +790,12 @@ function updateAim() { // what the middle of the screen points at
 function interact(bail) {
   const s = PLAYER.s; if (!s || !s.alive) return;
   if (s.veh && s.veh.kind === 'air') { const a = s.veh, slow = a.onGround && a.vel.length() < (a.cls === 'jet' ? 1 : 4); if (!slow && !bail) { if (a.cls !== 'jet') playerVehMsg('J: bail out'); return; } // (in a jet E is the right rudder and the nose-wheel steering, so it only lets you out once stopped)
-    s.veh = null; a.driver = null; s.model.root.visible = true; s.pos.copy(a.pos); s.pos.y += slow ? 0 : -1.5; if (slow) { s.pos.x += Math.cos(a.hdg + Math.PI / 2) * 3; s.pos.z += Math.sin(a.hdg + Math.PI / 2) * 3; s.pos.y = groundY(s.pos.x, s.pos.z) + .1; s.vel.set(0, 0, 0); } else { s.vel.copy(a.vel).multiplyScalar(.3); s.vel.y = 8; s.chute = true; a.pilotDead = true; a.lastAttacker = a.lastAttacker || null; showMsg('Bailed out', 'Your parachute opens'); } Sound.engine(false, 0); return; }
+    s.veh = null; a.driver = null; s.model.root.visible = true; s.pos.copy(a.pos); s.pos.y += slow ? 0 : -1.5; if (slow) { s.pos.x += Math.cos(a.hdg + Math.PI / 2) * 3; s.pos.z += Math.sin(a.hdg + Math.PI / 2) * 3; s.pos.y = groundY(s.pos.x, s.pos.z) + .1; s.vel.set(0, 0, 0); a.throttle = 0; a.vel.set(0, 0, 0); a.parked = true; } else { s.vel.copy(a.vel).multiplyScalar(.3); s.vel.y = 8; s.chute = true; a.pilotDead = true; a.lastAttacker = a.lastAttacker || null; showMsg('Bailed out', 'Your parachute opens'); } Sound.engine(false, 0); return; }
   if (s.veh) { exitVehicle(s); return; }
-  const v = nearbyVehicle(s); if (v) enterVehicle(s, v);
+  const v = nearbyVehicle(s); if (!v) return;
+  enterVehicle(s, v); if (v.kind === 'air') { v.parked = false; CAM.yaw = v.hdg; CAM.pitch = v.cls === 'jet' ? .02 : -.08; playerVehMsg(v.cls === 'jet' ? 'Back in the cockpit' : 'Back in the cockpit: hold Space to lift off'); }
 }
-function nearbyVehicle(s) { let best = null, bd = 7.5; for (const e of ENTS) if (e.kind === 'vehicle' && e.alive && !e.driver && e.team === s.team) { const d = Math.hypot(e.pos.x - s.pos.x, e.pos.z - s.pos.z) - e.T.len / 2; if (d < bd) { bd = d; best = e; } } return best; }
+function nearbyVehicle(s) { let best = null, bd = 7.5; for (const e of ENTS) if ((e.kind === 'vehicle' || (e.kind === 'air' && e.parked && e.onGround && !e.pilotDead)) && e.alive && !e.driver && e.team === s.team) { const d = Math.hypot(e.pos.x - s.pos.x, e.pos.z - s.pos.z) - (e.T || e.def).len / 2; /* (a parked aircraft of yours can be boarded again) */ if (d < bd) { bd = d; best = e; } } return best; }
 function resupply(s, dt) { // at your base or a checkpoint you hold: ammo and health come back
   if (!s || !s.alive) return;
   const p = (s.veh || s).pos, M = GAME.M, b = M.bases[s.team];

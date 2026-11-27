@@ -596,7 +596,8 @@ function airsStep(dt) {
     }
     for (let k = 0; k < a.cool.length; k++) a.cool[k] -= dt; a.flareT -= dt; a.extT -= dt;
     const inp = a.inp || (a.cls === 'jet' ? { cmd: new V3(), throttle: a.throttle } : { fwd: 0, side: 0, up: a.onGround ? 0 : -.6, hdg: a.hdg });
-    if (a.pilotDead || !a.driver) { if (a.cls === 'jet') { inp.cmd = new V3(.15, 0, -.2); } else { inp.fwd = .5; inp.side = .4; inp.up = -1; } } // nobody at the controls
+    if (a.parked && a.onGround && !a.driver) { a.throttle = 0; if (a.cls === 'jet') inp.cmd = new V3(); else { inp.manual = false; inp.fwd = 0; inp.side = 0; inp.up = 0; inp.hdg = a.hdg; } } // shut down by its pilot: it sits there
+    else if (a.pilotDead || !a.driver) { if (a.cls === 'jet') { inp.cmd = new V3(.15, 0, -.2); } else { inp.fwd = .5; inp.side = .4; inp.up = -1; } } // nobody at the controls
     const n = Math.ceil(dt / (1 / 60)), h = dt / n;
     for (let s = 0; s < n && a.alive; s++) { if (a.cls === 'jet') jetPhysics(a, inp.cmd, h); else heliPhysics(a, inp, h); }
     if (!a.alive) continue;
