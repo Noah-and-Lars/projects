@@ -375,7 +375,7 @@ function poseSoldier(s, dt) {
   m.hips.position.y = s.crouch ? .62 : .95; if (s.crouch) { m.legs[0].thigh.rotation.z = 1.2; m.legs[0].shin.rotation.z = -1.9; m.legs[1].thigh.rotation.z = .3; m.legs[1].shin.rotation.z = -1.4; }
   if (s.swim) { m.hips.position.y = .6; m.torso.rotation.z = -.9; } else m.torso.rotation.z = 0;
   m.arms.rotation.z = clamp(s.pitch, -.9, .9);
-  if (m.real) poseReal(s, m, sp, dt);
+  if (m.real || m.gltf) poseReal(s, m, sp, dt); // (a downloaded figure takes the same gait: its stand-in joints are the same)
   if (m.gltf) kitPoseSoldier(s, m, dt);
 }
 function poseReal(s, m, sp, dt) { // the realistic soldier: a proper gait, hip bob, lean, breathing, a level head

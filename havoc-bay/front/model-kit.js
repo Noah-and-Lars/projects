@@ -349,7 +349,7 @@ function kitReach(m, upper, lower, tx, ty, tz, out) {
   kitPoint(lower, m.root, fx, fy, fz);
 }
 function kitPoseSoldier(s, m, dt) { // called after the game has set its joint angles: copy them onto the skeleton
-  const R = m.rig, A = m.anim, sp = Math.hypot(s.vel.x, s.vel.z), aim = m.arms.rotation.z, ca = Math.cos(aim), sa = Math.sin(aim);
+  const R = m.rig, A = m.anim, sp = Math.hypot(s.vel.x, s.vel.z), aim = clamp(s.pitch, -.9, .9), ca = Math.cos(aim), sa = Math.sin(aim); // (the rifle is held in the figure's own frame, so the aim is the plain pitch)
   const want = !A ? '' : s.crouch ? 'crouch' : sp > 4.2 && A.act.run ? 'run' : sp > .4 ? 'walk' : 'idle', act = A && A.act[want];
   if (A && !act && A.cur) { A.cur.stop(); A.cur = null; } // no clip for this (standing, say): back to the rest pose and the game's own posing
   if (act && s.alive) { // the model's own walk and run cycles drive the legs
