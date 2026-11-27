@@ -308,6 +308,7 @@ function jetPhysics(a, cmd, dt) {
     const vlo = Math.sqrt(W / (.5 * rho * D.S * Math.max(.3, (clCurve(.24 + i0, as, cm) * lf + fl) * 1.12)));
     a.pit = clamp(a.pit + (V > vlo * .78 ? (cmd.z > 0 ? cmd.z * .13 * Math.min(1, pitchEff) : -.09 + cmd.z * .2) : -.3) * dt, 0, .24); a.rol *= .9; a.vlo = vlo; // (hold the nose up after landing and the wing helps slow you; let it down and the brakes bite)
     a.vel.set(Math.cos(a.hdg) * nv, 0, Math.sin(a.hdg) * nv); a.pos.addScaledVector(a.vel, dt); a.pos.y = gy;
+    if (gy - D.gear < -.6) { crashAir(a, 'crashed'); return; } // rolled into the water
     airQuatFromEuler(a); a.omega.set(0, 0, 0); a.alpha = a.pit; a.gload = 1; a.mach = nv / sos; a.ias = nv * Math.sqrt(sig); a.stall = 0; a.gearDown = true; a.nzTrim = 1; a.stress = Math.max(0, (a.stress || 0) - .25 * dt);
     if (L > W) { a.onGround = false; a.vel.y = .4; }
     const sl = Math.abs(groundY(a.pos.x + Math.cos(a.hdg) * 10, a.pos.z + Math.sin(a.hdg) * 10) - groundY(a.pos.x, a.pos.z)) / 10;
@@ -317,7 +318,7 @@ function jetPhysics(a, cmd, dt) {
   axes(a);
   const V = Math.max(1, a.vel.length()), vh = _aw.copy(a.vel).divideScalar(V), vx = a.vel.dot(_ax), vy = a.vel.dot(_ay), vz = a.vel.dot(_az);
   const alpha = Math.atan2(-vy, vx), beta = Math.asin(clamp(vz / V, -1, 1)), q = .5 * rho * V * V, mach = V / sos, thr = jetThrust(a, dt, mach, sig);
-  const gy = groundY(a.pos.x, a.pos.z), agl = a.pos.y - gy - D.gear;
+  const gy = Math.max(0, groundY(a.pos.x, a.pos.z)), agl = a.pos.y - gy - D.gear; // (the sea is a surface too)
   const ge = 1 + .12 * Math.max(0, 1 - agl / D.wid) ** 2; // ground effect: the runway cushions the wing within a wingspan of it
   a.gearDown = agl < 70 && V < 110;
   // forces: lift (across the airflow, in the aircraft's own up direction), drag, side force, thrust, weight
@@ -391,7 +392,7 @@ function heliPhysics(a, inp, dt) {
   if (!rotorOK) a.rpm = Math.max(0, a.rpm - dt * .5);
   airQuatFromEuler(a); axes(a);
   const V = a.vel.length(), vax = a.vel.dot(_ay), vfw = a.vel.dot(_ax), vsd = a.vel.dot(_az), Vh = Math.hypot(a.vel.x, a.vel.z), inpl = Math.hypot(vfw, vsd);
-  const gy = groundY(a.pos.x, a.pos.z) + D.skid, agl = a.pos.y - gy, ge = 1 + .16 * Math.max(0, 1 - agl / (D.rotorR * 1.5)) ** 2;
+  const gyT = groundY(a.pos.x, a.pos.z), gy = Math.max(gyT, -.4) + D.skid, agl = a.pos.y - gy, ge = 1 + .16 * Math.max(0, 1 - agl / (D.rotorR * 1.5)) ** 2;
   const A = Math.PI * D.rotorR * D.rotorR * (D.coax ? 1.25 : 1), rh = rotorOK ? .25 + .75 * pH(a.part('rotor')) : 0, vhov = Math.sqrt(W / (2 * rho * A));
   // Thrust depends on the blades' angle to the air they meet: the collective sets their pitch, and air flowing down through the disc
   // (the rotor's own downwash, or a climb) takes some away, while air coming up through it (a descent, a flare) adds to it.
@@ -406,7 +407,7 @@ function heliPhysics(a, inp, dt) {
     if (Pav > 0) { a.colLim = clamp(a.colLim + (a.rpm - .94) * 2.5 * dt, .15, 1); colT = Math.min(colT, a.colLim); }
     a.col += clamp(colT - a.col, -1.2 * dt, 1.2 * dt);
   } else if (Pav > 0) {
-    let vyWant = a.onGround && inp.up <= 0 ? -3 : inp.up > 0 ? inp.up * 11 : inp.up * (Vh < 12 ? 4 : 12);
+    let vyWant = a.onGround && inp.up <= 0 ? -3 : inp.up > 0 ? inp.up * 11 : inp.up * lerp(2.6, 12, sstep(16, 32, Vh)); // (slow and sinking fast is how a rotor falls into its own downwash: the instructor holds the descent well short of that)
     if (!a.onGround && agl < 12) vyWant = Math.max(vyWant, -1.2 - agl * .4); // close to the ground the descent is held to a soft landing
     const Tneed = (W + m * (vyWant - a.vel.y) * 1.5) / Math.max(.45, _ay.y);
     let colT = (Tneed / Math.max(1, 8.4 * W * a.rpm * a.rpm * rh * eff) - .052 + 1.5 * lam) / .257;
@@ -431,11 +432,14 @@ function heliPhysics(a, inp, dt) {
   else if (D.tailRotor) { // nothing to counter the rotor's torque: it spins, harder the more power is pulled; at speed the fin holds it nearly straight
     const spinT = 3.2 * clamp(a.tq * 1.4, 0, 1) * (1 - .85 * sstep(22, 45, vfw)); a.spin += (spinT - a.spin) * Math.min(1, dt * .7); hr = hr * .25 * sstep(22, 45, vfw) - a.spin;
   } else hr = hr * .5 + Math.sin(GAME.time * 1.7) * .4; // a coaxial with no tail fin wanders but doesn't spin
+  const hrC = hr; // the turn asked for (what the bank is set by)
+  if (vfw > 15) hr += clamp(angDiffA(a.hdg, Math.atan2(a.vel.z, a.vel.x)) * 1.6, -.7, .7) * sstep(15, 38, vfw) * ctl; // at speed the tail fin weathercocks the nose into the airflow: no flying along half sideways
   a.hdg += hr * dt; a.hdgRate = hr;
   // full forward stick asks for more nose-down than the engines can hold level: ease it off as the torque reaches its limit (unless diving on purpose)
   if (a.tiltLim === undefined) a.tiltLim = .38;
   const pw = Pav > 0 ? Peng / Pav : 0; a.tiltLim = clamp(a.tiltLim + (inp.up < 0 ? .2 : !inp.manual && a.vel.y < -3 && agl < 150 ? -.4 : pw > .97 && vfw > 45 ? -.12 : pw < .9 || vfw < 40 ? .1 : 0) * dt, .06, .38); // (sinking when it should not be: raise the nose and trade speed for lift)
-  let pitT = inp.manual ? clamp(inp.pit, -.6, .45) : -clamp(inp.fwd, -1, a.tiltLim / .38) * .38, rolT = inp.side * (inp.manual ? .42 : .32) + clamp(Math.atan(vfw * hr / g), -.52, .52) * sp * (tr ? 1 : 0) * (inp.manual ? 1 : 1 - .6 * sstep(.92, 1, pw));
+  let pitT = inp.manual ? clamp(inp.pit, -.6, .45) : -clamp(inp.fwd, -1, a.tiltLim / .38) * .38, rolT = inp.side * (inp.manual ? .42 : .32) + clamp(Math.atan(vfw * hrC / g), -.52, .52) * sp * (tr ? 1 : 0) * (inp.manual ? 1 : 1 - .6 * sstep(.92, 1, pw));
+  if (!inp.manual && vrs > .15 && agl > 12) pitT = Math.min(pitT, -.24 * Math.min(1, vrs * 2)); // caught in vortex ring: nose down and fly out of it
   if (vfw > D.vne) pitT += (vfw - D.vne) * .03; // past its limit speed the retreating blade stalls and the nose rises
   if (vrs > .2) { pitT += Math.sin(GAME.time * 9) * .04 * vrs; rolT += Math.sin(GAME.time * 7.3) * .05 * vrs; }
   a.pit += clamp((pitT - a.pit) * 3.2, -1, 1) * dt * ctl; a.rol += clamp((rolT - a.rol) * 3.2, -1.3, 1.3) * dt * ctl;
@@ -447,7 +451,7 @@ function heliPhysics(a, inp, dt) {
   a.pos.addScaledVector(a.vel, dt);
   if (a.pos.y <= gy) {
     const sink = -a.vel.y;
-    if (sink > 6.5 || Math.abs(a.rol) > .5 || Math.abs(a.pit) > .5 || Vh > 30 || (Vh > 8 && Math.abs(vsd) > 6)) { crashAir(a, 'crashed'); return; }
+    if (gyT < -.6 || sink > 6.5 || Math.abs(a.rol) > .5 || Math.abs(a.pit) > .5 || Vh > 30 || (Vh > 8 && Math.abs(vsd) > 6)) { crashAir(a, 'crashed'); return; }
     if (sink > 3.5) { const p = a.part('fuse'); if (p) partDamage(a, p, (sink - 3.5) * 28, null, null); if (!a.alive) return; } // a hard landing
     a.pos.y = gy; a.vel.y = Math.max(0, a.vel.y); const hs = Math.hypot(a.vel.x, a.vel.z), ns = Math.max(0, hs - 5 * dt) / (hs || 1); a.vel.x *= ns; a.vel.z *= ns; // rolls out on its wheels
     a.onGround = (inp.manual ? a.lever < .5 : inp.up <= 0) || Pav <= 0; a.pit *= Math.pow(.02, dt); a.rol *= Math.pow(.02, dt);
@@ -627,6 +631,7 @@ function rearmAir(a, dt) {
 function airPlayer(a, dt) {
   const dir = new V3(Math.cos(CAM.yaw) * Math.cos(CAM.pitch), Math.sin(CAM.pitch), Math.sin(CAM.yaw) * Math.cos(CAM.pitch));
   const out = a.gloc > 0; // blacked out: nobody is flying
+  if ((a.pos.x < -2500 || a.pos.x > WORLD_W + 2500 || a.pos.z < -2500 || a.pos.z > WORLD_H + 2500) && GAME.time - (a.edgeT ?? -99) > 6) { a.edgeT = GAME.time; playerVehMsg('You are leaving the battle area: turn back'); }
   if (a.cls === 'jet') {
     a.throttle = clamp(a.throttle + ((KEYS.KeyW ? 1 : 0) - (KEYS.KeyS ? 1 : 0)) * dt * .6, 0, 1);
     const cmd = steerToward(a, dir, a.inp && a.inp.cmd || new V3());
@@ -747,7 +752,7 @@ function airBotThink(b, a, dt) {
   const tg = ai.target;
   if (a.cls === 'jet') {
     if (a.onGround) { a.inp = { cmd: new V3(0, 0, a.vel.length() > 70 ? .6 : 0), throttle: 1 }; a.throttle = 1; return; }
-    const cruise = 700 + sk.aim * 100;
+    const cruise = 700 + sk.aim * 100; if (ai.run && (ai.goHome || !tg || tg.kind === 'air')) ai.run = null; // an attack run belongs to its ground target
     if (ai.goHome) { want = new V3(hx - a.pos.x, 0, hz - a.pos.z); const d = want.length(); want.normalize(); want.y = clamp((cruise - alt) / 800, -.3, .4); if (d < 1500) { despawnAirBot(b, a); return; } }
     else if (tg && tg.kind === 'air') { // dogfight: lead the target, missile when it's in the seeker, guns up close
       const d = tg.pos.distanceTo(a.pos), lead = tg.pos.clone().addScaledVector(tg.vel, d / 900).add(ai.aimErr.clone().multiplyScalar(d));
@@ -756,23 +761,29 @@ function airBotThink(b, a, dt) {
       else if (d < 900 && an < .07) fire = 0;
     } else if (tg) { // a ground attack run: line up from a few km, dive, release, pull out
       const tp = aimCenter(tg, new V3()), d = tp.distanceTo(a.pos), hd = Math.hypot(tp.x - a.pos.x, tp.z - a.pos.z);
-      if (!ai.run) ai.run = { phase: 'in' };
+      if (!ai.run) ai.run = { phase: 'in', fix: Math.random() < .05 * (1 - sk.nerve) }; // (a few nervous ones fixate on the target and pull out late)
       const R = ai.run;
       if (R.phase === 'in') { want = tp.clone().add(ai.aimErr.clone().multiplyScalar(d)).sub(a.pos).normalize(); if (hd > 2500) want.y = clamp((cruise - alt) / 600, -.2, .3); const an = want.angleTo(_ax.set(1, 0, 0).applyQuaternion(a.quat));
         if (an < .08 && d < 4200 + sk.aim * 600 && a.ammo[2] > 0 && Math.random() < dt * 2) { fire = 2; fo.target = tg; } // (some fire from too far out)
         else if (an < .05 && d < 1100 && a.ammo[0] > 0) fire = 0;
         if (a.ammo[3] > 0 && tg.kind === 'vehicle') { const cp = ccipPoint(a, new V3()); if (cp && cp.distanceTo(tp) < 20 + sk.aim * 25) fire = 3; }
-        const pull = 330 + 120 * (1 - sk.nerve) * (Math.random() < .03 ? -2 : 1); // now and then one fixates and pulls out too late
+        const Vd = a.vel.length(), sinkR = Math.max(0, -a.vel.y), need = sinkR * 1.1 + Vd * Vd / 39 * (1 - Math.sqrt(Math.max(0, 1 - (sinkR / Math.max(Vd, 1)) ** 2))) + 150; // height the pull-out takes: the delay, then a 5 g arc
+        const pull = Math.max(need, 330 + 120 * (1 - sk.nerve)) * (R.fix ? .62 : 1);
         if (alt < pull || d < 450) { R.phase = 'out'; R.t = 7 + Math.random() * 4; }
-      } else { want = a.vel.clone().normalize(); want.y = .35; if ((R.t -= dt) <= 0) { R.phase = 'in'; ai.target = null; } }
+        else if (alt > 260 && hd < (a.pos.y - tp.y) * 2.1) { R.phase = 'out'; R.t = 5 + Math.random() * 3; R.again = true; } // nearly overhead: too steep. Go round and come in shallower
+      } else { want = a.vel.clone().normalize(); want.y = .35; if ((R.t -= dt) <= 0) { R.phase = 'in'; if (!R.again) ai.target = null; R.again = false; } }
     } else { const c = GAME.cps[targetCpFor(team)]; want = new V3(c.p.x * 1000 - a.pos.x + Math.sin(GAME.time * .1 + b.lane) * 1500, 0, c.p.y * 1000 - a.pos.z + Math.cos(GAME.time * .1 + b.lane) * 1500).normalize(); want.y = clamp((cruise - alt) / 600, -.25, .3); }
-    // don't fly into hills: look ahead along the velocity
+    // a fight that has drifted well off the map: break off and come back
+    if (a.pos.x < -3000 || a.pos.x > WORLD_W + 3000 || a.pos.z < -3000 || a.pos.z > WORLD_H + 3000) { want = new V3(WORLD_W / 2 - a.pos.x, 0, WORLD_H / 2 - a.pos.z).normalize(); want.y = clamp((cruise - alt) / 600, -.25, .3); fire = -1; if (tg && tg.kind === 'air') ai.target = null; }
+    // don't fly into hills: look ahead along the velocity; and never dive past the height it takes to pull out (the delay, then a 5 g arc)
     const ahead = a.pos.clone().addScaledVector(a.vel, 3.5), clear = ahead.y - Math.max(0, groundY(ahead.x, ahead.z));
-    if (clear < 120 && !(ai.run && ai.run.phase === 'in' && clear > 60)) { want = want ? want.clone() : new V3(1, 0, 0); want.y = Math.max(want.y, .5 + (120 - clear) / 100); }
+    const Vn = a.vel.length(), sinkJ = Math.max(0, -a.vel.y), low = sinkJ > 25 && alt < sinkJ * 1.2 + Vn * Vn / 39 * (1 - Math.sqrt(Math.max(0, 1 - (sinkJ / Math.max(Vn, 1)) ** 2))) + 120;
+    if (low || (clear < 120 && !(ai.run && ai.run.phase === 'in' && clear > 60))) { want = want ? want.clone() : new V3(1, 0, 0); want.y = Math.max(want.y, low ? .6 : .5 + (120 - clear) / 100); }
     const cmd = steerToward(a, want.normalize(), new V3());
     // throttle: hold a speed that suits the job (fast for a fight, slower to aim at the ground); afterburner to get out of trouble
-    const Vn = a.vel.length(), vWant = tg && tg.kind === 'air' ? 270 : ai.run && ai.run.phase === 'in' ? 205 : ai.run ? 250 : 225;
-    a.throttle = Vn < 150 || clear < 120 ? 1 : clamp(.5 + (vWant - Vn) * .02, .1, tg && tg.kind === 'air' ? 1 : .85); a.inp = { cmd, throttle: a.throttle };
+    const vWant = tg && tg.kind === 'air' ? 270 : ai.run && ai.run.phase === 'in' ? 205 : ai.run ? 250 : 225;
+    a.airbrake = low && Vn > 230; // a fast dive that has to end now: throttle back and brakes out, to tighten the pull-out
+    a.throttle = a.airbrake ? .1 : Vn < 150 || clear < 120 ? 1 : clamp(.5 + (vWant - Vn) * .02, .1, tg && tg.kind === 'air' ? 1 : .85); a.inp = { cmd, throttle: a.throttle };
   } else {
     // helicopter: hang back 1.5-2.5 km from the fight, low; missiles at vehicles, rockets and gun at the rest; rearm when empty
     if (ai.goHome) { const d = Math.hypot(hx - a.pos.x, hz - a.pos.z); if (d < 400) { despawnAirBot(b, a); return; } want = new V3(hx - a.pos.x, 0, hz - a.pos.z); }
@@ -780,7 +791,16 @@ function airBotThink(b, a, dt) {
     if (!ai.goHome) { if (!ai.post || (ai.postT -= dt) <= 0) { const r = 1500 + Math.random() * 900, a0 = Math.atan2(bz - cz, bx - cx) + (Math.random() - .5) * 1.2; ai.post = new V3(cx + Math.cos(a0) * r, 0, cz + Math.sin(a0) * r); ai.postT = 18 + Math.random() * 14; } want = ai.post.clone().sub(a.pos); }
     const hd = Math.hypot(want.x, want.z), wantAlt = 45 + sk.aim * 15, hdgWant = tg && hd < 400 ? Math.atan2(tg.pos.z - a.pos.z, tg.pos.x - a.pos.x) : Math.atan2(want.z, want.x);
     const fwdC = hd > 60 ? clamp(hd / 300, .2, 1) * Math.cos(angDiffA(a.hdg, Math.atan2(want.z, want.x))) : 0;
-    a.inp = { fwd: clamp(fwdC, -.4, .72), side: clamp(Math.sin(angDiffA(a.hdg, Math.atan2(want.z, want.x))) * (hd > 60 ? .6 : 0), -.5, .5), up: clamp((wantAlt - alt) / 15, -1, 1), hdg: hdgWant + (Math.sin(GAME.time * .6 + b.lane) * .05) };
+    // flying low: watch the ground coming up ahead. "need" is the climb rate it takes to clear every point on the next 14 seconds of track
+    let yWant = Math.max(0, groundY(a.pos.x, a.pos.z)) + wantAlt, need = -99;
+    const trk = Math.atan2(a.vel.z, a.vel.x), Vt = Math.hypot(a.vel.x, a.vel.z), w = Vt > 12 ? clamp(angDiffA(ai.trk0 ?? trk, trk) / Math.max(dt, 1e-3), -.25, .25) : 0; ai.trk0 = trk; ai.trkW = (ai.trkW || 0) + (w - (ai.trkW || 0)) * Math.min(1, dt * 2); // how fast the track is turning
+    for (const t of [1.5, 3, 5, 7, 10, 14]) for (const tw of ai.trkW * ai.trkW > 1e-4 ? [0, ai.trkW] : [0]) { // (straight on, and round the turn it is in)
+      const px = tw ? a.pos.x + Vt / tw * (Math.sin(trk + tw * t) - Math.sin(trk)) : a.pos.x + a.vel.x * t, pz = tw ? a.pos.z - Vt / tw * (Math.cos(trk + tw * t) - Math.cos(trk)) : a.pos.z + a.vel.z * t;
+      const gh = Math.max(0, groundY(px, pz)) + wantAlt * .6; yWant = Math.max(yWant, gh); need = Math.max(need, (gh - a.pos.y) / t); }
+    const vfwB = a.vel.x * Math.cos(a.hdg) + a.vel.z * Math.sin(a.hdg); let fwdB = clamp(fwdC, -.4, .72);
+    if (need > 8) fwdB = vfwB > 8 ? -1 : vfwB < -8 ? .6 : 0; else if (need > 5) fwdB = Math.min(fwdB, vfwB > 20 ? -.2 : .1); // more than it can climb: kill the speed (whichever way it is going) and go up
+    if (vfwB < -8) fwdB = Math.max(fwdB, .3); // never backs up fast
+    a.inp = { fwd: fwdB, side: clamp(Math.sin(angDiffA(a.hdg, Math.atan2(want.z, want.x))) * (hd > 60 ? .6 : 0), -.5, .5) * (1 - sstep(12, 28, Math.abs(vfwB))), up: need > 8 ? 1.6 : need > 4 ? 1 : clamp((yWant - a.pos.y) / 15, -.5, 1), hdg: hdgWant + (Math.sin(GAME.time * .6 + b.lane) * .05) };
     if (tg && tg.kind === 'air' && a.ammo[3] > 0) { const d = tg.pos.distanceTo(a.pos), an = _ax.set(1, 0, 0).applyQuaternion(a.quat).angleTo(tg.pos.clone().sub(a.pos)); if (d < 4200 && an < .5 && Math.random() < dt * (.5 + sk.aware)) { fire = 3; fo.target = tg; } }
     if (tg && tg.kind !== 'air' && hd < 400) {
       const tp = aimCenter(tg, new V3()), d = tp.distanceTo(a.pos);

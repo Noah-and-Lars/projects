@@ -104,9 +104,9 @@ function exitVehicle(s) {
   const side = _v.set(-Math.sin(v.yaw), 0, Math.cos(v.yaw));
   for (const sd of [1, -1, 0]) {
     const x = v.pos.x + side.x * sd * (v.def.wid / 2 + 1.2) - (sd ? 0 : Math.cos(v.yaw) * (v.def.len / 2 + 1.5)), z = v.pos.z + side.z * sd * (v.def.wid / 2 + 1.2) - (sd ? 0 : Math.sin(v.yaw) * (v.def.len / 2 + 1.5));
-    if (terrainY(x, z) > -.8 || bridgeAt(x, z) !== null) { s.pos.set(x, groundY(x, z) + .2, z); break; }
+    if (terrainY(x, z) > -.8 || bridgeAt(x, z, v.pos.y + 1) !== null) { s.pos.set(x, groundY(x, z, v.pos.y + 1) + .2, z); break; }
   }
-  s.veh = null; v.driver = null; s.model.root.visible = true; s.vel.set(0, 0, 0); s.yaw = CAM.yaw;
+  s.veh = null; v.driver = null; s.model.root.visible = true; s.vel.set(0, 0, 0); s.yaw = s.isPlayer ? CAM.yaw : v.yaw; v.emptyT = 0; v.emptyBy = s.isPlayer ? 'player' : 'bot';
 }
 
 /* ---------------- damage and death ---------------- */
@@ -210,7 +210,7 @@ function driveVehicle(v, inp, dt) {
   ns = clamp(ns, -D.vrev, top);
   v.accel = (ns - spd) / Math.max(dt, 1e-4); v.speed = ns;
   // turning: tracks can pivot in place; wheels need speed
-  if (D.wheeled) { v.steerIn = (v.steerIn || 0) + (steer - (v.steerIn || 0)) * clamp(dt * 5, 0, 1); v.turnRate = v.speed * Math.tan(v.steerIn * D.steer) / (D.len * .62); }
+  if (D.wheeled) { v.steerIn = (v.steerIn || 0) + (steer - (v.steerIn || 0)) * clamp(dt * 5, 0, 1); v.turnRate = v.speed * Math.tan(v.steerIn * D.steer) / (D.len * .62); const grip = 7.5 / Math.max(Math.abs(v.speed), 1); v.turnRate = clamp(v.turnRate, -grip, grip); } // tyres hold about 0.75 g sideways: no hairpins at speed
   else { const want = steer * D.pivot * (1 - .45 * Math.min(Math.abs(v.speed) / D.vmax, 1)) * (st.power > 0 ? 1 : 0); v.turnRate = (v.turnRate || 0) + (want - (v.turnRate || 0)) * clamp(dt * 4, 0, 1); }
   v.yaw += v.turnRate * dt;
   const nx = v.pos.x + Math.cos(v.yaw) * v.speed * dt, nz = v.pos.z + Math.sin(v.yaw) * v.speed * dt;
@@ -660,9 +660,18 @@ function botThink(b, u, dt) {
     if (ai.atCp && c.guardsLeft > 0 && !ai.target) { let bd = 1e9; for (const g of c.guards) if (g.alive) { const d = g.pos.distanceTo(u.pos); if (d < bd) { bd = d; hunt = g; } } }
     if (hunt) { const r = isV ? (hunt.post && hunt.post.tower ? 65 : 40) : 7, a = GAME.time * (isV ? .12 : .3) + b.lane; ai.goal = new V3(hunt.pos.x + Math.cos(a) * r, 0, hunt.pos.z + Math.sin(a) * r); ai.hold = null; } // circle round it until it's in sight
     else if (ai.atCp) { if (!ai.hold || ai.holdCp !== ti) { const [dx, dz] = CP_DIM[c.p.size]; ai.hold = new V3(...(([x, z]) => [x, 0, z])(c.p.site.w((Math.random() - .5) * dx * 600, (Math.random() - .5) * dz * 500))); ai.holdCp = ti; } ai.goal = ai.hold; }
-    else { ai.hold = null; ai.goal = routePoint(sNow + dir * (isV ? 45 : 25), b.lane, new V3()); }
+    else { ai.hold = null; ai.goal = routePoint(sNow + dir * (isV ? Math.max(45, Math.abs(u.speed) * 2.6) : 25), b.lane, new V3()); }
+    if (isV && ai.goal && !(ai.detourT > GAME.time)) { // a building or wall in the way: look for the clear heading nearest the one wanted and drive that for a moment
+      const gd = Math.atan2(ai.goal.z - u.pos.z, ai.goal.x - u.pos.x), gl = Math.min(26, Math.hypot(ai.goal.x - u.pos.x, ai.goal.z - u.pos.z));
+      if (!driveClear(u, gd, gl)) { const sd = ai.detourSide || (ai.detourSide = Math.random() < .5 ? 1 : -1);
+        for (const off of [.5, -.5, 1, -1, 1.5, -1.5, 2.2, -2.2]) if (driveClear(u, gd + off * sd, 22)) { ai.detour = new V3(u.pos.x + Math.cos(gd + off * sd) * 22, 0, u.pos.z + Math.sin(gd + off * sd) * 22); ai.detourT = GAME.time + 2.4; ai.detourSide = Math.sign(off * sd); break; } }
+      else ai.detourSide = 0;
+    }
+    ai.bridge = false; if (isV) for (const br of WORLD.bridges) if (Math.hypot(u.pos.x - br.x, u.pos.z - br.z) < Math.max(-br.aL, br.aR) + 130) { ai.bridge = true; break; } // slow down and line up for a bridge
     // stuck?
-    const moved = Math.abs(sNow - ai.lastS); ai.lastS = sNow;
+    const moved = ai.lastP ? Math.hypot(u.pos.x - ai.lastP[0], u.pos.z - ai.lastP[1]) : 9; ai.lastP = [u.pos.x, u.pos.z]; ai.lastS = sNow; // (real distance covered, not progress along the road: a vehicle crossing the route is not stuck)
+    if (!ai.progP || Math.hypot(u.pos.x - ai.progP[0], u.pos.z - ai.progP[1]) > 25 || ai.atCp || ai.target) { ai.progP = [u.pos.x, u.pos.z]; ai.progT = GAME.time; }
+    if (isV && GAME.time - ai.progT > 70) { ai.progT = GAME.time; b.bails = (b.bails || 0) + 1; b.bailAt = [Math.round(u.pos.x), Math.round(u.pos.z), u.type]; exitVehicle(b.soldier); return; } // bogged down for over a minute (a ravine, a wreck in the way): the crew gets out and walks
     if (isV && !ai.atCp && moved < 1.2 && ai.rev <= 0) { if ((ai.stuck += .5) > 3) { ai.rev = 2.2; ai.stuck = 0; ai.revSteer = Math.random() < .5 ? -1 : 1; } } else ai.stuck = 0;
   }
   const tg = ai.target; let aimP = null;
@@ -677,9 +686,11 @@ function botThink(b, u, dt) {
   if (isV) {
     const inp = { throttle: 0, steer: 0, aimYaw: u.yaw + u.tYaw, aimPitch: u.gPitch, fire: false, fire2: false, fire3: false };
     if (ai.goal) {
-      const dx = ai.goal.x - u.pos.x, dz = ai.goal.z - u.pos.z, dist = Math.hypot(dx, dz), want = Math.atan2(dz, dx), da = angDiff(u.yaw, want);
+      const G = ai.detourT > GAME.time ? ai.detour : ai.goal, dx = G.x - u.pos.x, dz = G.z - u.pos.z, dist = Math.hypot(dx, dz), want = Math.atan2(dz, dx), da = angDiff(u.yaw, want);
       if (ai.rev > 0) { ai.rev -= dt; inp.throttle = -1; inp.steer = ai.revSteer; }
-      else if (!(ai.atCp && dist < 12)) { const want = clamp(da * 2, -1, 1) + Math.sin(GAME.time * .8 + b.lane) * .2 * (1 - sk.drive); ai.steerS = (ai.steerS || 0) + (want - (ai.steerS || 0)) * Math.min(1, dt * (1.5 + 3 * sk.drive)); inp.steer = clamp(ai.steerS, -1, 1); /* late, sloppy steering overshoots turns */ inp.throttle = Math.abs(da) > 1.2 ? .25 : Math.abs(da) > .5 ? .6 : 1; if (tg && u.cls === 'mbt' && aimP.distanceTo(u.pos) < 1100) inp.throttle *= .4; }
+      else if (!(ai.atCp && dist < 12)) { const sp = Math.abs(u.speed), calm = 1 / (1 + sp * sp / 90); // wheels at speed: ask for a yaw rate the tyres can give, not full lock
+        const want = (u.def.wheeled && sp > 3 ? clamp(Math.atan(clamp(da * 1.4, -7 / sp, 7 / sp) * u.def.len * .62 / sp) / u.def.steer, -1, 1) : clamp(da * 2, -1, 1)) + Math.sin(GAME.time * .8 + b.lane) * .2 * (1 - sk.drive) * (ai.bridge ? .15 : calm); ai.steerS = (ai.steerS || 0) + (want - (ai.steerS || 0)) * Math.min(1, dt * (1.5 + 3 * sk.drive)); inp.steer = clamp(ai.steerS, -1, 1); /* late, sloppy steering overshoots turns */ inp.throttle = Math.abs(da) > 1.2 ? .25 : Math.abs(da) > .5 ? .6 : 1; if (tg && u.cls === 'mbt' && aimP.distanceTo(u.pos) < 1100) inp.throttle *= .4;
+        if (ai.bridge && !ai.atCp) inp.throttle = u.speed > 15 ? -1 : u.speed > 11 ? 0 : inp.throttle; }
     }
     if (aimP) {
       const key = ai.key, A = AMMO[key === 'atgm' ? u.def.atgm : key === 'mg' ? u.def.mg : key];
@@ -693,6 +704,9 @@ function botThink(b, u, dt) {
     }
     if (u.smoke > 0 && u.smokeT <= 0 && ai.threat && ai.threat.alive && ai.threat.kind === 'vehicle' && vState(u).crew < u.def.crew.length) { inp.smoke = true; ai.threat = null; }
     if (u.fire > 0 && u.fpe > 0 && Math.random() < dt * (.25 + .5 * sk.nerve)) { u.fpe--; u.fire = 0; } // the crew gets to the extinguisher (a rattled crew takes longer)
+    { const need = u.mods.some(m => m.hp <= 0 && (m.kind === 'engine' || m.kind === 'trans' || m.kind === 'breech' || m.kind === 'barrel' || m.id === 'hdrive' || m.id === 'vdrive' || m.id === 'radiator' || m.id === 'autoloader'));
+      if (u.repairT > 0) { inp.throttle = 0; inp.steer = 0; ai.progT = GAME.time; } // sitting still while the crew works
+      else if (need && !tg && u.fire <= 0 && vState(u).crew >= 2 && GAME.time - (ai.threatT ?? -99) > 6) { u.repairT = 12 * (vState(u).crew < u.def.crew.length ? 1.5 : 1) * (friendlyPoint(u) ? .5 : 1); inp.throttle = 0; inp.steer = 0; u.speed = 0; } } // knocked-out parts and nobody shooting: stop and fix them
     if (u.lwsT && GAME.time - u.lwsT < 1.5 && u.smoke > 0 && u.smokeT <= 0 && Math.random() < sk.aware) { inp.smoke = true; u.lwsT = 0; } // laser warning: someone is ranging us
     driveVehicle(u, inp, dt);
   } else {
@@ -713,6 +727,11 @@ function botThink(b, u, dt) {
     } else { s.cool -= dt; if (s.reload > 0) soldierShoot(s, _v, dt, false); else if (s.mag < 15 && s.ammo > 0) s.reload = RIFLE.reload; }
     moveSoldier(s, inp, dt); poseSoldier(s, dt);
   }
+}
+function driveClear(v, ang, L) { // is a straight run of L metres on this heading free of walls and buildings?
+  const r = v.def.wid * .5 + .5, c = Math.cos(ang), s = Math.sin(ang);
+  for (let d = Math.min(4, L); d <= L; d += 3.2) { _f.set(v.pos.x + c * d, 0, v.pos.z + s * d); const gy = groundY(_f.x, _f.z, v.pos.y + 1); if (gy < -v.def.ford || pushOutCircle(_f, r, gy + .3, gy + v.def.hgt)) return false; }
+  return true;
 }
 function hullTilt(v) { // how far the turret's forward line is tipped up by the slope the hull sits on
   return Math.asin(clamp(_n.set(Math.cos(v.tYaw), 0, Math.sin(v.tYaw)).applyQuaternion(v.quat).y, -1, 1));
@@ -1117,7 +1136,7 @@ function step(dt) {
   guardsStep(dt);
   howitzersStep(dt);
   for (const e of ENTS) {
-    if (e.kind === 'vehicle' && e.alive) { const nx = e.pos.x, nz = e.pos.z; e.vel.set((nx - (e._px ?? nx)) / dt, 0, (nz - (e._pz ?? nz)) / dt); e._px = nx; e._pz = nz; if (!e.driver) { e.speed *= Math.pow(.2, dt); driveVehicle(e, { throttle: 0, steer: 0, aimYaw: e.yaw + e.tYaw, aimPitch: e.gPitch }, dt); } }
+    if (e.kind === 'vehicle' && e.alive) { const nx = e.pos.x, nz = e.pos.z; e.vel.set((nx - (e._px ?? nx)) / dt, 0, (nz - (e._pz ?? nz)) / dt); e._px = nx; e._pz = nz; if (!e.driver) { e.speed *= Math.pow(.2, dt); if ((e.emptyT = (e.emptyT || 0) + dt) > 150 && e.team < 2 && e.emptyBy !== 'player' && (!PLAYER.s || PLAYER.s.pos.distanceTo(e.pos) > 250)) { removeEnt(e); continue; } driveVehicle(e, { throttle: 0, steer: 0, aimYaw: e.yaw + e.tYaw, aimPitch: e.gPitch }, dt); } }
     else if (e.kind === 'soldier' && !e.veh && !e.npc) { /* soldiers' vel is set by moveSoldier */ }
     if (e.kind === 'vehicle' && !e.alive && e.turretFly && e.turretFly.t < 6) { const f = e.turretFly, tr = e.model.turret; f.t += dt; f.vel.y -= 9.8 * dt; tr.position.addScaledVector(f.vel, dt); tr.rotation.x += f.spin.x * dt; tr.rotation.z += f.spin.z * dt; const w = tr.getWorldPosition(new V3()); if (w.y < groundY(w.x, w.z) + .5 && f.vel.y < 0) { f.vel.set(0, 0, 0); f.spin.set(0, 0, 0); f.t = 99; } }
     if (e.kind === 'vehicle' && !e.alive) { if ((e.burnT -= dt) > 0) { if (Math.random() < dt * 10) sprite(_v.copy(e.pos).setY(e.pos.y + 2), 2, 8, 3, 0x2a2826, false, 4, .7); if (Math.random() < dt * 6) sprite(_v.copy(e.pos).setY(e.pos.y + 1.5), 1.5, 1, .4, 0xffffff, true, 2); } else removeEnt(e); }
