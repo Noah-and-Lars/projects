@@ -36,7 +36,8 @@ function startMatch(mapIdx, team, bots, diff) {
   M.img = M.img || mapImage(M);
   GAME.cps = M._cps.map((p, i) => ({ p, i, owner: -1, val: 0, guards: [], inside: [0, 0] }));
   for (const c of GAME.cps) for (let k = 0; k < c.p.posts.length; k++) {
-    const post = c.p.posts[k], g = new Soldier(2, { npc: true, name: 'Guard' });
+    let post = c.p.posts[k]; const g = new Soldier(2, { npc: true, name: 'Guard' });
+    if (!post.tower) { _v.set(post.x, 0, post.z); if (pushOutCircle(_v, .8, post.y + .3, post.y + 1.7)) post = Object.assign({}, post, { x: _v.x, z: _v.z, y: groundY(_v.x, _v.z) }); } // a post that a building was put on top of: stand beside it instead (nobody could see or shoot a guard inside the wall)
     g.pos.set(post.x, post.y, post.z); g.post = post; g.cp = c.i; g.yaw = c.p.ang + (Math.random() - .5) * 3; g.rpgGuard = c.p.size !== 'S' && k % 5 === 4; g.ai = { t: Math.random(), target: null, burst: 0, shotT: 0, rpgT: 4 + Math.random() * 6 };
     c.guards.push(g);
   }
