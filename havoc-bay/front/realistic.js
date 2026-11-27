@@ -126,6 +126,7 @@ function bakeShade(M) { // R = sun visible (soft), G = sky visible (ambient occl
     out[o] = (.18 + .82 * sun) * 255; out[o + 1] = sky * 255; out[o + 3] = 255;
   }
   const t = new THREE.DataTexture(out, GW, GH, THREE.RGBAFormat); t.magFilter = t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
+  if (REAL_SHADE.value && REAL_SHADE.value.dispose) REAL_SHADE.value.dispose(); // (the last match's bake: free it on the graphics card)
   REAL_SHADE.value = t;
 }
 
@@ -258,7 +259,8 @@ function buildSky() {
 function heightTexture(M) { // terrain height near sea level, packed in a byte: (h + 20) / 25
   const d = new Uint8Array(GW * GH * 4);
   for (let i = 0; i < GW * GH; i++) { const v = clamp((M.H[i] + 20) / 25, 0, 1) * 255; d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; d[i * 4 + 3] = 255; }
-  const t = new THREE.DataTexture(d, GW, GH, THREE.RGBAFormat); t.magFilter = t.minFilter = THREE.LinearFilter; t.needsUpdate = true; return t;
+  const t = new THREE.DataTexture(d, GW, GH, THREE.RGBAFormat); t.magFilter = t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
+  if (heightTexture.last) heightTexture.last.dispose(); heightTexture.last = t; return t; // (one water sheet at a time: the last match's goes)
 }
 function buildWater(M) {
   const u = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uTime: { value: 0 }, uGlint: { value: 0 }, uSun: { value: SUN_DIR.clone() }, uTop: { value: new THREE.Color(0x2f6db3) }, uHz: { value: new THREE.Color(0xc4d4e0) }, uDeep: { value: new THREE.Color(0x0e3a52) }, uShallow: { value: new THREE.Color(0x2f9a9a) }, uWorld: { value: new THREE.Vector2(WORLD_W, WORLD_H) } }]);

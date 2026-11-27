@@ -195,11 +195,24 @@ function ultraRender() {
   U.mFxaa.uniforms.tIn.value = U.ldr.texture; U.mFxaa.uniforms.uPx.value.set(1 / w, 1 / h); ultraDraw(U.mFxaa, null);
 }
 /* every frame goes through here */
-function renderFrame() { if (ULTRA.on && ULTRA.ready) ultraRender(); else renderer.render(scene, camera); }
+function renderFrame() {
+  if (!(ULTRA.on && ULTRA.ready) || ULTRA.failed) { renderer.render(scene, camera); return; }
+  try {
+    ultraRender();
+    if (!ULTRA.checked && (ULTRA.frames = (ULTRA.frames || 0) + 1) >= 3) { // once the passes have compiled: did this graphics card accept them?
+      ULTRA.checked = true; const gl = renderer.getContext(); renderer.setRenderTarget(ULTRA.scene); const fb = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE; renderer.setRenderTarget(null);
+      if (!fb || ULTRA.forceFail || renderer.info.programs.some(pr => pr.diagnostics && !pr.diagnostics.runnable)) throw new Error('Ultra passes not runnable'); }
+  } catch (e) { // show the scene without the effects rather than a black screen
+    ULTRA.failed = true; console.warn('Ultra graphics switched off:', e.message); renderer.setRenderTarget(null); renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = Math.min(renderer.toneMappingExposure, .8); if (ULTRA.fogSaved) scene.fog = ULTRA.fogSaved;
+    scene.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { m.needsUpdate = true; }); });
+    if (typeof showMsg === 'function') showMsg('Ultra is not supported here', 'This graphics card could not run the Ultra effects. Choose Realistic on the title screen.');
+    renderer.render(scene, camera);
+  }
+}
 
 /* ---------------- switching it on and off (called from applyLook, after the Realistic look is in place) ---------------- */
 function ultraApply(on) {
-  on = on && ultraInit(); ULTRA.on = !!on; WORLD.ultra = !!on;
+  on = on && !ULTRA.failed && ultraInit(); ULTRA.on = !!on; WORLD.ultra = !!on; // (a card that could not run it gets the Realistic look from then on)
   if (on) {
     const low = 1 - sstep(.1, .6, SUN_DIR.y);
     ULTRA.fogCol = new THREE.Color(.60, .78, .93).lerp(new THREE.Color(1.0, .74, .46), low * .22).multiplyScalar(1.3 * .92);

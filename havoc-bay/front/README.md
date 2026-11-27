@@ -46,6 +46,8 @@ Ultra is a third level above Realistic. It is the same world and layout under be
 
 Optimised and Realistic look as they did before.
 
+If a graphics card cannot run the Ultra effects (a pass fails to compile, or the high-range picture buffer is refused), the game notices within the first few frames, shows the scene without them and says so; later matches then use the Realistic look.
+
 ## Vehicles
 
 Each team has its own real-world vehicles: Blue drives the M1A2 Abrams, M2A2 Bradley and M1114 Humvee; Red drives the T-90A, BMP-2 and GAZ Tigr.
