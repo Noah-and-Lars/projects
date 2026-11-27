@@ -373,6 +373,7 @@ function poseSoldier(s, dt) {
   if (s.swim) { m.hips.position.y = .6; m.torso.rotation.z = -.9; } else m.torso.rotation.z = 0;
   m.arms.rotation.z = clamp(s.pitch, -.9, .9);
   if (m.real) poseReal(s, m, sp, dt);
+  if (m.gltf) kitPoseSoldier(s, m, dt);
 }
 function poseReal(s, m, sp, dt) { // the realistic soldier: a proper gait, hip bob, lean, breathing, a level head
   s._t = (s._t || Math.random() * 9) + dt;

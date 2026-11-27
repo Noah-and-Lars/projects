@@ -201,6 +201,10 @@ Blue's F-2A: This work is based on "Mitsubishi F-2 - Fighter Jet - Free" (https:
 | `aircraft.js` | Jets and helicopters: built-in models, weapons, flight physics, part damage, bot pilots |
 | `models/f2.js` | The F-2 model (glTF with its textures packed in, so it loads from disk) |
 | `gltf-models.js` | Reads packed glTF models; builds the F-2A with damageable parts, pylons and retracting gear |
+| `model-kit.js` | The model kit: reads any packed glTF (parts, skeletons, animations) and fits it as a tank, helicopter or soldier |
+| `models/config.js` | Which downloaded model is used for which unit, and how it is fitted |
+| `tools/pack_model.py` | Packs a glTF or GLB download into `models/<key>.js` |
+| `docs/` | Research notes on War Thunder's tank and helicopter mechanics, and how to add models (`docs/models.md`) |
 | `vehicles.js` | Real vehicles, ammunition, armour, modules, crew, the damage model, running gear and track links |
 | `units.js` | Howitzer and soldier models, projectiles, effects, sound |
 | `game.js` | Match rules, checkpoints, NPC guards, howitzers, bots, player controls, camera, HUD, menus |

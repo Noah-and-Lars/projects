@@ -429,9 +429,8 @@ class Vehicle extends Ent {
     this.fpe = this.cls === 'jeep' ? 1 : 2; this.heat = 0; this.trackT = 0; this.supT = 0; this.sightR = 0; this.essT = 0; this.ess = this.def.ess ? 3 : 0;
     this.roles = {}; for (const r of this.def.crew) this.roles[r] = this.mods.find(m => m.id === r);
     this.swapT = 0; this.fire = 0; this.extT = 0; this.repairT = 0; this.hp = 1; // hp kept for code that only asks "alive?"
-    this.model = VMODEL[type]();
-    mergeVehicleGroup(this.model.root, VEH_MATS[team]);
-    buildRunningGear(this);
+    this.model = VMODEL[type](team);
+    if (!this.model.gltf) { mergeVehicleGroup(this.model.root, VEH_MATS[team]); buildRunningGear(this); } // (a downloaded model brings its own paint and running gear)
     scene.add(this.model.root);
   }
   mod(id) { return this.mods.find(m => m.id === id); }
