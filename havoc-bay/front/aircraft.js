@@ -1,5 +1,5 @@
 /* Island Front: modern aircraft.
-   Blue flies the F-16C Block 50 and the AH-64D Apache; Red flies the Su-30SM and the Ka-52 Alligator.
+   Both sides fly the Mitsubishi F-2A (model in gltf-models.js); Blue has the AH-64D Apache and Red the Ka-52 Alligator.
    Each aircraft is built from separate parts (cockpit, nose sensors, fuselage, fuel, every engine, inner and outer wing on
    each side, tailplanes, fins; on helicopters the rotor, transmission, tail boom and tail rotor). Parts take damage on their
    own and change how the aircraft flies: a shot-up wing rolls it, a dead engine cuts thrust (and yaws a twin), a lost tail
@@ -47,60 +47,6 @@ function podModel(len, r) { const g = new THREE.Group(); cylAlongX(g, -len / 2, 
 function store(M, slot, g, x, y, z) { g.position.set(x, y, z); M.root.add(g); (M.stores[slot] = M.stores[slot] || []).push(g); return g; }
 function part(M, id) { const g = new THREE.Group(); M.root.add(g); M.parts[id] = g; return g; }
 
-function modelF16(team) {
-  const M = { root: new THREE.Group(), parts: {}, stores: [] }, G1 = 0x8c939b, G2 = 0x767d85, DK = 0x5c6168;
-  const fz = part(M, 'fuseF'), fr = part(M, 'fuseR'), ck = part(M, 'cockpit');
-  mesh(fz, fuseGeo([[7.6, .02, .02, .3], [6.8, .3, .3, .33], [5.8, .5, .5, .4], [4.8, .58, .62, .5], [3.6, .66, .72, .5], [2.2, .78, .74, .42], [.6, .9, .72, .38], [-.4, .95, .7, .36]]), G1, 0, 0, 0);
-  mesh(fz, fuseGeo([[7.62, .02, .02, .3], [7.1, .22, .22, .31], [6.4, .38, .38, .34]]), DK, 0, 0, 0); // radome
-  mesh(fr, fuseGeo([[-.4, .95, .7, .36], [-2.4, .94, .66, .36], [-4.4, .82, .62, .36], [-5.9, .66, .56, .36], [-6.6, .56, .52, .36]]), G1, 0, 0, 0);
-  mesh(fz, fuseGeo([[3.3, .5, .4, -.28], [2.2, .55, .44, -.3], [.4, .6, .42, -.25], [-1.2, .5, .3, -.1]]), G2, 0, 0, 0); // chin intake
-  mesh(fz, BOX, 0x141414, 3.31, -.28, 0, [.02, .7, .9]);
-  wingPart(fz, [[4.4, .3], [4.4, -.3], [1.4, -1.25], [1.4, 1.25]], .25, .05, G2); // strakes
-  mesh(ck, gSph(16), 'glass', 4.25, 1.0, 0, [1.45, .42, .36]); mesh(ck, BOX, 0x2a2a28, 4.0, .88, 0, [1.8, .14, .7]); // bubble canopy and sill
-  for (const sd of [-1, 1]) {
-    const wi = part(M, sd < 0 ? 'wingLi' : 'wingRi'), wo = part(M, sd < 0 ? 'wingLo' : 'wingRo');
-    wingPart(wi, [[1.5, sd * .8], [-3.4, sd * .8], [-3.75, sd * 2.8], [-.9, sd * 2.8]], .18, .14, G1);
-    wingPart(wo, [[-.9, sd * 2.8], [-3.75, sd * 2.8], [-3.95, sd * 4.55], [-2.55, sd * 4.55]], .18, .1, G1);
-    mesh(wo, BOX, G2, -3.2, .26, sd * 4.62, [1.9, .06, .1]); // wingtip launch rail
-    const st = part(M, sd < 0 ? 'stabL' : 'stabR'); wingPart(st, [[-4.9, sd * .7], [-7.2, sd * .7], [-7.25, sd * 2.75], [-6.2, sd * 2.75]], .28, .06, G2, sd * -.1);
-    mesh(fr, BOX, G2, -5.4, -.35, sd * .45, [1.2, .5, .04], [sd * .3, 0, 0]); // ventral fins
-    // stores: Sidewinder on the tip, Maverick and a Mk 82 under each wing
-    store(M, 1, missileModel(3.0, .065, 0xb8b8b0), -3.0, .26, sd * 4.72);
-    mesh(wi, BOX, G2, -1.4, .02, sd * 2.4, [1.4, .22, .08]); store(M, 2, missileModel(2.5, .15, 0x8a9078, .2), -1.1, -.25, sd * 2.4);
-    mesh(wo, BOX, G2, -2.2, .02, sd * 3.5, [1.1, .2, .07]); store(M, 3, bombModel(2.2, .14), -2.0, -.25, sd * 3.5);
-  }
-  const fin = part(M, 'fin'); wingPart(fin, [[-3.9, -.06], [-6.9, -.06], [-7.25, .06], [-4.2, .06]].map(p => [p[0], p[1]]), .9, .01, G1);
-  mesh(fin, loftGeo([[-3.9, -.07], [-6.9, -.07], [-6.9, .07], [-3.9, .07]], .9, [[-6.1, -.04], [-7.1, -.04], [-7.1, .04], [-6.1, .04]], 3.75), G1, 0, 0, 0);
-  const en = part(M, 'eng1'); cylAlongX(en, -7.6, -6.5, .5, .58, .36, 0, 0x4a4a46, 16); mesh(en, gCyl(.46, .46, 16), 0x1c1a18, -7.62, .36, 0, [1, .02, 1], [0, 0, Math.PI / 2]);
-  part(M, 'fuel'); part(M, 'nose');
-  mesh(fz, BOX, 0x2a2a28, 5.2, .55, .62, [.3, .06, .02]); // gun port
-  return Object.assign(M, { gun: [5.3, .55, .65], cockpit: [4.6, 1.15, 0] });
-}
-function modelSu30(team) {
-  const M = { root: new THREE.Group(), parts: {}, stores: [] }, C1 = 0x8a9cab, C2 = 0x6f8292, DK = 0x5a5f60;
-  const fz = part(M, 'fuseF'), fr = part(M, 'fuseR'), ck = part(M, 'cockpit');
-  mesh(fz, fuseGeo([[11.0, .02, .02, .55], [10.0, .38, .38, .58], [8.6, .62, .62, .66], [7.0, .72, .82, .8], [5.4, .8, .82, .72], [3.6, 1.0, .7, .66]]), C1, 0, 0, 0);
-  mesh(fz, fuseGeo([[11.02, .02, .02, .55], [10.4, .28, .28, .56], [9.6, .45, .45, .6]]), 0xb8c0c4, 0, 0, 0);
-  mesh(fr, fuseGeo([[3.6, 1.0, .7, .66], [1.0, 1.25, .6, .62], [-2.0, 1.2, .55, .6], [-5.2, .9, .45, .6], [-7.6, .45, .3, .62]]), C1, 0, 0, 0);
-  mesh(ck, gSph(16), 'glass', 6.9, 1.42, 0, [2.3, .48, .46]);
-  wingPart(fz, [[5.2, .9], [5.2, -.9], [1.0, -2.6], [1.0, 2.6]], .62, .07, C2); // big wing root extensions
-  for (const sd of [-1, 1]) {
-    const wi = part(M, sd < 0 ? 'wingLi' : 'wingRi'), wo = part(M, sd < 0 ? 'wingLo' : 'wingRo');
-    wingPart(wi, [[1.4, sd * 1.4], [-4.8, sd * 1.4], [-5.2, sd * 4.4], [-1.6, sd * 4.4]], .56, .18, C1);
-    wingPart(wo, [[-1.6, sd * 4.4], [-5.2, sd * 4.4], [-5.5, sd * 7.3], [-4.3, sd * 7.3]], .56, .12, C2);
-    mesh(wo, BOX, C2, -4.7, .62, sd * 7.38, [1.6, .07, .1]);
-    wingPart(fz, [[7.4, sd * .7], [6.6, sd * .7], [6.4, sd * 2.0], [6.9, sd * 2.0]], .7, .05, C2); // canards
-    const st = part(M, sd < 0 ? 'stabL' : 'stabR'); wingPart(st, [[-6.6, sd * 1.4], [-9.0, sd * 1.4], [-9.2, sd * 3.9], [-8.3, sd * 3.9]], .55, .07, C2);
-    const fn = part(M, sd < 0 ? 'finL' : 'finR'); mesh(fn, loftGeo([[-5.2, sd * 1.95], [-8.4, sd * 1.95], [-8.4, sd * 2.1], [-5.2, sd * 2.1]], .9, [[-7.6, sd * 2.0], [-9.0, sd * 2.0], [-9.0, sd * 2.08], [-7.6, sd * 2.08]], 4.6), C1, 0, 0, 0);
-    const en = part(M, sd < 0 ? 'engL' : 'engR'); mesh(en, fuseGeo([[3.6, .6, .55, .1], [0, .66, .62, .2], [-5.0, .62, .6, .3], [-8.4, .55, .55, .4]]), C2, 0, 0, sd * .95);
-    cylAlongX(en, -9.6, -8.4, .55, .62, .4, sd * .95, 0x4a4844, 16); mesh(en, BOX, 0x141414, 3.62, .1, sd * .95, [.02, .95, 1.05]);
-    store(M, 1, missileModel(2.9, .085, 0xc4c4bc), -4.6, .62, sd * 7.5);
-    store(M, 2, missileModel(3.9, .2, 0xa8aca0, .3), 1.0, -.62, sd * .95);
-    store(M, 3, bombModel(2.0, .18), -2.6, .3, sd * 3.2); store(M, 3, bombModel(2.0, .18), -3.4, .3, sd * 5.2);
-  }
-  part(M, 'fuel'); part(M, 'nose');
-  return Object.assign(M, { gun: [6.5, .9, .8], cockpit: [7.4, 1.6, 0] });
-}
 function rotorModel(M, key, y, r, n, chord, color, x = .6, z = 0, side) {
   const rot = new THREE.Group(); rot.position.set(x, y, z); M.root.add(rot);
   const blades = new THREE.Group(); rot.add(blades);
@@ -162,18 +108,13 @@ function modelKa52(team) {
 /* ---------------- definitions: performance, weapons, parts (x forward, y up, z right; spheres) ---------------- */
 const P_ = (id, kind, p, r, hp, o = {}) => ({ id, kind, p, r, hp, ...o });
 const AIR = {
-  f16: { name: 'F-16C Block 50', short: 'F-16C', cls: 'jet', model: modelF16, mass: 12000, S: 27.9, thrust: [76e3, 129e3], CLa: 4.6, aStall: .55, alphaLim: .44, cd0: .022, kInd: .12, rates: [4.0, .62, .3], gmax: 9, mDry: 9300, fuelMax: 3200, fuel0: 2200, gRip: 12.5, mRef: 12000, vne: 417, machMax: 2.05, gear: 1.75, len: 15, wid: 9.5, R: 9, cam: 21, flares: 30,
-    info: 'Agile multirole fighter: M61 cannon, 2 AIM-9X, 2 Maverick, 2 Mk 82. Takes off from your airfield, lands there to rearm.',
+  // The jet's shape comes from a downloaded model (gltf-models.js); these are the real aircraft's figures.
+  f2: { name: 'Mitsubishi F-2A', short: 'F-2A', cls: 'jet', model: team => modelF2(team), mass: 13000, S: 34.8, thrust: [76e3, 129e3], CLa: 4.6, aStall: .55, alphaLim: .44, cd0: .022, kInd: .11, rates: [4.0, .62, .3], gmax: 9, mDry: 10200, fuelMax: 3600, fuel0: 2500, gRip: 12.5, mRef: 13000, vne: 417, machMax: 2.05, gear: 2.0, len: 15.5, wid: 11.1, R: 9.5, cam: 22, flares: 30,
+    info: 'F-16-based multirole fighter with a bigger wing: M61 cannon, 2 AIM-9X, 2 Maverick, 2 Mk 82. Takes off from your airfield, lands there to rearm.',
     weapons: [{ k: 'm61', n: 510 }, { k: 'aim9x', n: 2 }, { k: 'agm65', n: 2 }, { k: 'mk82', n: 2 }],
     parts: [P_('cockpit', 'cockpit', [4.3, 1.0, 0], .75, 40), P_('nose', 'nose', [6.4, .35, 0], .6, 45), P_('fuseF', 'fuse', [2.0, .4, 0], 1.1, 150), P_('fuseR', 'fuse', [-2.6, .35, 0], 1.05, 150), P_('fuel', 'fuel', [-.2, .35, 0], .85, 60),
       P_('eng1', 'engine', [-5.4, .35, 0], .8, 75), P_('wingLi', 'wing', [-1.3, .25, -1.9], 1.05, 90, { side: -1, seg: 'in' }), P_('wingLo', 'wing', [-2.8, .25, -3.7], .85, 55, { side: -1, seg: 'out' }), P_('wingRi', 'wing', [-1.3, .25, 1.9], 1.05, 90, { side: 1, seg: 'in' }), P_('wingRo', 'wing', [-2.8, .25, 3.7], .85, 55, { side: 1, seg: 'out' }),
       P_('stabL', 'stab', [-6.4, .3, -1.8], .75, 40, { side: -1 }), P_('stabR', 'stab', [-6.4, .3, 1.8], .75, 40, { side: 1 }), P_('fin', 'fin', [-6.0, 2.3, 0], .9, 45)] },
-  su30: { name: 'Su-30SM', short: 'Su-30SM', cls: 'jet', model: modelSu30, mass: 26000, S: 62, thrust: [150e3, 245e3], CLa: 4.4, aStall: .6, alphaLim: .47, cd0: .023, kInd: .11, rates: [3.4, .6, .32], gmax: 9.5, mDry: 19600, fuelMax: 9400, fuel0: 5300, gRip: 10.4, mRef: 25000, vne: 390, machMax: 2.0, gear: 2.1, len: 22, wid: 14.7, R: 12, cam: 26, flares: 32,
-    info: 'Heavy twin-engine fighter: GSh-30-1 cannon, 2 R-73, 2 Kh-29T, 4 FAB-250. Keeps flying on one engine.',
-    weapons: [{ k: 'gsh301', n: 150 }, { k: 'r73', n: 2 }, { k: 'kh29t', n: 2 }, { k: 'fab250', n: 4 }],
-    parts: [P_('cockpit', 'cockpit', [7.0, 1.4, 0], .85, 45), P_('nose', 'nose', [9.8, .6, 0], .7, 50), P_('fuseF', 'fuse', [4.2, .7, 0], 1.3, 170), P_('fuseR', 'fuse', [-1.8, .65, 0], 1.4, 170), P_('fuel', 'fuel', [1.0, .65, 0], 1.0, 70),
-      P_('engL', 'engine', [-5.4, .4, -.95], .75, 70), P_('engR', 'engine', [-5.4, .4, .95], .75, 70), P_('wingLi', 'wing', [-2.0, .6, -3.0], 1.5, 100, { side: -1, seg: 'in' }), P_('wingLo', 'wing', [-4.4, .6, -5.8], 1.15, 60, { side: -1, seg: 'out' }), P_('wingRi', 'wing', [-2.0, .6, 3.0], 1.5, 100, { side: 1, seg: 'in' }), P_('wingRo', 'wing', [-4.4, .6, 5.8], 1.15, 60, { side: 1, seg: 'out' }),
-      P_('stabL', 'stab', [-8.2, .6, -2.7], 1.0, 45, { side: -1 }), P_('stabR', 'stab', [-8.2, .6, 2.7], 1.0, 45, { side: 1 }), P_('finL', 'fin', [-7.4, 2.8, -2.0], .95, 40), P_('finR', 'fin', [-7.4, 2.8, 2.0], .95, 40)] },
   ah64: { name: 'AH-64D Apache Longbow', short: 'Apache', cls: 'heli', model: modelAH64, mass: 8000, power: 2.1e6, rotorR: 7.3, f: 3.6, tmax: 1.6, pprof: 3.0e5, rotE: 2.3e6, vne: 95, len: 17.7, wid: 5, R: 8.5, cam: 17, flares: 30, tailRotor: true, skid: 0,
     info: 'Armoured attack helicopter: M230 chain gun (follows your aim), 38 Hydra rockets, 8 Hellfire (laser: keep the crosshair on the target). Rearms at your base.',
     weapons: [{ k: 'm230', n: 1200, turret: [-1.75, 1.75, -1.05, .19] }, { k: 'hydra', n: 38 }, { k: 'hellfire', n: 8 }],
@@ -187,9 +128,56 @@ const AIR = {
       P_('engL', 'engine', [-.2, 2.35, -1.0], .55, 60), P_('engR', 'engine', [-.2, 2.35, 1.0], .55, 60), P_('trans', 'trans', [.6, 2.8, 0], .55, 70), P_('rotor', 'rotor', [.6, 4.7, 0], 1.6, 90),
       P_('boom', 'boom', [-4.4, 1.8, 0], .7, 70), P_('fin', 'fin', [-6.8, 2.2, 0], 1.0, 40), P_('stubL', 'stub', [.8, 1.3, -1.9], .7, 50), P_('stubR', 'stub', [.8, 1.3, 1.9], .7, 50)] },
 };
-const TEAM_AIR = [{ jet: 'f16', heli: 'ah64' }, { jet: 'su30', heli: 'ka52' }];
+const TEAM_AIR = [{ jet: 'f2', heli: 'ah64' }, { jet: 'f2', heli: 'ka52' }]; // both sides fly the F-2A (Red's in a darker paint) until Red has a model of its own
 const AIR_PART_NAME = { cockpit: 'cockpit', nose: 'sensors', fuse: 'fuselage', fuel: 'fuel tank', engine: 'engine', wing: 'wing', stab: 'tailplane', fin: 'fin', rotor: 'main rotor', trans: 'transmission', boom: 'tail boom', trot: 'tail rotor', stub: 'stub wing' };
 
+/* The afterburner: a cone of flame behind each nozzle. Pale blue-white where it leaves the nozzle, orange further back, with the bright
+   shock diamonds a supersonic exhaust shows. It grows as the afterburner comes in, flickers, and is see-through at its edges. */
+const FLAME_VS = `varying float vU; varying vec3 vN; varying vec3 vV;
+  void main() { vU = uv.y; vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`;
+const FLAME_FS = `uniform float uT; uniform float uP; uniform float uCore; varying float vU; varying vec3 vN; varying vec3 vV;
+  float hash(float n) { return fract(sin(n) * 43758.5453); }
+  void main() {
+    float u = 1.0 - vU; // 0 at the nozzle, 1 at the tip
+    float edge = pow(abs(dot(normalize(vN), normalize(vV))), mix(1.1, .6, uCore)); // looking through the middle of the cone it is bright, at its rim thin
+    float dia = .5 + .5 * pow(abs(sin(u * 5.2 * 3.14159 + .6)), 3.0) * (1.0 - u); // shock diamonds, fading down the plume
+    float fl = .82 + .18 * sin(uT * 61.0 + u * 9.0) * sin(uT * 37.0 + 1.3) + .06 * hash(floor(uT * 60.0));
+    vec3 hot = vec3(.55, .68, 1.0), mid = vec3(1.0, .52, .16), cool = vec3(.85, .22, .05);
+    vec3 col = mix(mix(hot, mid, smoothstep(.0, .35, u)), cool, smoothstep(.45, 1.0, u));
+    col = mix(col, vec3(1.0, .9, .72), uCore * (1.0 - u) * .6);
+    float a = edge * pow(1.0 - u, mix(1.0, .7, uCore)) * smoothstep(0.0, .03, u) * (.7 + .9 * dia) * fl * uP;
+    a = min(a, 1.0); gl_FragColor = vec4(col * a * mix(.95, 1.25, uCore), a * .6); // adds its light and veils what is behind it a little, so it shows against a bright sky too
+  }`;
+let GLOW_TEX = null;
+function buildFlames(M) {
+  if (!GLOW_TEX) { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,240,215,1)'); gr.addColorStop(.25, 'rgba(255,170,80,.7)'); gr.addColorStop(1, 'rgba(255,90,20,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); GLOW_TEX = new THREE.CanvasTexture(c); }
+  return M.nozzles.map(([x, y, z, r, eng]) => {
+    const grp = new THREE.Group(); grp.position.set(x, y, z); M.root.add(grp);
+    const mk = (len, r0, r1, core) => { const geo = new THREE.CylinderGeometry(r0, r1, len, 20, 10, true); geo.rotateZ(-Math.PI / 2); geo.translate(-len / 2, 0, 0); // base at the nozzle (uv.y = 1), tip behind it
+      const mat = new THREE.ShaderMaterial({ vertexShader: FLAME_VS, fragmentShader: FLAME_FS, uniforms: { uT: { value: 0 }, uP: { value: 0 }, uCore: { value: core } }, transparent: true, depthWrite: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, side: THREE.DoubleSide, toneMapped: false });
+      const m = new THREE.Mesh(geo, mat); m.frustumCulled = false; grp.add(m); return m; };
+    const outer = mk(r * 15, r * .95, r * .18, 0), inner = mk(r * 8, r * .6, r * .06, 1);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW_TEX, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false })); glow.position.set(-r * .4, 0, 0); grp.add(glow);
+    // the nozzle itself glows dull orange whenever the engine is running hard
+    const ring = new THREE.Mesh(new THREE.CircleGeometry(r * .9, 20), new THREE.MeshBasicMaterial({ color: 0xff7a28, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); ring.rotation.y = -Math.PI / 2; ring.position.x = .06; grp.add(ring);
+    grp.visible = false; return { grp, outer, inner, glow, ring, r, eng };
+  });
+}
+function updateFlames(a, dt) {
+  if (!a.flames) return;
+  const s = a.spool ?? a.throttle, ab = clamp((s - .85) / .15, 0, 1), dry = clamp((s - .3) / .55, 0, 1);
+  for (const f of a.flames) {
+    const ok = a.alive && pOK(a.part(f.eng)) && (a.fuel === undefined || a.fuel > 0);
+    f.p = (f.p ?? 0) + ((ok ? ab : 0) - (f.p ?? 0)) * Math.min(1, dt * 5); // lights and dies away over a fraction of a second
+    const show = ok && (f.p > .01 || dry > .05); f.grp.visible = show; if (!show) continue;
+    const t = GAME.time, len = .45 + .55 * f.p + Math.sin(t * 43) * .03;
+    f.outer.scale.set(len, 1, 1); f.inner.scale.set(len, 1, 1);
+    f.outer.material.uniforms.uT.value = t; f.inner.material.uniforms.uT.value = t + 3.7; f.outer.material.uniforms.uP.value = f.p; f.inner.material.uniforms.uP.value = f.p;
+    f.outer.visible = f.inner.visible = f.p > .01;
+    f.glow.material.opacity = f.p * (.42 + Math.sin(t * 50) * .06); f.glow.scale.setScalar(f.r * (2.2 + 1.6 * f.p)); f.glow.visible = f.p > .01;
+    f.ring.material.opacity = Math.max(dry * .35, f.p * .9);
+  }
+}
 class Aircraft extends Ent {
   constructor(type, team) {
     super('air', team); this.type = type; this.def = AIR[type]; this.cls = this.def.cls;
@@ -200,6 +188,7 @@ class Aircraft extends Ent {
     this.model = this.def.model(team); mergeModel(this.model.root);
     const PS = this.model.partSpheres; if (PS) for (const p of this.parts) { const q = PS[p.id]; if (q) { p.p = q.p; p.r = q.r; if (q.sph && q.sph.length) p.sph = q.sph; } } // a model with its own shape brings its own hit spheres
     this.model.root.traverse(o => { if (o.isMesh && o.material === VCOL_MAT) o.material = AIR_MAT; if (o.isMesh) o.castShadow = o.material !== AIR_DISC && o.material !== AIR_GLASS; });
+    if (this.model.nozzles) this.flames = buildFlames(this.model);
     scene.add(this.model.root);
   }
   part(id) { return this.parts.find(p => p.id === id); }
@@ -575,6 +564,7 @@ function crashAir(a, how) { const src = a.lastAttacker && GAME.time - (a.lastHit
 function destroyAir(a, src, how) {
   if (!a.alive) return;
   a.alive = false; a.how = how; a.burnT = 40;
+  if (a.flames) for (const f of a.flames) f.grp.visible = false;
   const by = creditOf(src);
   if (by && by.isPlayer && a.team !== GAME.team) { PLAYER.kills++; hitInfo('AIRCRAFT DESTROYED', '#ff8a6a'); }
   if (by && a.team !== by.team && typeof awardSP === 'function') awardSP(by, 250, 'aircraft');
@@ -608,6 +598,7 @@ function airsStep(dt) {
     if (a.model.rotor) { const sp = a.rpm * (a.onGround && !a.driver ? .3 : 1) * 28; a.model.rotor.blades.rotation.y += sp * dt; a.model.rotor.disc.material.opacity = .12 * a.rpm; if (a.model.rotor2) a.model.rotor2.blades.rotation.y -= sp * dt; if (a.model.trotor) a.model.trotor.blades.rotation.y += sp * 4 * dt; }
     if (a.model.gearDown) { const down = a.onGround || a.gearDown; a.model.gearDown.visible = down; a.model.gearUp.visible = !down; }
     if (a.onGround && a.vel.length() < 3) rearmAir(a, dt); else a.rearmT = 0;
+    updateFlames(a, dt);
     placeAir(a);
   }
 }

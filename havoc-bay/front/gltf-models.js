@@ -91,12 +91,16 @@ function f2Prepared() {
   let tipX = 0, tipY = 0, tipN = 0, tipZ = 0; for (let i = 0; i < P.count; i++) tipZ = Math.max(tipZ, Math.abs(P.getZ(i)));
   for (let i = 0; i < P.count; i++) if (Math.abs(P.getZ(i)) > tipZ - .25) { tipX += P.getX(i); tipY += P.getY(i); tipN++; }
   { const c = named['F-2-cockpit_2'].geo; c.computeBoundingSphere(); const bs = c.boundingSphere; spheres.cockpit = { p: [bs.center.x, bs.center.y, bs.center.z], r: Math.min(.9, bs.radius * .6), sph: [] }; }
+  // the engine nozzle: the rearmost ring of the airframe
+  let nx = 1e9; { const q = parts.eng1.attributes.position; for (let i = 0; i < q.count; i++) if (Math.abs(q.getZ(i)) < .7 && q.getY(i) < .6) nx = Math.min(nx, q.getX(i)); /* (below the drag-chute housing, which sticks out further back) */ let y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = 0; i < q.count; i++) if (q.getX(i) < nx + .12 && Math.abs(q.getZ(i)) < .9 && q.getY(i) < .75) { y0 = Math.min(y0, q.getY(i)); y1 = Math.max(y1, q.getY(i)); z0 = Math.min(z0, q.getZ(i)); z1 = Math.max(z1, q.getZ(i)); } GLTF.f2nozzle = [nx + .1, (y0 + y1) / 2, (z0 + z1) / 2, clamp(Math.min(y1 - y0, z1 - z0) / 2 * .9, .3, .6), 'eng1']; }
   const gearDown = named['F-2-landingOn_6'].geo; gearDown.computeBoundingBox();
   return GLTF.f2 = { named, parts, spheres, pylons, tip: [tipX / tipN, tipY / tipN, tipZ], gearH: -gearDown.boundingBox.min.y, mats };
 }
 function modelF2(team) {
   const F = f2Prepared(), M = { root: new THREE.Group(), parts: {}, stores: [], partSpheres: F.spheres };
-  const skin = F.named['F-2-airframe_0'].mat, mk = (parent, geo, mat) => { const m = new THREE.Mesh(geo, mat); m.castShadow = mat !== AIR_GLASS; m.receiveShadow = true; m.userData.keep = true; parent.add(m); return m; };
+  // Red's aircraft wear the same camouflage darkened towards grey-brown, so the two sides can be told apart
+  let skin = F.named['F-2-airframe_0'].mat; if (team === 1) { skin = F.redSkin || (F.redSkin = skin.clone()); skin.color.setRGB(.74, .6, .5); }
+  const mk = (parent, geo, mat) => { const m = new THREE.Mesh(geo, mat); m.castShadow = mat !== AIR_GLASS; m.receiveShadow = true; m.userData.keep = true; parent.add(m); return m; };
   for (const [id, geo] of Object.entries(F.parts)) { const g = part(M, id); mk(g, geo, skin); }
   for (const id of ['fuel', 'cockpit']) if (!M.parts[id]) part(M, id);
   mk(M.parts.cockpit, F.named['F-2-cockpit_2'].geo, F.named['F-2-cockpit_2'].mat);
@@ -115,13 +119,6 @@ function modelF2(team) {
     if (inner) store(M, 2, missileModel(2.5, .15, 0x8a9078, .2), inner.x, inner.y - .22, inner.z);
     if (outer && outer !== inner) store(M, 3, bombModel(2.2, .14), outer.x, outer.y - .2, outer.z);
   }
+  M.nozzles = [GLTF.f2nozzle];
   return Object.assign(M, { gun: [3.4, .55, -1.0], cockpit: [4.9 * F2_FIT.s + F2_FIT.dx + .3, 1.35, 0] });
-}
-if (window.MODEL_DATA && MODEL_DATA.f2) {
-  AIR.f2 = Object.assign({}, AIR.f16, {
-    name: 'Mitsubishi F-2A', short: 'F-2A', model: modelF2, mass: 13000, S: 34.8, kInd: .11, mDry: 10200, fuelMax: 3600, fuel0: 2500, mRef: 13000, gear: 2.0, len: 15.5, wid: 11.1, R: 9.5, cam: 22,
-    info: 'F-16-based multirole fighter with a bigger wing: M61 cannon, 2 AIM-9, 2 Maverick, 2 Mk 82. Takes off from your airfield, lands there to rearm.',
-    parts: AIR.f16.parts.map(p => ({ ...p })),
-  });
-  TEAM_AIR[0].jet = 'f2';
 }

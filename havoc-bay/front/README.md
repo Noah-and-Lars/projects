@@ -44,7 +44,7 @@ There are no health bars:
 
 ## Aircraft
 
-Blue flies the Mitsubishi F-2A and the AH-64D Apache. Red flies the Su-30SM and the Ka-52 Alligator.
+Both sides fly the Mitsubishi F-2A; Red's wear a darker paint. Blue also has the AH-64D Apache and Red the Ka-52 Alligator. The earlier code-built F-16C and Su-30SM models have been removed.
 
 - **Jets** start at the end of your runway. Take off at full throttle and look up past 250 km/h; the jet lifts off at about 270 km/h. The jet follows your aim. W/S set the throttle, A/D roll, Q/E work the rudder and B is the airbrake. 1-4 choose a weapon, F fires the gun, G drops flares and X pulls the fire handle. Land on your runway to rearm and refuel, which takes 15 seconds.
 - **Helicopters** start at your base. Hold Space to raise the collective and lift off; C lowers it. The nose follows your aim, so look down to fly forward. W/S push the nose down or up, A/D roll. H switches hover mode on and off. The gun follows your aim. Land at your base to rearm.
@@ -52,7 +52,7 @@ Blue flies the Mitsubishi F-2A and the AH-64D Apache. Red flies the Su-30SM and 
 - **Damage** is tracked per part, not as one health bar:
   - Each aircraft is split into the cockpit, nose, front and rear fuselage, fuel tank, each engine, inner and outer wing on each side, tailplanes and fin. Helicopters also have the rotor, transmission, tail boom and tail rotor.
   - Losing an outer wing makes the jet roll towards that side.
-  - On the Su-30SM, one engine out makes it yaw, but it keeps flying on the other.
+  - A twin-engined jet with one engine out yaws but keeps flying on the other (the code supports it; the F-2A has one engine).
   - An Apache that loses its tail rotor spins. A dead transmission forces an autorotation landing.
   - Fires spread until they burn out. J bails you out, and you come down on a parachute. E gets you out once you have landed.
 - **The F-2A** is a downloaded 3D model (`models/f2.js`). `gltf-models.js` reads it without a loader, so the game still opens straight from disk. It cuts the one-piece airframe into the damageable parts above, with hit areas fitted to the real shape. The model keeps its own JASDF blue camouflage, and its landing gear retracts after take-off.
@@ -64,14 +64,14 @@ The flight physics are written for this game (`aircraft.js`). The handling follo
 **Jets**
 
 - **Air:** density falls with height, which thins lift, drag and thrust. Speed is also tracked as a Mach number, and drag rises sharply near Mach 1.
-- **Engines:** they take about 3 seconds to spool from idle to full dry power. The throttle reads 0-100 %, then WEP, which is the afterburner. Thrust falls with height and gains a little from speed.
+- **Engines:** they take about 3 seconds to spool from idle to full dry power. The throttle reads 0-100 %, then WEP, which is the afterburner. Thrust falls with height and gains a little from speed. On WEP a flame stands behind the nozzle: blue-white where it leaves, orange further back.
 - **Lift and drag:** lift follows the wing's angle to the airflow up to the stall, then falls away. Pulling g costs speed, so a hard turn bleeds energy until the jet settles at the turn it can sustain.
 - **Fly-by-wire:** as on the real jets, the stick asks the flight computer for g. The computer holds 1 g hands-off, caps the pull at 9 g and stops at its angle-of-attack limit, so a healthy jet won't stall or overstress.
 - **Instructor (mouse aim):** the cursor leads the nose, where the guns point. The bank grows with how far the cursor is off the nose: a small nudge is flown with rudder and a few degrees of bank, about 10° off asks for a 40° bank, and a target well off the nose gets a full-rate turn. It pulls the g that turn needs and holds height if the wing can manage it. For a target behind you it flies a level turn. Slow, the nose rides above the flight path, so aim above where you want to go.
 - **Runway:** the nose lifts only once the tail has enough air over it. Ground effect cushions the flare. The gear and flaps lower themselves when low and slow; the flaps add lift and drag. B is the airbrake. Throttle right back gives wheel brakes on the ground.
 - **Landing:** touch down level at under 5.5 m/s sink and under 410 km/h. Between 3.6 and 5.5 m/s is a hard landing that damages the fuselage.
 - **Fuel and weight:** fuel burns with thrust, about four times faster in afterburner. The F-2A's standard load lasts about 23 minutes at 100 % and about 4 minutes on WEP; the HUD shows the time left. Burning fuel and dropping weapons makes the jet lighter, so it climbs and turns better. With no fuel the engine stops. A holed tank leaks.
-- **Overload:** the wings stand a load, which is weight times g, so a heavy jet takes less g than a light one. Past the limit, or past the airframe's speed limit, the HUD shows OVERLOAD and stress builds; ease off and it fades, hold it and a wing rips off. The F-2A's flight computer keeps it under its limit. A Su-30SM with full tanks and bombs can reach its limit in a hard pull.
+- **Overload:** the wings stand a load, which is weight times g, so a heavy jet takes less g than a light one. Past the limit, or past the airframe's speed limit, the HUD shows OVERLOAD and stress builds; ease off and it fades, hold it and a wing rips off. The F-2A's flight computer keeps it under its limit while it is working.
 - **Pilot:** holding 7 g or more greys the view in from the edges after a few seconds. Holding 9 g for about 4 seconds (8 g for about 7) blacks the pilot out, and nobody flies the jet for 4.5 seconds. Strong negative g reddens the view.
 - **Damage:**
   - A damaged wing rolls the jet towards it, harder the more g you pull. A jet with a whole wing gone can limp level but can barely turn.
@@ -79,13 +79,13 @@ The flight physics are written for this game (`aircraft.js`). The handling follo
   - Losing the fin makes the jet weave.
   - Losing the nose sensors, or both tailplanes, takes the flight computer out. The stick then sets angle of attack directly, so you can stall, and pulling well past 9 g bends the wings.
 
-| | F-2A | Su-30SM | Real aircraft |
-| --- | --- | --- | --- |
-| Top speed at low level, afterburner | Mach 1.05 | Mach 1.05 | about Mach 1.1 |
-| Top speed at low level, dry | Mach 0.95 | Mach 0.95 | about Mach 0.95 |
-| Take-off run, afterburner | 290 m | 330 m | 300-550 m |
-| Landing roll | 820 m | 800 m | 600-900 m |
-| Roll rate | 250°/s | 215°/s | 180-270°/s |
+| | F-2A | Real aircraft |
+| --- | --- | --- |
+| Top speed at low level, afterburner | Mach 1.05 | about Mach 1.1 |
+| Top speed at low level, dry | Mach 0.95 | about Mach 0.95 |
+| Take-off run, afterburner | 290 m | 300-550 m |
+| Landing roll | 820 m | 600-900 m |
+| Roll rate | 250°/s | 180-270°/s |
 
 **Helicopters**
 
