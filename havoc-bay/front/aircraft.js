@@ -198,6 +198,7 @@ class Aircraft extends Ent {
     this.parts = this.def.parts.map(p => ({ ...p, max: p.hp })); this.ammo = this.def.weapons.map(w => w.n); this.cool = this.def.weapons.map(() => 0);
     this.sel = 0; this.flares = this.def.flares; this.flareT = 0; this.fire = 0; this.extT = 0; this.rpm = 1; this.hdg = 0; this.pit = 0; this.rol = 0; this.spin = 0; this.driver = null; this.hp = 1;
     this.model = this.def.model(team); mergeModel(this.model.root);
+    const PS = this.model.partSpheres; if (PS) for (const p of this.parts) { const q = PS[p.id]; if (q) { p.p = q.p; p.r = q.r; if (q.sph && q.sph.length) p.sph = q.sph; } } // a model with its own shape brings its own hit spheres
     this.model.root.traverse(o => { if (o.isMesh && o.material === VCOL_MAT) o.material = AIR_MAT; if (o.isMesh) o.castShadow = o.material !== AIR_DISC && o.material !== AIR_GLASS; });
     scene.add(this.model.root);
   }
@@ -378,7 +379,7 @@ function incoming(a) { return PROJS.some(p => p.target === a && p.guide); }
 function airDmg(A) { return A.kind === 'bullet' ? A.main * .45 : A.kind === 'he' ? (A.splashDmg || 80) * .6 + 20 : A.kind === 'heat' ? 150 + (A.main || 0) * .5 : (A.main || 60) * .9; }
 function segUnitAir(a, b, e) { // segment a->b against the aircraft's part spheres (in its own frame); remembers which parts it crossed
   _aq.copy(e.quat).invert(); const la = _av.copy(a).sub(e.pos).applyQuaternion(_aq).clone(), lb = _aw.copy(b).sub(e.pos).applyQuaternion(_aq).clone();
-  const hits = []; for (const p of e.parts) { if (p.gone) continue; const t = segSphere(la, lb, _ax.set(...p.p), p.r); if (t !== null) hits.push([t, p]); }
+  const hits = []; for (const p of e.parts) { if (p.gone) continue; let t = null; if (p.sph) { for (const q of p.sph) { const u = segSphere(la, lb, _ax.set(q[0], q[1], q[2]), q[3]); if (u !== null && (t === null || u < t)) t = u; } } else t = segSphere(la, lb, _ax.set(...p.p), p.r); if (t !== null) hits.push([t, p]); }
   if (e.kind === 'air' && e.cls === 'heli' && pOK(e.part('rotor'))) { // the rotor disc: a round crossing it can hit a blade
     const ry = e.part('rotor').p[1]; if ((la.y - ry) * (lb.y - ry) < 0) { const t = (ry - la.y) / (lb.y - la.y), x = lerp(la.x, lb.x, t) - .6, z = lerp(la.z, lb.z, t); if (Math.hypot(x, z) < 7.2 && Math.random() < .14) hits.push([t, e.part('rotor')]); }
   }
@@ -433,7 +434,7 @@ function destroyAir(a, src, how) {
   if (by && by.isPlayer && a.team !== GAME.team) { PLAYER.kills++; hitInfo('AIRCRAFT DESTROYED', '#ff8a6a'); }
   if (by && a.team !== by.team && typeof awardSP === 'function') awardSP(by, 250, 'aircraft');
   logDeath(a, by, how);
-  a.model.root.traverse(o => { if (o.isMesh && o.material === AIR_MAT) o.material = CHAR; });
+  a.model.root.traverse(o => { if (o.isMesh && (o.material === AIR_MAT || (o.material.map && o.material !== AIR_GLASS))) o.material = CHAR; });
   if (a.driver) { const d = a.driver; if (d.alive) { d.alive = false; d.hp = 0; addFeed(by, d, how === 'crashed' && !by ? 'crash' : 'aircraft'); onSoldierDead(d); } if (d.isPlayer) showMsg('Your aircraft was destroyed', how); }
   if (!a.wreck) a.wreck = { landed: false, spin: new V3(rand(-1, 1), rand(-2, 2), rand(-1.5, 1.5)) };
 }
@@ -460,6 +461,7 @@ function airsStep(dt) {
     const smoking = a.parts.some(p => (p.kind === 'engine' || p.kind === 'fuel') && p.hp < p.max * .5); if (smoking && Math.random() < dt * 14) { axes(a); sprite(a.pos.clone().addScaledVector(_ax, -a.def.len * .35), 1.2, 3, 1.8, 0x5a5650, false, 0, .55); }
     // rotors turn, rearming when parked at home
     if (a.model.rotor) { const sp = a.rpm * (a.onGround && !a.driver ? .3 : 1) * 28; a.model.rotor.blades.rotation.y += sp * dt; a.model.rotor.disc.material.opacity = .12 * a.rpm; if (a.model.rotor2) a.model.rotor2.blades.rotation.y -= sp * dt; if (a.model.trotor) a.model.trotor.blades.rotation.y += sp * 4 * dt; }
+    if (a.model.gearDown) { const down = a.onGround || (a.pos.y - groundY(a.pos.x, a.pos.z) < 60 && a.vel.length() < 95); a.model.gearDown.visible = down; a.model.gearUp.visible = !down; }
     if (a.onGround && a.vel.length() < 3) rearmAir(a, dt); else a.rearmT = 0;
     placeAir(a);
   }

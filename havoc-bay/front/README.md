@@ -1,6 +1,6 @@
 # Island Front (Havoc Bay mode, early test)
 
-A combined-arms mode on one big island: tanks, IFVs, jeeps and infantry now; helicopters, jets and boats next.
+A combined-arms mode on one big island: tanks, IFVs, jeeps, infantry, attack helicopters and jets; boats next.
 Open `index.html` in this folder, or use the **Island Front** card on Havoc Bay's title screen.
 
 ## The rules
@@ -42,6 +42,52 @@ There are no health bars:
 - Crew swap seats when someone is knocked out. Two crew lost destroys the vehicle.
 - Keys in a vehicle: 1-3 shell type, F machine gun, T missile (steers to your aim), G smoke screen, R repair (stand still), X put out a fire, Shift in the gun sight for more zoom.
 
+## Aircraft
+
+Blue flies the Mitsubishi F-2A and the AH-64D Apache. Red flies the Su-30SM and the Ka-52 Alligator.
+
+- **Jets** start at the end of your runway. Take off at full throttle and pull up past 230 km/h. The mouse flies the jet, W/S set the throttle and A/D roll. 1-4 choose a weapon, F fires the gun, G drops flares and X pulls the fire handle. Land on your runway to rearm, which takes 15 seconds.
+- **Helicopters** start at your base. Space climbs, C descends, W/S move forward and back, and A/D move sideways. The gun follows your aim. Land at your base to rearm.
+- **Missiles** lock on before you fire. AIM-9X and R-73 chase heat and can be decoyed by flares. Maverick and Kh-29T lock onto ground targets. Hellfire and Vikhr follow your crosshair. Jets also carry bombs, aimed with a falling-bomb sight.
+- **Damage** is tracked per part, not as one health bar:
+  - Each aircraft is split into the cockpit, nose, front and rear fuselage, fuel tank, each engine, inner and outer wing on each side, tailplanes and fin. Helicopters also have the rotor, transmission, tail boom and tail rotor.
+  - Losing an outer wing makes the jet roll towards that side.
+  - On the Su-30SM, one engine out makes it yaw, but it keeps flying on the other.
+  - An Apache that loses its tail rotor spins. A dead transmission forces an autorotation landing.
+  - Fires spread until they burn out. E ejects you, and you come down on a parachute.
+- **The F-2A** is a downloaded 3D model (`models/f2.js`). `gltf-models.js` reads it without a loader, so the game still opens straight from disk. It cuts the one-piece airframe into the damageable parts above, with hit areas fitted to the real shape. The model keeps its own JASDF blue camouflage, and its landing gear retracts after take-off.
+
+## Spawn points
+
+You start with 150 SP. Infantry and jeeps are free, an IFV costs 50, a tank 150, a helicopter 400 and a jet 500. There is no limit on aircraft.
+
+You earn SP on the ground:
+
+| Action | SP |
+| --- | --- |
+| Soldier kill | 60 |
+| Guard kill | 50 |
+| Jeep destroyed | 80 |
+| Howitzer destroyed | 120 |
+| IFV destroyed | 150 |
+| Checkpoint capture | 150 |
+| Tank destroyed | 200 |
+| Aircraft destroyed | 250 |
+
+Only ground units can capture checkpoints, so a team still needs tanks and infantry to win.
+
+Bots earn and spend SP the same way. Each bot has its own skill level, and bots make human mistakes:
+
+- They are slow to notice targets, and their aim takes time to settle.
+- They flinch when hit and sometimes freeze.
+- They pick the wrong ammo, reload at bad moments and forget to crouch.
+- Their steering is sloppy and overshoots turns.
+- Bot pilots flare late or not at all, and their aim wanders, more so right after they are hit.
+
+## Credits
+
+Blue's F-2A: This work is based on "Mitsubishi F-2 - Fighter Jet - Free" (https://sketchfab.com/3d-models/mitsubishi-f-2-fighter-jet-free-d3d7244554974f499b106e6c11fe3aaf) by bohmerang (https://sketchfab.com/bohmerang) licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/). Because of that licence, the game (or at least the F-2 model and anything made from it) must not be used commercially, and changed versions of the model must be shared under the same licence. The full licence note is in `models/f2-license.txt`.
+
 ## Files
 
 | File | What's in it |
@@ -55,6 +101,9 @@ There are no health bars:
 | `real-town.js` | Realistic mode villages: the wall and roof textures, houses, barns, churches, garden and field walls |
 | `real-soldier.js` | Realistic mode soldiers: camouflage, kit, rifles |
 | `tank-models.js` | The detailed M1A2 and T-90A models |
+| `aircraft.js` | Jets and helicopters: built-in models, weapons, flight physics, part damage, bot pilots |
+| `models/f2.js` | The F-2 model (glTF with its textures packed in, so it loads from disk) |
+| `gltf-models.js` | Reads packed glTF models; builds the F-2A with damageable parts, pylons and retracting gear |
 | `vehicles.js` | Real vehicles, ammunition, armour, modules, crew, the damage model, running gear and track links |
 | `units.js` | Howitzer and soldier models, projectiles, effects, sound |
 | `game.js` | Match rules, checkpoints, NPC guards, howitzers, bots, player controls, camera, HUD, menus |
