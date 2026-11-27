@@ -162,25 +162,25 @@ function modelKa52(team) {
 /* ---------------- definitions: performance, weapons, parts (x forward, y up, z right; spheres) ---------------- */
 const P_ = (id, kind, p, r, hp, o = {}) => ({ id, kind, p, r, hp, ...o });
 const AIR = {
-  f16: { name: 'F-16C Block 50', short: 'F-16C', cls: 'jet', model: modelF16, mass: 12000, S: 27.9, thrust: [76e3, 129e3], CLa: 4.6, aStall: .55, alphaLim: .44, cd0: .022, kInd: .12, rates: [4.0, .62, .3], gmax: 9, gear: 1.75, len: 15, wid: 9.5, R: 9, cam: 21, flares: 30,
+  f16: { name: 'F-16C Block 50', short: 'F-16C', cls: 'jet', model: modelF16, mass: 12000, S: 27.9, thrust: [76e3, 129e3], CLa: 4.6, aStall: .55, alphaLim: .44, cd0: .022, kInd: .12, rates: [4.0, .62, .3], gmax: 9, mDry: 9300, fuelMax: 3200, fuel0: 2200, gRip: 12.5, mRef: 12000, vne: 417, machMax: 2.05, gear: 1.75, len: 15, wid: 9.5, R: 9, cam: 21, flares: 30,
     info: 'Agile multirole fighter: M61 cannon, 2 AIM-9X, 2 Maverick, 2 Mk 82. Takes off from your airfield, lands there to rearm.',
     weapons: [{ k: 'm61', n: 510 }, { k: 'aim9x', n: 2 }, { k: 'agm65', n: 2 }, { k: 'mk82', n: 2 }],
     parts: [P_('cockpit', 'cockpit', [4.3, 1.0, 0], .75, 40), P_('nose', 'nose', [6.4, .35, 0], .6, 45), P_('fuseF', 'fuse', [2.0, .4, 0], 1.1, 150), P_('fuseR', 'fuse', [-2.6, .35, 0], 1.05, 150), P_('fuel', 'fuel', [-.2, .35, 0], .85, 60),
       P_('eng1', 'engine', [-5.4, .35, 0], .8, 75), P_('wingLi', 'wing', [-1.3, .25, -1.9], 1.05, 90, { side: -1, seg: 'in' }), P_('wingLo', 'wing', [-2.8, .25, -3.7], .85, 55, { side: -1, seg: 'out' }), P_('wingRi', 'wing', [-1.3, .25, 1.9], 1.05, 90, { side: 1, seg: 'in' }), P_('wingRo', 'wing', [-2.8, .25, 3.7], .85, 55, { side: 1, seg: 'out' }),
       P_('stabL', 'stab', [-6.4, .3, -1.8], .75, 40, { side: -1 }), P_('stabR', 'stab', [-6.4, .3, 1.8], .75, 40, { side: 1 }), P_('fin', 'fin', [-6.0, 2.3, 0], .9, 45)] },
-  su30: { name: 'Su-30SM', short: 'Su-30SM', cls: 'jet', model: modelSu30, mass: 26000, S: 62, thrust: [150e3, 245e3], CLa: 4.4, aStall: .6, alphaLim: .47, cd0: .023, kInd: .11, rates: [3.4, .6, .32], gmax: 9, gear: 2.1, len: 22, wid: 14.7, R: 12, cam: 26, flares: 32,
+  su30: { name: 'Su-30SM', short: 'Su-30SM', cls: 'jet', model: modelSu30, mass: 26000, S: 62, thrust: [150e3, 245e3], CLa: 4.4, aStall: .6, alphaLim: .47, cd0: .023, kInd: .11, rates: [3.4, .6, .32], gmax: 9.5, mDry: 19600, fuelMax: 9400, fuel0: 5300, gRip: 10.4, mRef: 25000, vne: 390, machMax: 2.0, gear: 2.1, len: 22, wid: 14.7, R: 12, cam: 26, flares: 32,
     info: 'Heavy twin-engine fighter: GSh-30-1 cannon, 2 R-73, 2 Kh-29T, 4 FAB-250. Keeps flying on one engine.',
     weapons: [{ k: 'gsh301', n: 150 }, { k: 'r73', n: 2 }, { k: 'kh29t', n: 2 }, { k: 'fab250', n: 4 }],
     parts: [P_('cockpit', 'cockpit', [7.0, 1.4, 0], .85, 45), P_('nose', 'nose', [9.8, .6, 0], .7, 50), P_('fuseF', 'fuse', [4.2, .7, 0], 1.3, 170), P_('fuseR', 'fuse', [-1.8, .65, 0], 1.4, 170), P_('fuel', 'fuel', [1.0, .65, 0], 1.0, 70),
       P_('engL', 'engine', [-5.4, .4, -.95], .75, 70), P_('engR', 'engine', [-5.4, .4, .95], .75, 70), P_('wingLi', 'wing', [-2.0, .6, -3.0], 1.5, 100, { side: -1, seg: 'in' }), P_('wingLo', 'wing', [-4.4, .6, -5.8], 1.15, 60, { side: -1, seg: 'out' }), P_('wingRi', 'wing', [-2.0, .6, 3.0], 1.5, 100, { side: 1, seg: 'in' }), P_('wingRo', 'wing', [-4.4, .6, 5.8], 1.15, 60, { side: 1, seg: 'out' }),
       P_('stabL', 'stab', [-8.2, .6, -2.7], 1.0, 45, { side: -1 }), P_('stabR', 'stab', [-8.2, .6, 2.7], 1.0, 45, { side: 1 }), P_('finL', 'fin', [-7.4, 2.8, -2.0], .95, 40), P_('finR', 'fin', [-7.4, 2.8, 2.0], .95, 40)] },
-  ah64: { name: 'AH-64D Apache Longbow', short: 'Apache', cls: 'heli', model: modelAH64, mass: 8000, power: 2.1e6, rotorR: 7.3, f: 3.6, tmax: 1.6, pprof: 3.0e5, rotE: 1.6e6, vne: 95, len: 17.7, wid: 5, R: 8.5, cam: 17, flares: 30, tailRotor: true, skid: 0,
+  ah64: { name: 'AH-64D Apache Longbow', short: 'Apache', cls: 'heli', model: modelAH64, mass: 8000, power: 2.1e6, rotorR: 7.3, f: 3.6, tmax: 1.6, pprof: 3.0e5, rotE: 2.3e6, vne: 95, len: 17.7, wid: 5, R: 8.5, cam: 17, flares: 30, tailRotor: true, skid: 0,
     info: 'Armoured attack helicopter: M230 chain gun (follows your aim), 38 Hydra rockets, 8 Hellfire (laser: keep the crosshair on the target). Rearms at your base.',
     weapons: [{ k: 'm230', n: 1200, turret: [-1.75, 1.75, -1.05, .19] }, { k: 'hydra', n: 38 }, { k: 'hellfire', n: 8 }],
     parts: [P_('cockpit', 'cockpit', [2.9, 1.8, 0], .9, 85), P_('nose', 'nose', [4.8, .95, 0], .45, 40), P_('fuse', 'fuse', [.8, 1.45, 0], 1.15, 170), P_('fuel', 'fuel', [.2, 1.1, 0], .75, 70),
       P_('engL', 'engine', [-.3, 2.05, -.95], .55, 60), P_('engR', 'engine', [-.3, 2.05, .95], .55, 60), P_('trans', 'trans', [.6, 2.5, 0], .55, 70), P_('rotor', 'rotor', [.6, 3.95, 0], 1.4, 80),
       P_('boom', 'boom', [-4.6, 1.75, 0], .7, 70), P_('trot', 'trot', [-8.2, 2.9, .35], .8, 35), P_('stubL', 'stub', [.8, 1.35, -1.6], .7, 50), P_('stubR', 'stub', [.8, 1.35, 1.6], .7, 50)] },
-  ka52: { name: 'Ka-52 Alligator', short: 'Ka-52', cls: 'heli', model: modelKa52, mass: 10400, power: 2.65e6, rotorR: 7.25, coax: true, f: 4.3, tmax: 1.55, pprof: 3.8e5, rotE: 2.0e6, vne: 92, len: 16, wid: 6, R: 8.5, cam: 17, flares: 30, tailRotor: false, skid: 0,
+  ka52: { name: 'Ka-52 Alligator', short: 'Ka-52', cls: 'heli', model: modelKa52, mass: 10400, power: 2.65e6, rotorR: 7.25, coax: true, f: 4.3, tmax: 1.55, pprof: 3.8e5, rotE: 2.9e6, vne: 92, len: 16, wid: 6, R: 8.5, cam: 17, flares: 30, tailRotor: false, skid: 0,
     info: 'Coaxial-rotor attack helicopter: 2A42 30 mm cannon (narrow arc), 40 S-8 rockets, 12 Vikhr (beam-riding: keep the crosshair on the target). No tail rotor to lose. Rearms at your base.',
     weapons: [{ k: 'a42', n: 460, turret: [-.06, .17, -.6, .05] }, { k: 's8', n: 40 }, { k: 'vikhr', n: 12 }],
     parts: [P_('cockpit', 'cockpit', [3.2, 1.6, 0], 1.1, 90), P_('nose', 'nose', [4.4, 2.2, 0], .4, 40), P_('fuse', 'fuse', [.6, 1.45, 0], 1.3, 180), P_('fuel', 'fuel', [.0, 1.1, 0], .8, 70),
@@ -238,16 +238,23 @@ function steerToward(a, dir, out) {
   let pitchErr = Math.atan2(d.y, Math.max(d.x, .05)), yawErr = Math.atan2(d.z, Math.max(d.x, .05));
   if (a.onGround) { out.x = 0; out.z = clamp(Math.atan2(d.y, d.x) * 4.5, -.45, 1); out.y = clamp(-Math.atan2(d.z, d.x) * 3, -1, 1); return out; }
   const D = a.def, g = 9.81, V = Math.max(50, a.vel.length()), up = _aw.set(0, 1, 0).applyQuaternion(_aq);
-  // Fast, the crosshair leads the nose (where the gun points). Slow, the nose rides well above the flight path, so the crosshair leads
-  // the flight path instead: point at the horizon and it holds height, point at the runway threshold and that is where it goes.
-  // Side to side it always leads the flight path: banking turns the path, and the fin lines the nose up behind it.
-  const slow = 1 - sstep(90, 150, V); pitchErr += slow * (a.alpha || 0); yawErr -= Math.asin(clamp(a.vel.dot(_ay.set(0, 0, 1).applyQuaternion(a.quat)) / V, -1, 1));
+  // The cursor leads the nose (where the guns point), as with War Thunder's instructor. Slow, the nose rides well above the flight path,
+  // so aim above where you want to go. Side to side it leads the flight path: banking turns the path and the fin lines the nose up behind it.
+  yawErr -= Math.asin(clamp(a.vel.dot(_ay.set(0, 0, 1).applyQuaternion(a.quat)) / V, -1, 1));
   // turn rates wanted about the pitch and yaw axes (a target behind is a full-rate turn towards its side)
-  let qw = pitchErr * 2.6, rw = yawErr * 2.6; if (d.x < .05) { const n = Math.hypot(d.y, d.z) || 1; qw = d.y / n * 3; rw = d.z / n * 3; }
-  const rl = Math.hypot(qw, rw), rmax = Math.min(1.6, D.gmax * g / V); if (rl > rmax) { qw *= rmax / rl; rw *= rmax / rl; }
+  let qw = pitchErr * 2.6, rw = yawErr * 2.6;
+  if (d.x < .35) { // far off the nose or behind: a level turn towards its side, climbing or descending with the cursor (not a dive across the shortest path)
+    const vh = new V3().copy(a.vel).normalize(), side = new V3(-vh.z, 0, vh.x).normalize(), dn = new V3().copy(dir).normalize();
+    const sgn = Math.sign(dn.x * side.x + dn.z * side.z) || 1, el = Math.asin(clamp(dn.y, -1, 1)) - Math.asin(clamp(vh.y, -1, 1));
+    const tw = side.multiplyScalar(sgn); tw.y = clamp(el * 1.5, -.7, .7); tw.normalize();
+    const by = new V3(0, 1, 0).applyQuaternion(a.quat), bz = new V3(0, 0, 1).applyQuaternion(a.quat), k = sstep(0, .35, d.x);
+    qw = lerp(3 * tw.dot(by), qw, k); rw = lerp(3 * tw.dot(bz), rw, k);
+  }
+  const gCap = Math.min(D.gmax, gAllowed(a) * (a.driver && a.driver.isPlayer ? 1.03 : .9)); // the instructor keeps the pull near what the wings will stand (bot pilots leave a margin)
+  const rl = Math.hypot(qw, rw), rmax = Math.min(1.6, gCap * g / V); if (rl > rmax) { qw *= rmax / rl; rw *= rmax / rl; }
   let ay = V * qw + g * up.y, az = V * rw + g * up.z;
   // what the wing can give right now
-  const rho = airData(a.pos.y).rho, as = D.aStall, nzAvail = Math.min(D.gmax, .5 * rho * V * V * D.S * clCurve(D.alphaLim + .02, as, D.CLa * as / 1.5) / (D.mass * g)) * .85;
+  const rho = airData(a.pos.y).rho, as = D.aStall, nzAvail = Math.min(gCap, .5 * rho * V * V * D.S * clCurve(D.alphaLim + .02, as, D.CLa * as / 1.5) / (airMass(a) * g) * .85);
   const hold = g * Math.hypot(up.y, up.z), tot = Math.hypot(ay, az);
   if (tot > nzAvail * g) { // not enough lift for all of it: keep holding height first, turn with what is left
     const ty = V * qw, tz = V * rw, tl = Math.hypot(ty, tz) || 1, spare = Math.sqrt(Math.max(0, (nzAvail * g) ** 2 - Math.min(hold, nzAvail * g) ** 2)), k = Math.min(1, spare / tl);
@@ -258,41 +265,53 @@ function steerToward(a, dir, out) {
   const bankErr = small ? Math.atan2(az, .6 * g) : Math.atan2(az, ay), mag = Math.hypot(ay, az);
   out.x = clamp(bankErr * 2.8 - a.omega.x * .22, -1, 1);
   let nz = small ? Math.max(-1.5, ay / g) : mag / g * Math.max(0, Math.cos(bankErr)) ** 1.5; // unload while rolling the lift round
-  const trim = a.nzTrim ?? 1;
+  const trim = a.nzTrim ?? 1; nz = Math.min(nz, gCap);
   out.z = nz >= trim ? clamp((nz - trim) / (D.gmax - trim), 0, 1) : clamp((nz - trim) / (trim + 3), -.6, 0);
   out.y = clamp(-yawErr * 3, -1, 1) * (ang < .3 ? 1 : .3);
   return out;
 }
+/* Weight changes in flight: fuel burns off and weapons leave the rails. A lighter jet climbs, turns and accelerates better,
+   and its wings stand more g (the load on them is weight times g). */
+const STORE_MASS = { aim9x: 85, r73: 105, agm65: 300, kh29t: 680, mk82: 240, fab250: 250 };
+function airMass(a) { const D = a.def; if (!D.mDry) return D.mass; let m = D.mDry + (a.fuel ?? D.fuel0); D.weapons.forEach((w, i) => { m += (STORE_MASS[w.k] || 0) * a.ammo[i]; }); return m; }
+function gAllowed(a) { return a.def.gRip * a.def.mRef / airMass(a); } // the g at which the wings start to fail, at this weight
 function wingLift(a, side) { const i = a.parts.find(p => p.kind === 'wing' && p.side === side && p.seg === 'in'), o = a.parts.find(p => p.kind === 'wing' && p.side === side && p.seg === 'out'); if (!pOK(i)) return 0; return (.62 + .38 * pH(i)) * (pOK(o) ? .55 + .45 * pH(o) : .5); }
 /* Engines take time to spool up (about 3 s from idle to full dry power; the afterburner lights in stages after that).
    Thrust falls with air density and gains a little from ram air at speed. */
 function jetThrust(a, dt, mach, sig) {
   const D = a.def, engs = a.parts.filter(p => p.kind === 'engine'), ef = engs.reduce((s, p) => s + (pOK(p) ? .45 + .55 * pH(p) : 0), 0) / engs.length;
-  const want = ef > 0 ? a.throttle : 0; if (a.spool === undefined) a.spool = want;
+  const want = ef > 0 && (a.fuel === undefined || a.fuel > 0) ? a.throttle : 0; if (a.spool === undefined) a.spool = want; // (no fuel: the engine winds down)
   const rate = want < a.spool ? .5 : a.spool < .85 ? .3 : .45; a.spool += clamp(want - a.spool, -rate * dt, rate * dt);
   const s = a.spool, t0 = s <= .85 ? D.thrust[0] * (.07 + .93 * Math.pow(s / .85, 1.6)) : lerp(D.thrust[0], D.thrust[1], (s - .85) / .15);
-  return t0 * ef * Math.pow(sig, .75) * (1 + .2 * mach);
+  const T = t0 * ef * Math.pow(sig, .75) * (1 + .2 * mach);
+  // fuel: dry thrust is cheap, the afterburner drinks about four times as much for its thrust; a holed tank leaks
+  if (a.fuel === undefined) a.fuel = D.fuel0;
+  const tank = a.part('fuel'), leak = tank && tank.hp < tank.max * .6 ? (1 - pH(tank)) * 4 : 0;
+  a.burn = ef > 0 ? Math.max(.1 * engs.length, T / 1000 * (s <= .85 ? .021 : lerp(.021, .055, (s - .85) / .15))) : 0;
+  a.fuel = Math.max(0, a.fuel - (a.burn + leak) * dt); a.leaking = leak > 0;
+  return T;
 }
 function jetPhysics(a, cmd, dt) {
-  const D = a.def, m = D.mass, g = 9.81, W = m * g, as = D.aStall, cm = D.CLa * as / 1.5, i0 = .02;
+  const D = a.def, m = airMass(a), g = 9.81, W = m * g, as = D.aStall, cm = D.CLa * as / 1.5, i0 = .02;
   const { rho, sos } = airData(a.pos.y), sig = rho / 1.225;
   const wl = wingLift(a, -1), wr = wingLift(a, 1), lf = Math.max(.02, (wl + wr) / 2);
   const stabs = a.parts.filter(p => p.kind === 'stab'), fins = a.parts.filter(p => p.kind === 'fin'), engs = a.parts.filter(p => p.kind === 'engine');
   const pitchEff = stabs.reduce((s, p) => s + (pOK(p) ? .5 * (.5 + .5 * pH(p)) : .1), 0), finEff = fins.reduce((s, p) => s + (pOK(p) ? (.5 + .5 * pH(p)) / fins.length : 0), 0);
   const rollEff = (pOK(a.parts.find(p => p.id.endsWith('Lo'))) ? .5 : .2) + (pOK(a.parts.find(p => p.id.endsWith('Ro'))) ? .5 : .2);
-  const brake = a.throttle < .05; // throttle right back: wheel brakes on the ground, airbrake in the air
+  const brake = a.throttle < .05, ab = a.airbrake ? .05 : 0; // throttle right back on the ground: wheel brakes. The airbrake has its own key.
+  a.flap = clamp((a.flap ?? 1) + (a.onGround || a.gearDown ? .5 : -.5) * dt, 0, 1); const fl = a.flap * .28 * lf; // flaps come down with the gear: more lift and more drag for take-off and landing
   if (a.onGround) { // the take-off and landing roll: weight on the wheels until the wing carries it
     const V = a.vel.length(), q = .5 * rho * V * V, thr = jetThrust(a, dt, V / sos, sig), gy = groundY(a.pos.x, a.pos.z) + D.gear;
-    const cl = clCurve(a.pit + i0, as, cm) * lf * 1.12, L = q * D.S * cl, N = Math.max(0, W - L), mu = brake ? .5 : .02;
-    const drag = q * D.S * (D.cd0 + .02 + D.kInd * cl * cl * .55 + (brake ? .045 : 0));
+    const cl = (clCurve(a.pit + i0, as, cm) * lf + fl) * 1.12, L = q * D.S * cl, N = Math.max(0, W - L), mu = brake ? .5 : .02;
+    const drag = q * D.S * (D.cd0 + .02 + .025 * a.flap + D.kInd * cl * cl * .55 + ab);
     let nv = V + (thr - drag - (V > .15 ? N * mu : 0)) / m * dt; if (V <= .15 && thr < N * mu) nv = 0; nv = Math.max(0, nv);
     // nose-wheel steering when slow, the rudder when fast (never more than about half a g sideways)
     a.hdg += clamp(-cmd.y * .9 + cmd.x * .3, -1, 1) * Math.min(.55, 5 / Math.max(V, 1)) * (V < 1 ? 0 : 1) * dt;
     // the tail can lift the nose once there is enough air over it: rotate, then fly off when lift beats weight
-    const vlo = Math.sqrt(W / (.5 * rho * D.S * Math.max(.3, clCurve(.24 + i0, as, cm) * lf * 1.12)));
+    const vlo = Math.sqrt(W / (.5 * rho * D.S * Math.max(.3, (clCurve(.24 + i0, as, cm) * lf + fl) * 1.12)));
     a.pit = clamp(a.pit + (V > vlo * .78 ? (cmd.z > 0 ? cmd.z * .13 * Math.min(1, pitchEff) : -.09 + cmd.z * .2) : -.3) * dt, 0, .24); a.rol *= .9; a.vlo = vlo; // (hold the nose up after landing and the wing helps slow you; let it down and the brakes bite)
     a.vel.set(Math.cos(a.hdg) * nv, 0, Math.sin(a.hdg) * nv); a.pos.addScaledVector(a.vel, dt); a.pos.y = gy;
-    airQuatFromEuler(a); a.omega.set(0, 0, 0); a.alpha = a.pit; a.gload = 1; a.mach = nv / sos; a.stall = 0; a.gearDown = true; a.nzTrim = 1;
+    airQuatFromEuler(a); a.omega.set(0, 0, 0); a.alpha = a.pit; a.gload = 1; a.mach = nv / sos; a.ias = nv * Math.sqrt(sig); a.stall = 0; a.gearDown = true; a.nzTrim = 1; a.stress = Math.max(0, (a.stress || 0) - .25 * dt);
     if (L > W) { a.onGround = false; a.vel.y = .4; }
     const sl = Math.abs(groundY(a.pos.x + Math.cos(a.hdg) * 10, a.pos.z + Math.sin(a.hdg) * 10) - groundY(a.pos.x, a.pos.z)) / 10;
     if (nv > 30 && (sl > .12 || terrainY(a.pos.x, a.pos.z) < .5)) crashAir(a, 'ran off the runway');
@@ -305,10 +324,10 @@ function jetPhysics(a, cmd, dt) {
   const ge = 1 + .12 * Math.max(0, 1 - agl / D.wid) ** 2; // ground effect: the runway cushions the wing within a wingspan of it
   a.gearDown = agl < 70 && V < 110;
   // forces: lift (across the airflow, in the aircraft's own up direction), drag, side force, thrust, weight
-  const CL = clCurve(alpha + i0, as, cm) * lf * ge, st = sstep(as * .85, as * 1.25, Math.abs(alpha));
+  const st = sstep(as * .85, as * 1.25, Math.abs(alpha)), CL = (clCurve(alpha + i0, as, cm) * lf + fl * (1 - st)) * ge;
   const wave = .03 * sstep(.86, 1.06, mach) - .008 * sstep(1.1, 1.7, mach); // the drag rise through the speed of sound
   const broken = a.parts.filter(p => !pOK(p)).length * .004 + a.stores();
-  const CD = D.cd0 + wave + broken + D.kInd * CL * CL / ge + 1.1 * Math.sin(alpha) ** 2 * st + .7 * Math.sin(beta) ** 2 + (a.gearDown ? .018 : 0) + (brake ? .045 : 0);
+  const CD = D.cd0 + wave + broken + D.kInd * CL * CL / ge + 1.1 * Math.sin(alpha) ** 2 * st + .7 * Math.sin(beta) ** 2 + (a.gearDown ? .018 : 0) + .03 * a.flap + ab;
   const lift = _av.copy(_ay).addScaledVector(vh, -_ay.dot(vh)); const ll = lift.length(); if (ll > 1e-4) lift.divideScalar(ll);
   const L = q * D.S * CL, F = new V3().addScaledVector(lift, L).addScaledVector(vh, -q * D.S * CD).addScaledVector(_az, -q * D.S * .9 * beta).addScaledVector(_ax, thr);
   F.y -= W;
@@ -321,8 +340,8 @@ function jetPhysics(a, cmd, dt) {
   const cg = Math.hypot(vh.x, vh.z), ly = lift.y, trim = clamp(Math.abs(ly) >= .5 ? cg * cg / ly : cg * cg * ly * 4, -1.5, 2); a.nzTrim = trim;
   const fbw = pOK(a.part('nose')) && stabs.some(pOK), qSl = q * D.S * lf * ge + 1;
   let aCmd;
-  if (fbw) { const nz = cmd.z >= 0 ? trim + cmd.z * (D.gmax - trim) : trim + cmd.z * (trim + 3); aCmd = clamp(clInv((nz * W - thr * Math.sin(alpha)) / qSl, as, cm) - i0, -.3, D.alphaLim); }
-  else aCmd = clamp(clInv(trim * W / qSl, as, cm) - i0 + cmd.z * as * 1.2 * Math.min(1, pitchEff * 1.2) + (pitchEff < .3 ? Math.sin(GAME.time * 1.3) * .07 + Math.sin(GAME.time * .47 + 1) * .05 : 0), -as, as * 1.45); // (no tailplanes at all: only a little pitch control is left, and the nose hunts)
+  if (fbw) { const nz = cmd.z >= 0 ? trim + cmd.z * (D.gmax - trim) : trim + cmd.z * (trim + 3); aCmd = clamp(clInv((nz * W - thr * Math.sin(alpha)) / qSl - fl / lf, as, cm) - i0, -.3, D.alphaLim); }
+  else aCmd = clamp(clInv(trim * W / qSl - fl / lf, as, cm) - i0 + cmd.z * as * 1.2 * Math.min(1, pitchEff * 1.2) + (pitchEff < .3 ? Math.sin(GAME.time * 1.3) * .07 + Math.sin(GAME.time * .47 + 1) * .05 : 0), -as, as * 1.45); // (no tailplanes at all: only a little pitch control is left, and the nose hunts)
   const wz = wv.dot(_az) * fol * Math.max(.3, Math.min(1, pitchEff)) + clamp((aCmd - alpha) * 5 * qf * Math.min(1, pitchEff), -1.5, 1.5);
   // yaw: the fin weathercocks the nose into the airflow; rudder asks for a little sideslip. A dead engine on a twin pushes the nose aside.
   let wy = wv.dot(_ay) * fol * Math.max(.35, finEff) + clamp((cmd.y * .1 * finEff - beta) * 4 * qf * Math.max(.22, finEff), -1, 1); // (the fuselage alone still weathercocks a little)
@@ -340,8 +359,15 @@ function jetPhysics(a, cmd, dt) {
   const w = a.omega.length(); if (w > 1e-6) { _aq2.setFromAxisAngle(_av.copy(a.omega).divideScalar(w), w * dt); a.quat.multiply(_aq2).normalize(); }
   a.pos.addScaledVector(a.vel, dt);
   a.alpha = alpha; a.gload = L / W; a.mach = mach; a.stall = st;
-  // pulling far more g than the airframe is built for bends it (only possible once the flight computer is out)
-  if (a.gload > D.gmax * 1.25) { const p = a.parts.find(p => p.kind === 'wing' && p.seg === 'out' && pOK(p)) || a.parts.find(p => p.kind === 'wing' && pOK(p)); if (p) partDamage(a, p, (a.gload - D.gmax * 1.25) * 60 * dt, a.lastAttacker, null); if (!a.alive) return; }
+  a.ias = V * Math.sqrt(sig);
+  /* Overload: the wings stand a certain load, which is weight times g, so the heavier the jet the less g they take. Past that limit
+     (or past the airframe's speed limit) stress builds up; ease off and it fades, hold it and a wing comes off. */
+  { const over = Math.max(Math.abs(a.gload) / gAllowed(a) * (a.gload < 0 ? 2 : 1) - 1, a.ias / D.vne - 1, mach / D.machMax - 1);
+    a.stress = clamp((a.stress || 0) + (over > 0 ? (over * 4 + .05) : -.25) * dt, 0, 1.01); a.over = over;
+    if (a.stress >= 1) { const sd = wl < wr ? -1 : wr < wl ? 1 : (Math.random() < .5 ? -1 : 1); a.stress = 0; a.ripped = true;
+      for (const p of a.parts) if (p.kind === 'wing' && p.side === sd && pOK(p)) partDamage(a, p, 99999, a.lastAttacker, null);
+      if (a.driver && a.driver.isPlayer) showMsg('Wing ripped off', over === a.ias / D.vne - 1 || over === mach / D.machMax - 1 ? 'Too fast for the airframe' : 'Too much g for this weight');
+      if (!a.alive) return; } }
   // touching down: gentle and level on flat ground is a landing, anything else is a crash
   if (a.pos.y - gy < D.gear) {
     axes(a); const roll = Math.asin(clamp(_az.y, -1, 1)), pitch = Math.asin(clamp(_ax.y, -1, 1)), sink = -a.vel.y;
@@ -375,16 +401,21 @@ function heliPhysics(a, inp, dt) {
   const lam = (vax + (a.vi ?? vhov)) / (220 * Math.max(.3, a.rpm));
   const tOf = col => clamp(8.4 * (.052 + .257 * col - 1.5 * lam), 0, 1.9) * W * a.rpm * a.rpm * rh;
   // vortex ring: sinking fast into the rotor's own downwash with little forward speed
-  const ds = -vax / vhov, vrs = Pav > 0 ? sstep(.55, .9, ds) * (1 - sstep(1.5, 2, ds)) * (1 - sstep(.5, 1, inpl / vhov)) : 0; a.vrs = vrs;
+  const ds = -vax / vhov, vrs = Pav > 0 ? sstep(.3, .65, ds) * (1 - sstep(1.5, 2, ds)) * (1 - sstep(.5, 1, inpl / vhov)) : 0; a.vrs = vrs;
   const eff = ge * (1 - .55 * vrs);
   // the collective: powered, it holds the climb rate asked for; unpowered, it holds rotor speed unless told otherwise
-  if (Pav > 0) {
-    const vyWant = a.onGround && inp.up <= 0 ? -3 : inp.up > 0 ? inp.up * 11 : inp.up * (Vh < 12 ? 5 : 12);
+  if (inp.manual) { // the lever stays where it is put (as in War Thunder: the collective is always yours to work)
+    a.lever = clamp((a.lever ?? a.col) + inp.col * .6 * dt, 0, 1); let colT = a.lever;
+    if (Pav > 0) { a.colLim = clamp(a.colLim + (a.rpm - .94) * 2.5 * dt, .15, 1); colT = Math.min(colT, a.colLim); }
+    a.col += clamp(colT - a.col, -1.2 * dt, 1.2 * dt);
+  } else if (Pav > 0) {
+    let vyWant = a.onGround && inp.up <= 0 ? -3 : inp.up > 0 ? inp.up * 11 : inp.up * (Vh < 12 ? 4 : 12);
+    if (!a.onGround && agl < 12) vyWant = Math.max(vyWant, -1.2 - agl * .4); // close to the ground the descent is held to a soft landing
     const Tneed = (W + m * (vyWant - a.vel.y) * 1.5) / Math.max(.45, _ay.y);
     let colT = (Tneed / Math.max(1, 8.4 * W * a.rpm * a.rpm * rh * eff) - .052 + 1.5 * lam) / .257;
     a.colLim = clamp(a.colLim + (a.rpm - .94) * 2.5 * dt, .15, 1); colT = Math.min(colT, a.colLim); // a drooping rotor: ease the collective down
     if (a.onGround && inp.up <= 0) colT = 0;
-    a.col += clamp(colT - a.col, -1.2 * dt, 1.2 * dt);
+    a.col += clamp(colT - a.col, -1.2 * dt, 1.2 * dt); a.lever = a.col;
   } else a.col += (inp.up > 0 ? 1.6 : inp.up < 0 ? -1 : clamp((a.rpm < 1 ? a.rpm - 1 : a.rpm > 1.08 ? a.rpm - 1.08 : 0) * 3 + (a.rpm < 1 || a.rpm > 1.08 ? (a.rpmRate || 0) * 2.5 : 0), -1, 1)) * dt; // (in a flare the rotor is left to speed up: that spin is what cushions the landing)
   a.col = clamp(a.col, 0, 1);
   const T = tOf(a.col) * eff, vh0 = Math.sqrt(Math.max(1, T) / (2 * rho * A));
@@ -407,7 +438,7 @@ function heliPhysics(a, inp, dt) {
   // full forward stick asks for more nose-down than the engines can hold level: ease it off as the torque reaches its limit (unless diving on purpose)
   if (a.tiltLim === undefined) a.tiltLim = .38;
   const pw = Pav > 0 ? Peng / Pav : 0; a.tiltLim = clamp(a.tiltLim + (inp.up < 0 ? .2 : pw > .97 && vfw > 45 ? -.12 : pw < .9 || vfw < 40 ? .1 : 0) * dt, .06, .38);
-  let pitT = -clamp(inp.fwd, -1, a.tiltLim / .38) * .38, rolT = inp.side * .32 + clamp(Math.atan(vfw * hr / g), -.7, .7) * sp * (tr ? 1 : 0);
+  let pitT = inp.manual ? clamp(inp.pit, -.6, .45) : -clamp(inp.fwd, -1, a.tiltLim / .38) * .38, rolT = inp.side * (inp.manual ? .42 : .32) + clamp(Math.atan(vfw * hr / g), -.7, .7) * sp * (tr ? 1 : 0);
   if (vfw > D.vne) pitT += (vfw - D.vne) * .03; // past its limit speed the retreating blade stalls and the nose rises
   if (vrs > .2) { pitT += Math.sin(GAME.time * 9) * .04 * vrs; rolT += Math.sin(GAME.time * 7.3) * .05 * vrs; }
   a.pit += clamp((pitT - a.pit) * 3.2, -1, 1) * dt * ctl; a.rol += clamp((rolT - a.rol) * 3.2, -1.3, 1.3) * dt * ctl;
@@ -422,7 +453,7 @@ function heliPhysics(a, inp, dt) {
     if (sink > 6.5 || Math.abs(a.rol) > .5 || Math.abs(a.pit) > .5 || Vh > 30 || (Vh > 8 && Math.abs(vsd) > 6)) { crashAir(a, 'crashed'); return; }
     if (sink > 3.5) { const p = a.part('fuse'); if (p) partDamage(a, p, (sink - 3.5) * 28, null, null); if (!a.alive) return; } // a hard landing
     a.pos.y = gy; a.vel.y = Math.max(0, a.vel.y); const hs = Math.hypot(a.vel.x, a.vel.z), ns = Math.max(0, hs - 5 * dt) / (hs || 1); a.vel.x *= ns; a.vel.z *= ns; // rolls out on its wheels
-    a.onGround = inp.up <= 0 || Pav <= 0; a.pit *= Math.pow(.02, dt); a.rol *= Math.pow(.02, dt);
+    a.onGround = (inp.manual ? a.lever < .5 : inp.up <= 0) || Pav <= 0; a.pit *= Math.pow(.02, dt); a.rol *= Math.pow(.02, dt);
   } else if (a.pos.y > gy + .6) a.onGround = false;
 }
 const angDiffA = (a, b) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
@@ -579,41 +610,55 @@ function airsStep(dt) {
 function rearmAir(a, dt) {
   const M = GAME.M, home = a.cls === 'jet' ? (() => { const af = M.airfields[a.team]; return Math.hypot(a.pos.x - af.x * 1000, a.pos.z - af.y * 1000) < af.len * 600; })() : Math.hypot(a.pos.x - M.bases[a.team].x * 1000, a.pos.z - M.bases[a.team].y * 1000) < 650 || Math.hypot(a.pos.x - M.airfields[a.team].x * 1000, a.pos.z - M.airfields[a.team].y * 1000) < 900;
   if (!home) return;
-  const need = a.ammo.some((n, i) => n < a.def.weapons[i].n) || a.parts.some(p => p.hp < p.max) || a.flares < a.def.flares;
+  const need = a.ammo.some((n, i) => n < a.def.weapons[i].n) || a.parts.some(p => p.hp < p.max) || a.flares < a.def.flares || (a.def.fuel0 && a.fuel < a.def.fuel0 * .95);
   if (!need) return;
   a.rearmT = (a.rearmT || 0) + dt;
-  if (a.driver && a.driver.isPlayer && Math.floor(a.rearmT) !== Math.floor(a.rearmT - dt)) playerVehMsg(`Rearming and repairing: ${Math.max(0, Math.ceil(15 - a.rearmT))} s`);
+  if (a.driver && a.driver.isPlayer && Math.floor(a.rearmT) !== Math.floor(a.rearmT - dt)) playerVehMsg(`Rearming, refuelling and repairing: ${Math.max(0, Math.ceil(15 - a.rearmT))} s`);
   if (a.rearmT >= 15) {
-    a.ammo = a.def.weapons.map(w => w.n); a.flares = a.def.flares; a.fire = 0; a.rpm = 1; a.spin = 0; a.leak = false;
+    a.ammo = a.def.weapons.map(w => w.n); a.flares = a.def.flares; a.fire = 0; a.rpm = 1; a.spin = 0; a.leak = false; a.stress = 0; if (a.def.fuel0) a.fuel = a.def.fuel0;
     for (const p of a.parts) { p.hp = p.max; p.gone = false; } for (const g of Object.values(a.model.parts)) g.visible = true; for (const s of a.model.stores) if (s) for (const g of s) g.visible = true;
-    a.rearmT = 0; if (a.driver && a.driver.isPlayer) playerVehMsg('Rearmed and repaired');
+    a.rearmT = 0; if (a.driver && a.driver.isPlayer) playerVehMsg('Rearmed, refuelled and repaired');
   }
 }
 
 /* ---------------- the player at the controls ---------------- */
 function airPlayer(a, dt) {
   const dir = new V3(Math.cos(CAM.yaw) * Math.cos(CAM.pitch), Math.sin(CAM.pitch), Math.sin(CAM.yaw) * Math.cos(CAM.pitch));
+  const out = a.gloc > 0; // blacked out: nobody is flying
   if (a.cls === 'jet') {
     a.throttle = clamp(a.throttle + ((KEYS.KeyW ? 1 : 0) - (KEYS.KeyS ? 1 : 0)) * dt * .6, 0, 1);
-    const cmd = steerToward(a, dir, a.inp && a.inp.cmd || new V3()); cmd.x = clamp(cmd.x + ((KEYS.KeyD ? 1 : 0) - (KEYS.KeyA ? 1 : 0)) * 1.2, -1, 1);
+    const cmd = steerToward(a, dir, a.inp && a.inp.cmd || new V3());
+    cmd.x = clamp(cmd.x + ((KEYS.KeyD ? 1 : 0) - (KEYS.KeyA ? 1 : 0)) * 1.2, -1, 1); // A/D add roll on top of the instructor
+    cmd.y = clamp(cmd.y + ((KEYS.KeyQ ? 1 : 0) - (KEYS.KeyE ? 1 : 0)) * 1.2, -1, 1); // Q/E: rudder
+    if (out) cmd.set(0, 0, 0);
     a.inp = { cmd, throttle: a.throttle };
-  } else a.inp = { fwd: (KEYS.KeyW ? 1 : 0) - (KEYS.KeyS ? 1 : 0), side: (KEYS.KeyD ? 1 : 0) - (KEYS.KeyA ? 1 : 0), up: (KEYS.Space ? 1 : 0) - (KEYS.KeyC || KEYS.ControlLeft ? 1 : 0), hdg: CAM.yaw };
+  } else {
+    const kf = (KEYS.KeyW ? 1 : 0) - (KEYS.KeyS ? 1 : 0), ks = (KEYS.KeyD ? 1 : 0) - (KEYS.KeyA ? 1 : 0), ku = (KEYS.Space || KEYS.ShiftLeft ? 1 : 0) - (KEYS.KeyC || KEYS.ControlLeft ? 1 : 0);
+    if (a.hover) { // hover mode: it holds its place and height; the keys move it about gently
+      const ch = Math.cos(a.hdg), sh = Math.sin(a.hdg), vf = a.vel.x * ch + a.vel.z * sh, vs = -a.vel.x * sh + a.vel.z * ch;
+      a.inp = { fwd: clamp((kf * 14 - vf) * .09, -1, 1), side: clamp((ks * 10 - vs) * .09, -1, 1), up: ku, hdg: CAM.yaw };
+    } else a.inp = { manual: true, col: ku, pit: clamp(CAM.pitch, -.5, .35) - kf * .28, side: ks, hdg: CAM.yaw }; // the instructor points the nose where you look; W/S push it further, Space/C work the collective
+  }
   const o = { dir: CAM.aim.clone().sub(airGunWorld(a, new V3())).normalize(), aimPt: CAM.aim.clone(), aimEnt: CAM.aimEnt };
-  if (MOUSE.l && locked) { const r = fireAir(a, a.sel, o); if (r === 'nolock' && (a._nl = (a._nl || 0) - dt) <= 0) { a._nl = 1; playerVehMsg(AMMO[a.def.weapons[a.sel].k].aa ? 'No lock: put an enemy aircraft in front of you' : 'No target: aim at a vehicle'); } }
-  if (KEYS.KeyF && locked && a.sel !== 0) fireAir(a, 0, o);
+  if (MOUSE.l && locked && !out) { const r = fireAir(a, a.sel, o); if (r === 'nolock' && (a._nl = (a._nl || 0) - dt) <= 0) { a._nl = 1; playerVehMsg(AMMO[a.def.weapons[a.sel].k].aa ? 'No lock: put an enemy aircraft in front of you' : 'No target: aim at a vehicle'); } }
+  if (KEYS.KeyF && locked && a.sel !== 0 && !out) fireAir(a, 0, o);
   if (KEYS.KeyG) popFlares(a);
   Sound.engine(true, a.cls === 'jet' ? (a.spool ?? a.throttle) : .3 + (a.tq ?? .5) * .5, true, a.cls === 'jet', a.cls === 'heli' ? a.rpm : -1); // (-1: an aircraft, no track clatter)
 }
-/* The pilot: sustained high g drains blood from the head and the view greys in from the edges (a short hard pull is fine,
-   holding 8-9 g for several seconds is not); strong negative g reddens it. */
+/* The pilot: sustained high g drains blood from the head. The view greys in from the edges, and if the g is held the pilot
+   blacks out (G-LOC): for a few seconds nobody is flying. A short hard pull is fine. Strong negative g reddens the view. */
 function pilotG(a, dt) {
   let el = document.getElementById('gDim'); if (!el) { el = document.createElement('div'); el.id = 'gDim'; el.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:6;opacity:0'; document.body.appendChild(el); }
   const g = a && a.cls === 'jet' && a.alive && !a.onGround ? a.gload || 1 : 1;
-  if (a) { a.gz = (a.gz ?? 1) + (g - (a.gz ?? 1)) * Math.min(1, dt / (g > (a.gz ?? 1) ? 3.2 : 1.4)); }
-  const gz = a ? a.gz : 1, grey = clamp((gz - 6.3) / 2.2, 0, 1), red = clamp((-gz - 1.2) / 1.5, 0, 1);
+  if (a) {
+    a.gz = (a.gz ?? 1) + (g - (a.gz ?? 1)) * Math.min(1, dt / (g > (a.gz ?? 1) ? 2.4 : 1.4));
+    if (a.gloc > 0) { a.gloc -= dt; if (a.gloc <= 0) { a.gz = Math.min(a.gz, 4.5); playerVehMsg('You come round'); } }
+    else if (a.gz > 7.6) { a.gloc = 4.5; showMsg('Blacked out', 'Too much g for too long'); }
+  }
+  const gz = a ? a.gz : 1, grey = a && a.gloc > 0 ? 1 : clamp((gz - 6) / 2, 0, 1), red = clamp((-gz - 1.2) / 1.5, 0, 1);
   if (grey < .01 && red < .01) { if (el.style.opacity !== '0') el.style.opacity = '0'; return; }
   el.style.opacity = '1';
-  el.style.background = red > 0 ? `radial-gradient(ellipse at center, rgba(150,10,10,${(red * .25).toFixed(2)}) 20%, rgba(120,0,0,${(red * .8).toFixed(2)}) 90%)` : `radial-gradient(ellipse at center, rgba(8,8,10,${(grey * grey * .75).toFixed(2)}) ${Math.round(60 - grey * 55)}%, rgba(4,4,6,${Math.min(.97, grey * 1.5).toFixed(2)}) ${Math.round(95 - grey * 45)}%)`;
+  el.style.background = a && a.gloc > 0 ? 'rgba(2,2,3,.985)' : red > 0 ? `radial-gradient(ellipse at center, rgba(150,10,10,${(red * .25).toFixed(2)}) 20%, rgba(120,0,0,${(red * .8).toFixed(2)}) 90%)` : `radial-gradient(ellipse at center, rgba(8,8,10,${(grey * grey * .75).toFixed(2)}) ${Math.round(60 - grey * 55)}%, rgba(4,4,6,${Math.min(.97, grey * 1.5).toFixed(2)}) ${Math.round(95 - grey * 45)}%)`;
 }
 function airCamera(a, dt) {
   const dir = _av.set(Math.cos(CAM.yaw) * Math.cos(CAM.pitch), Math.sin(CAM.pitch), Math.sin(CAM.yaw) * Math.cos(CAM.pitch));
@@ -633,19 +678,28 @@ function airStatusHTML(a) {
   const chips = groups.map(([l, ...ids]) => { const ps = ids.map(i => a.part(i)).filter(Boolean), worst = Math.min(...ps.map(p => p.hp / p.max)); return `<span class="chip ${worst <= 0 ? 'dead' : worst < .6 ? 'dmg' : 'ok'}">${l}</span>`; }).join('');
   const notes = []; if (a.fire > 0) notes.push(`<span class="warn">FIRE${a.extT > 0 ? '' : ' · X: fire handle'}</span>`); if (incoming(a)) notes.push('<span class="warn">MISSILE · G: flares</span>');
   if (a.cls === 'heli' && a.spin > .5) notes.push('<span class="warn">SPINNING</span>'); if (a.onGround && a.rearmT > 0) notes.push('rearming');
-  let extra;
+  let extra, spd = V;
   if (D.cls === 'jet') {
-    extra = ` · THR ${Math.round(a.throttle * 100)}%${a.throttle > .85 ? ' AB' : a.throttle < .05 ? (a.onGround ? ' BRAKES' : ' AIRBRAKE') : ''}${a.onGround ? '' : ` · M ${(a.mach || 0).toFixed(2)} · ${(a.gload || 1).toFixed(1)} g · AoA ${Math.round((a.alpha || 0) * 57.3)}°`}`;
-    if (!a.onGround) { if (a.stall > .3) notes.push('<span class="warn">STALL · ease off and let the nose drop</span>'); else if (!(pOK(a.part('nose')) && a.parts.some(p => p.kind === 'stab' && pOK(p)))) notes.push('<span class="warn">FLIGHT COMPUTER OUT · pull gently</span>'); if (a.gearDown) notes.push('gear down'); }
-    else if (a.vlo && V > a.vlo * .78 && a.throttle > .5) notes.push('rotate: look up');
+    spd = a.ias ?? V; // indicated airspeed: what the wings feel
+    const thr = a.throttle <= .85 ? Math.round(a.throttle / .85 * 100) + '%' : 'WEP', left = a.burn > 0 ? a.fuel / a.burn : 1e9, ft = left > 5940 ? '99:00' : `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
+    extra = ` · THR ${thr} · FUEL ${ft}${a.onGround ? (a.throttle < .05 ? ' · BRAKES' : '') : ` · M ${(a.mach || 0).toFixed(2)} · ${(a.gload || 1).toFixed(1)} G · AoA ${Math.round((a.alpha || 0) * 57.3)}°`}`;
+    if (a.fuel <= 0) notes.push('<span class="warn">NO FUEL</span>'); else if (left < 90) notes.push('<span class="warn">FUEL LOW</span>'); if (a.leaking) notes.push('<span class="warn">FUEL LEAK</span>');
+    if (!a.onGround) {
+      if (a.gloc > 0) notes.push('<span class="warn">BLACKED OUT</span>');
+      if (a.over > -.06 || a.stress > .05) notes.push(`<span class="warn">OVERLOAD${a.stress > .05 ? ' ' + Math.round(a.stress * 100) + '%' : ''} · ease off</span>`);
+      if (a.stall > .3) notes.push('<span class="warn">STALL · ease off and let the nose drop</span>'); else if (!(pOK(a.part('nose')) && a.parts.some(p => p.kind === 'stab' && pOK(p)))) notes.push('<span class="warn">FLIGHT COMPUTER OUT · pull gently</span>');
+      if (a.gearDown) notes.push('gear and flaps down');
+    } else if (a.vlo && V > a.vlo * .78 && a.throttle > .5) notes.push('rotate: look up');
+    if (a.airbrake) notes.push('airbrake');
   } else {
-    extra = ` · RPM ${Math.round(a.rpm * 100)}% · TQ ${Math.round((a.tq || 0) * 100)}%`;
+    extra = ` · COLL ${Math.round((a.lever ?? a.col ?? 0) * 100)}% · ${a.vel.y >= 0 ? '+' : ''}${a.vel.y.toFixed(1)} m/s · RPM ${Math.round(a.rpm * 100)}% · TQ ${Math.round((a.tq || 0) * 100)}%`;
     const dead = a.parts.filter(p => p.kind === 'engine').every(p => !pOK(p)) || !pOK(a.part('trans'));
-    if (dead && !a.onGround) notes.push('<span class="warn">NO POWER · autorotate: keep 120+ km/h, S to flare near the ground, then hold Space</span>');
-    else if (a.rpm < .9 && !a.onGround) notes.push('<span class="warn">LOW ROTOR RPM</span>');
+    if (a.hover) notes.push('HOVER MODE · H: off');
+    if (dead && !a.onGround) notes.push('<span class="warn">NO POWER · autorotate: lower the collective (C), keep 120+ km/h, flare, then raise it (Space) at the bottom</span>');
+    else if (a.rpm < .9 && !a.onGround) notes.push('<span class="warn">LOW ROTOR RPM · lower the collective</span>');
     if (a.vrs > .3) notes.push('<span class="warn">SINKING IN OWN DOWNWASH · fly forward</span>');
   }
-  return `<div class="who">${D.name} <small>${Math.round(V * 3.6)} km/h · ${Math.round(alt)} m${extra}</small></div><div class="chips">${chips}</div>${notes.length ? `<div class="vnote">${notes.join(' · ')}</div>` : ''}`;
+  return `<div class="who">${D.name} <small>${Math.round(spd * 3.6)} km/h · ${Math.round(alt)} m${extra}</small></div><div class="chips">${chips}</div>${notes.length ? `<div class="vnote">${notes.join(' · ')}</div>` : ''}`;
 }
 function airAmmoHTML(a) {
   const list = a.def.weapons.map((w, i) => `<div class="am${a.sel === i ? ' sel' : ''}">${i + 1} · ${AMMO[w.k].type} <small>${AMMO[w.k].name} ×${a.ammo[i]}</small></div>`).join('');
@@ -673,7 +727,7 @@ function airBotThink(b, a, dt) {
       for (const e of ENTS) { if (!e.alive || !hostile(team, e.team) || e.team === team || e.kind === 'air' || e.kind === 'gun' || (e.kind === 'soldier' && e.veh) || (e.kind === 'vehicle' && !e.driver && e.team !== 2)) continue; const d = Math.hypot(e.pos.x - cx, e.pos.z - cz); if (d > 1800) continue; const sc = d * (e.kind === 'vehicle' ? .5 : 1) * (e.team === 2 ? 1.6 : 1) + Math.random() * 300; if (sc < bs) { bs = sc; best = e; } }
       if (best && Math.random() < sk.aware) { ai.target = best; ai.settle = 2.5; }
     }
-    ai.goHome = empty || a.parts.some(p => p.kind === 'fuse' && p.hp < p.max * .3);
+    ai.goHome = empty || a.parts.some(p => p.kind === 'fuse' && p.hp < p.max * .3) || (a.def.fuel0 && a.fuel < a.def.fuel0 * .2);
     // incoming missile: a good pilot flares at once, a nervous one late or not at all
     if (incoming(a) && Math.random() < sk.nerve * .9) { ai.flareDelay = (1 - sk.nerve) * 1.5 + Math.random() * .4; }
     ai.aimErr = new V3(Math.random() - .5, (Math.random() - .5) * .6, Math.random() - .5).multiplyScalar(.02 * sk.aim * (ai.settle || 1) * (1 + (GAME.time - (a.lastHitT || -99) < 2 ? 2 * (1 - sk.nerve) : 0)));

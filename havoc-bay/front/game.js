@@ -88,7 +88,7 @@ function deployPlayer(cls, where) {
     const [x, z] = spawnSpot(team, where); s.pos.set(x, groundY(x, z) + .1, z); s.yaw = CAM.yaw = GAME.M.bases[team].ang;
   } else if (cls === 'jet' || cls === 'heli') {
     const a = airSpawn(cls, team); enterVehicle(s, a); CAM.yaw = a.hdg; CAM.pitch = cls === 'jet' ? .02 : -.08;
-    showMsg(cls === 'jet' ? 'Take off: full throttle, look up past 250 km/h' : 'Space: climb · C: descend', cls === 'jet' ? 'Mouse flies the jet · W/S throttle (S right back: airbrake, wheel brakes) · A/D roll · 1-4 weapons · F gun · G flares. Land on your runway to rearm.' : 'Mouse turns and aims · W/S forward/back · A/D sideways · 1-3 weapons · G flares. Land at base to rearm.');
+    showMsg(cls === 'jet' ? 'Take off: full throttle, look up past 250 km/h' : 'Hold Space to raise the collective and lift off', cls === 'jet' ? 'The jet follows your aim · W/S throttle · A/D roll · Q/E rudder · B airbrake · 1-4 weapons · F gun · G flares · J bail out. Land on your runway to rearm and refuel.' : 'The nose follows your aim: look down to fly forward · W/S nose down/up · A/D roll · Space/C collective up/down · H hover mode · 1-3 weapons · G flares · J bail out. Land at base to rearm.');
   } else {
     const v = makeVehicle(cls, team); enterVehicle(s, v); CAM.yaw = v.yaw;
   }
@@ -736,9 +736,10 @@ function updateAim() { // what the middle of the screen points at
   CAM.aim.copy(from).lerp(end, hit ? hit.t : 1); CAM.aimEnt = hit && hit.ent;
   if (CAM.aim.distanceTo(from) < 8) CAM.aim.copy(from).addScaledVector(dir, 8);
 }
-function interact() {
+function interact(bail) {
   const s = PLAYER.s; if (!s || !s.alive) return;
-  if (s.veh && s.veh.kind === 'air') { const a = s.veh, slow = a.onGround && a.vel.length() < 4; s.veh = null; a.driver = null; s.model.root.visible = true; s.pos.copy(a.pos); s.pos.y += slow ? 0 : -1.5; if (slow) { s.pos.x += Math.cos(a.hdg + Math.PI / 2) * 3; s.pos.z += Math.sin(a.hdg + Math.PI / 2) * 3; s.pos.y = groundY(s.pos.x, s.pos.z) + .1; s.vel.set(0, 0, 0); } else { s.vel.copy(a.vel).multiplyScalar(.3); s.vel.y = 8; s.chute = true; a.pilotDead = true; a.lastAttacker = a.lastAttacker || null; showMsg('Bailed out', 'Your parachute opens'); } Sound.engine(false, 0); return; }
+  if (s.veh && s.veh.kind === 'air') { const a = s.veh, slow = a.onGround && a.vel.length() < 4; if (!slow && !bail) { playerVehMsg('J: bail out'); return; } // (E is the right rudder in the air)
+    s.veh = null; a.driver = null; s.model.root.visible = true; s.pos.copy(a.pos); s.pos.y += slow ? 0 : -1.5; if (slow) { s.pos.x += Math.cos(a.hdg + Math.PI / 2) * 3; s.pos.z += Math.sin(a.hdg + Math.PI / 2) * 3; s.pos.y = groundY(s.pos.x, s.pos.z) + .1; s.vel.set(0, 0, 0); } else { s.vel.copy(a.vel).multiplyScalar(.3); s.vel.y = 8; s.chute = true; a.pilotDead = true; a.lastAttacker = a.lastAttacker || null; showMsg('Bailed out', 'Your parachute opens'); } Sound.engine(false, 0); return; }
   if (s.veh) { exitVehicle(s); return; }
   const v = nearbyVehicle(s); if (v) enterVehicle(s, v);
 }
@@ -895,7 +896,7 @@ function updateHUD(dt) {
   if (alive && !s.veh) { const v = nearbyVehicle(s); if (v) pr = `E: drive the ${v.T.name}`; }
   else if (alive && s.veh) pr = '';
   $('prompt').textContent = pr; $('prompt').classList.toggle('hidden', !pr);
-  $('help2').innerHTML = alive ? (inAir ? (s.veh.cls === 'jet' ? 'Mouse flies · W/S throttle · A/D roll · left click: fire weapon · 1-4 weapons · F gun · G flares · X fire handle · right click: cockpit view · E: eject · M: map' : 'Mouse turns and aims · W/S forward/back · A/D sideways · Space/C up/down · left click: fire · 1-3 weapons · F gun · G flares · right click: zoom · E: get out (landed) or bail out · M: map') + `<br>${PLAYER.sp} SP` : s.veh ? 'W/S drive · A/D steer · mouse aims · right click: gun sight (Shift: more zoom) · 1-3 ammo · F MG · T missile · G smoke · R repair · X extinguish · E: get out · M: map' : 'WASD move · Shift sprint · C crouch · 1/2 weapons · R reload · E: get in · M: map') : '';
+  $('help2').innerHTML = alive ? (inAir ? (s.veh.cls === 'jet' ? 'Aim to fly · W/S throttle · A/D roll · Q/E rudder · B airbrake · left click: fire weapon · 1-4 weapons · F gun · G flares · X fire handle · right click: cockpit view · J: bail out · M: map' : 'Nose follows your aim · W/S nose down/up · A/D roll · Space/C collective · H: hover mode · left click: fire · 1-3 weapons · F gun · G flares · right click: zoom · E: get out (landed) · J: bail out · M: map') + `<br>${PLAYER.sp} SP` : s.veh ? 'W/S drive · A/D steer · mouse aims · right click: gun sight (Shift: more zoom) · 1-3 ammo · F MG · T missile · G smoke · R repair · X extinguish · E: get out · M: map' : 'WASD move · Shift sprint · C crouch · 1/2 weapons · R reload · E: get in · M: map') : '';
   // ally tags
   let n = 0;
   if (alive) for (const e of ENTS) {
@@ -1003,6 +1004,9 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyR' && !pv && PLAYER.s && PLAYER.s.mag < 30 && PLAYER.s.ammo > 0 && PLAYER.s.reload <= 0) PLAYER.s.reload = RIFLE.reload;
   const pv = PLAYER.s && PLAYER.s.alive && PLAYER.s.veh;
   if (pv && pv.kind === 'air') {
+    if (e.code === 'KeyJ') { interact(true); return; }
+    if (e.code === 'KeyB' && pv.cls === 'jet') { pv.airbrake = !pv.airbrake; playerVehMsg(pv.airbrake ? 'Airbrake out' : 'Airbrake in'); }
+    if (e.code === 'KeyH' && pv.cls === 'heli') { pv.hover = !pv.hover; playerVehMsg(pv.hover ? 'Hover mode on: it holds its place and height' : 'Hover mode off: you have the collective'); }
     const n = +e.code.replace('Digit', ''); if (n >= 1 && n <= pv.def.weapons.length) { pv.sel = n - 1; Sound.play('ui'); }
     if (e.code === 'KeyX' && pv.fire > 0 && pv.extT <= 0) { pv.fire = 0; pv.extT = 60; playerVehMsg('Fire handle pulled: fire out'); }
   } else if (pv) {

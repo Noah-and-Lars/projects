@@ -46,31 +46,33 @@ There are no health bars:
 
 Blue flies the Mitsubishi F-2A and the AH-64D Apache. Red flies the Su-30SM and the Ka-52 Alligator.
 
-- **Jets** start at the end of your runway. Take off at full throttle and look up past 250 km/h; the jet lifts off at about 290 km/h. The mouse flies the jet, W/S set the throttle and A/D roll. 1-4 choose a weapon, F fires the gun, G drops flares and X pulls the fire handle. Land on your runway to rearm, which takes 15 seconds.
-- **Helicopters** start at your base. Space climbs, C descends, W/S move forward and back, and A/D move sideways. The gun follows your aim. Land at your base to rearm.
+- **Jets** start at the end of your runway. Take off at full throttle and look up past 250 km/h; the jet lifts off at about 270 km/h. The jet follows your aim. W/S set the throttle, A/D roll, Q/E work the rudder and B is the airbrake. 1-4 choose a weapon, F fires the gun, G drops flares and X pulls the fire handle. Land on your runway to rearm and refuel, which takes 15 seconds.
+- **Helicopters** start at your base. Hold Space to raise the collective and lift off; C lowers it. The nose follows your aim, so look down to fly forward. W/S push the nose down or up, A/D roll. H switches hover mode on and off. The gun follows your aim. Land at your base to rearm.
 - **Missiles** lock on before you fire. AIM-9X and R-73 chase heat and can be decoyed by flares. Maverick and Kh-29T lock onto ground targets. Hellfire and Vikhr follow your crosshair. Jets also carry bombs, aimed with a falling-bomb sight.
 - **Damage** is tracked per part, not as one health bar:
   - Each aircraft is split into the cockpit, nose, front and rear fuselage, fuel tank, each engine, inner and outer wing on each side, tailplanes and fin. Helicopters also have the rotor, transmission, tail boom and tail rotor.
   - Losing an outer wing makes the jet roll towards that side.
   - On the Su-30SM, one engine out makes it yaw, but it keeps flying on the other.
   - An Apache that loses its tail rotor spins. A dead transmission forces an autorotation landing.
-  - Fires spread until they burn out. E ejects you, and you come down on a parachute.
+  - Fires spread until they burn out. J bails you out, and you come down on a parachute. E gets you out once you have landed.
 - **The F-2A** is a downloaded 3D model (`models/f2.js`). `gltf-models.js` reads it without a loader, so the game still opens straight from disk. It cuts the one-piece airframe into the damageable parts above, with hit areas fitted to the real shape. The model keeps its own JASDF blue camouflage, and its landing gear retracts after take-off.
 
 ### Flight model
 
-The flight physics are written for this game (`aircraft.js`). They use real figures for weight, wing area, thrust and rotor size, and they are tuned against the real aircraft's performance.
+The flight physics are written for this game (`aircraft.js`). The handling follows War Thunder's Realistic Battles: an instructor flies the aircraft towards your aim, and fuel, weight, overload, blackout and the helicopter's collective work as they do there. The numbers use real figures for weight, wing area, thrust and rotor size.
 
 **Jets**
 
 - **Air:** density falls with height, which thins lift, drag and thrust. Speed is also tracked as a Mach number, and drag rises sharply near Mach 1.
-- **Engines:** they take about 3 seconds to spool from idle to full dry power, and the afterburner lights above 85 % throttle. Thrust falls with height and gains a little from speed.
+- **Engines:** they take about 3 seconds to spool from idle to full dry power. The throttle reads 0-100 %, then WEP, which is the afterburner. Thrust falls with height and gains a little from speed.
 - **Lift and drag:** lift follows the wing's angle to the airflow up to the stall, then falls away. Pulling g costs speed, so a hard turn bleeds energy until the jet settles at the turn it can sustain.
 - **Fly-by-wire:** as on the real jets, the stick asks the flight computer for g. The computer holds 1 g hands-off, caps the pull at 9 g and stops at its angle-of-attack limit, so a healthy jet won't stall or overstress.
-- **Mouse aim:** the jet rolls until its lift points where it needs to go and pulls that much g. It holds height in a turn if the wing can manage it. Below about 400 km/h the crosshair leads the flight path instead of the nose, so pointing at the runway threshold takes you there.
-- **Runway:** the nose lifts only once the tail has enough air over it. Ground effect cushions the flare. The gear lowers itself when low and slow. Throttle right back gives the airbrake in the air and wheel brakes on the ground.
+- **Instructor (mouse aim):** the cursor leads the nose, where the guns point. The jet rolls until its lift points where it needs to go and pulls that much g, and it holds height in a turn if the wing can manage it. For a target behind you it flies a level turn. Slow, the nose rides above the flight path, so aim above where you want to go.
+- **Runway:** the nose lifts only once the tail has enough air over it. Ground effect cushions the flare. The gear and flaps lower themselves when low and slow; the flaps add lift and drag. B is the airbrake. Throttle right back gives wheel brakes on the ground.
 - **Landing:** touch down level at under 5.5 m/s sink and under 410 km/h. Between 3.6 and 5.5 m/s is a hard landing that damages the fuselage.
-- **Pilot:** holding 8-9 g for several seconds greys the view in from the edges. Strong negative g reddens it.
+- **Fuel and weight:** fuel burns with thrust, about four times faster in afterburner. The F-2A's standard load lasts about 23 minutes at 100 % and about 4 minutes on WEP; the HUD shows the time left. Burning fuel and dropping weapons makes the jet lighter, so it climbs and turns better. With no fuel the engine stops. A holed tank leaks.
+- **Overload:** the wings stand a load, which is weight times g, so a heavy jet takes less g than a light one. Past the limit, or past the airframe's speed limit, the HUD shows OVERLOAD and stress builds; ease off and it fades, hold it and a wing rips off. The F-2A's flight computer keeps it under its limit. A Su-30SM with full tanks and bombs can reach its limit in a hard pull.
+- **Pilot:** holding 7 g or more greys the view in from the edges after a few seconds. Holding 9 g for about 4 seconds (8 g for about 7) blacks the pilot out, and nobody flies the jet for 4.5 seconds. Strong negative g reddens the view.
 - **Damage:**
   - A damaged wing rolls the jet towards it, harder the more g you pull. A jet with a whole wing gone can limp level but can barely turn.
   - Losing one tailplane slows the pitch response. Losing both leaves almost no pitch control.
@@ -81,8 +83,8 @@ The flight physics are written for this game (`aircraft.js`). They use real figu
 | --- | --- | --- | --- |
 | Top speed at low level, afterburner | Mach 1.05 | Mach 1.05 | about Mach 1.1 |
 | Top speed at low level, dry | Mach 0.95 | Mach 0.95 | about Mach 0.95 |
-| Take-off run, afterburner | 320 m | 380 m | 300-550 m |
-| Landing roll | 690 m | 680 m | 600-900 m |
+| Take-off run, afterburner | 290 m | 330 m | 300-550 m |
+| Landing roll | 820 m | 800 m | 600-900 m |
 | Roll rate | 250°/s | 215°/s | 180-270°/s |
 
 **Helicopters**
@@ -92,12 +94,14 @@ The flight physics are written for this game (`aircraft.js`). They use real figu
   - At 100-150 km/h the rotor works in cleaner air, so there is power to spare for climbing.
   - Flat out, fuselage drag sets the top speed.
 - **Rotor speed:** ask for more than the engines can give and the rotor slows, and lift falls with the square of its speed. The HUD shows rotor RPM and torque.
-- **Collective:** Space and C ask for a climb or descent rate, and the collective lever is worked for you.
+- **Collective:** the lever is yours, as in War Thunder. Space raises it, C lowers it, and it stays where you leave it; about 63 % holds a hover. The HUD shows the lever, your climb rate, rotor RPM and torque.
+- **Instructor:** the nose follows your aim in pitch and yaw. Nose down pulls the helicopter forward, so you fly by looking where you want to go and adding collective to hold height.
+- **Hover mode (H):** the helicopter holds its place and height. W/A/S/D move it about gently, Space and C climb and descend, and close to the ground the descent is held to a soft landing. It also works the collective for you in an autorotation.
 - **Ground effect:** close to the ground the rotor needs less power.
 - **Turning:** at speed the helicopter banks into its turns and can't spin on the spot. In the hover it turns freely.
-- **Vortex ring:** dropping straight down too fast sinks the rotor into its own downwash and it loses lift. Fly forward to get out. The descent assist keeps you out of it unless you force it.
+- **Vortex ring:** sinking faster than about 4 m/s with little forward speed puts the rotor in its own downwash and it loses lift. Fly forward to get out. Hover mode keeps the descent below that.
 - **One engine out:** the helicopter can't hover out of ground effect, but it flies on if you keep 100 km/h or more.
-- **Both engines out (autorotation):** the air coming up through the rotor keeps it turning, and you come down at about 12 m/s at 150 km/h. Pull back (S) from about 25 m to flare, then hold Space in the last few metres to spend the rotor's spin on a soft touchdown. A run-on landing at up to 100 km/h is survivable.
+- **Both engines out (autorotation):** lower the collective at once and the air coming up through the rotor keeps it turning; you come down at about 12 m/s at 150 km/h. Pull the nose up from about 25 m to flare, then raise the collective in the last 8 m to spend the rotor's spin on a soft touchdown. It takes practice. A run-on landing at up to 100 km/h is survivable.
 - **Tail rotor lost:** the Apache spins in the hover, harder the more power you pull. At speed the fin holds it nearly straight.
 
 | | Apache | Ka-52 | Real aircraft |
