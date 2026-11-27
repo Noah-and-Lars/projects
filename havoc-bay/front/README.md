@@ -7,7 +7,8 @@ Open `index.html` in this folder, or use the **Island Front** card on Havoc Bay'
 
 - Three maps: **Ironback Ridge**, **Kettle Lake**, **The Narrows**. Each is 20 × 13.2 km.
 - Between the two team bases sit five neutral checkpoints in order: small, medium, the main base, medium, small.
-- Every checkpoint is guarded by neutral infantry NPCs (6 / 14 / 30) who shoot both teams. A guard killed in a match stays dead.
+- Every checkpoint is guarded by neutral infantry NPCs (6 / 14 / 30) who shoot both teams. A guard killed in a match stays dead. The last three guards of a checkpoint leave their posts and come out to the road, so a match cannot stall on one guard hidden in a corner. A post that a building was placed on is moved beside it.
+- Roads are graded where they leave a bridge or reach a levelled site (a base, checkpoint, airfield or town): cut into the bank or carried on an embankment at about 1 in 4, so every bridge and every checkpoint can be driven into at any speed.
 - Once a checkpoint's guards are all dead, stand inside it to capture it. You can only take the next checkpoint along from one your team holds.
 - Hold all five to win. After 30 minutes, the team holding more checkpoints wins.
 - Each team base has 4 towed howitzers that lob high shells at enemies up to 6 km away. About 1 shell in 6.5 lands on its target (`HIT_CHANCE` in `game.js`); the rest scatter 30 to 140 m away.
@@ -186,6 +187,8 @@ Bots earn and spend SP the same way. Each bot has its own skill level, and bots 
 - Their steering is sloppy and overshoots turns.
 - Drivers slow down and line up for bridges, steer round walls and buildings, and stop to repair knocked-out parts when nobody is shooting at them. A crew whose vehicle has been bogged down for over a minute gets out and walks; the abandoned vehicle is cleared away later.
 - A crew that is hit turns to look for whoever fired, and may pop smoke.
+- A crew that runs out of shells drives back to the nearest checkpoint its side holds (or the base), restocks there and returns. An immobilised crew repairs as soon as it is not under fire.
+- With six or fewer guards left at a checkpoint, bots there go for the guards first.
 - Bot pilots will not dive below the height a pull-out needs, give up attack runs that are too steep, watch for rising ground, and come back if a dogfight drifts more than 3 km off the map.
 - Bot pilots flare late or not at all, and their aim wanders, more so right after they are hit.
 

@@ -265,8 +265,40 @@ function buildMap(M) {
     let aR = .02, aL = .02;
     for (; aR < .4; aR += .005) if (along(aR) >= y0 - .3) break;
     for (; aL < .4; aL += .005) if (along(-aL) >= y0 - .3) break;
-    M.bridges.push({ x: p[0] * 1000, z: p[1] * 1000, ang: p[2], aL: -aL * 1000, aR: aR * 1000, w: r.main ? 9 : 6, y: y0 });
+    M.bridges.push({ x: p[0] * 1000, z: p[1] * 1000, ang: p[2], aL: -aL * 1000, aR: aR * 1000, w: r.main ? 9 : 6, y: y0, _r: r, _a: a, _p: p, _ends: [aL, aR] });
   }
+  // Off each end of a bridge the road is cut into the bank at a grade vehicles can climb. The deck is level with the lower bank, so the higher
+  // bank can meet it as a slope close to a cliff; the cutting follows the road up until it comes out at the natural ground.
+  { const H0 = H.slice(), h0 = (x, y) => { const fx = clamp(gi(x), 0, GW - 1.001), fy = clamp(gi(y), 0, GH - 1.001), i = fx | 0, j = fy | 0, u = fx - i, v = fy - j, id = j * GW + i; return lerp(lerp(H0[id], H0[id + 1], u), lerp(H0[id + GW], H0[id + GW + 1], u), v); };
+    const walk = (r, a, p, dir, dist) => { let x = p[0], y = p[1], k = dir > 0 ? a + 1 : a; // the point `dist` km along the road from the crossing, towards its end (1) or its start (-1)
+      while (k >= 0 && k < r.P.length) { const q = r.P[k], L = Math.hypot(q[0] - x, q[1] - y); if (L >= dist) return [x + (q[0] - x) * dist / L, y + (q[1] - y) * dist / L]; dist -= L; x = q[0]; y = q[1]; k += dir; }
+      return null; };
+    const GRADE = .2, STEP = CELL / 2000;
+    for (const b of M.bridges) for (const dir of [-1, 1]) { const a0 = b._ends[dir < 0 ? 0 : 1];
+      for (let d = 0; d <= .6; d += STEP) { const q = walk(b._r, b._a, b._p, dir, a0 + d); if (!q) break; const cap = b.y + d * 1000 * GRADE;
+        if (d > .02 && h0(q[0], q[1]) <= cap) break; // out at the natural ground
+        const ci = gi(q[0]), cj = gi(q[1]);
+        for (let jj = Math.floor(cj) - 2; jj <= Math.ceil(cj) + 2; jj++) for (let ii = Math.floor(ci) - 2; ii <= Math.ceil(ci) + 2; ii++) { if (ii < 0 || jj < 0 || ii >= GW || jj >= GH) continue;
+          const lat = Math.hypot(gx(ii) - q[0], gx(jj) - q[1]) * 1000, c2 = cap + Math.max(0, lat - CELL * .8) * .9, id = jj * GW + ii; if (H[id] > c2) H[id] = c2; } } }
+    for (const b of M.bridges) { delete b._r; delete b._a; delete b._p; delete b._ends; } }
+  // Where a road meets a levelled site (a base, checkpoint, airfield or town) that stands well above or below the land round it, the last stretch
+  // could be far too steep to drive. Outside the site the road is carried up on an embankment, or let down in a cutting, at a steady grade.
+  { const H1 = H.slice(), h1 = (x, y) => { const fx = clamp(gi(x), 0, GW - 1.001), fy = clamp(gi(y), 0, GH - 1.001), i = fx | 0, j = fy | 0, u = fx - i, v = fy - j, id = j * GW + i; return lerp(lerp(H1[id], H1[id + 1], u), lerp(H1[id + GW], H1[id + GW + 1], u), v); };
+    const onSpan = (x, y) => M.bridges.some(b => { const dx = x * 1000 - b.x, dz = y * 1000 - b.z, c = Math.cos(b.ang), sn = Math.sin(b.ang), al = dx * c + dz * sn; return al > b.aL - 30 && al < b.aR + 30 && Math.abs(-dx * sn + dz * c) < 70; });
+    const GRADE = .24, DS = CELL / 2;
+    for (const r of M._roads) { const X = [], Y = [];
+      for (let k = 0; k < r.P.length - 1; k++) { const p0 = r.P[k], p1 = r.P[k + 1], n = Math.max(1, Math.ceil(Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) * 1000 / DS)); for (let q = k ? 1 : 0; q <= n; q++) { X.push(lerp(p0[0], p1[0], q / n)); Y.push(lerp(p0[1], p1[1], q / n)); } }
+      const deckAt = (x, y) => { for (const b of M.bridges) { const dx = x * 1000 - b.x, dz = y * 1000 - b.z, c = Math.cos(b.ang), sn = Math.sin(b.ang), al = dx * c + dz * sn; if (al >= b.aL && al <= b.aR && Math.abs(-dx * sn + dz * c) < 25) return b.y; } return null; }; // on a bridge the road is the deck, whatever lies below
+      const n = X.length, deck = X.map((x, i) => deckAt(x, Y[i])), h = X.map((x, i) => deck[i] ?? h1(x, Y[i])), fixed = X.map((x, i) => deck[i] !== null || inZone(x, Y[i], 0)), Lo = h.map((v, i) => fixed[i] ? v : -1e9), Up = h.map((v, i) => fixed[i] ? v : 1e9), dist = i => Math.hypot(X[i] - X[i - 1], Y[i] - Y[i - 1]) * 1000 * GRADE;
+      for (let i = 1; i < n; i++) { Lo[i] = Math.max(Lo[i], Lo[i - 1] - dist(i)); Up[i] = Math.min(Up[i], Up[i - 1] + dist(i)); }
+      for (let i = n - 2; i >= 0; i--) { Lo[i] = Math.max(Lo[i], Lo[i + 1] - dist(i + 1)); Up[i] = Math.min(Up[i], Up[i + 1] + dist(i + 1)); }
+      const T = h.map((v, i) => fixed[i] ? v : clamp(v, Lo[i], Up[i])); // then no stretch of open road steeper than the grade either: the high side is cut down
+      for (let i = 1; i < n; i++) if (!fixed[i]) T[i] = Math.max(Lo[i], Math.min(T[i], T[i - 1] + dist(i)));
+      for (let i = n - 2; i >= 0; i--) if (!fixed[i]) T[i] = Math.max(Lo[i], Math.min(T[i], T[i + 1] + dist(i + 1)));
+      for (let i = 0; i < n; i++) { if (fixed[i] || onSpan(X[i], Y[i])) continue; const t = T[i]; if (Math.abs(t - h[i]) < .3) continue;
+        const ci = gi(X[i]), cj = gi(Y[i]), fill = t > h[i];
+        for (let jj = Math.floor(cj) - 3; jj <= Math.ceil(cj) + 3; jj++) for (let ii = Math.floor(ci) - 3; ii <= Math.ceil(ci) + 3; ii++) { if (ii < 0 || jj < 0 || ii >= GW || jj >= GH) continue; const x = gx(ii), y = gx(jj); if (inZone(x, y, 0) || onSpan(x, y)) continue;
+          const lat = Math.hypot(x - X[i], y - Y[i]) * 1000, side = Math.max(0, lat - CELL * .8) * .8, id = jj * GW + ii; if (fill) { if (H[id] < t - side) H[id] = t - side; } else if (H[id] > t + side) H[id] = t + side; } } } }
   // town buildings and checkpoint interiors
   const R = rng(M.seed * 977);
   M.buildings = []; M.gardens = [];

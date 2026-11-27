@@ -460,6 +460,9 @@ function guardsStep(dt) {
       }
     } else {
       g.crouch = false; g.pitch = 0;
+      if (c.guardsLeft <= 3 && !g.post.tower) { // the last few do not sit hidden in a corner: they come out to the road through the checkpoint
+        const rp = routePoint(c.p.s, 0, _f), dx = rp.x - g.pos.x, dz = rp.z - g.pos.z;
+        if (Math.hypot(dx, dz) > 12) { g.yaw = turnTo(g.yaw, Math.atan2(dz, dx), 3 * dt); moveSoldier(g, { fwd: 1, side: 0, sprint: false, crouch: false, jump: false }, dt); poseSoldier(g, dt); continue; } }
       if (Math.random() < dt * .25) g.yaw += (Math.random() - .5) * 1.5;
     }
     g.vel.set(0, 0, 0); poseSoldier(g, dt);
@@ -639,6 +642,8 @@ function botThink(b, u, dt) {
   if (ai.t <= 0) {
     ai.t = .4 + Math.random() * .3;
     if (ai.target && (!ai.target.alive || ai.target.pos.distanceTo(u.pos) > range * 1.15 || !lineOfSight(from, aimCenter(ai.target, _v)))) ai.target = null;
+    const cNow = GAME.cps[targetCpFor(team)], mopUp = ai.atCp && cNow.guardsLeft > 0 && cNow.guardsLeft <= 6; // the last few guards hold up the capture: finish them rather than trade shots for ever
+    if (mopUp && ai.target && ai.target.team !== 2 && GAME.time - (ai.tgtT || 0) > 20 && GAME.time - (ai.threatT ?? -99) > 5) ai.target = null;
     if (!ai.target && ai.threat && ai.threat.alive && GAME.time - ai.threatT < 4 && hostile(team, ai.threat.team) && ai.threat.team !== team && !(ai.threat.kind === 'soldier' && ai.threat.veh) && ai.threat.pos.distanceTo(u.pos) < range * 1.1 && Math.random() < .5 + .5 * sk.aware) { ai.target = ai.threat; ai.react = D.react * sk.react + .5; ai.settle = 2.6; } // just been hit: look for who did it
     if (!ai.target) {
       let best = null, bs = 1e9;
@@ -648,10 +653,10 @@ function botThink(b, u, dt) {
         // people miss things: far, still or hidden targets often go unnoticed for a while
         const moving = e.vel && e.vel.lengthSq() > 4, notice = sk.aware * (1 - d / range * .55) * (moving ? 1.15 : .75) * (e.kind === 'soldier' && e.crouch ? .7 : 1) * (e.kind === 'air' ? 1.2 : 1);
         if (Math.random() > notice) continue;
-        let score = (e.kind === 'air' ? (e.cls === 'heli' ? 1.6 : 5) : 1) * d * (e.kind === 'vehicle' && isV && u.cls !== 'jeep' ? .55 : 1) * (e.kind === 'vehicle' && u.cls === 'jeep' && e.cls !== 'jeep' ? 4 : 1) * (e.team === 2 ? 1.2 : 1);
+        let score = (e.kind === 'air' ? (e.cls === 'heli' ? 1.6 : 5) : 1) * d * (e.kind === 'vehicle' && isV && u.cls !== 'jeep' ? .55 : 1) * (e.kind === 'vehicle' && u.cls === 'jeep' && e.cls !== 'jeep' ? 4 : 1) * (e.team === 2 ? (mopUp ? .2 : 1.2) : 1);
         if (score < bs && lineOfSight(from, aimCenter(e, _v))) { best = e; bs = score; }
       }
-      if (best) { ai.target = best; ai.react = D.react * sk.react + (Math.random() < .08 ? 1 + Math.random() * 1.2 : 0); ai.settle = 2.6; ai.wrongAmmo = Math.random() < .07; } // some freeze for a moment; first shots go wide
+      if (best) { ai.target = best; ai.tgtT = GAME.time; ai.react = D.react * sk.react + (Math.random() < .08 ? 1 + Math.random() * 1.2 : 0); ai.settle = 2.6; ai.wrongAmmo = Math.random() < .07; } // some freeze for a moment; first shots go wide
     }
     const flinch = GAME.time - (u.lastHurt ?? (b.soldier.lastHurt ?? -99)) < 1.8 || (ai.threat && ai.threatT > GAME.time - 1.8) ? 1 + 2.2 * (1 - sk.nerve) : 1;
     ai.aimErr = new V3((Math.random() - .5), (Math.random() - .5) * .5, (Math.random() - .5)).multiplyScalar(D.aim * 2 * sk.aim * (ai.settle || 1) * flinch); // a new wobble every think: worse just after spotting you and when under fire
@@ -666,16 +671,23 @@ function botThink(b, u, dt) {
     if (hunt) { const r = isV ? (hunt.post && hunt.post.tower ? 65 : 40) : 7, a = GAME.time * (isV ? .12 : .3) + b.lane; ai.goal = new V3(hunt.pos.x + Math.cos(a) * r, 0, hunt.pos.z + Math.sin(a) * r); ai.hold = null; } // circle round it until it's in sight
     else if (ai.atCp) { if (!ai.hold || ai.holdCp !== ti) { const [dx, dz] = CP_DIM[c.p.size]; ai.hold = new V3(...(([x, z]) => [x, 0, z])(c.p.site.w((Math.random() - .5) * dx * 600, (Math.random() - .5) * dz * 500))); ai.holdCp = ti; } ai.goal = ai.hold; }
     else { ai.hold = null; ai.goal = routePoint(sNow + dir * (isV ? Math.max(45, Math.abs(u.speed) * 2.6) : 25), b.lane, new V3()); }
-    if (isV && ai.goal && !(ai.detourT > GAME.time)) { // a building or wall in the way: look for the clear heading nearest the one wanted and drive that for a moment
+    // out of shells: back down the road to the nearest checkpoint the side holds (or the base), stand there until restocked, then return to the fight
+    ai.resting = false;
+    if (isV && u.load) { const total = u.def.ammo.reduce((n, k) => n + (u.load[k] || 0), 0) + (u.def.reload && u.loaded ? 1 : 0), cap = u.def.ammo.reduce((n, k) => n + (u.def.load[k] || 0), 0);
+      if (!ai.resupply && (total <= 1 || (total < cap * .12 && !ai.target))) ai.resupply = true; else if (ai.resupply && total >= cap * .9) ai.resupply = false;
+      if (ai.resupply) { let sHome = team === 0 ? 0 : M.routeLen[M.routeLen.length - 1]; for (const cc of GAME.cps) if (cc.owner === team && Math.abs(cc.p.s - sNow) < Math.abs(sHome - sNow)) sHome = cc.p.s;
+        ai.resting = !!friendlyPoint(u); ai.atCp = false; ai.hold = null; ai.goal = ai.resting ? null : routePoint(sNow + (Math.sign(sHome - sNow) || 1) * Math.max(45, Math.abs(u.speed) * 2.6), b.lane, new V3()); } }
+    ai.bridge = false; if (isV) for (const br of WORLD.bridges) if (Math.hypot(u.pos.x - br.x, u.pos.z - br.z) < Math.max(-br.aL, br.aR) + 130) { ai.bridge = true; break; } // slow down and line up for a bridge
+    if (ai.bridge) ai.detourT = 0; // (a bridge is narrow and straight: keep to the road, no looking for ways round)
+    if (isV && ai.goal && !ai.bridge && !(ai.detourT > GAME.time)) { // a building or wall in the way: look for the clear heading nearest the one wanted and drive that for a moment
       const gd = Math.atan2(ai.goal.z - u.pos.z, ai.goal.x - u.pos.x), gl = Math.min(26, Math.hypot(ai.goal.x - u.pos.x, ai.goal.z - u.pos.z));
       if (!driveClear(u, gd, gl)) { const sd = ai.detourSide || (ai.detourSide = Math.random() < .5 ? 1 : -1);
         for (const off of [.5, -.5, 1, -1, 1.5, -1.5, 2.2, -2.2]) if (driveClear(u, gd + off * sd, 22)) { ai.detour = new V3(u.pos.x + Math.cos(gd + off * sd) * 22, 0, u.pos.z + Math.sin(gd + off * sd) * 22); ai.detourT = GAME.time + 2.4; ai.detourSide = Math.sign(off * sd); break; } }
       else ai.detourSide = 0;
     }
-    ai.bridge = false; if (isV) for (const br of WORLD.bridges) if (Math.hypot(u.pos.x - br.x, u.pos.z - br.z) < Math.max(-br.aL, br.aR) + 130) { ai.bridge = true; break; } // slow down and line up for a bridge
     // stuck?
     const moved = ai.lastP ? Math.hypot(u.pos.x - ai.lastP[0], u.pos.z - ai.lastP[1]) : 9; ai.lastP = [u.pos.x, u.pos.z]; ai.lastS = sNow; // (real distance covered, not progress along the road: a vehicle crossing the route is not stuck)
-    if (!ai.progP || Math.hypot(u.pos.x - ai.progP[0], u.pos.z - ai.progP[1]) > 25 || ai.atCp || ai.target) { ai.progP = [u.pos.x, u.pos.z]; ai.progT = GAME.time; }
+    if (!ai.progP || Math.hypot(u.pos.x - ai.progP[0], u.pos.z - ai.progP[1]) > 25 || ai.atCp || (ai.target && !ai.resupply) || ai.resting) { ai.progP = [u.pos.x, u.pos.z]; ai.progT = GAME.time; }
     if (isV && GAME.time - ai.progT > 70) { ai.progT = GAME.time; b.bails = (b.bails || 0) + 1; b.bailAt = [Math.round(u.pos.x), Math.round(u.pos.z), u.type]; exitVehicle(b.soldier); return; } // bogged down for over a minute (a ravine, a wreck in the way): the crew gets out and walks
     if (isV && !ai.atCp && moved < 1.2 && ai.rev <= 0) { if ((ai.stuck += .5) > 3) { ai.rev = 2.2; ai.stuck = 0; ai.revSteer = Math.random() < .5 ? -1 : 1; } } else ai.stuck = 0;
   }
@@ -711,7 +723,7 @@ function botThink(b, u, dt) {
     if (u.fire > 0 && u.fpe > 0 && Math.random() < dt * (.25 + .5 * sk.nerve)) { u.fpe--; u.fire = 0; } // the crew gets to the extinguisher (a rattled crew takes longer)
     { const need = u.mods.some(m => m.hp <= 0 && (m.kind === 'engine' || m.kind === 'trans' || m.kind === 'breech' || m.kind === 'barrel' || m.id === 'hdrive' || m.id === 'vdrive' || m.id === 'radiator' || m.id === 'autoloader'));
       if (u.repairT > 0) { inp.throttle = 0; inp.steer = 0; ai.progT = GAME.time; } // sitting still while the crew works
-      else if (need && !tg && u.fire <= 0 && vState(u).crew >= 2 && GAME.time - (ai.threatT ?? -99) > 6) { u.repairT = 12 * (vState(u).crew < u.def.crew.length ? 1.5 : 1) * (friendlyPoint(u) ? .5 : 1); inp.throttle = 0; inp.steer = 0; u.speed = 0; } } // knocked-out parts and nobody shooting: stop and fix them
+      else if (need && (!tg || !vState(u).drive || ai.resupply) && u.fire <= 0 && vState(u).crew >= 2 && GAME.time - (ai.threatT ?? -99) > 6) { u.repairT = 12 * (vState(u).crew < u.def.crew.length ? 1.5 : 1) * (friendlyPoint(u) ? .5 : 1); inp.throttle = 0; inp.steer = 0; u.speed = 0; } } // knocked-out parts and nobody shooting: stop and fix them
     if (u.lwsT && GAME.time - u.lwsT < 1.5 && u.smoke > 0 && u.smokeT <= 0 && Math.random() < sk.aware) { inp.smoke = true; u.lwsT = 0; } // laser warning: someone is ranging us
     driveVehicle(u, inp, dt);
   } else {
