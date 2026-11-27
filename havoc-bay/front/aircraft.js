@@ -240,9 +240,12 @@ function steerToward(a, dir, out) {
   const D = a.def, g = 9.81, V = Math.max(50, a.vel.length()), up = _aw.set(0, 1, 0).applyQuaternion(_aq);
   // The cursor leads the nose (where the guns point), as with War Thunder's instructor. Slow, the nose rides well above the flight path,
   // so aim above where you want to go. Side to side it leads the flight path: banking turns the path and the fin lines the nose up behind it.
-  yawErr -= Math.asin(clamp(a.vel.dot(_ay.set(0, 0, 1).applyQuaternion(a.quat)) / V, -1, 1));
+  const noseYaw = yawErr, beta = Math.asin(clamp(a.vel.dot(_ay.set(0, 0, 1).applyQuaternion(a.quat)) / V, -1, 1)); yawErr -= beta;
   // turn rates wanted about the pitch and yaw axes (a target behind is a full-rate turn towards its side)
-  let qw = pitchErr * 2.6, rw = yawErr * 2.6;
+  // Side to side the bank grows with the error: a nudge of the cursor is flown mostly with rudder and a few degrees of bank,
+  // about 10 degrees off asks for a 55 degree bank, and only a target well off the nose gets a full-rate turn.
+  const ye = Math.abs(yawErr), soft = g / V * Math.tan(Math.min(1.4, ye * 5.5)) * Math.sign(yawErr);
+  let qw = pitchErr * (1.9 + .7 * sstep(.08, .3, Math.abs(pitchErr))), rw = lerp(soft, yawErr * 2.6, sstep(.2, .45, ye)); // (gentler on the stick for small corrections up and down too)
   if (d.x < .35) { // far off the nose or behind: a level turn towards its side, climbing or descending with the cursor (not a dive across the shortest path)
     const vh = new V3().copy(a.vel).normalize(), side = new V3(-vh.z, 0, vh.x).normalize(), dn = new V3().copy(dir).normalize();
     const sgn = Math.sign(dn.x * side.x + dn.z * side.z) || 1, el = Math.asin(clamp(dn.y, -1, 1)) - Math.asin(clamp(vh.y, -1, 1));
@@ -263,11 +266,12 @@ function steerToward(a, dir, out) {
   // a small push "downwards" is flown by easing the stick forward, not by rolling upside down
   const small = ay < 0 && up.y > 0 && (ang < .3 || Math.hypot(ay, az) < 1.6 * g);
   const bankErr = small ? Math.atan2(az, .6 * g) : Math.atan2(az, ay), mag = Math.hypot(ay, az);
-  out.x = clamp(bankErr * 2.8 - a.omega.x * .22, -1, 1);
+  out.x = clamp(bankErr * 1.7 - a.omega.x * .3, -1, 1); // roll in smoothly; full aileron only for a big change of bank
   let nz = small ? Math.max(-1.5, ay / g) : mag / g * Math.max(0, Math.cos(bankErr)) ** 1.5; // unload while rolling the lift round
   const trim = a.nzTrim ?? 1; nz = Math.min(nz, gCap);
   out.z = nz >= trim ? clamp((nz - trim) / (D.gmax - trim), 0, 1) : clamp((nz - trim) / (trim + 3), -.6, 0);
-  out.y = clamp(-yawErr * 3, -1, 1) * (ang < .3 ? 1 : .3);
+  // rudder: skid the nose onto the cursor straight away (up to a few degrees of sideslip) while the bank brings the flight path round behind it
+  out.y = clamp((beta - noseYaw) / .1, -1, 1) * (1 - .6 * sstep(.3, .6, ang));
   return out;
 }
 /* Weight changes in flight: fuel burns off and weapons leave the rails. A lighter jet climbs, turns and accelerates better,
