@@ -169,7 +169,8 @@ function hitReport(owner, target, res) {
     if (res.pen || mods.length) hitMarker(false);
   }
   if (me) { flashDamage(); if (res.pen || mods.length) playerVehMsg(`Hit: ${res.text.toLowerCase()}${list}`); else playerVehMsg(res.rico ? 'A round bounced off' : 'Hit, no penetration'); }
-  if (target.bot && owner) { target.bot.ai.threat = creditOf(owner) ? (creditOf(owner).veh || creditOf(owner)) : owner; target.bot.ai.threatT = GAME.time; }
+  const tb = target.bot || (target.driver && target.driver.bot); // (a vehicle's bot is its driver's)
+  if (tb && tb.ai && owner) { tb.ai.threat = creditOf(owner) ? (creditOf(owner).veh || creditOf(owner)) : owner; tb.ai.threatT = GAME.time; }
 }
 
 /* ---------------- vehicles ---------------- */
@@ -635,6 +636,7 @@ function botThink(b, u, dt) {
   if (ai.t <= 0) {
     ai.t = .4 + Math.random() * .3;
     if (ai.target && (!ai.target.alive || ai.target.pos.distanceTo(u.pos) > range * 1.15 || !lineOfSight(from, aimCenter(ai.target, _v)))) ai.target = null;
+    if (!ai.target && ai.threat && ai.threat.alive && GAME.time - ai.threatT < 4 && hostile(team, ai.threat.team) && ai.threat.team !== team && !(ai.threat.kind === 'soldier' && ai.threat.veh) && ai.threat.pos.distanceTo(u.pos) < range * 1.1 && Math.random() < .5 + .5 * sk.aware) { ai.target = ai.threat; ai.react = D.react * sk.react + .5; ai.settle = 2.6; } // just been hit: look for who did it
     if (!ai.target) {
       let best = null, bs = 1e9;
       for (const e of ENTS) {
@@ -785,7 +787,7 @@ function updateAim() { // what the middle of the screen points at
 }
 function interact(bail) {
   const s = PLAYER.s; if (!s || !s.alive) return;
-  if (s.veh && s.veh.kind === 'air') { const a = s.veh, slow = a.onGround && a.vel.length() < 4; if (!slow && !bail) { playerVehMsg('J: bail out'); return; } // (E is the right rudder in the air)
+  if (s.veh && s.veh.kind === 'air') { const a = s.veh, slow = a.onGround && a.vel.length() < (a.cls === 'jet' ? 1 : 4); if (!slow && !bail) { if (a.cls !== 'jet') playerVehMsg('J: bail out'); return; } // (in a jet E is the right rudder and the nose-wheel steering, so it only lets you out once stopped)
     s.veh = null; a.driver = null; s.model.root.visible = true; s.pos.copy(a.pos); s.pos.y += slow ? 0 : -1.5; if (slow) { s.pos.x += Math.cos(a.hdg + Math.PI / 2) * 3; s.pos.z += Math.sin(a.hdg + Math.PI / 2) * 3; s.pos.y = groundY(s.pos.x, s.pos.z) + .1; s.vel.set(0, 0, 0); } else { s.vel.copy(a.vel).multiplyScalar(.3); s.vel.y = 8; s.chute = true; a.pilotDead = true; a.lastAttacker = a.lastAttacker || null; showMsg('Bailed out', 'Your parachute opens'); } Sound.engine(false, 0); return; }
   if (s.veh) { exitVehicle(s); return; }
   const v = nearbyVehicle(s); if (v) enterVehicle(s, v);
@@ -1023,7 +1025,7 @@ const CLASSES = [
 function openDeploy(why) {
   GAME.deploying = true; document.exitPointerLock && document.exitPointerLock();
   if (PLAYER.s && !PLAYER.s.alive) { const s = PLAYER.s; setTimeout(() => { if (PLAYER.s !== s) removeEnt(s); }, 8000); PLAYER.s = null; }
-  if (why === 'redeploy' && PLAYER.s) { const s = PLAYER.s; if (s.veh) { exitVehicle(s); } removeEnt(s); PLAYER.s = null; }
+  if (why === 'redeploy' && PLAYER.s) { const s = PLAYER.s, v = s.veh; if (v) { exitVehicle(s); v.emptyBy = 'redeploy'; } removeEnt(s); PLAYER.s = null; } // (the vehicle left behind is cleared away like any other abandoned one)
   $('dEye').textContent = why === 'dead' ? 'You were killed' : why === 'start' ? `${GAME.M.name} · you are ${TEAMS[GAME.team].name}` : 'Redeploy';
   renderDeploy(); $('deploy').classList.remove('hidden');
 }
