@@ -44,6 +44,12 @@ def main():
     base = os.path.dirname(os.path.abspath(src)); glb_bin = None
     if src.lower().endswith('.glb'): g, glb_bin = read_glb(src)
     else: g = json.load(open(src, encoding='utf-8'))
+    # geometry this game's reader cannot unpack
+    packed = [e for e in g.get('extensionsRequired', []) if 'draco' in e.lower() or 'meshopt' in e.lower()]
+    if packed:
+        print('This model\'s geometry is compressed (%s) and the game cannot read it as it is.' % ', '.join(packed))
+        print('It needs to be saved again as plain glTF or GLB with mesh compression switched off, then packed with this tool.')
+        sys.exit(2)
     # buffers
     blobs = []
     for b in g.get('buffers', []):
@@ -54,12 +60,34 @@ def main():
         assert data is not None and len(data) >= b['byteLength'], 'buffer is shorter than the glTF says'
         blobs.append(data); b['uri'] = data_uri(data[:b['byteLength']], 'application/octet-stream')
     # images
+    image_views = set()
     for i, im in enumerate(g.get('images', [])):
         if i < len(extra): pil = Image.open(extra[i])
         elif 'uri' in im and im['uri'].startswith('data:'): pil = Image.open(io.BytesIO(base64.b64decode(im['uri'].split(',', 1)[1])))
         elif 'uri' in im: pil = Image.open(os.path.join(base, im['uri'].replace('%20', ' ')))
-        else: bv = g['bufferViews'][im['bufferView']]; o = bv.get('byteOffset', 0); pil = Image.open(io.BytesIO(blobs[bv['buffer']][o:o + bv['byteLength']]))
+        else: bv = g['bufferViews'][im['bufferView']]; o = bv.get('byteOffset', 0); pil = Image.open(io.BytesIO(blobs[bv['buffer']][o:o + bv['byteLength']])); image_views.add(im['bufferView'])
         im.pop('bufferView', None); im.pop('mimeType', None); im['uri'] = encode_image(pil, maxpx)
+    # a .glb carries its textures inside the geometry buffer: they are stored again above as images, so cut them out of the buffer
+    if image_views:
+        views = g['bufferViews']; keep = [i for i in range(len(views)) if i not in image_views]
+        for bi, b in enumerate(g['buffers']):
+            out = bytearray()
+            for i in keep:
+                v = views[i]
+                if v.get('buffer', 0) != bi: continue
+                o = v.get('byteOffset', 0); chunk = blobs[bi][o:o + v['byteLength']]
+                while len(out) % 4: out.append(0)
+                v['byteOffset'] = len(out); out += chunk
+            b['byteLength'] = len(out); b['uri'] = data_uri(bytes(out), 'application/octet-stream')
+        remap = {old: new for new, old in enumerate(keep)}; g['bufferViews'] = [views[i] for i in keep]
+        def fix(o):
+            if isinstance(o, dict):
+                for k2, v2 in list(o.items()):
+                    if k2 == 'bufferView' and isinstance(v2, int): o[k2] = remap[v2]
+                    else: fix(v2)
+            elif isinstance(o, list):
+                for v2 in o: fix(v2)
+        fix(g)
     ex = g.get('asset', {}).get('extras', {})
     out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'models', key + '.js'); os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, 'w', encoding='utf-8') as f:
@@ -67,6 +95,7 @@ def main():
         f.write("(window.MODEL_DATA = window.MODEL_DATA || {})['%s'] = " % key); json.dump(g, f, separators=(',', ':')); f.write(';\n')
     names = [n.get('name', '') for n in g.get('nodes', [])]
     print('wrote %s (%.1f MB)' % (out, os.path.getsize(out) / 1e6))
+    if g.get('extensionsUsed'): print('extensions used:', ', '.join(g['extensionsUsed']))
     print('nodes: %d, meshes: %d, materials: %d, skins: %d, animations: %s' % (len(names), len(g.get('meshes', [])), len(g.get('materials', [])), len(g.get('skins', [])), [a.get('name', '') for a in g.get('animations', [])]))
     print('node names:', ', '.join(n for n in names if n)[:1500])
 

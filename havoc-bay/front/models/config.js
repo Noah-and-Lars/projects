@@ -8,15 +8,17 @@
    Examples (commented out until the models exist):
 
    // A tank whose turret and gun are separate named parts:
-   // kitUse('m1a2', 'abrams', { fit: { length: 7.9, yaw: 0 }, turret: /turret/i, gun: /gun|barrel|mantlet/i });
+   // kitUse('m1a2', 'abrams', { fit: { length: 7.9 }, turret: /turret/i, gun: /gun|barrel|mantlet/i, wheels: /wheel/i, tracks: /track/i });
+   //   (fit.yaw can be left out for a vehicle or a soldier: the facing is worked out. Give it if the result is back to front.)
    // A tank that is one piece: say where the turret and gun are (metres, x forward, y up, after fitting):
    // kitUse('t90a', 't90', { fit: { length: 6.9 }, split: (x, y, z) => y > 1.55 && Math.hypot(x - .2, z) < 1.7 ? 'turret' : y > 1.6 && x > 1.7 && Math.abs(z) < .25 ? 'gun' : 'hull' });
    // A helicopter:
-   // kitUse('ah64', 'apache', { fit: { length: 15 }, rotor: /main.*rotor|rotor.*main|blade/i, tailRotor: /tail.*rotor/i,
+   // kitUse('ah64', 'apache', { fit: { length: 15, yaw: Math.PI / 2 }, rotor: /main.*rotor|rotor.*main|blade/i, tailRotor: /tail.*rotor/i,
    //   parts: (x, y, z) => x < -3 ? 'boom' : x > 3.5 ? 'nose' : y > 2.6 ? 'trans' : Math.abs(z) > 1.2 ? (z < 0 ? 'stubL' : 'stubR') : 'fuse',
    //   stations: { 1: [[.8, .8, -1.25], [.8, .8, 1.25]], 2: [[.9, .7, -2.15], [.9, .7, 2.15]], 3: [[.85, 1.2, -2.6], [.85, 1.2, 2.6]] } });
    // A rigged player model for both teams (Red tinted), posed by the game:
-   // kitUse('soldier', 'player', { fit: { height: 1.8, yaw: Math.PI / 2 }, tint: [null, [1, .85, .8]] });
+   // kitUse('soldier', 'player', { fit: { height: 1.8 }, tint: [null, [1, .85, .8]] });
+   //   (the skeleton is recognised by its bone names or its shape; the figure gets the team's rifle. rifle: false if it carries its own.)
    // ... or using the model's own animations:
    // kitUse('soldier', 'player', { fit: { height: 1.8 }, clips: { idle: /idle/i, walk: /walk/i, run: /run/i, crouch: /crouch/i } });
 */

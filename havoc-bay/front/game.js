@@ -250,6 +250,7 @@ function driveVehicle(v, inp, dt) {
   placeVehicle(v, dt);
   const near = Math.abs(v.pos.x - camera.position.x) + Math.abs(v.pos.z - camera.position.z) < 260;
   updateRunningGear(v, near ? dt : 0, false);
+  if (v.model.gltf && near) { const d = v.speed * dt; if (v.model.spin) for (const w of v.model.spin) w.pivot.rotation.z -= d / w.r; if (v.model.tracks) for (const t of v.model.tracks) { t.mat.map.offset.x += d * t.du; t.mat.map.offset.y += d * t.dv; if (t.mat.normalMap) t.mat.normalMap.offset.copy(t.mat.map.offset); } } // a downloaded model's own wheels turn and its track texture runs
   if (v.model.gunX === undefined) v.model.gunX = v.model.gun.position.x;
   if (v.recoil > 0) { v.recoil = Math.max(0, v.recoil - dt * 2.5); v.model.gun.position.x = v.model.gunX - Math.sin(v.recoil * Math.PI) * (D.cls === 'mbt' ? .45 : .12); }
   // exhaust: a dark puff when the engine works hard
