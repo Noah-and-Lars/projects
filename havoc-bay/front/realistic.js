@@ -259,12 +259,12 @@ function heightTexture(M) { // terrain height near sea level, packed in a byte: 
   const t = new THREE.DataTexture(d, GW, GH, THREE.RGBAFormat); t.magFilter = t.minFilter = THREE.LinearFilter; t.needsUpdate = true; return t;
 }
 function buildWater(M) {
-  const u = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uTime: { value: 0 }, uSun: { value: SUN_DIR.clone() }, uTop: { value: new THREE.Color(0x2f6db3) }, uHz: { value: new THREE.Color(0xc4d4e0) }, uDeep: { value: new THREE.Color(0x0e3a52) }, uShallow: { value: new THREE.Color(0x2f9a9a) }, uWorld: { value: new THREE.Vector2(WORLD_W, WORLD_H) } }]);
+  const u = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uTime: { value: 0 }, uGlint: { value: 0 }, uSun: { value: SUN_DIR.clone() }, uTop: { value: new THREE.Color(0x2f6db3) }, uHz: { value: new THREE.Color(0xc4d4e0) }, uDeep: { value: new THREE.Color(0x0e3a52) }, uShallow: { value: new THREE.Color(0x2f9a9a) }, uWorld: { value: new THREE.Vector2(WORLD_W, WORLD_H) } }]);
   u.tN = { value: TEX.waterN }; u.tH = { value: heightTexture(M) };
   const m = new THREE.ShaderMaterial({
     uniforms: u, transparent: true, depthWrite: false, fog: true,
     vertexShader: ['varying vec3 vWP;', '#include <fog_pars_vertex>', 'void main(){', ' vec4 wp = modelMatrix * vec4(position, 1.0); vWP = wp.xyz; vec4 mvPosition = viewMatrix * wp; gl_Position = projectionMatrix * mvPosition;', '#include <fog_vertex>', '}'].join('\n'),
-    fragmentShader: `uniform float uTime; uniform vec3 uSun, uTop, uHz, uDeep, uShallow; uniform vec2 uWorld; uniform sampler2D tN, tH; varying vec3 vWP; #include <fog_pars_fragment>
+    fragmentShader: `uniform float uTime, uGlint; uniform vec3 uSun, uTop, uHz, uDeep, uShallow; uniform vec2 uWorld; uniform sampler2D tN, tH; varying vec3 vWP; #include <fog_pars_fragment>
       void main(){
         vec2 uv = vWP.xz / uWorld; float inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
         float ter = mix(-40.0, texture2D(tH, uv).r * 25.0 - 20.0, inside), depth = max(0.0, -ter);
@@ -278,6 +278,12 @@ function buildWater(M) {
         vec3 sky = mix(uHz, uTop, pow(clamp(R.y, 0.0, 1.0), .5));
         vec3 body = mix(uShallow, uDeep, smoothstep(0.5, 22.0, depth)) * (.8 + .2 * max(dot(n, uSun), 0.0));
         float sp = pow(max(dot(R, uSun), 0.0), 600.0) * 7.0 + pow(max(dot(R, uSun), 0.0), 40.0) * .18;
+        if (uGlint > 0.0) { // Ultra: the sun's path on the sea. Each spot glitters if some wave facet there is tilted just right to throw the sun
+          // at the eye; the tilt needed (from the direction halfway between eye and sun) against how steep the waves are gives how bright.
+          vec3 H = normalize(V + uSun + vec3(a.x + b.x * .6, 0.0, a.y + b.y * .6) * .05); float t2 = (1.0 - H.y * H.y) / max(H.y * H.y, 1e-3);
+          float gl = exp(-t2 / .022) * (1.0 + 3.0 * pow(1.0 - max(V.y, 0.0), 4.0));
+          float tw = smoothstep(.3, .7, texture2D(tN, vWP.xz / 3.3 + vec2(uTime * .09, -uTime * .07)).b) * smoothstep(.35, .6, texture2D(tN, vWP.xz / 1.7 - vec2(uTime * .11, uTime * .05)).r + .12);
+          sp += gl * mix(.15 + 2.2 * tw, 1.0, smoothstep(300.0, 2500.0, dist)) * 3.2 * uGlint; }
         float fn = texture2D(tN, vWP.xz / 6.0 + vec2(uTime * .03, uTime * .02)).b, shore = 1.0 - smoothstep(0.0, 1.6, depth);
         float wave = smoothstep(.0, .5, sin(depth * 4.0 - uTime * 1.3 + fn * 3.0) * .5 + .5) * (1.0 - smoothstep(.3, 2.6, depth));
         float foam = clamp(shore * smoothstep(.35, .7, fn + shore * .45) + wave * .35 * step(.45, fn), 0.0, 1.0) * inside;
@@ -379,12 +385,13 @@ function flushWire() { if (!WIRE.length) return; const g = new THREE.BufferGeome
 
 /* ---------------- switching the look ---------------- */
 const LOOK = { optimised: null };
-function applyLook(realistic) {
+function applyLook(realistic, ultra) {
+  if (typeof ultraApply === 'function') ultraApply(false); // (put back anything the Ultra level changed, then build the look up again)
   if (!LOOK.optimised) LOOK.optimised = { fog: [scene.fog.color.getHex(), scene.fog.near, scene.fog.far], sun: sun.intensity, hemi: hemi.intensity, exp: renderer.toneMappingExposure, map: sun.shadow.mapSize.x, ext: sun.shadow.camera.right };
   const O = LOOK.optimised;
   if (realistic) {
     LOOK.linFog = LOOK.linFog || scene.fog; scene.fog = LOOK.expFog || (LOOK.expFog = new THREE.FogExp2(0xbccddb, .000072)); // haze that thickens naturally with distance
-    LOOK.sunOpt = LOOK.sunOpt || SUN_DIR.clone(); SUN_DIR.copy(REAL_SUN_DIR); SKY_U.uSun.value.copy(SUN_DIR); if (REAL.water) REAL.water.material.uniforms.uSun.value.copy(SUN_DIR); // a lower, warmer afternoon sun
+    LOOK.sunOpt = LOOK.sunOpt || SUN_DIR.clone(); SUN_DIR.copy(ultra && typeof ULTRA !== 'undefined' ? ULTRA.sunDir : REAL_SUN_DIR); SKY_U.uSun.value.copy(SUN_DIR); if (REAL.water) REAL.water.material.uniforms.uSun.value.copy(SUN_DIR); // a lower, warmer afternoon sun
     sun.intensity = 3.5; sun.color.set(0xffe4c0); hemi.intensity = .34; hemi.color.set(0xbcd4ee); hemi.groundColor.set(0x4d5233); renderer.toneMappingExposure = .76;
     setShadow(4096, 170);
     if (!REAL.sky) { REAL.sky = buildSky(); scene.add(REAL.sky); }
@@ -392,6 +399,7 @@ function applyLook(realistic) {
     if (!REAL.env) { const pm = new THREE.PMREMGenerator(renderer), sc = new THREE.Scene(); sc.add(buildSky()); REAL.env = pm.fromScene(sc).texture; pm.dispose(); }
     scene.environment = REAL.env;
     document.body.classList.add('realistic');
+    if (ultra && typeof ultraApply === 'function') ultraApply(true);
   } else {
     if (LOOK.linFog) scene.fog = LOOK.linFog; scene.fog.color.setHex(O.fog[0]); scene.fog.near = O.fog[1]; scene.fog.far = O.fog[2];
     if (LOOK.sunOpt) { SUN_DIR.copy(LOOK.sunOpt); SKY_U.uSun.value.copy(SUN_DIR); } hemi.color.set(0xcfe2f4); hemi.groundColor.set(0x4a5636);

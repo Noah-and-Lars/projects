@@ -28,6 +28,22 @@ The title screen has a **Graphics** setting:
 
 Everything in Realistic mode is generated in code; there are no image files. Optimised mode looks exactly as before.
 
+### Ultra
+
+Ultra is a third level above Realistic. It is the same world and layout under better light, drawn through a high-dynamic-range pipeline (`ultra.js`). It needs a strong graphics card.
+
+- **Sun:** a low, warm sun about 19° above the horizon, so shadows are long and the sun is often in view.
+- **Sun shafts:** the bright sky round the sun is smeared outwards from it, so trees, ridges, clouds and aircraft in front of it cut dark fingers into the light.
+- **Bloom:** very bright things glow into what is next to them: the sun, its glitter on the sea, the afterburner, explosions.
+- **Lens flare:** a faint flare shows when the sun itself is in view and nothing hides it.
+- **Air:** distance fades into a haze that lies thicker in low ground and turns warm when you look towards the sun.
+- **Sky:** deep blue overhead, pale at the horizon, with clouds that are lit on the sun's side and glow at their thin edges.
+- **Sea:** the sun lays a path of glitter out to the horizon, worked out from how steep the waves are.
+- **Woods:** about 1.8 times as many trees, so the canopy closes when seen from the air. Trees don't block movement, so play is the same.
+- **Finish:** film-style tone response, a slight grade and vignette, and edge smoothing.
+
+Optimised and Realistic look as they did before.
+
 ## Vehicles
 
 Each team has its own real-world vehicles: Blue drives the M1A2 Abrams, M2A2 Bradley and M1114 Humvee; Red drives the T-90A, BMP-2 and GAZ Tigr.
@@ -151,6 +167,7 @@ Blue's F-2A: This work is based on "Mitsubishi F-2 - Fighter Jet - Free" (https:
 | `maps.js` | The three map definitions and the terrain generator (heights in metres on a 26.7 m grid) |
 | `world.js` | Renderer, terrain mesh, sea, forests, roads, bridges, buildings, colliders (Optimised look) |
 | `realistic.js` | The Realistic graphics mode: terrain, ground textures, sky, water, power lines, compound clutter |
+| `ultra.js` | The Ultra graphics level: HDR render passes (sun shafts, bloom, lens flare, haze, tone response, edge smoothing), its sky and sun |
 | `real-flora.js` | Realistic mode plants: tree species and their three levels of detail, hedgerows, grass, wheat, ferns, pebbles |
 | `real-town.js` | Realistic mode villages: the wall and roof textures, houses, barns, churches, garden and field walls |
 | `real-soldier.js` | Realistic mode soldiers: camouflage, kit, rifles |
@@ -179,7 +196,7 @@ Blue's F-2A: This work is based on "Mitsubishi F-2 - Fighter Jet - Free" (https:
 `window.IF_TEST` drives the game without a mouse:
 
 ```js
-IF_TEST.start(0, 0, 8, 'realistic')   // map, team, bots per team, graphics
+IF_TEST.start(0, 0, 8, 'realistic')   // map, team, bots per team, graphics ('optimised' | 'realistic' | 'ultra')
 IF_TEST.deploy('mbt')    // 'inf' | 'mbt' | 'ifv' | 'jeep' | 'heli' | 'jet'
 IF_TEST.sim(120)         // run 120 simulated seconds
 IF_TEST.state()          // checkpoint owners, guards left, units alive

@@ -366,7 +366,7 @@ function buildRealFlora(M) {
     const id = j * GW + i; if (!M.F[id]) continue;
     const open = 4 - (M.F[id - 1] + M.F[id + 1] + M.F[id - GW] + M.F[id + GW]), cx = i * CELL, cz = j * CELL, ch = M.H[id];
     const conif = fbm(cx * .0011, cz * .0011, M.seed + 300, 3) + (ch > 220 ? (ch - 220) / 300 : 0), mixed = fbm(cx * .004, cz * .004, M.seed + 301, 2);
-    const tries = open ? 6 : 7, p = open ? .55 : .74;
+    const tries = Math.round((open ? 6 : 7) * (WORLD.ultra ? 1.8 : 1)), p = open ? .55 : .74; // (Ultra: closer to a real wood's stocking, so the canopy closes when seen from the air)
     for (let n = 0; n < tries; n++) {
       if (R() > p) continue;
       const x = (i + R() - .5) * CELL, z = (j + R() - .5) * CELL; if (terrainY(x, z) < 4 || onRoad(x, z)) continue;

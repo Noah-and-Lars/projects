@@ -30,8 +30,9 @@ function startMatch(mapIdx, team, bots, diff) {
   clearMatch();
   const M = GAME.M = MAPS[mapIdx];
   if (!M.H) buildMap(M);
-  WORLD.gfx = GAME.gfx; applyLook(GAME.gfx === 'realistic');
-  buildWorld(M);
+  // Ultra is the Realistic world under better light: everything that asks "realistic?" says yes for both
+  WORLD.gfx = GAME.gfx === 'ultra' ? 'realistic' : GAME.gfx; applyLook(WORLD.gfx === 'realistic', GAME.gfx === 'ultra');
+  buildWorld(M); if (typeof ultraWorld === 'function') ultraWorld();
   M.img = M.img || mapImage(M);
   GAME.cps = M._cps.map((p, i) => ({ p, i, owner: -1, val: 0, guards: [], inside: [0, 0] }));
   for (const c of GAME.cps) for (let k = 0; k < c.p.posts.length; k++) {
@@ -1039,7 +1040,7 @@ function renderTitle() {
 for (const [id, key] of [['mapPick', 'map'], ['teamPick', 'team'], ['botPick', 'bots'], ['diffPick', 'diff'], ['gfxPick', 'gfx']]) $(id).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; GAME[key] = key === 'gfx' ? b.dataset.v : +b.dataset.v; try { localStorage.setItem('islandfront.v1', JSON.stringify({ map: GAME.map, team: GAME.team, bots: GAME.bots, diff: GAME.diff, gfx: GAME.gfx })); } catch (err) {} renderTitle(); };
 function begin() {
   Sound.init();
-  $('title').classList.add('hidden'); $('loadText').textContent = `Building ${MAPS[GAME.map].name}${GAME.gfx === 'realistic' ? ' (realistic)' : ''}…`; $('loading').classList.remove('hidden');
+  $('title').classList.add('hidden'); $('loadText').textContent = `Building ${MAPS[GAME.map].name}${GAME.gfx === 'realistic' ? ' (realistic)' : GAME.gfx === 'ultra' ? ' (ultra)' : ''}…`; $('loading').classList.remove('hidden');
   setTimeout(() => { startMatch(GAME.map, GAME.team, GAME.bots, GAME.diff); $('loading').classList.add('hidden'); }, 40);
 }
 function toTitle() { GAME.on = false; clearMatch(); $('hud').classList.add('hidden'); $('deploy').classList.add('hidden'); $('title').classList.remove('hidden'); document.exitPointerLock && document.exitPointerLock(); Sound.engine(false, 0); renderTitle(); }
@@ -1072,7 +1073,7 @@ function frame(now) {
   if (GAME.on && !GAME.paused) step(dt);
   updateFX(dt);
   if (GAME.on) { updateCamera(dt); updateHUD(dt); updateWorldView(PLAYER.s ? (PLAYER.s.veh || PLAYER.s).pos : camera.position); }
-  if (!window.IF_NORENDER) renderer.render(scene, camera);
+  if (!window.IF_NORENDER) renderFrame();
 }
 requestAnimationFrame(frame);
 
@@ -1086,8 +1087,8 @@ window.IF_TEST = {
     const units = ENTS.filter(e => e.alive && e.team < 2 && !(e.kind === 'soldier' && e.veh));
     return { t: +GAME.time.toFixed(1), over: GAME.over, winner: GAME.winner, cps: C, alive: units.length, vehicles: units.filter(u => u.kind === 'vehicle').length, projs: PROJS.length, fx: FX.sprites.length, player: PLAYER.s ? { alive: PLAYER.s.alive, hp: Math.round(PLAYER.s.veh ? PLAYER.s.veh.hp : PLAYER.s.hp), pos: (PLAYER.s.veh || PLAYER.s).pos.toArray().map(Math.round) } : null };
   },
-  look(x, y, z, tx, ty, tz) { PLAYER.s = null; CAM.pos.set(x, y, z); camera.position.set(x, y, z); camera.lookAt(tx, ty, tz); updateWorldView(new V3(tx, ty, tz)); renderer.render(scene, camera); },
-  cam(yaw, pitch) { CAM.yaw = yaw; CAM.pitch = pitch; updateCamera(0); updateWorldView((PLAYER.s.veh || PLAYER.s).pos); renderer.render(scene, camera); },
-  render() { renderer.render(scene, camera); },
+  look(x, y, z, tx, ty, tz) { PLAYER.s = null; CAM.pos.set(x, y, z); camera.position.set(x, y, z); camera.lookAt(tx, ty, tz); camera.updateMatrixWorld(); updateWorldView(new V3(tx, ty, tz)); renderFrame(); },
+  cam(yaw, pitch) { CAM.yaw = yaw; CAM.pitch = pitch; updateCamera(0); updateWorldView((PLAYER.s.veh || PLAYER.s).pos); renderFrame(); },
+  render() { renderFrame(); },
   GAME, PLAYER, CAM, ENTS, info: () => ({ prog: renderer.info.programs.length, geo: renderer.info.memory.geometries, tex: renderer.info.memory.textures, calls: renderer.info.render.calls, tris: renderer.info.render.triangles }),
 };
