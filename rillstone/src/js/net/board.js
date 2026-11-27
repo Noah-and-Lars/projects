@@ -12,7 +12,7 @@
 //
 // "View plot": ask an online player for a picture of their plot; their game
 // renders one from above and sends it back in chunks.
-const RT_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=2';
+const RT_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=3';
 const CHANNEL = 'rill1-lb';
 const CHUNK = 16000;
 const KEEP = 'rill-lb';

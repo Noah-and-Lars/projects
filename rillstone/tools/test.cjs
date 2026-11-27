@@ -8,7 +8,9 @@ const out = process.argv[2] || '.';
 const flags = new Set(process.argv.slice(3));
 const SRC = flags.has('--src'); flags.delete('--src');
 const all = flags.size === 0;
-const URL = 'http://localhost:8765/' + (SRC ? 'src/index.html' : 'index.html') + '?test=1&seed=1';
+// RILL_BASE=file:///path/to/rillstone/ runs against the files with no web server (not --coop/--mp, which load the relay's rt.js over http).
+const BASE = process.env.RILL_BASE || 'http://localhost:8765/';
+const URL = BASE + (SRC ? 'src/index.html' : 'index.html') + '?test=1&seed=1';
 const fails = [];
 const check = (ok, msg) => { console.log((ok ? 'ok   ' : 'FAIL ') + msg); if (!ok) fails.push(msg); };
 
@@ -17,7 +19,7 @@ async function open(b, scale = 1) {
   const errs = [];
   if (!SRC) await p.route('**/*', (r) => {
     const u = r.request().url();
-    if (u.startsWith('http://localhost:8765/') || u.startsWith('data:') || u.startsWith('blob:')) return r.continue();
+    if (u.startsWith('http://localhost:8765/') || u.startsWith(BASE) || u.startsWith('data:') || u.startsWith('blob:')) return r.continue();
     errs.push('blocked external request: ' + u); return r.abort();
   });
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));

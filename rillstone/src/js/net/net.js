@@ -7,7 +7,7 @@
 // The client library loads only when you go online (the offline game makes
 // no outside requests). Online play needs an Arcade account: rt.js asks for
 // one itself and refuses the channel otherwise.
-const RT_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=2';
+const RT_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=3';
 export const MAX = 4;
 const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const BASE = 'rill1';
