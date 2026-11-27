@@ -196,7 +196,13 @@ function kitVehicle(key, cfg = {}, team = 0) {
    Returns what the game expects of an aircraft model: { root, parts, stores, rotor, rotor2, trotor, gun, cockpit }. */
 function kitHelicopter(key, cfg = {}, team = 0, def = null) {
   const tint = cfg.tint && cfg.tint[team], model = gltfBuild(key, tint ? { material: m => kitTint(m, tint) } : {}); if (!model) return null;
-  const holder = kitFit(model, cfg), M = { root: new THREE.Group(), parts: {}, stores: [], gltf: true, model }; M.root.add(holder); M.root.updateMatrixWorld(true);
+  let facing = (cfg.fit && cfg.fit.yaw) ?? cfg._yaw;
+  if (facing === undefined) { // no facing given: the main rotor sits ahead of the tail rotor; with no tail rotor, ahead of the middle of the airframe (the tail boom is the long end)
+    const h0 = kitFit(model, Object.assign({}, cfg, { fit: Object.assign({}, cfg.fit, { yaw: 0 }) })), mid = o => { const b = new THREE.Box3(); for (const n of o) b.expandByObject(n); return b.isEmpty() ? null : b.getCenter(new V3()); };
+    const mr = mid(kitFind(model, cfg.rotor)), tr = mid(kitFind(model, cfg.tailRotor)), body = kitBox(h0).getCenter(new V3()), f = mr && tr ? mr.clone().sub(tr) : mr ? mr.clone().sub(body) : null; if (f) f.y = 0;
+    facing = f && f.length() > .2 ? Math.atan2(f.z, f.x) : 0; const q = Math.round(facing / (Math.PI / 2)) * Math.PI / 2; if (Math.abs(facing - q) < .25) facing = q; // (models are nearly always built square to their axes: the tail rotor's sideways offset should not skew it)
+    cfg._yaw = facing; h0.remove(h0.children[0]); }
+  const holder = kitFit(model, Object.assign({}, cfg, { fit: Object.assign({}, cfg.fit, { yaw: facing }) })), M = { root: new THREE.Group(), parts: {}, stores: [], gltf: true, model }; M.root.add(holder); M.root.updateMatrixWorld(true);
   const spinner = (nodes, axis) => { // a hub group at the middle of the rotor, with the blades handed to it, plus the blur disc the game fades in with rotor speed
     if (!nodes.length) return null; const b = new THREE.Box3(); for (const o of nodes) b.expandByObject(o); const c = b.getCenter(new V3()), sz = b.getSize(new V3());
     const hub = new THREE.Group(); hub.position.copy(c); M.root.add(hub); const blades = new THREE.Group(); hub.add(blades); M.root.updateMatrixWorld(true); for (const o of nodes) blades.attach(o);

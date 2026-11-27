@@ -36,7 +36,7 @@ A soldier model without a skeleton cannot walk, so that one needs to be rigged.
    | Option | Used for | Meaning |
    | --- | --- | --- |
    | `fit.length` / `fit.height` | all | Scale the model to this many metres long or tall |
-   | `fit.yaw` | all | Turn the model so it faces forward (radians). Left out, the facing is worked out: a soldier from its skeleton, a vehicle from its long axis and its gun. A helicopter needs it given |
+   | `fit.yaw` | all | Turn the model so it faces forward (radians). Left out, the facing is worked out: a soldier from its skeleton, a vehicle from its long axis and its gun, a helicopter from its rotors (the main rotor is ahead of the tail rotor). Give it if the result is back to front |
    | `fit.pitch` | all | Tip a model that was made lying on its back upright |
    | `turret`, `gun` | tank | Name patterns for the parts that traverse and elevate |
    | `split` | tank | For a one-piece model: a rule giving `hull`, `turret` or `gun` for a position |
@@ -77,4 +77,6 @@ The kit was tested with four synthetic models (a tank with named parts, a one-pi
 
 The sample files are not part of the repository. Bone names were also checked against lists from Mixamo, Unreal, Biped, Rigify, Daz, VRM and Unity rigs; Rigify falls through to the shape method.
 
-Not yet tried: a real tank or helicopter model (only the truck), so expect some fitting work for those: turret and gun part names, rotor names, and a helicopter's facing. Models whose bones are not parented in a normal body layout (animals, robots with extra limbs) are not recognised by shape.
+Automatic facing was checked by turning the synthetic tank and helicopter through 90, 180 and 270 degrees: each came out fitted the same.
+
+Not yet tried: a real tank or helicopter model (only the truck), so expect some fitting work for those: turret and gun part names and rotor names. Models whose bones are not parented in a normal body layout (animals, robots with extra limbs) are not recognised by shape.

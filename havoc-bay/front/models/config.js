@@ -13,7 +13,7 @@
    // A tank that is one piece: say where the turret and gun are (metres, x forward, y up, after fitting):
    // kitUse('t90a', 't90', { fit: { length: 6.9 }, split: (x, y, z) => y > 1.55 && Math.hypot(x - .2, z) < 1.7 ? 'turret' : y > 1.6 && x > 1.7 && Math.abs(z) < .25 ? 'gun' : 'hull' });
    // A helicopter:
-   // kitUse('ah64', 'apache', { fit: { length: 15, yaw: Math.PI / 2 }, rotor: /main.*rotor|rotor.*main|blade/i, tailRotor: /tail.*rotor/i,
+   // kitUse('ah64', 'apache', { fit: { length: 15 }, rotor: /main.*rotor|rotor.*main|blade/i, tailRotor: /tail.*rotor/i,
    //   parts: (x, y, z) => x < -3 ? 'boom' : x > 3.5 ? 'nose' : y > 2.6 ? 'trans' : Math.abs(z) > 1.2 ? (z < 0 ? 'stubL' : 'stubR') : 'fuse',
    //   stations: { 1: [[.8, .8, -1.25], [.8, .8, 1.25]], 2: [[.9, .7, -2.15], [.9, .7, 2.15]], 3: [[.85, 1.2, -2.6], [.85, 1.2, 2.6]] } });
    // A rigged player model for both teams (Red tinted), posed by the game:
