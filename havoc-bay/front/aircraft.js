@@ -690,7 +690,7 @@ function airStatusHTML(a) {
   if (D.cls === 'jet') {
     spd = a.ias ?? V; // indicated airspeed: what the wings feel
     const thr = a.throttle <= .85 ? Math.round(a.throttle / .85 * 100) + '%' : 'WEP', left = a.burn > 0 ? a.fuel / a.burn : 1e9, ft = left > 5940 ? '99:00' : `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
-    extra = ` · THR ${thr} · FUEL ${ft}${a.onGround ? (a.throttle < .05 ? ' · BRAKES' : '') : ` · M ${(a.mach || 0).toFixed(2)} · ${(a.gload || 1).toFixed(1)} G · AoA ${Math.round((a.alpha || 0) * 57.3)}°`}`;
+    extra = [['THR', thr], ['FUEL', ft], ['MACH', (a.mach || 0).toFixed(2)], ['G', (a.gload || 1).toFixed(1)], ['AOA', Math.round((a.alpha || 0) * 57.3), '°'], ['GEAR', a.gearDown || a.onGround ? 'DN' : 'UP']]; if (a.onGround && a.throttle < .05) notes.push('Wheel brakes on');
     if (a.fuel <= 0) notes.push('<span class="warn">NO FUEL</span>'); else if (left < 90) notes.push('<span class="warn">FUEL LOW</span>'); if (a.leaking) notes.push('<span class="warn">FUEL LEAK</span>');
     if (!a.onGround) {
       if (a.gloc > 0) notes.push('<span class="warn">BLACKED OUT</span>');
@@ -700,7 +700,7 @@ function airStatusHTML(a) {
     } else if (a.vlo && V > a.vlo * .78 && a.throttle > .5) notes.push('rotate: look up');
     if (a.airbrake) notes.push('airbrake');
   } else {
-    extra = ` · COLL ${Math.round((a.lever ?? a.col ?? 0) * 100)}% · ${a.vel.y >= 0 ? '+' : ''}${a.vel.y.toFixed(1)} m/s · RPM ${Math.round(a.rpm * 100)}% · TQ ${Math.round((a.tq || 0) * 100)}%`;
+    extra = [['COLL', Math.round((a.lever ?? a.col ?? 0) * 100), '%'], ['V/S', (a.vel.y >= 0 ? '+' : '') + a.vel.y.toFixed(1), 'm/s'], ['RPM', Math.round(a.rpm * 100), '%'], ['TQ', Math.round((a.tq || 0) * 100), '%']];
     const dead = a.parts.filter(p => p.kind === 'engine').every(p => !pOK(p)) || !pOK(a.part('trans'));
     if (a.hover) notes.push('HOVER MODE · H: off');
     for (const pr of PROJS) if (pr.owner === a && pr.A.guided && pr.guide) { const g = pr.guide(); if (g) { notes.push(`missile: ${Math.max(0, g.distanceTo(pr.pos) / Math.max(50, pr.vel.length())).toFixed(0)} s to impact · keep the crosshair on the target`); break; } }
@@ -708,11 +708,11 @@ function airStatusHTML(a) {
     else if (a.rpm < .9 && !a.onGround) notes.push('<span class="warn">LOW ROTOR RPM · lower the collective</span>');
     if (a.vrs > .3) notes.push('<span class="warn">SINKING IN OWN DOWNWASH · fly forward</span>');
   }
-  return `<div class="who">${D.name} <small>${Math.round(spd * 3.6)} km/h · ${Math.round(alt)} m${extra}</small></div><div class="chips">${chips}</div>${notes.length ? `<div class="vnote">${notes.join(' · ')}</div>` : ''}`;
+  return `<div class="unit">${D.short || D.name}</div>${inst([[D.cls === 'jet' ? 'IAS' : 'SPD', Math.round(spd * 3.6), 'km/h'], ['ALT', Math.round(alt), 'm'], ...extra])}<div class="mods">${chips}</div>${noteLines(notes)}`;
 }
 function airAmmoHTML(a) {
-  const list = a.def.weapons.map((w, i) => `<div class="am${a.sel === i ? ' sel' : ''}">${i + 1} · ${AMMO[w.k].type} <small>${AMMO[w.k].name} ×${a.ammo[i]}</small></div>`).join('');
-  return `${list}<small>F: gun · G: flares ×${a.flares}</small>`;
+  const list = a.def.weapons.map((w, i) => `<div class="am${a.sel === i ? ' sel' : ''}"><i>${i + 1}</i><b>${AMMO[w.k].type}</b><span>${AMMO[w.k].name}</span><u>${a.ammo[i]}</u></div>`).join('');
+  return `${list}<div class="extra"><i>F</i><span>Gun</span><i>G</i><span>Flares ×${a.flares}</span></div>`;
 }
 function rocketPoint(a, A, out) { // the ballistic computer: where a rocket fired now would land (rockets leave along the nose)
   axes(a); const p = airGunWorld(a, new V3()), v = _ax.clone().multiplyScalar(A.v).add(a.vel), dt = .05, g = A.g ?? 9.8;

@@ -192,15 +192,27 @@ Bots earn and spend SP the same way. Each bot has its own skill level, and bots 
 - Bot pilots will not dive below the height a pull-out needs, give up attack runs that are too steep, watch for rising ground, and come back if a dogfight drifts more than 3 km off the map.
 - Bot pilots flare late or not at all, and their aim wanders, more so right after they are hit.
 
+## Interface
+
+The menus and the HUD are drawn as flat plates with square corners and thin rules, in the style of a field order: one typeface family (Barlow Condensed for headings and read-outs, Barlow Semi Condensed for text), one signal colour (amber) for the thing you act on, and colour otherwise used only for the two teams and for part states (green working, amber damaged, red knocked out). The selected row is shown as an inverted light plate. All of it is in `ui.css`; the fonts are packed into that file so the game still opens from disk.
+
+- **Top:** the five checkpoints with their guard counts between the two bases, the match clock, and a compass tape that scrolls with your view.
+- **Bottom left:** your unit: instrument read-outs (speed, sight range, altitude, fuel and so on), crew and module states, and short notes.
+- **Bottom right:** weapons, with the selected one inverted, and the gun's state.
+- **F1** shows or hides the key list for what you are in. It also shows for 20 seconds each time you change unit.
+
 ## Credits
 
 Blue's F-2A: This work is based on "Mitsubishi F-2 - Fighter Jet - Free" (https://sketchfab.com/3d-models/mitsubishi-f-2-fighter-jet-free-d3d7244554974f499b106e6c11fe3aaf) by bohmerang (https://sketchfab.com/bohmerang) licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/). Because of that licence, the game (or at least the F-2 model and anything made from it) must not be used commercially, and changed versions of the model must be shared under the same licence. The full licence note is in `models/f2-license.txt`.
+
+Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow), licensed under the SIL Open Font License 1.1. The licence text is in `docs/barlow-font-license.txt`.
 
 ## Files
 
 | File | What's in it |
 | --- | --- |
-| `index.html` | Page, menus, HUD styles |
+| `index.html` | Page: title, deploy, pause and end screens, HUD elements |
+| `ui.css` | All interface styles and the two packed Barlow fonts |
 | `three.r128.js` | three.js r128, the same build Havoc Bay embeds |
 | `maps.js` | The three map definitions and the terrain generator (heights in metres on a 26.7 m grid) |
 | `world.js` | Renderer, terrain mesh, sea, forests, roads, bridges, buildings, colliders (Optimised look) |

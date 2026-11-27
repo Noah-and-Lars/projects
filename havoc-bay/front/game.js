@@ -91,7 +91,7 @@ function deployPlayer(cls, where) {
     const [x, z] = spawnSpot(team, where); s.pos.set(x, groundY(x, z) + .1, z); s.yaw = CAM.yaw = GAME.M.bases[team].ang;
   } else if (cls === 'jet' || cls === 'heli') {
     const a = airSpawn(cls, team); enterVehicle(s, a); CAM.yaw = a.hdg; CAM.pitch = cls === 'jet' ? .02 : -.08;
-    showMsg(cls === 'jet' ? 'Take off: full throttle, look up past 250 km/h' : 'Hold Space to raise the collective and lift off', cls === 'jet' ? 'The jet follows your aim · W/S throttle · A/D roll · Q/E rudder · B airbrake · 1-4 weapons · F gun · G flares · J bail out. Land on your runway to rearm and refuel.' : 'The nose follows your aim: look down to fly forward · W/S nose down/up · A/D roll · Space/C collective up/down · H hover mode · 1-4 weapons · G flares · J bail out. Land at base to rearm.');
+    showMsg(cls === 'jet' ? 'Take off: full throttle, look up past 250 km/h' : 'Hold Space to raise the collective and lift off', cls === 'jet' ? 'The jet follows your aim. Land on your runway to rearm and refuel.' : 'The nose follows your aim: look down to fly forward. Land at your base to rearm.');
   } else {
     const v = makeVehicle(cls, team); enterVehicle(s, v); CAM.yaw = v.yaw;
   }
@@ -582,7 +582,7 @@ function endMatch(winner, why) {
   setTimeout(() => {
     document.exitPointerLock && document.exitPointerLock();
     $('endTitle').textContent = winner < 0 ? 'DRAW' : winner === GAME.team ? 'VICTORY' : 'DEFEAT';
-    $('endTitle').style.color = winner < 0 ? '#fff' : winner === GAME.team ? '#f2b23a' : '#ff8a80';
+    $('endTitle').style.color = winner < 0 ? '#e8e5d6' : winner === GAME.team ? '#dfae2e' : '#ee5b4b';
     $('endWhy').textContent = why;
     $('endStats').innerHTML = `<span class="mut">Kills</span><span class="mut">Deaths</span><span class="mut">Checkpoints</span><b>${PLAYER.kills}</b><b>${PLAYER.deaths}</b><b>${PLAYER.caps}</b>`;
     $('end').classList.remove('hidden');
@@ -896,46 +896,64 @@ function chip(label, m, vacant) {
   const st = vacant ? 'vac' : !m ? 'ok' : m.hp <= 0 ? 'dead' : m.hp < m.max * .6 ? 'dmg' : 'ok';
   return `<span class="chip ${st}">${label}</span>`;
 }
+const inst = rows => `<div class="inst">${rows.map(([l, v, u]) => `<div><i>${l}</i><b>${v}${u ? `<small>${u}</small>` : ''}</b></div>`).join('')}</div>`; // a row of instrument read-outs
+const noteLines = notes => notes.length ? `<div class="notes">${notes.map(n => `<div>${n}</div>`).join('')}</div>` : '';
+const CREW_TAG = { driver: 'DRV', gunner: 'GNR', commander: 'CMD', loader: 'LDR' };
 function vehStatusHTML(v) {
   const D = v.def, st = vState(v), r = v.roles;
-  const crew = D.crew.map(role => chip(role[0].toUpperCase(), r[role], !r[role] || r[role].hp <= 0)).join('');
+  const crew = D.crew.map(role => chip(CREW_TAG[role] || role.slice(0, 3).toUpperCase(), r[role], !r[role] || r[role].hp <= 0)).join('');
   const mods = [['ENG', v.mods.find(m => m.kind === 'engine')], ['TRN', v.mods.find(m => m.kind === 'trans')], ...(D.wheeled ? [] : [['TRK L', v.mod('trackL')], ['TRK R', v.mod('trackR')]]), ['BRL', v.mod('barrel')], ['BRC', v.mod('breech')], ['TRV', v.mod('hdrive')], ['ELV', v.mod('vdrive')], ['SGT', v.mod('optics')], ['FCS', v.mod('fcs')], ['RAD', v.mod('radiator')], ['ALD', v.mod('autoloader')]].filter(([, m]) => m).map(([l, m]) => chip(l, m)).join('');
   const notes = [];
-  if (v.fire > 0) notes.push(`<span class="warn">FIRE${v.fpe > 0 ? ` · X: extinguisher (${v.fpe} left)` : ' · no extinguishers'}</span>`);
-  if (v.def.lws && PROJS.some(p => p.team !== v.team && p.A.guided && !p.A.saclos && p.guide && (() => { const t = p.guide(); return t && t.distanceToSquared(v.pos) < 30 * 30; })())) notes.push('<span class="warn">LASER WARNING · G: smoke</span>');
-  if (v.heat > 1) notes.push('<span class="warn">ENGINE OVERHEATING</span>'); if (v.atHome) notes.push('on a friendly point: full repair, resupply'); if (v.trackT > 0) notes.push(`track back on in ${Math.ceil(8 - v.trackT)} s`);
-  if (v.repairT > 0) notes.push(`repairing ${Math.ceil(v.repairT)} s`);
+  if (v.fire > 0) notes.push(`<span class="warn">FIRE</span> ${v.fpe > 0 ? `X: extinguisher (${v.fpe} left)` : 'no extinguishers left'}`);
+  if (v.def.lws && PROJS.some(p => p.team !== v.team && p.A.guided && !p.A.saclos && p.guide && (() => { const t = p.guide(); return t && t.distanceToSquared(v.pos) < 30 * 30; })())) notes.push('<span class="warn">LASER WARNING</span> G: smoke');
+  if (v.heat > 1) notes.push('<span class="warn">ENGINE OVERHEATING</span> stop and repair');
+  if (!st.drive) notes.push('<span class="warn">IMMOBILISED</span>');
+  if (v.atHome) notes.push('On a friendly point: full repair and resupply'); if (v.trackT > 0) notes.push(`Track back on in ${Math.ceil(8 - v.trackT)} s`);
+  if (v.repairT > 0) notes.push(`Repairing: ${Math.ceil(v.repairT)} s`);
   else if (v.mods.some(m => m.kind !== 'crew' && m.kind !== 'ammo' && m.hp < m.max * .6)) notes.push('R: repair (stand still)');
-  if (!st.drive) notes.push('<span class="warn">immobilised</span>');
-  if (v.swapT > 0) notes.push('crew changing seats');
-  return `<div class="who">${D.name} <small>${Math.round(Math.abs(v.speed) * 3.6)} km/h</small></div><div class="chips">${crew}</div><div class="chips">${mods}</div>${notes.length ? `<div class="vnote">${notes.join(' · ')}</div>` : ''}`;
+  if (v.swapT > 0) notes.push('Crew changing seats');
+  const lased = D.lrf && st.fcs && v.sightR > 0 && GAME.time - v.lrfT < 45;
+  return `<div class="unit">${D.short || D.name}</div>${inst([['SPD', Math.round(Math.abs(v.speed) * 3.6), 'km/h'], ['SIGHT', D.cls === 'jeep' ? '--' : lased ? Math.round(v.sightR) : 400, D.cls === 'jeep' ? '' : 'm'], ['EXT', v.fpe], ['SMOKE', v.smoke || 0]])}<div class="mods crew">${crew}</div><div class="mods">${mods}</div>${noteLines(notes)}`;
 }
 function vehAmmoHTML(v) {
   const D = v.def;
-  const list = D.ammo.map((k, i) => `<div class="am${v.sel === k ? ' sel' : ''}">${i + 1} · ${AMMO[k].type} <small>${AMMO[k].name}${v.load ? ' ×' + v.load[k] : ''}${D.reload && v.loaded === k ? ' · loaded' : ''}</small></div>`).join('');
-  let state;
-  if (!vState(v).fire) state = '<b class="warn">GUN OUT</b>';
-  else if (D.reload) state = v.loaded ? '<b>READY</b>' : !vState(v).loader ? '<b class="warn">CANNOT LOAD</b>' : v.load && D.ammo.every(k => v.load[k] <= 0) ? '<b class="warn">NO AMMO</b>' : `<b>${Math.round((1 - v.reload / (v.reloadOf || D.reload)) * 100)}%</b> <small>loading${D.rack && v.rackN <= 0 ? ' (rack empty: slow)' : ''}</small>`;
-  else state = '<b>READY</b>';
-  const extra = [D.rack ? `ready rack ${v.rackN}/${D.rack}` : '', D.mg ? `F: ${AMMO[D.mg].name}` : '', D.atgm ? `T: ${AMMO[D.atgm].name} ×${v.atgmReady} (+${v.atgmLoad})` : '', D.smoke ? `G: smoke ×${v.smoke}` : '', D.ess ? `H: engine smoke ×${v.ess}` : '', D.lrf ? 'V: rangefinder' : '', D.thermal ? 'N: thermal' : ''].filter(Boolean).join('<br>');
-  return `${list}${state}<br><small>${extra}</small>`;
+  const list = D.ammo.map((k, i) => `<div class="am${v.sel === k ? ' sel' : ''}"><i>${i + 1}</i><b>${AMMO[k].type}</b><span>${AMMO[k].name}${D.reload && v.loaded === k ? ' · in the gun' : ''}</span><u>${v.load ? v.load[k] : ''}</u></div>`).join('');
+  let state, bar = '';
+  if (!vState(v).fire) state = '<span class="warn">GUN OUT</span>';
+  else if (D.reload) { if (v.loaded) state = 'READY'; else if (!vState(v).loader) state = '<span class="warn">CANNOT LOAD</span>'; else if (v.load && D.ammo.every(k => v.load[k] <= 0)) state = '<span class="warn">NO AMMO</span>';
+    else { const f = clamp(1 - v.reload / (v.reloadOf || D.reload), 0, 1); state = `LOADING<small>${D.rack && v.rackN <= 0 ? 'ready rack empty: slow' : Math.ceil(v.reload) + ' s'}</small>`; bar = `<div class="load"><i style="width:${Math.round(f * 100)}%"></i></div>`; } }
+  else state = 'READY';
+  const extra = [D.rack ? ['RACK', `${v.rackN} of ${D.rack} ready`] : 0, D.mg ? ['F', AMMO[D.mg].name] : 0, D.atgm ? ['T', `${AMMO[D.atgm].name} ×${v.atgmReady} (+${v.atgmLoad})`] : 0, D.smoke ? ['G', `Smoke ×${v.smoke}`] : 0, D.ess ? ['H', `Engine smoke ×${v.ess}`] : 0, D.lrf ? ['V', 'Rangefinder'] : 0, D.thermal ? ['N', 'Thermal sight'] : 0].filter(Boolean).map(([k, t]) => `<i>${k}</i><span>${t}</span>`).join('');
+  return `${list}<div class="gun">${state}</div>${bar}<div class="extra">${extra}</div>`;
 }
 function renderCpBar() {
   const C = GAME.cps, me = GAME.team;
   let h = `<span class="hq" style="color:var(--blue)">BLUE</span>`;
   for (const c of C) {
-    const cls = c.owner === 0 ? 'blue' : c.owner === 1 ? 'red' : '', lock = !canCapture(me, c.i) && c.owner !== me ? ' lock' : '', pct = Math.abs(c.val) * 100, col = c.val > 0 ? 'var(--blue)' : 'var(--red)';
-    h += `<div class="cp ${cls}${lock}${c.p.size === 'L' ? ' big' : ''}" title="${c.p.name}">${c.i + 1}${c.guardsLeft ? `<small>☠${c.guardsLeft}</small>` : ''}<em>${c.p.size === 'L' ? 'MAIN' : c.p.size === 'M' ? 'MED' : 'SM'}</em><i style="width:${c.owner === -1 ? pct : 100}%;background:${c.owner === -1 ? col : 'rgba(255,255,255,.8)'}"></i></div>`;
+    const cls = c.owner === 0 ? ' blue' : c.owner === 1 ? ' red' : '', lock = !canCapture(me, c.i) && c.owner !== me ? ' lock' : '', pct = Math.abs(c.val) * 100, col = c.val > 0 ? 'var(--blue)' : 'var(--red)';
+    h += `<div class="cp${cls}${lock}${c.p.size === 'L' ? ' big' : ''}" title="${c.p.name}">${c.i + 1}${c.guardsLeft ? `<small>${c.guardsLeft}</small>` : ''}${c.owner === -1 ? (pct > 0 ? `<i style="width:${pct}%;background:${col}"></i>` : '') : pct < 100 ? `<i style="width:${pct}%;background:#fff"></i>` : ''}</div>`;
   }
   h += `<span class="hq" style="color:var(--red)">RED</span>`;
-  $('cpbar').innerHTML = h;
+  if ($('cpbar')._h !== h) { $('cpbar').innerHTML = h; $('cpbar')._h = h; }
 }
+const HELP = { // the key reminder for whatever you are in (F1 shows and hides it)
+  foot: [['W A S D', 'Move'], ['Shift', 'Sprint'], ['C', 'Crouch'], ['Space', 'Jump'], ['1 / 2', 'Rifle / rockets'], ['R', 'Reload'], ['E', 'Get in a vehicle'], ['M', 'Map']],
+  veh: [['W A S D', 'Drive'], ['Right click', 'Gun sight (Shift: zoom)'], ['1 2 3', 'Shell'], ['F / T', 'Machine gun / missile'], ['V', 'Rangefinder'], ['N', 'Thermal sight'], ['G / H', 'Smoke / engine smoke'], ['R', 'Repair (stand still)'], ['X', 'Extinguisher'], ['E', 'Get out'], ['M', 'Map']],
+  jet: [['Mouse', 'The jet follows your aim'], ['W / S', 'Throttle'], ['A / D', 'Roll'], ['Q / E', 'Rudder'], ['B', 'Airbrake'], ['Left click', 'Fire the chosen weapon'], ['1 - 4', 'Weapon'], ['F', 'Gun'], ['G', 'Flares'], ['X', 'Fire handle'], ['Right click', 'Cockpit view'], ['J', 'Bail out'], ['M', 'Map']],
+  heli: [['Mouse', 'The nose follows your aim'], ['W / S', 'Nose down / up'], ['A / D', 'Roll'], ['Space / C', 'Collective up / down'], ['H', 'Hover mode'], ['Left click', 'Fire the chosen weapon'], ['1 - 4', 'Weapon'], ['F', 'Gun'], ['N', 'Thermal (zoomed)'], ['G', 'Flares'], ['Right click', 'Zoom'], ['E', 'Get out (landed)'], ['J', 'Bail out'], ['M', 'Map']],
+};
+const setHTML = (el, h) => { if (el._h !== h) { el.innerHTML = h; el._h = h; } }; // (only touch the page when something changed)
+const COMP_PX = 3.4; // compass tape: pixels per degree
+addEventListener('resize', () => { const cs = document.getElementById('compStrip'); if (cs) cs._w = 0; });
 let hudT = 0, miniT = 0;
 const tagEls = [];
 function updateHUD(dt) {
   if ((msgT -= dt) <= 0) $('msg').style.opacity = 0;
   hudT -= dt; if (hudT <= 0) { hudT = .2; renderCpBar(); }
-  const left = Math.max(0, MATCH_S - GAME.time); $('clock').textContent = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
+  const left = Math.max(0, MATCH_S - GAME.time), clk = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}`; if ($('clock')._t !== clk) { $('clock').textContent = clk; $('clock')._t = clk; }
+  { const cs = $('compStrip'); // the compass tape: which way you are looking (north is up the map)
+    if (!cs._b) { cs._b = 1; const N = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']; let h = ''; for (let d = -360; d < 720; d += 5) { const x = (d + 360) * COMP_PX, m = ((d % 360) + 360) % 360; h += `<u class="${m % 15 ? '' : 'm'}" style="left:${x}px"></u>`; if (m % 15 === 0) h += `<b class="${m % 45 ? '' : 'c'}" style="left:${x}px">${m % 45 ? String(m).padStart(3, '0') : N[m / 45]}</b>`; } cs.innerHTML = h; }
+    const brg = ((CAM.yaw * 180 / Math.PI + 90) % 360 + 360) % 360; if (!cs._w) cs._w = cs.parentNode.clientWidth / 2; cs.style.transform = `translateX(${((cs._w || 170) - (brg + 360) * COMP_PX).toFixed(1)}px)`; }
   const s = PLAYER.s, alive = s && s.alive;
   const inAir = alive && s.veh && s.veh.kind === 'air';
   $('cross').style.display = alive && (inAir || !(s.veh && CAM.zoom)) ? '' : 'none';
@@ -961,10 +979,11 @@ function updateHUD(dt) {
   // status and ammo
   if (alive) {
     if (s.veh) {
-      const v = s.veh; if (v.kind === 'air') { $('status').innerHTML = airStatusHTML(v); $('ammo').innerHTML = airAmmoHTML(v); } else { $('status').innerHTML = vehStatusHTML(v); $('ammo').innerHTML = vehAmmoHTML(v); }
+      const v = s.veh; if (v.kind === 'air') { setHTML($('status'), airStatusHTML(v)); setHTML($('ammo'), airAmmoHTML(v)); } else { setHTML($('status'), vehStatusHTML(v)); setHTML($('ammo'), vehAmmoHTML(v)); }
     } else {
-      $('status').innerHTML = `<div class="who">Rifleman <small>${s.swim ? 'swimming' : s.crouch ? 'crouched' : ''}</small></div><div class="bar2"><i style="transform:scaleX(${s.hp / 100});background:${s.hp < 35 ? '#e0583a' : '#7fd27a'}"></i></div>`;
-      $('ammo').innerHTML = s.slot === 1 ? `<small>Rocket launcher</small><br><b>${s.rpg}</b> <small>rockets</small>` : `<small>Rifle${s.reload > 0 ? ' · reloading' : ''}</small><br><b>${s.mag}</b> <small>/ ${s.ammo}</small><br><small>2: rockets (${s.rpg})</small>`;
+      const seg = Math.ceil(clamp(s.hp, 0, 100) / 10);
+      setHTML($('status'), `<div class="unit">Rifleman<small>${s.swim ? 'SWIMMING' : s.crouch ? 'CROUCHED' : ''}</small></div><div class="hpbar${s.hp < 35 ? ' low' : ''}">${'<i class="f"></i>'.repeat(seg)}${'<i></i>'.repeat(10 - seg)}</div>`);
+      setHTML($('ammo'), `<div class="am${s.slot === 0 ? ' sel' : ''}"><i>1</i><b>RIFLE</b><span>${s.reload > 0 ? 'reloading' : ''}</span><u>${s.ammo}</u></div><div class="am${s.slot === 1 ? ' sel' : ''}"><i>2</i><b>ROCKETS</b><span>RPG</span><u>${s.rpg}</u></div><div class="gun"><span class="big2">${s.slot === 1 ? s.rpg : s.mag}</span><small>${s.slot === 1 ? 'rockets left' : s.reload > 0 ? 'reloading' : 'in the magazine'}</small></div>`);
     }
   }
   // the capture message
@@ -974,18 +993,20 @@ function updateHUD(dt) {
     if (c) {
       const my = GAME.team, ownedByMe = c.owner === my;
       if (c.guardsLeft > 0) cm = `${c.p.name.toUpperCase()}<br><span style="color:var(--guard)">Clear the guards first: ${c.guardsLeft} left</span>`;
-      else if (ownedByMe && Math.abs(c.val) >= 1) cm = `${c.p.name.toUpperCase()} <span class="mut">· held</span>`;
-      else if (!canCapture(my, c.i)) cm = `${c.p.name.toUpperCase()}<br><span class="mut">Locked: take ${GAME.cps[my === 0 ? c.i - 1 : c.i + 1].p.name} first</span>`;
+      else if (ownedByMe && Math.abs(c.val) >= 1) cm = `${c.p.name.toUpperCase()}<br><span>Held</span>`;
+      else if (!canCapture(my, c.i)) cm = `${c.p.name.toUpperCase()}<br><span>Not open yet: take ${GAME.cps[my === 0 ? c.i - 1 : c.i + 1].p.name} first</span>`;
       else { const toward = my === 0 ? c.val : -c.val, contested = c.inside[1 - my] > 0; cm = `${contested ? 'CONTESTED' : toward >= 0 ? 'CAPTURING' : 'NEUTRALIZING'} ${c.p.name.toUpperCase()}<div class="bar"><i style="width:${(toward >= 0 ? toward : 1 + toward) * 100}%"></i></div>`; }
     }
   }
   if ($('capMsg')._v !== cm) { $('capMsg').innerHTML = cm; $('capMsg')._v = cm; }
   // prompt
   let pr = '';
-  if (alive && !s.veh) { const v = nearbyVehicle(s); if (v) pr = `E: drive the ${v.T.name}`; }
+  if (alive && !s.veh) { const v = nearbyVehicle(s); if (v) pr = `E  ·  Get in the ${(v.T || v.def).short || (v.T || v.def).name}`; }
   else if (alive && s.veh) pr = '';
   $('prompt').textContent = pr; $('prompt').classList.toggle('hidden', !pr);
-  $('help2').innerHTML = alive ? (inAir ? (s.veh.cls === 'jet' ? 'Aim to fly · W/S throttle · A/D roll · Q/E rudder · B airbrake · left click: fire weapon · 1-4 weapons · F gun · G flares · X fire handle · right click: cockpit view · J: bail out · M: map' : 'Nose follows your aim · W/S nose down/up · A/D roll · Space/C collective · H: hover mode · left click: fire · 1-4 weapons · F gun · N thermal (zoomed) · G flares · right click: zoom · E: get out (landed) · J: bail out · M: map') + `<br>${PLAYER.sp} SP` : s.veh ? 'W/S drive · A/D steer · mouse aims · right click: gun sight (Shift: more zoom) · 1-3 ammo · F MG · T missile · G smoke · R repair · X extinguish · E: get out · M: map' : 'WASD move · Shift sprint · C crouch · 1/2 weapons · R reload · E: get in · M: map') : '';
+  { const mode = !alive ? '' : inAir ? (s.veh.cls === 'jet' ? 'jet' : 'heli') : s.veh ? 'veh' : 'foot'; if (mode !== GAME.helpMode) { GAME.helpMode = mode; GAME.helpT = performance.now(); }
+    const show = GAME.helpOn || performance.now() - (GAME.helpT || 0) < 20000;
+    setHTML($('help2'), !alive ? '' : `<div class="spnow">SPAWN POINTS<b>${PLAYER.sp}</b></div>` + (show ? `<div class="keys2">${HELP[mode].map(([k, t]) => `<i>${k}</i><span>${t}</span>`).join('')}<em>F1 hides this</em></div>` : '<div class="f1">F1: keys</div>')); }
   // ally tags
   let n = 0;
   if (alive) for (const e of ENTS) {
@@ -1008,8 +1029,10 @@ function drawMapLayer(g, x0, z0, scale, W2, H2, big) { // world (x0,z0) at canva
     const [x, y] = P(c.p.x * 1000, c.p.y * 1000), r = Math.max(big ? 9 : 7, c.p.zone.hx * 1000 * scale);
     g.fillStyle = c.owner === 0 ? '#3b78e6' : c.owner === 1 ? '#e04a3a' : '#e8e4d0'; g.strokeStyle = '#111'; g.lineWidth = 2;
     g.beginPath(); g.arc(x, y, Math.min(r, big ? 18 : 12), 0, TAU); g.fill(); g.stroke();
-    g.fillStyle = c.owner === -1 ? '#111' : '#fff'; g.font = `bold ${big ? 14 : 11}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(c.i + 1), x, y + 1);
-    if (big) { g.font = '600 12px sans-serif'; g.fillStyle = '#fff'; g.strokeStyle = 'rgba(0,0,0,.8)'; g.lineWidth = 3; const t = c.p.name + (c.guardsLeft ? ` · ${c.guardsLeft} guards` : ''); g.strokeText(t, x, y + 26); g.fillText(t, x, y + 26); }
+    g.fillStyle = c.owner === -1 ? '#111' : '#fff'; g.font = `700 ${big ? 17 : 13}px 'Barlow Condensed', sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(c.i + 1), x, y + 1);
+    if (big) { const up = c.i % 2 === 1, ly = up ? y - 36 : y + 25; // names alternate above and below the road so that neighbours never run into each other
+      g.strokeStyle = 'rgba(0,0,0,.85)'; g.lineWidth = 3; g.font = "700 16px 'Barlow Condensed', sans-serif"; g.fillStyle = '#fff'; const t = c.p.name.toUpperCase(); g.strokeText(t, x, ly); g.fillText(t, x, ly);
+      if (c.guardsLeft) { g.font = "600 13px 'Barlow Condensed', sans-serif"; g.fillStyle = '#d6e0a8'; const t2 = `${c.guardsLeft} GUARDS`; g.strokeText(t2, x, ly + 15); g.fillText(t2, x, ly + 15); } }
   }
   for (const [t, b] of M.bases.entries()) { const [x, y] = P(b.x * 1000, b.y * 1000); g.fillStyle = TEAMS[t].css; g.fillRect(x - 7, y - 7, 14, 14); g.strokeStyle = '#111'; g.strokeRect(x - 7, y - 7, 14, 14); }
   const me = PLAYER.s && PLAYER.s.alive ? (PLAYER.s.veh || PLAYER.s) : null;
@@ -1028,7 +1051,7 @@ function drawMini() {
   const cv = $('mini'), g = cv.getContext('2d'), S = cv.width, me = PLAYER.s ? (PLAYER.s.veh || PLAYER.s).pos : CAM.pos, view = 2400, scale = S / view;
   g.fillStyle = '#1f4f6e'; g.fillRect(0, 0, S, S);
   g.save(); g.scale(1, 1); drawMapLayer(g, me.x - view / 2, me.z - view / 2, scale, S, S, false); g.restore();
-  g.fillStyle = 'rgba(255,255,255,.75)'; g.font = 'bold 18px sans-serif'; g.textAlign = 'center'; g.fillText('N', S / 2, 18);
+  g.fillStyle = 'rgba(255,255,255,.75)'; g.font = "700 22px 'Barlow Condensed', sans-serif"; g.textAlign = 'center'; g.fillText('N', S / 2, 18);
 }
 function drawBig() { const cv = $('bigCv'), g = cv.getContext('2d'); drawMapLayer(g, 0, 0, cv.width / WORLD_W, cv.width, cv.height, true); }
 
@@ -1050,10 +1073,12 @@ function renderDeploy() {
   if (sel.cls !== 'inf') sel.where = -1;
   if (sel.where >= 0 && !canSpawnAt(GAME.team, sel.where)) sel.where = -1;
   if ((SP_COST[sel.cls] || 0) > PLAYER.sp) sel.cls = 'inf';
-  $('dClasses').innerHTML = CLASSES.map(c => { const d = c.veh ? VEH[TEAM_VEH[GAME.team][c.id]] : c.air ? AIR[TEAM_AIR[GAME.team][c.id]] : null, name = d ? d.name : c.name, cost = SP_COST[c.id] || 0, poor = cost > PLAYER.sp;
-    const info = c.veh ? `${Math.round(d.vmax * 3.6)} km/h · ${d.mass} t · ${d.ammo.map(k => AMMO[k].type).join(' / ')}${d.atgm ? ' · ' + AMMO[d.atgm].name : ''}. ${d.info}` : c.air ? d.info : c.info;
-    return `<button class="cls${sel.cls === c.id ? ' on' : ''}" data-c="${c.id}" ${c.off || poor ? 'disabled' : ''}><b>${name}</b><span>${c.off ? '' : `<em class="spc">${cost ? cost + ' SP' : 'free'}</em> `}${info}</span></button>`; }).join('');
-  $('dTitle').innerHTML = `Choose how to go in <small class="mut" style="font-size:14px;font-weight:600">· ${PLAYER.sp} spawn points</small>`;
+  const defOf = c => c.veh ? VEH[TEAM_VEH[GAME.team][c.id]] : c.air ? AIR[TEAM_AIR[GAME.team][c.id]] : null, list = CLASSES.filter(c => !c.off);
+  $('dClasses').innerHTML = list.map(c => { const d = defOf(c), name = d ? d.name : c.name, cost = SP_COST[c.id] || 0, poor = cost > PLAYER.sp;
+    const line = c.veh ? `${Math.round(d.vmax * 3.6)} km/h · ${d.mass} t · ${d.ammo.map(k => AMMO[k].type).join(' / ')}${d.atgm ? ' · ' + AMMO[d.atgm].name : ''}` : c.air ? d.info.split(':')[0] : 'Rifle and 3 rockets';
+    return `<button class="urow${sel.cls === c.id ? ' on' : ''}" data-c="${c.id}" ${poor ? 'disabled' : ''}><b>${name}</b><span>${poor ? `Needs ${cost - PLAYER.sp} more spawn points` : line}</span><em>${cost || 'Free'}${cost ? '<small>SP</small>' : ''}</em></button>`; }).join('');
+  { const c = list.find(c => c.id === sel.cls) || list[0], d = defOf(c); $('dInfo').textContent = (d ? d.info : c.info) + (c.id === 'inf' ? '' : ' Vehicles and aircraft start at your base.'); }
+  $('dSp').textContent = PLAYER.sp;
   const spots = [{ i: -1, n: `${TEAMS[GAME.team].name} base` }, ...GAME.cps.filter(c => canSpawnAt(GAME.team, c.i)).map(c => ({ i: c.i, n: `${c.i + 1} · ${c.p.name}` }))];
   $('dWhere').innerHTML = spots.map(s => `<button class="btn${sel.where === s.i ? ' on' : ''}" data-w="${s.i}" ${s.i >= 0 && sel.cls !== 'inf' ? 'disabled title="Vehicles start at your base"' : ''}>${s.n}</button>`).join('');
   $('dWhere')._key = spots.map(s => s.i).join() + '|' + PLAYER.sp;
@@ -1063,7 +1088,7 @@ function refreshDeploy() { // the parts that change while you look at it (rebuil
   const key = [-1, ...GAME.cps.filter(c => canSpawnAt(GAME.team, c.i)).map(c => c.i)].join() + '|' + PLAYER.sp;
   if (key !== $('dWhere')._key) return renderDeploy();
   const g = $('dMap').getContext('2d'); drawMapLayer(g, 0, 0, $('dMap').width / WORLD_W, 751, 496, true);
-  const wait = Math.max(0, GAME.deployT); $('dGo').disabled = wait > 0; $('dWait').textContent = wait > 0 ? `Ready in ${Math.ceil(wait)} s` : '';
+  const wait = Math.max(0, GAME.deployT); $('dGo').disabled = wait > 0; $('dWait').textContent = wait > 0 ? `Ready in ${Math.ceil(wait)} s` : 'Click a place you hold on the map to start there on foot';
 }
 $('dClasses').onclick = e => { const b = e.target.closest('[data-c]'); if (!b || b.disabled) return; GAME.sel.cls = b.dataset.c; Sound.init(); Sound.play('ui'); renderDeploy(); };
 $('dWhere').onclick = e => { const b = e.target.closest('[data-w]'); if (!b || b.disabled) return; GAME.sel.where = +b.dataset.w; renderDeploy(); };
@@ -1085,8 +1110,10 @@ addEventListener('mousemove', e => {
   CAM.yaw += e.movementX * k; CAM.pitch = clamp(CAM.pitch - e.movementY * k, -1.35, 1.2);
 });
 addEventListener('keydown', e => {
+  if (e.code === 'F1') e.preventDefault();
   if (e.repeat) return; KEYS[e.code] = true;
   if (!GAME.on) return;
+  if (e.code === 'F1') GAME.helpOn = !GAME.helpOn, GAME.helpT = 0;
   // test cheat: press 0 six times in a row for 10,000 spawn points
   if (e.code === 'Digit0' || e.code === 'Numpad0') { const t = performance.now(); GAME.zeroN = t - (GAME.zeroT || 0) < 1500 ? (GAME.zeroN || 0) + 1 : 1; GAME.zeroT = t; if (GAME.zeroN >= 6) { GAME.zeroN = 0; PLAYER.sp += 10000; spPop('+10000 SP · test'); if (!$('deploy').classList.contains('hidden')) refreshDeploy(); } } else GAME.zeroN = 0;
   if (e.code === 'KeyE') interact();
@@ -1131,14 +1158,16 @@ $('eMenu').onclick = () => { $('end').classList.add('hidden'); toTitle(); };
 const PREF = (() => { try { return JSON.parse(localStorage.getItem('islandfront.v1') || '{}'); } catch (e) { return {}; } })();
 Object.assign(GAME, { map: PREF.map ?? 0, team: PREF.team ?? 0, bots: PREF.bots ?? 8, diff: PREF.diff ?? 1, gfx: PREF.gfx || 'optimised' });
 function renderTitle() {
-  $('mapPick').innerHTML = MAPS.map((m, i) => `<button class="mapcard${GAME.map === i ? ' on' : ''}" data-v="${i}"><b>${m.name}</b><span>${m.pitch}</span></button>`).join('');
+  $('mapPick').innerHTML = MAPS.map((m, i) => `<button class="mrow${GAME.map === i ? ' on' : ''}" data-v="${i}"><i>${String(i + 1).padStart(2, '0')}</i><b>${m.name}</b><span>${m.pitch}</span></button>`).join('');
   for (const [id, key] of [['teamPick', 'team'], ['botPick', 'bots'], ['diffPick', 'diff']]) [...$(id).children].forEach(b => b.classList.toggle('on', +b.dataset.v === GAME[key]));
   [...$('gfxPick').children].forEach(b => b.classList.toggle('on', b.dataset.v === GAME.gfx));
+  const gb = [...$('gfxPick').children].find(b => b.dataset.v === GAME.gfx); $('gfxNote').textContent = gb ? gb.title : '';
 }
+$('tTabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; for (const x of $('tTabs').children) x.classList.toggle('on', x === b); for (const pn of document.querySelectorAll('#title [data-pane]')) pn.hidden = pn.dataset.pane !== b.dataset.tab; };
 for (const [id, key] of [['mapPick', 'map'], ['teamPick', 'team'], ['botPick', 'bots'], ['diffPick', 'diff'], ['gfxPick', 'gfx']]) $(id).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; GAME[key] = key === 'gfx' ? b.dataset.v : +b.dataset.v; try { localStorage.setItem('islandfront.v1', JSON.stringify({ map: GAME.map, team: GAME.team, bots: GAME.bots, diff: GAME.diff, gfx: GAME.gfx })); } catch (err) {} renderTitle(); };
 function begin() {
   Sound.init();
-  $('title').classList.add('hidden'); $('loadText').textContent = `Building ${MAPS[GAME.map].name}${GAME.gfx === 'realistic' ? ' (realistic)' : GAME.gfx === 'ultra' ? ' (ultra)' : ''}…`; $('loading').classList.remove('hidden');
+  $('title').classList.add('hidden'); $('loadText').innerHTML = `Building ${MAPS[GAME.map].name}<small>${GAME.gfx === 'optimised' ? 'Optimised graphics.' : GAME.gfx === 'ultra' ? 'Ultra graphics: this takes several seconds.' : 'Realistic graphics: this takes several seconds.'}</small>`; $('loading').classList.remove('hidden');
   setTimeout(() => { startMatch(GAME.map, GAME.team, GAME.bots, GAME.diff); $('loading').classList.add('hidden'); }, 40);
 }
 function toTitle() { GAME.on = false; clearMatch(); $('hud').classList.add('hidden'); $('deploy').classList.add('hidden'); $('title').classList.remove('hidden'); document.exitPointerLock && document.exitPointerLock(); Sound.engine(false, 0); renderTitle(); }
