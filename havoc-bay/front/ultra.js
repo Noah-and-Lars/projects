@@ -52,6 +52,28 @@ function buildUltraSkyMat() {
   });
 }
 
+/* ---------------- the ground in Ultra ---------------- */
+/* Rock: layers of noise for the mottled face, thin dark fissures where a ridged noise peaks, warm and cool patches. No drawn shapes,
+   so it holds up both close to and stretched over a mountainside. */
+function ultraRockTex() {
+  if (ULTRA.rock) return ULTRA.rock;
+  const S = 512, a = tfbm(S, 18, 5, 901), r = tfbm(S, 9, 5, 907, true), c = tfbm(S, 13, 3, 913), // (no low octaves: stretched over a hillside they would show as a regular quilt)
+    sp = tnoise(S, 128, 921), r2 = tfbm(S, 11, 3, 931, true);
+  return ULTRA.rock = texOf(paint(S, (x, y, i) => {
+    const crack = Math.pow(clamp(r[i] * 1.12, 0, 1), 8) * .6 + Math.pow(clamp(r2[i] * 1.2, 0, 1), 10) * .3, v = (.58 + a[i] * .34) * (1 - crack) + sp[i] * .035;
+    const col = mixc([118, 112, 104], [146, 132, 112], clamp(c[i] * .9 + .5, 0, 1)); return [clamp(col[0] * v * 1.2, 0, 255), clamp(col[1] * v * 1.2, 0, 255), clamp(col[2] * v * 1.2, 0, 255)];
+  }));
+}
+/* Added to the terrain shader in Ultra: warm and cool tracts of rock, a patchwork of differently coloured fields (so the farmland reads from the air
+   the way real countryside does), damp sand at the waterline, and greener grass in sheltered hollows. */
+const ULTRA_TERRAIN_GLSL = `
+        { tAlb = mix(tAlb, tAlb * mix(vec3(.94, .95, .98), vec3(1.08, 1.0, .9), texture2D(tMacro, vWP.xz / 1900.0 + .2).r), w.z); // warm and cool tracts of rock, far too large to repeat in view
+          float fid = fract(sin(floor(vField.y * 31.0 + .5) * 12.9898 + floor(vField.x + .5) * 78.233) * 43758.5453), isField = smoothstep(.5, .9, vField.x);
+          vec3 tone = fid < .25 ? vec3(1.28, 1.16, .72) : fid < .5 ? vec3(.82, .98, .7) : fid < .75 ? vec3(1.08, 1.0, .82) : vec3(.9, .86, .74); // ripe grain, young green, stubble, bare
+          tAlb = mix(tAlb, tAlb * tone * (.88 + .3 * fract(fid * 7.3)), isField * mix(.35, .8, far));
+          tAlb *= mix(1.0, .72, w.w * (1.0 - smoothstep(.2, 1.4, vWP.y))); // wet sand is darker
+          float hollow = 1.0 - texture2D(tShade, vWP.xz / uWorld).g; tAlb *= mix(vec3(1.0), vec3(.86, 1.02, .8), w.x * clamp(hollow * 2.2, 0.0, 1.0)); }`;
+
 /* ---------------- the passes ---------------- */
 const ULTRA_ACES = `
   vec3 RRTAndODTFit(vec3 v) { vec3 a = v * (v + 0.0245786) - 0.000090537; vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081; return a / b; }
@@ -87,12 +109,17 @@ function ultraInit() {
       s += (texture2D(tIn, vUv + uDir * 3.2308).rgb + texture2D(tIn, vUv - uDir * 3.2308).rgb) * .070270;
       gl_FragColor = vec4(s, 1.0); }`, { tIn: { value: null }, uDir: { value: new THREE.Vector2() } });
   ULTRA.mFinal = ultraPass(`uniform sampler2D tScene, tDepth, tRays, tB0, tB1, tB2, tB3, tB4; uniform mat4 uInvProj, uCamW; uniform vec3 uCamPos, uSun, uFogCol, uSunCol;
-    uniform float uFogDen, uFogH, uHaze, uExposure, uRay, uBloom, uAspect, uSunVis, uTime; uniform vec2 uSunUv; ${ULTRA_ACES}
+    uniform float uFogDen, uFogH, uHaze, uExposure, uRay, uBloom, uAspect, uSunVis, uTime, uCloudT; uniform vec2 uSunUv; ${ULTRA_ACES}
     float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    float vnoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }
     void main(){
       vec3 col = texture2D(tScene, vUv).rgb; float d = texture2D(tDepth, vUv).x; if (!(dot(col, col) < 1e8)) col = vec3(0.0);
       if (d < .9999995) { // the air between here and there
         vec4 v = uInvProj * vec4(vUv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0); v /= v.w; float dist = length(v.xyz); vec3 dir = normalize((uCamW * vec4(v.xyz, 0.0)).xyz);
+        { // cloud shadows drifting over the land and sea: where a cloud stands between a spot and the sun, its light is cut
+          vec3 wp = uCamPos + dir * dist; vec2 cp = (wp.xz + uSun.xz / max(uSun.y, .1) * (1500.0 - wp.y)) / 2600.0 + vec2(uCloudT * .011, uCloudT * .004);
+          float cl = vnoise(cp) * .55 + vnoise(cp * 2.1 + 7.3) * .3 + vnoise(cp * 4.3 + 1.7) * .15;
+          col *= 1.0 - .34 * smoothstep(.52, .7, cl) * smoothstep(9000.0, 3000.0, dist); }
         float k = dir.y / uFogH, base = uFogDen * exp(-max(uCamPos.y, 0.0) / uFogH);
         float tau = (abs(k) < 1e-6 ? base * dist : base * (1.0 - exp(-k * dist)) / k) + dist * uHaze;
         float f = 1.0 - exp(-tau), sd = max(dot(dir, uSun), 0.0);
@@ -117,7 +144,7 @@ function ultraInit() {
       gl_FragColor = vec4(col, dot(col, vec3(.299, .587, .114)));
     }`, { tScene: { value: null }, tDepth: { value: null }, tRays: { value: null }, tB0: { value: null }, tB1: { value: null }, tB2: { value: null }, tB3: { value: null }, tB4: { value: null },
     uInvProj: { value: new THREE.Matrix4() }, uCamW: { value: new THREE.Matrix4() }, uCamPos: { value: new V3() }, uSun: { value: new V3() }, uFogCol: { value: new THREE.Color() }, uSunCol: { value: new THREE.Color() },
-    uFogDen: { value: 0 }, uFogH: { value: 300 }, uHaze: { value: 0 }, uExposure: { value: 1 }, uRay: { value: 1 }, uBloom: { value: 1 }, uAspect: { value: 1 }, uSunVis: { value: 0 }, uTime: { value: 0 }, uSunUv: { value: new THREE.Vector2() } });
+    uFogDen: { value: 0 }, uFogH: { value: 300 }, uHaze: { value: 0 }, uExposure: { value: 1 }, uRay: { value: 1 }, uBloom: { value: 1 }, uAspect: { value: 1 }, uSunVis: { value: 0 }, uTime: { value: 0 }, uCloudT: { value: 0 }, uSunUv: { value: new THREE.Vector2() } });
   // FXAA: finds edges by their brightness step and blends along them (brightness was stored in alpha by the pass before)
   ULTRA.mFxaa = ultraPass(`uniform sampler2D tIn; uniform vec2 uPx;
     void main(){ vec4 m = texture2D(tIn, vUv);
@@ -163,7 +190,7 @@ function ultraRender() {
   const f = U.mFinal.uniforms; f.tScene.value = U.scene.texture; f.tDepth.value = U.scene.depthTexture; f.tRays.value = U.raysB.texture;
   for (let i = 0; i < 5; i++) f['tB' + i].value = U.bloom[i][0].texture;
   f.uInvProj.value.copy(camera.projectionMatrixInverse); f.uCamW.value.copy(camera.matrixWorld); f.uCamPos.value.copy(camera.position); f.uSun.value.copy(SUN_DIR);
-  f.uFogCol.value.copy(U.fogCol); f.uSunCol.value.copy(U.sunFog); f.uFogDen.value = U.fogDen; f.uFogH.value = U.fogH; f.uHaze.value = U.haze; f.uExposure.value = U.exposure; f.uRay.value = U.ray; f.uBloom.value = U.bloomAmt; f.uAspect.value = as; f.uSunVis.value = vis; f.uSunUv.value.set(sx, sy); f.uTime.value = (performance.now() % 1000) / 1000;
+  f.uFogCol.value.copy(U.fogCol); f.uSunCol.value.copy(U.sunFog); f.uFogDen.value = U.fogDen; f.uFogH.value = U.fogH; f.uHaze.value = U.haze; f.uExposure.value = U.exposure; f.uRay.value = U.ray; f.uBloom.value = U.bloomAmt; f.uAspect.value = as; f.uSunVis.value = vis; f.uSunUv.value.set(sx, sy); f.uTime.value = (performance.now() % 1000) / 1000; f.uCloudT.value = SKY_U.uTime.value;
   ultraDraw(U.mFinal, U.ldr);
   U.mFxaa.uniforms.tIn.value = U.ldr.texture; U.mFxaa.uniforms.uPx.value.set(1 / w, 1 / h); ultraDraw(U.mFxaa, null);
 }

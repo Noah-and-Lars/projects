@@ -133,7 +133,7 @@ function bakeShade(M) { // R = sun visible (soft), G = sky visible (ambient occl
 function terrainMaterial() {
   const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95, metalness: 0, envMapIntensity: .32 });
   m.onBeforeCompile = sh => {
-    Object.assign(sh.uniforms, { tGrass: { value: TEX.grass }, tDirt: { value: TEX.dirt }, tRock: { value: TEX.rock }, tSand: { value: TEX.sand }, tMacro: { value: TEX.macro }, tShade: REAL_SHADE, uWorld: { value: new THREE.Vector2(WORLD_W, WORLD_H) } });
+    Object.assign(sh.uniforms, { tGrass: { value: TEX.grass }, tDirt: { value: TEX.dirt }, tRock: { value: WORLD.ultra && typeof ultraRockTex === 'function' ? ultraRockTex() : TEX.rock }, tSand: { value: TEX.sand }, tMacro: { value: TEX.macro }, tShade: REAL_SHADE, uWorld: { value: new THREE.Vector2(WORLD_W, WORLD_H) } });
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aSplat; attribute vec2 aField; varying vec4 vSplat; varying vec2 vField; varying vec3 vWP; varying vec3 vWN;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = aSplat; vField = aField; vWP = (modelMatrix * vec4(position, 1.0)).xyz; vWN = normal;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
@@ -165,8 +165,10 @@ function terrainMaterial() {
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, .6, vSplat.w * smoothstep(3.0, 0.5, vWP.y));')
       .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
         { vec2 sh = texture2D(tShade, vWP.xz / uWorld).rg; reflectedLight.directDiffuse *= sh.r; reflectedLight.directSpecular *= sh.r; reflectedLight.indirectDiffuse *= .55 + .45 * sh.g; }`);
+    if (WORLD.ultra && typeof ULTRA_TERRAIN_GLSL === 'string') sh.fragmentShader = sh.fragmentShader.replace('diffuseColor.rgb *= tAlb * (.66 + mac * .55);', ULTRA_TERRAIN_GLSL + '\n        diffuseColor.rgb *= tAlb * (.66 + mac * .55);');
   };
   m.extensions = { derivatives: true };
+  m.customProgramCacheKey = () => (WORLD.ultra ? 'terrainUltra' : 'terrain'); // (the Ultra level compiles its own version of this shader)
   return m;
 }
 function buildTerrainChunks(M) {

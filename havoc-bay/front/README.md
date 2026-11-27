@@ -40,6 +40,8 @@ Ultra is a third level above Realistic. It is the same world and layout under be
 - **Sky:** deep blue overhead, pale at the horizon, with clouds that are lit on the sun's side and glow at their thin edges.
 - **Sea:** the sun lays a path of glitter out to the horizon, worked out from how steep the waves are.
 - **Woods:** about 1.8 times as many trees, so the canopy closes when seen from the air. Trees don't block movement, so play is the same.
+- **Ground:** a new rock surface on the mountains, differently coloured fields so farmland reads as a patchwork from the air, darker wet sand at the waterline, and greener grass in sheltered hollows.
+- **Cloud shadows:** patches of shade drift across the land and sea.
 - **Finish:** film-style tone response, a slight grade and vignette, and edge smoothing.
 
 Optimised and Realistic look as they did before.
