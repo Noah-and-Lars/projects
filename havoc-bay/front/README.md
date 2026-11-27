@@ -98,7 +98,8 @@ Both sides fly the Mitsubishi F-2A; Red's wear a darker paint. Blue also has the
   - Losing an outer wing makes the jet roll towards that side.
   - A twin-engined jet with one engine out yaws but keeps flying on the other (the code supports it; the F-2A has one engine).
   - An Apache that loses its tail rotor spins. A dead transmission forces an autorotation landing.
-  - Fires spread until they burn out. J bails you out, and you come down on a parachute. E gets you out once you have landed.
+  - Fires spread until they burn out. J bails you out, and you come down on a parachute. E gets you out once you have landed. In a jet E is also the right rudder, so it only lets you out once the jet has stopped.
+- **The battle area:** fly more than 2.5 km past the edge of the map and you are warned to turn back. Nothing else happens; bot pilots turn round at 3 km.
 - **The F-2A** is a downloaded 3D model (`models/f2.js`). `gltf-models.js` reads it without a loader, so the game still opens straight from disk. It cuts the one-piece airframe into the damageable parts above, with hit areas fitted to the real shape. The model keeps its own JASDF blue camouflage, and its landing gear retracts after take-off.
 
 ### Flight model
@@ -142,8 +143,9 @@ The flight physics are written for this game (`aircraft.js`). The handling follo
 - **Instructor:** the nose follows your aim in pitch and yaw. Nose down pulls the helicopter forward, so you fly by looking where you want to go and adding collective to hold height.
 - **Hover mode (H):** the helicopter holds its place and height. W/A/S/D move it about gently, Space and C climb and descend, and close to the ground the descent is held to a soft landing. It also works the collective for you in an autorotation.
 - **Ground effect:** close to the ground the rotor needs less power.
-- **Turning:** at speed the helicopter banks into its turns and can't spin on the spot. In the hover it turns freely.
-- **Vortex ring:** sinking faster than about 4 m/s with little forward speed puts the rotor in its own downwash and it loses lift. Fly forward to get out. Hover mode keeps the descent below that.
+- **Turning:** at speed the helicopter banks into its turns and can't spin on the spot, and the tail fin keeps the nose pointing the way it is going. In the hover it turns freely.
+- **The sea:** water is a surface. Touching it in a helicopter or a jet is a crash.
+- **Vortex ring:** sinking faster than about 4 m/s with little forward speed puts the rotor in its own downwash and it loses lift. Fly forward to get out. Hover mode holds the descent to about 2.6 m/s when slow, lets you sink faster only above about 60 km/h, and puts the nose down to fly out if the rotor is caught anyway.
 - **One engine out:** the helicopter can't hover out of ground effect, but it flies on if you keep 100 km/h or more.
 - **Both engines out (autorotation):** lower the collective at once and the air coming up through the rotor keeps it turning; you come down at about 12 m/s at 150 km/h. Pull the nose up from about 25 m to flare, then raise the collective in the last 8 m to spend the rotor's spin on a soft touchdown. It takes practice. A run-on landing at up to 100 km/h is survivable.
 - **Tail rotor lost:** the Apache spins in the hover, harder the more power you pull. At speed the fin holds it nearly straight.
@@ -180,6 +182,9 @@ Bots earn and spend SP the same way. Each bot has its own skill level, and bots 
 - They flinch when hit and sometimes freeze.
 - They pick the wrong ammo, reload at bad moments and forget to crouch.
 - Their steering is sloppy and overshoots turns.
+- Drivers slow down and line up for bridges, steer round walls and buildings, and stop to repair knocked-out parts when nobody is shooting at them. A crew whose vehicle has been bogged down for over a minute gets out and walks; the abandoned vehicle is cleared away later.
+- A crew that is hit turns to look for whoever fired, and may pop smoke.
+- Bot pilots will not dive below the height a pull-out needs, give up attack runs that are too steep, watch for rising ground, and come back if a dogfight drifts more than 3 km off the map.
 - Bot pilots flare late or not at all, and their aim wanders, more so right after they are hit.
 
 ## Credits

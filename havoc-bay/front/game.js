@@ -57,6 +57,7 @@ function clearMatch() {
   for (const p of PROJS) if (p.m) scene.remove(p.m); PROJS.length = 0;
   for (const s of FX.sprites) scene.remove(s); FX.sprites.length = 0;
   $('feed').innerHTML = '';
+  if (typeof SMOKES !== 'undefined') SMOKES.length = 0; if (typeof THERMAL !== 'undefined') THERMAL.want = false; GAME.deaths = {}; // nothing carries over into the next match
 }
 
 /* ---------------- spawning ---------------- */

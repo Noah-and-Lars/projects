@@ -60,6 +60,7 @@ No datamined game files were used. Numbers for our helicopters come from the rea
 | Mouse aim | Instructor points the nose | Tilt keys | Nose follows the aim in pitch and yaw |
 | Hover mode | Holds position; soft landing | Missing | H toggles it |
 | Vortex ring | From 3 m/s descent at low speed | From about 8 m/s | From about 4 m/s |
+| Vortex ring in hover mode | Hover mode limits the descent near the ground | No protection | Hover mode holds the descent to 2.6 m/s when slow and flies out of vortex ring if caught |
 | Crew | Pilot and gunner, either can fly | One cockpit hit killed the helicopter | Two crew; it flies on with one |
 | Air-to-air missiles | Stinger on the Apache | None | 4 Stingers on the Apache, 4 Iglas on the Ka-52 (key 4); bot helicopters use them |
 | Rocket ballistic computer | Impact marker | None for rockets | Marker shows where rockets will land |
