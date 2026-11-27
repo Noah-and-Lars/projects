@@ -24,6 +24,21 @@ function readSave(key, json) {
 //   stat(): the player's best, read from what the game already saves (the games themselves aren't changed)
 window.GAMES = [
   {
+    id: 'rillstone',
+    title: 'Rillstone',
+    category: 'Sandbox',
+    tagline: 'Dig a riverside claim, pan for metal and gems, then build water-powered machines that mine for you.',
+    description: 'A first-person mining sandbox. Dig gravel, wash it in the river and sell what you find, then build drills, sluices, belts, furnaces and logic that run on water and earn while you watch. Single player or co-op with up to 4 friends.',
+    controls: 'Keyboard + mouse or controller',
+    keys: [['W A S D', 'Move'], ['Mouse', 'Look (click to capture)'], ['Space / C / Shift', 'Jump / crouch / sprint'], ['Left click', 'Use tool · place'], ['Right click', 'Machine panel · secondary'], ['E · G', 'Pick up · drop (hold G to aim)'], ['Q', 'Swap tool'], ['R / T / Y', 'Rotate'], ['F', 'Get in / out of vehicles'], ['B', 'Look up · guide'], ['M', 'Map'], ['Esc', 'Menu']],
+    path: 'rillstone/index.html',
+    thumb: 'rillstone/thumb.jpg',
+    added: '2026-11-27T22:30:00+11:00',
+    updated: '2026-11-27T22:30:00+11:00',
+    // Saves live in the game's own IndexedDB slots, which the site doesn't read.
+    stat() { return null; },
+  },
+  {
     id: 'wrecking-shift',
     title: 'Wrecking Shift',
     category: 'Sandbox',
@@ -459,6 +474,7 @@ window.COMING_SOON = [
 ];
 
 window.NEWS = [
+  { date: '2026-11-27', game: 'rillstone', imgs: ['rillstone/news/1.0-line.jpg', 'rillstone/news/1.0-town.jpg'], headline: 'Rillstone is out', text: 'New game: Rillstone. Dig a claim by the river, pan for metal and gems and sell them in town, then build water-powered drills, sluices, belts, furnaces and logic that mine for you. Play alone or in co-op with up to 4 friends.', post: "\u26cf\ufe0f NEW GAME: RILLSTONE!\n\n\ud83c\udf0a Pan the river for copper, silver, gold and gems\n\u2699\ufe0f Build water-powered drills, sluices and belts that mine for you\n\ud83d\udd25 Smelt ingots, mix alloys and craft rings and blades\n\ud83e\udd1d Co-op with up to 4 friends\n\nWhat will you build first? \ud83d\udc47\n\n#Rillstone #TheArcade #NewGame" },
   { date: '2026-11-27', game: 'wrecking-shift', imgs: ['wrecking-shift/news/1.0-blast.jpg', 'wrecking-shift/news/1.0-sunset.jpg'], headline: 'Wrecking Shift is out', text: 'New game: Wrecking Shift. A first-person heist game in a fully destructible voxel world: knock through walls with hammers, explosives and vehicles, grab the targets and get out before the alarm runs out. There is a free sandbox with a whole city to wreck.', post: "\ud83d\udca5 NEW GAME: WRECKING SHIFT!\n\n\ud83e\uddf1 Every wall, roof and car breaks voxel by voxel\n\ud83d\udcb0 Plan a heist, trip the alarm, grab the loot and escape\n\ud83d\udca3 Hammers, bombs, rockets, cars and a wheel loader\n\ud83c\udf06 A whole city to wreck in the sandbox\n\nWhat will you knock down first? \ud83d\udc47\n\n#WreckingShift #TheArcade #NewGame" },
   { date: '2026-11-27', game: 'snow-rider-3d', imgs: ['snow-rider-3d/news/1.1-leaderboard.jpg'], headline: 'Snow Rider 3D leaderboard', text: 'Snow Rider 3D 1.1: an online leaderboard. Your best run goes on the board with your Arcade account and follows you to every device. Tap the Leaderboard button in the game to see who is on top.', post: "\ud83c\udfc6 SNOW RIDER 3D now has a LEADERBOARD!\n\n\ud83d\udef7 Your best run goes on the board for everyone to see\n\ud83d\udcf1 Your best follows your Arcade account to every device\n\ud83e\udd47 Tap \ud83c\udfc6 Leaderboard in the game to see who's on top\n\nCan you take #1? \ud83d\udc47\n\n#snowrider3d #TheArcade #Leaderboard" },
   { date: '2026-11-26', game: 'snow-rider-3d', imgs: ['snow-rider-3d/news/1.0-title.jpg', 'snow-rider-3d/news/1.0-ride.jpg', 'snow-rider-3d/news/1.0-menu.jpg'], headline: 'Snow Rider 3D is out', text: 'New game: Snow Rider 3D. Ride a sled down a snowy mountain that never ends, steer around trees, rocks and snowmen and jump over obstacles. Collect gifts on the way and spend them in the shop.', post: "\u2744\ufe0f SNOW RIDER 3D is out now!\n\n\ud83d\udef7 Sled down a mountain that never ends\n\ud83c\udf32 Dodge trees, rocks and snowmen\n\u2b06\ufe0f Jump the obstacles\n\ud83c\udf81 Grab gifts and spend them in the shop\n\nHow far can you ride? \ud83d\udc47\n\n#snowrider3d #TheArcade #NewGame" },

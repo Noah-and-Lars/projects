@@ -30,6 +30,7 @@
 
   /* ---------- which saved entries belong to which game ---------- */
   var GROUPS = [
+    ['rillstone', /^rill-(settings|name|lb|mp-slots|mp-key)$/],
     ['wrecking-shift', /^wrecking-shift[-:]/],
     ['snow-rider-3d', /^snowrider3d\./],
     ['mile-zero', /^milezero\./],

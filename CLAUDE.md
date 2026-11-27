@@ -455,6 +455,12 @@ check `npx wrangler deployments status --name arcade-realtime` against the repo:
 
 ## Games
 
+- `rillstone/`: Rillstone (2026-11-27), first-person mining and water automation with 4-player co-op (three.js + Rapier in a
+  worker, WebAssembly inlined). The file is a build: source in Noah-and-Lars/projects, branch `claude/serene-darwin-vo71ui`,
+  folder `rillstone/` (`node tools/build.mjs` in `rillstone/` writes `rillstone/index.html`; copy it over). Save slots are in
+  IndexedDB (not synced by account.js); localStorage keys `rill-settings`, `rill-name`, `rill-lb`, `rill-mp-slots`,
+  `rill-mp-key` are one save group. Co-op and its leaderboard use rt.js; the server-backed Multiplayer worlds are off until
+  `MP_SERVER` is set in the source (`src/js/net/mp.js`). Desktop only. `?test=1` exposes `window.__rill`.
 - `wrecking-shift/`: Wrecking Shift (2026-11-27), first-person voxel-destruction heists (three.js + Rapier, WebAssembly
   inlined). The file is a build: source in Noah-and-Lars/projects, branch `teardown-voxel-game`, folder `wrecking-shift/`
   (TypeScript + Vite; `npm test` there). To update: `npm run build && node scripts/make-artifact.mjs <dir>`, then inline
