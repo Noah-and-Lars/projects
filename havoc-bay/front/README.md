@@ -26,16 +26,16 @@ Open `index.html` in this folder, or use the **Island Front** card on Havoc Bay'
 
 The title screen has a **Graphics** setting:
 
-- **Optimised**: the original lighter map. Runs on most computers.
+- **Optimised**: the lighter map. Runs on most computers. Painted ground texture, farm fields and hedgerows, grass round the camera (see [The map](#the-map)).
 - **Realistic**: European countryside in the style of Normandy and Poland. A finer 13 m terrain grid with textured ground, farm fields boxed in by hedgerows and dry stone walls, stone villages, mixed woods, wind-blown grass, wave water with shore foam, and a sky with sun and clouds. Needs a good graphics card.
   - **Villages**: stone farmhouses, half-timbered, plaster and brick houses and barns, with windows and doors set into the walls, shutters, sills, steep tiled or slate roofs with overhanging eaves and chimneys, and a church with a spire in every town. Gardens behind the houses have stone walls or hedges.
   - **Woods**: oak, beech, birch, Norway spruce and Scots pine, with hazel scrub thickening the forest edges and ferns on the forest floor. Each tree has three levels of detail: a full model with branches and leaf sprays up to 140 m, a lighter model up to 620 m, and a billboard beyond. Broadleaf crowns are built from clustered lobes, and the leaf cards' normals are bent onto each lobe and the crown so a tree shades as one volume, and the leaf textures keep their coverage in the smaller mipmaps so distant trees don't thin out.
-  - **Fields**: wheat, young crops in rows on bare soil, pasture and ploughed land with furrows, round each town, with hedgerow oaks.
+  - **Fields**: wheat, young crops in rows on bare soil, pasture and ploughed land with furrows, round each town and on isolated farms across the open lowland, with hedgerow oaks.
   - **Light**: a lower, warmer afternoon sun. Hills cast long shadows over the land beyond the shadow map, hollows get less sky light (both baked when the map is built), and the haze thickens naturally with distance. Leaves and grass glow when the sun is behind them.
-  - **Grass**: real curved, tapering blades within 28 m of the camera, finer grass cards to 80 m, coloured to match the ground's green and dry patches, all moving in gusts of wind. Meadows have patches of wildflowers (daisies, buttercups, clover, campion) and seed heads. The ground texture under it is a dense mat of fine blades, clover and dead stalks.
+  - **Grass**: real curved, tapering blades within 36 m of the camera, grass cards out to 190 m (two bands, the outer sparser with bigger cards, dark roots and light tips, drifts of straw-coloured seed heads; the ground under them stays shaded so they stand out), coloured to match the ground's green and dry patches, all moving in gusts of wind. Meadows have patches of wildflowers (daisies, buttercups, clover, campion) and seed heads. The ground texture under it is a dense mat of fine blades, clover and dead stalks.
   - **Soldiers**: proper proportions with smooth limbs, camouflage uniforms (woodland for Blue, tan for Red, grey for the guards), plate carriers with pouches, radios and hydration packs, helmets with covers and mounts, gloves, boots, and detailed rifles (M4, AK-74M, AKM). They walk and run with a proper gait, lean into a run, breathe when standing and keep their heads level.
 
-Everything in Realistic mode is generated in code; there are no image files. Optimised mode looks exactly as before.
+Everything in Realistic mode is generated in code; there are no image files.
 
 ### Ultra
 
@@ -53,7 +53,6 @@ Ultra is a third level above Realistic. It is the same world and layout under be
 - **Cloud shadows:** patches of shade drift across the land and sea.
 - **Finish:** film-style tone response, a slight grade and vignette, and edge smoothing.
 
-Optimised and Realistic look as they did before.
 
 If a graphics card cannot run the Ultra effects (a pass fails to compile, or the high-range picture buffer is refused), the game notices within the first few frames, shows the scene without them and says so; later matches then use the Realistic look.
 
@@ -292,10 +291,27 @@ Nothing is flat paint: the menus, windows, buttons and HUD plates carry a worn f
 
 All of it is in `ui.css`; the Barlow typeface and the wear tiles are packed into that file so the game still opens from disk.
 
+## The map
+
+What changed to make the battlefield less plain, on every graphics level unless it says otherwise:
+
+- **Airfields.** No road crosses an airfield: `detourAirfields` in `maps.js` leads a road that would pass through one round its edge (the shorter way, rounded corners) and cuts back one that ends inside. The runway is plain tarmac (no road paint) with edge lines, centreline, threshold bars, touchdown-zone and aiming-point markings and end bars; two taxiways with yellow centrelines lead to a slab-concrete apron. Paved surfaces are drawn pulled towards the camera, so the terrain no longer flickers through them from height. Airfields are mown grass: nothing grows on the pavement, and there are no bushes, rocks or ferns anywhere on them.
+- **Ground (Optimised).** A painted ground texture (grass strokes, clumps, soil specks) sampled at three scales with large light and dark drifts, instead of flat noise (`ground.js`).
+- **Grass (Optimised).** Clumps of crossed blade cards round the camera out to 55 m, coloured from the terrain under them; none on roads, airfield pavement, beaches or steep slopes, sparse in compounds and woods. About 13,000 clumps of 6 triangles.
+- **Farmland.** One field layout for every level (`farmFrames` in `ground.js`): the field systems round each village plus 7 to 15 isolated farms per map on open lowland, as whole 160 by 110 m fields with ragged edges. Realistic paints crops, furrows and hedgerows from it; Optimised paints the fields per pixel in its ground shader (ploughed, wheat, young crop rows, pasture, hedge lines) and has instanced hedgerows along about a third of the boundaries, drawn within 1.6 km.
+- **Trees in the open.** Copses, lone trees over pasture and hillside, and scrub on rough slopes (`openCountryTrees` in `ground.js`), kept off fields, roads, compounds, villages, airfields, beaches and cliffs. Both levels plant the same ones.
+- **Burning wrecks.** The roadside wrecks nearest the front and a few field fires burn all match, with flickering flames and tall smoke columns leaning with the wind, seen from kilometres away (`battlefield.js`).
+- **Distant battle.** Every 2 to 6.5 seconds a shell lands 1 to 4 km from the camera: a flash, thrown-up earth and smoke, a far-off boom and a crater. It is scenery only and never lands within 80 m of anyone.
+- **No man's land.** About 560 shell craters and some wide scorched patches across the middle of the map, thickest round the fort, there from the start.
+- **Bases.** Container yards (some stacked two high), three rows of barracks tents, two rows of parked trucks, a fuel depot, camouflage-net shelters, corner watchtowers, a radio mast and crates (`dressBase` in `battlefield.js`). A site's `keepClear` list (spawn spots, helipads, the flag, the gun pits) is respected by Realistic's compound decorator too.
+- **Smoke and fire, instanced.** Every puff of smoke and every flame in the game (explosions, gun smoke, burning vehicles, dust) is drawn in two instanced meshes instead of a sprite each, so heavy fighting costs two draw calls rather than hundreds. They look the same as before.
+
+Measured in the test browser on Kettle Lake after a 60-second bot match: Optimised about 220 draw calls and 1.9 million triangles; Realistic about 720 draw calls and 2.3 million triangles. On Ironback Ridge, Realistic reaches about 3.4 million triangles, mostly from the longer grass.
+
 ## Chaos, craters and grit
 
 - **Automatic artillery.** Every checkpoint a side holds shells an enemy within 4.5 km of it every 6 to 11 seconds (half the time the player, if in reach). The rounds are the howitzers' 155 mm shells with the same damage and falling whistle, dropped from high above, and land 14 to 48 m off target, so the fighting is under steady fire. Tune it in `CHAOS` at the top of `chaos.js`.
-- **Craters.** Every big blast (tank HE and up, bombs, shells) leaves a scorched crater mark on the ground that stays until the match ends (up to 700, oldest replaced first). They are marks only: the ground itself is not dug out.
+- **Craters.** Every big blast (tank HE and up, bombs, shells) leaves a scorched crater mark on the ground that stays until the match ends (up to 1,200, oldest replaced first). Each crater is a small grid laid on the ground point by point, so it shows on slopes too. They are marks only: the ground itself is not dug out.
 - **Grit.** The terrain colours are washed towards a dry, muddy brown and darkened a little, in every graphics level, and the light bounced off the ground is browner. Trees and grass keep their own colours.
 - **Moving tracks.** The T-90AM's track texture slides with the tank's speed (`tracks` and `trackScroll` in `models/config.js`). The built-in tanks already had moving track links.
 
@@ -385,6 +401,8 @@ Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://g
 | `models/mig35.js`, `models/a10.js`, `models/fa18.js` | Extra jet looks for the title screen's jet choice (fitted by `kitJet` in `model-kit.js`) |
 | `props.js` | Scenery props from downloaded models: drawn instanced, culled by distance, with colliders; where they go |
 | `chaos.js` | Battlefield chaos and grit: automatic artillery from the checkpoints, lasting crater marks, the browner terrain grade |
+| `ground.js` | Ground detail: the Optimised ground texture and grass, the farm field layout every level uses (and Optimised's field shader and hedgerows), trees in the open country |
+| `battlefield.js` | Burning wrecks and smoke columns, the distant battle, no man's land, base dressing, and the instanced smoke and fire every effect uses |
 | `models/config.js` | Which downloaded model is used for which unit, and how it is fitted |
 | `tools/pack_model.py` | Packs a glTF or GLB download into `models/<key>.js` |
 | `docs/` | Research notes on War Thunder's tank and helicopter mechanics, and how to add models (`docs/models.md`) |

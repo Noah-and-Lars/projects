@@ -11,19 +11,21 @@ const SMOKE_MAX = 1600, FIRE_MAX = 160;
 function billboardMat(tex, additive) { // camera-facing quads; per-instance position, size, opacity and shade; fog for the smoke
   const mat = new THREE.ShaderMaterial({
     uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { map: { value: tex } }]),
-    vertexShader: `attribute vec4 aPS; attribute vec2 aAS; varying vec2 vUv; varying float vA; varying float vS;
+    vertexShader: `attribute vec4 aPS; attribute vec2 aAS; attribute vec3 aCol; varying vec2 vUv; varying float vA; varying vec3 vCol;
       #include <fog_pars_vertex>
       void main() {
-        vUv = uv; vA = aAS.x; vS = aAS.y;
+        vUv = uv; vA = aAS.x; vCol = aCol;
         vec4 mvPosition = modelViewMatrix * vec4(aPS.xyz, 1.0); mvPosition.xy += position.xy * aPS.w;
         gl_Position = projectionMatrix * mvPosition;
         #include <fog_vertex>
       }`,
-    fragmentShader: `uniform sampler2D map; varying vec2 vUv; varying float vA; varying float vS;
+    fragmentShader: `uniform sampler2D map; varying vec2 vUv; varying float vA; varying vec3 vCol;
       #include <fog_pars_fragment>
       void main() {
-        vec4 t = texture2D(map, vUv); gl_FragColor = vec4(t.rgb * vS, t.a * vA); if (gl_FragColor.a < .01) discard;
+        vec4 t = texture2D(map, vUv); gl_FragColor = vec4(t.rgb * vCol, t.a * vA); if (gl_FragColor.a < .01) discard;
         ${additive ? '' : '#include <fog_fragment>'}
+        #include <tonemapping_fragment>
+        #include <encodings_fragment>
       }`,
     transparent: true, depthWrite: false, fog: !additive, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
   });
@@ -34,13 +36,14 @@ function billboardCloud(max, tex, additive) {
   g.index = q.index; g.setAttribute('position', q.attributes.position); g.setAttribute('uv', q.attributes.uv);
   g.setAttribute('aPS', new THREE.InstancedBufferAttribute(new Float32Array(max * 4), 4).setUsage(THREE.DynamicDrawUsage));
   g.setAttribute('aAS', new THREE.InstancedBufferAttribute(new Float32Array(max * 2), 2).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('aCol', new THREE.InstancedBufferAttribute(new Float32Array(max * 3), 3).setUsage(THREE.DynamicDrawUsage));
   g.instanceCount = 0;
   const m = new THREE.Mesh(g, billboardMat(tex, additive)); m.frustumCulled = false; m.renderOrder = additive ? 7 : 6;
   return { mesh: m, list: [], max };
 }
 
 /* Called while the world is built (props.js passes each wreck it places). */
-function battleReset() { BATTLE.sites = []; BATTLE.cand = []; BATTLE.nextFar = 3; if (BATTLE.puffs) BATTLE.puffs.list = []; if (BATTLE.fires) BATTLE.fires.list = []; }
+function battleReset() { BATTLE.sites = []; BATTLE.cand = []; BATTLE.nextFar = 3; if (BATTLE.puffs) BATTLE.puffs.list = []; if (BATTLE.fires) BATTLE.fires.list = []; if (FXI.smoke) FXI.smoke.list = [], FXI.fire.list = []; }
 function battleWreck(x, z, y) { (BATTLE.cand = BATTLE.cand || []).push([x, z, y]); }
 
 function battleBuild(M) {
@@ -87,19 +90,21 @@ function battleUpdate(cam, focus) {
     const x = c.x * 1000 + Math.cos(ang) * r, z = c.y * 1000 + Math.sin(ang) * r, d = Math.hypot(x - cam.x, z - cam.z), h = terrainY(x, z);
     const clear = !ENTS.some(e => e.alive && Math.hypot(e.pos.x - x, e.pos.z - z) < 80);
     if (d > 1000 && d < 4200 && h > 2 && clear) {
-      const p = new V3(x, h, z); explosion(p, 9 + Math.random() * 5);
+      // drawn with the instanced fire and smoke, not the sprite explosion (a sprite is a draw call each, and these are only scenery)
+      const p = new V3(x, h, z), sz = 9 + Math.random() * 5; craterAt(p, sz);
       if (typeof Sound !== 'undefined') Sound.at('bigboom', p, .55);
-      for (let k = 0; k < 6; k++) battleEmit(BATTLE.puffs, x + (Math.random() - .5) * 8, h + 3, z + (Math.random() - .5) * 8, W.x * 1.5 + (Math.random() - .5) * 2, 3 + Math.random() * 3, W.z * 1.5 + (Math.random() - .5) * 2, 12 + Math.random() * 6, 8, 34, .55, .42);
+      for (let k = 0; k < 5; k++) battleEmit(BATTLE.fires, x + (Math.random() - .5) * 6, h + 2 + Math.random() * 4, z + (Math.random() - .5) * 6, (Math.random() - .5) * 6, 4 + Math.random() * 6, (Math.random() - .5) * 6, .25 + Math.random() * .25, sz * 1.2, sz * 2.4, 1, 1); // the flash
+      for (let k = 0; k < 9; k++) battleEmit(BATTLE.puffs, x + (Math.random() - .5) * 10, h + 2 + Math.random() * 4, z + (Math.random() - .5) * 10, W.x * 1.5 + (Math.random() - .5) * 4, 3 + Math.random() * 4, W.z * 1.5 + (Math.random() - .5) * 4, 10 + Math.random() * 8, 7, 30, .7, k < 3 ? .2 : .42); // earth and smoke thrown up
     }
   }
   // integrate and write the instance buffers (sorted far to near so the smoke blends properly)
   for (const c of [BATTLE.puffs, BATTLE.fires]) {
     const L = c.list; for (let i = L.length - 1; i >= 0; i--) { const p = L[i]; p.t += dt; if (p.t >= p.life) { L[i] = L[L.length - 1]; L.pop(); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; p.vy *= 1 - .05 * dt; p.vx += W.x * .25 * dt; p.vz += W.z * .25 * dt; }
     if (c === BATTLE.puffs) L.sort((a, b) => ((b.x - cam.x) ** 2 + (b.z - cam.z) ** 2) - ((a.x - cam.x) ** 2 + (a.z - cam.z) ** 2));
-    const g = c.mesh.geometry, PS = g.attributes.aPS.array, AS = g.attributes.aAS.array;
-    for (let i = 0; i < L.length; i++) { const p = L[i], f = p.t / p.life, size = p.s0 + (p.s1 - p.s0) * Math.sqrt(f), alpha = p.a * Math.min(1, f * 6) * Math.pow(1 - f, .65);
-      PS[i * 4] = p.x; PS[i * 4 + 1] = p.y; PS[i * 4 + 2] = p.z; PS[i * 4 + 3] = size; AS[i * 2] = alpha; AS[i * 2 + 1] = c === BATTLE.puffs ? p.shade * (1 + f * .9) : 1; }
-    g.instanceCount = L.length; g.attributes.aPS.needsUpdate = true; g.attributes.aAS.needsUpdate = true;
+    const g = c.mesh.geometry, PS = g.attributes.aPS.array, AS = g.attributes.aAS.array, CO = g.attributes.aCol.array;
+    for (let i = 0; i < L.length; i++) { const p = L[i], f = p.t / p.life, size = p.s0 + (p.s1 - p.s0) * Math.sqrt(f), alpha = p.a * Math.min(1, f * 6) * Math.pow(1 - f, .65), sh = c === BATTLE.puffs ? p.shade * (1 + f * .9) : 1;
+      PS[i * 4] = p.x; PS[i * 4 + 1] = p.y; PS[i * 4 + 2] = p.z; PS[i * 4 + 3] = size; AS[i * 2] = alpha; CO[i * 3] = CO[i * 3 + 1] = CO[i * 3 + 2] = sh; }
+    g.instanceCount = L.length; g.attributes.aPS.needsUpdate = true; g.attributes.aAS.needsUpdate = true; g.attributes.aCol.needsUpdate = true;
   }
 }
 
@@ -131,4 +136,28 @@ function dressBase(site, team, seed) {
   box(-95, -150, .5, 26, .5, 0x8d9091, { collide: false }); box(-95, -150, 2.4, .3, 2.4, 0x8d9091, { y: site.y0 + 22, collide: false }); box(-88, -150, 4, 2.6, 3, 0x9b9585);
   // loose crates and pallets round the stores
   for (let k = 0; k < 26; k++) { const x = -80 + R() * 70, z = (R() < .5 ? -1 : 1) * (185 + R() * 40), s = .9 + R() * .6; box(x, z, s * 1.2, s, s, R() < .7 ? CRATE : 0x5a6340, { collide: s > 1.2 }); }
+}
+
+/* ---------------- the game's own smoke and fire, instanced ----------------
+   units.js draws every puff of smoke and every flame as its own THREE.Sprite, a draw call each: one explosion is 20 to 40 of them, and with the
+   checkpoint artillery the fighting could reach several hundred draw calls. sprite() is redefined here to put the same particles (same size, growth,
+   life, rise, colour and fade) into two instanced meshes, so all of them together cost two draw calls. */
+const FXI = { smoke: null, fire: null };
+function fxiInit() { if (FXI.smoke) return; FXI.smoke = billboardCloud(5000, SMOKE_TEX, false); FXI.fire = billboardCloud(2500, FIRE_TEX, true); FXI.smoke.mesh.renderOrder = 5; FXI.fire.mesh.renderOrder = 5; scene.add(FXI.smoke.mesh, FXI.fire.mesh); }
+sprite = function (pos, size, grow, life, color, fire, vy = 0, opacity = 1) {
+  fxiInit(); const c = fire ? FXI.fire : FXI.smoke, col = FXI._c || (FXI._c = new THREE.Color()); col.setHex(color);
+  const p = { position: pos.clone(), userData: { t: 0, life, size, grow, vy, op: opacity }, r: col.r, g: col.g, b: col.b };
+  if (c.list.length < c.max) c.list.push(p); return p;
+};
+{ const step = updateFX; updateFX = function (dt) { step(dt); fxiStep(dt); }; }
+function fxiStep(dt) {
+  if (!FXI.smoke) return; const cam = camera.position;
+  for (const c of [FXI.smoke, FXI.fire]) {
+    const L = c.list; for (let i = L.length - 1; i >= 0; i--) { const p = L[i], u = p.userData; u.t += dt; if (u.t >= u.life) { L[i] = L[L.length - 1]; L.pop(); continue; } p.position.y += u.vy * dt; }
+    if (c === FXI.smoke) L.sort((a, b) => b.position.distanceToSquared(cam) - a.position.distanceToSquared(cam));
+    const g = c.mesh.geometry, PS = g.attributes.aPS.array, AS = g.attributes.aAS.array, CO = g.attributes.aCol.array;
+    for (let i = 0; i < L.length; i++) { const p = L[i], u = p.userData, f = u.t / u.life;
+      PS[i * 4] = p.position.x; PS[i * 4 + 1] = p.position.y; PS[i * 4 + 2] = p.position.z; PS[i * 4 + 3] = u.size + u.grow * f; AS[i * 2] = u.op * (1 - f) * (1 - f * .3); CO[i * 3] = p.r; CO[i * 3 + 1] = p.g; CO[i * 3 + 2] = p.b; }
+    g.instanceCount = L.length; g.attributes.aPS.needsUpdate = true; g.attributes.aAS.needsUpdate = true; g.attributes.aCol.needsUpdate = true;
+  }
 }
