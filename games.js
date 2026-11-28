@@ -476,6 +476,21 @@ window.GAMES = [
     badge: 'DISCONTINUED',
     stat() { const w = readSave('blockcraft-worlds', true); return w && w.length ? w.length + (w.length === 1 ? ' world' : ' worlds') : null; },
   },
+  {
+    id: 'eaglercraft',
+    title: 'Eaglercraft',
+    category: 'Sandbox',
+    tagline: 'The full Minecraft 1.12.2 experience in your browser with multiplayer.',
+    description: 'Eaglercraft runs real Minecraft 1.12.2 in a browser tab with no install. Mine, build and survive in a full block world – redstone, the Nether, the End, all vanilla mobs – and join live multiplayer servers.',
+    controls: 'Keyboard + mouse',
+    keys: [['W A S D', 'Walk / strafe'], ['Mouse', 'Look around'], ['Left click', 'Break block / attack'], ['Right click', 'Place / use / eat'], ['Space', 'Jump'], ['Shift', 'Sneak / descend in water'], ['Ctrl', 'Sprint'],
+           ['E', 'Inventory and crafting'], ['1–9', 'Hotbar'], ['Q', 'Drop item'], ['T', 'Chat'], ['F', 'Toggle fly (creative)'], ['Esc', 'Pause / options']],
+    path: 'eaglercraft/index.html',
+    thumb: 'eaglercraft/thumb.svg',
+    added: '2026-11-28T12:00:00+11:00',
+    updated: '2026-11-28T12:00:00+11:00',
+    stat() { return null; },
+  },
 ];
 
 // What's new on the home page, newest first
@@ -486,6 +501,8 @@ window.COMING_SOON = [
 ];
 
 window.NEWS = [
+  { date: '2026-11-28', game: 'eaglercraft', headline: 'New: Eaglercraft – Minecraft 1.12.2 in your browser', text: "New game: Eaglercraft. Play the full Minecraft 1.12.2 in a browser tab with no install – mine, build and survive in a block world with redstone, the Nether and the End, all vanilla mobs, and join live multiplayer servers.",
+    post: "⛏️ NEW GAME: EAGLERCRAFT!\n\nThe full Minecraft 1.12.2 experience in your browser with no download\n🏔️ Mine, build and survive in a block world\n🔴 Redstone, the Nether, the End and all vanilla mobs\n🌐 Live multiplayer servers built in\n\nOpen it on The Arcade now 👇\n\n#Eaglercraft #Minecraft #TheArcade #NewGame" },
   { date: '2026-11-28', href: 'index.html', imgs: ['news/min-specs.jpg'], headline: 'New: minimum specs for every game', text: "Home: every game's Details now has a Minimum specs section, so you can see if your computer, phone or Chromebook will run it before you start: the device, memory, processor and graphics it needs, plus the browser and internet speed for online play. The games are in four groups, from 2D games that run on almost anything to big 3D games like Storm Drop, Havoc Bay, Mile Zero and Poly Racer that need a stronger computer.",
     post: "🖥️ New on The Arcade: MINIMUM SPECS!\n\n📋 Open any game's Details to see what it needs to run\n💾 Device, memory, processor and graphics\n🌐 Browser and internet speed for online play\n🟢 2D games run on almost anything, the big 3D ones need a stronger computer\n\nWill your device keep up? 👀" },
   { date: '2026-11-28', href: 'index.html', imgs: ['news/home-banners-1.jpg', 'news/home-banners-2.jpg', 'news/home-banners-3.jpg'], headline: 'New: a cinematic shot for every game', text: 'Home: the big screen at the top now shows its own cinematic shot for every game, taken in the game itself (a jet launching off the carrier in Havoc Bay, a breach in Siege, a dusk street in Wrecking Shift and so on). It stays the same when a game updates, so the screen no longer jumps to the newest patch screenshot. Cards and More info are unchanged.',
