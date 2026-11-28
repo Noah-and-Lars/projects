@@ -356,32 +356,51 @@ function sampleKm(M, x, y) { // bilinear height, km in
   return lerp(lerp(H[id], H[id + 1], u), lerp(H[id + GW], H[id + GW + 1], u), v);
 }
 
-/* the map picture for the minimap and the big map (one pixel per grid point) */
-const LAND_RAMP = [[0, [228, 216, 168]], [6, [208, 210, 158]], [25, [188, 203, 140]], [90, [163, 186, 117]], [190, [151, 170, 104]], [300, [178, 165, 116]], [440, [160, 138, 102]], [600, [148, 139, 128]], [780, [196, 192, 184]], [1000, [236, 234, 228]]];
-const SEA_RAMP = [[-160, [22, 62, 92]], [-60, [33, 88, 120]], [-22, [48, 120, 148]], [-7, [80, 158, 174]], [0, [136, 198, 196]]];
+/* the map picture for the minimap, the deploy screen and the big map: a printed tactical map, two pixels per grid point.
+   Muted tints by height, hill shading, a contour every 50 m (heavier every 200 m), woods, roads, runways, a dark coastline, paper grain.
+   The grid, names and markers are drawn over it each time (game.js), so they stay sharp at any size. */
+const LAND_RAMP = [[0, [166, 160, 124]], [8, [156, 156, 118]], [40, [150, 153, 112]], [120, [154, 149, 110]], [220, [164, 150, 112]], [340, [171, 153, 117]], [480, [172, 158, 130]], [640, [180, 172, 152]], [820, [198, 194, 182]], [1000, [216, 214, 206]]];
+const SEA_RAMP = [[-160, [19, 28, 37]], [-60, [23, 35, 46]], [-22, [28, 44, 57]], [-7, [36, 56, 70]], [0, [50, 74, 87]]];
 function ramp(st, h, out) {
   if (h <= st[0][0]) { const c = st[0][1]; out[0] = c[0]; out[1] = c[1]; out[2] = c[2]; return; }
   for (let k = 1; k < st.length; k++) if (h <= st[k][0]) { const a = st[k - 1], b = st[k], t = (h - a[0]) / (b[0] - a[0]); out[0] = lerp(a[1][0], b[1][0], t); out[1] = lerp(a[1][1], b[1][1], t); out[2] = lerp(a[1][2], b[1][2], t); return; }
   const c = st[st.length - 1][1]; out[0] = c[0]; out[1] = c[1]; out[2] = c[2];
 }
 function mapImage(M) {
-  const cv = document.createElement('canvas'); cv.width = GW; cv.height = GH;
-  const g = cv.getContext('2d'), img = g.createImageData(GW, GH), d = img.data, col = [0, 0, 0], H = M.H;
-  for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) {
-    const id = j * GW + i, h = H[id], o = id * 4;
-    if (h < 0) ramp(SEA_RAMP, h, col);
+  const S = 2, W = GW * S, Hh = GH * S, cv = document.createElement('canvas'); cv.width = W; cv.height = Hh;
+  const g = cv.getContext('2d'), img = g.createImageData(W, Hh), d = img.data, col = [0, 0, 0], H = M.H, F = M.F;
+  const hs = new Float32Array(W * Hh), fs = new Float32Array(W * Hh);
+  for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) { // heights and woods, smoothed between grid points
+    const fx = clamp((x + .5) / S - .5, 0, GW - 1.001), fy = clamp((y + .5) / S - .5, 0, GH - 1.001), i = fx | 0, j = fy | 0, u = fx - i, v = fy - j, id = j * GW + i;
+    hs[y * W + x] = lerp(lerp(H[id], H[id + 1], u), lerp(H[id + GW], H[id + GW + 1], u), v);
+    fs[y * W + x] = lerp(lerp(F[id], F[id + 1], u), lerp(F[id + GW], F[id + GW + 1], u), v);
+  }
+  let seed = (M.seed || 1) * 9301 + 49297; const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
+    const id = y * W + x, h = hs[id], o = id * 4, r = x < W - 1 ? hs[id + 1] : h, b = y < Hh - 1 ? hs[id + W] : h, l = x > 0 ? hs[id - 1] : h, t = y > 0 ? hs[id - W] : h;
+    if (h < 0) { ramp(SEA_RAMP, h, col); if (r >= 0 || b >= 0 || l >= 0 || t >= 0) { col[0] = 14; col[1] = 20; col[2] = 26; } } // (the dark line is the coast)
     else {
       ramp(LAND_RAMP, h, col);
-      if (M.F[id]) { col[0] = lerp(col[0], 66, .7); col[1] = lerp(col[1], 110, .7); col[2] = lerp(col[2], 58, .7); }
-      const dx = (H[Math.min(id + 1, H.length - 1)] - H[Math.max(id - 1, 0)]) / (2 * CELL) * 2, dy = (H[Math.min(id + GW, H.length - 1)] - H[Math.max(id - GW, 0)]) / (2 * CELL) * 2;
-      const f = (dx * .62 + dy * .62 + .48) / Math.hypot(dx, dy, 1) / .48 / Math.hypot(.62, .62, .48) * Math.hypot(.62, .62, .48);
-      const m = clamp(1 + (f - 1) * .8, .5, 1.3); col[0] *= m; col[1] *= m; col[2] *= m;
+      const f = clamp((fs[id] - .35) / .3, 0, 1); if (f > 0) { const k = f * (.6 + .08 * ((x * 7 + y * 13) % 5 === 0)); col[0] = lerp(col[0], 92, k); col[1] = lerp(col[1], 108, k); col[2] = lerp(col[2], 80, k); }
+      const dx = (r - l) / (CELL / S) , dy = (b - t) / (CELL / S), sh = (dx * .62 + dy * .62 + .48) / Math.hypot(dx, dy, 1) / .48;
+      const m = clamp(1 + (sh - 1) * .85, .55, 1.25); col[0] *= m; col[1] *= m; col[2] *= m;
+      const c0 = Math.floor(h / 50); if (c0 !== Math.floor(r / 50) || c0 !== Math.floor(b / 50)) { const k = Math.max(c0, Math.floor(r / 50), Math.floor(b / 50)) % 4 === 0 ? .66 : .82; col[0] *= k * .98; col[1] *= k * .95; col[2] *= k * .9; } // contours, in brown ink
     }
-    d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; d[o + 3] = 255;
+    const n = (rnd() - .5) * 11; // paper grain
+    d[o] = col[0] + n; d[o + 1] = col[1] + n; d[o + 2] = col[2] + n; d[o + 3] = 255;
   }
   g.putImageData(img, 0, 0);
-  g.save(); g.scale(GW / KMW, GH / KMH); g.lineCap = g.lineJoin = 'round';
-  for (const r of M._roads) { g.beginPath(); r.P.forEach((p, k) => k ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.strokeStyle = r.main ? '#e9a93a' : 'rgba(110,70,40,.7)'; g.lineWidth = r.main ? .045 : .025; g.stroke(); }
+  g.save(); g.scale(W / KMW, Hh / KMH); g.lineCap = g.lineJoin = 'round';
+  const path = P => { g.beginPath(); P.forEach((p, k) => k ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); };
+  for (const a of M.airfields) { g.save(); g.translate(a.x, a.y); g.rotate(a.ang); g.fillStyle = '#23292c'; g.fillRect(-a.len / 2 - .012, -.045, a.len + .024, .09); g.fillStyle = '#c4c4b8'; g.fillRect(-a.len / 2, -.033, a.len, .066); g.restore(); }
+  for (const r of M._roads) if (!r.main) { path(r.P); g.setLineDash([.09, .06]); g.strokeStyle = 'rgba(58,44,30,.85)'; g.lineWidth = .026; g.stroke(); }
+  g.setLineDash([]);
+  for (const r of M._roads) if (r.main) { path(r.P); g.strokeStyle = '#2a2a22'; g.lineWidth = .078; g.stroke(); }
+  for (const r of M._roads) if (r.main) { path(r.P); g.strokeStyle = '#e4dab4'; g.lineWidth = .044; g.stroke(); }
   g.restore();
+  // the creases of a map that has been folded and carried about, and darker worn edges
+  for (const fx of [W / 3, 2 * W / 3]) { g.fillStyle = 'rgba(255,255,255,.07)'; g.fillRect(fx | 0, 0, 1, Hh); g.fillStyle = 'rgba(0,0,0,.13)'; g.fillRect((fx | 0) + 1, 0, 1, Hh); }
+  { const fy = Hh / 2 | 0; g.fillStyle = 'rgba(255,255,255,.07)'; g.fillRect(0, fy, W, 1); g.fillStyle = 'rgba(0,0,0,.13)'; g.fillRect(0, fy + 1, W, 1); }
+  const vg = g.createRadialGradient(W / 2, Hh / 2, Hh * .45, W / 2, Hh / 2, W * .62); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.34)'); g.fillStyle = vg; g.fillRect(0, 0, W, Hh);
   return cv;
 }

@@ -1100,38 +1100,70 @@ function updateHUD(dt) {
   for (let i = n; i < tagEls.length; i++) tagEls[i].style.display = 'none';
   if ((miniT -= dt) <= 0) { miniT = .1; drawMini(); }
 }
-function drawMapLayer(g, x0, z0, scale, W2, H2, big) { // world (x0,z0) at canvas (0,0), px per metre = scale
-  const M = GAME.M, P = (x, z) => [(x - x0) * scale, (z - z0) * scale];
+function drawMapLayer(g, x0, z0, scale, W2, H2, big, o = {}) { // world (x0,z0) at canvas (0,0), px per metre = scale. o.u: how much to enlarge marks and lettering; o.spawns, o.sel: the deploy screen's spawn points
+  const M = GAME.M, P = (x, z) => [(x - x0) * scale, (z - z0) * scale], u = o.u || 1, DISP = "'Barlow Condensed', sans-serif", TXT = "'Barlow Semi Condensed', sans-serif";
+  const OWN = c => c.owner === 0 ? '#3f7df2' : c.owner === 1 ? '#e8483a' : '#59646c';
   g.drawImage(M.img, -x0 * scale, -z0 * scale, WORLD_W * scale, WORLD_H * scale);
-  for (const c of GAME.cps) {
-    const [x, y] = P(c.p.x * 1000, c.p.y * 1000), r = Math.max(big ? 9 : 7, c.p.zone.hx * 1000 * scale);
-    g.fillStyle = c.owner === 0 ? '#3b78e6' : c.owner === 1 ? '#e04a3a' : '#e8e4d0'; g.strokeStyle = '#111'; g.lineWidth = 2;
-    g.beginPath(); g.arc(x, y, Math.min(r, big ? 18 : 12), 0, TAU); g.fill(); g.stroke();
-    g.fillStyle = c.owner === -1 ? '#111' : '#fff'; g.font = `700 ${big ? 17 : 13}px 'Barlow Condensed', sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(c.i + 1), x, y + 1);
-    if (big) { const up = c.i % 2 === 1, ly = up ? y - 36 : y + 25; // names alternate above and below the road so that neighbours never run into each other
-      g.strokeStyle = 'rgba(0,0,0,.85)'; g.lineWidth = 3; g.font = "700 16px 'Barlow Condensed', sans-serif"; g.fillStyle = '#fff'; const t = c.p.name.toUpperCase(); g.strokeText(t, x, ly); g.fillText(t, x, ly);
-      if (c.guardsLeft) { g.font = "600 13px 'Barlow Condensed', sans-serif"; g.fillStyle = '#d6e0a8'; const t2 = `${c.guardsLeft} GUARDS`; g.strokeText(t2, x, ly + 15); g.fillText(t2, x, ly + 15); } }
+  // the grid: 2 km squares, numbered across and lettered down
+  g.lineWidth = Math.max(1, u * .8); g.strokeStyle = 'rgba(16,22,28,.42)'; g.beginPath();
+  for (let x = 2000; x < WORLD_W; x += 2000) { const px = Math.round((x - x0) * scale) + .5; if (px > 0 && px < W2) { g.moveTo(px, 0); g.lineTo(px, H2); } }
+  for (let z = 2000; z < WORLD_H; z += 2000) { const py = Math.round((z - z0) * scale) + .5; if (py > 0 && py < H2) { g.moveTo(0, py); g.lineTo(W2, py); } }
+  g.stroke();
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  if (big) {
+    g.font = `600 ${15 * u}px ${DISP}`; g.fillStyle = 'rgba(232,236,239,.8)'; g.strokeStyle = 'rgba(10,14,18,.75)'; g.lineWidth = 3 * u;
+    for (let k = 0; k * 2000 < WORLD_W; k++) { const [x] = P(k * 2000 + 1000, 0); g.strokeText(String(k + 1), x, 11 * u); g.fillText(String(k + 1), x, 11 * u); }
+    for (let k = 0; k * 2000 < WORLD_H; k++) { const [, y] = P(0, Math.min(k * 2000 + 1000, WORLD_H - 350)); g.strokeText('ABCDEFGH'[k], 10 * u, y); g.fillText('ABCDEFGH'[k], 10 * u, y); }
+    g.font = `italic 500 ${13 * u}px ${TXT}`; g.lineWidth = 3 * u; g.strokeStyle = 'rgba(214,208,180,.7)'; g.fillStyle = '#23282a';
+    const taken = GAME.cps.map(c => { const [x, y] = P(c.p.x * 1000, c.p.y * 1000), r = (c.p.size === 'L' ? 13 : 11) * u; return [x, c.i % 2 === 1 ? y - (r + 28 * u) : y + (r + 28 * u)]; }); // where the checkpoint name plates will go
+    for (const t of M.towns) { let [x, y] = P(t.x * 1000, t.y * 1000 - t.r * 1000 - 130); const hit = () => taken.some(([px, py]) => Math.abs(px - x) < 82 * u && Math.abs(py - y) < 30 * u);
+      if (hit()) { y = P(0, t.y * 1000 + t.r * 1000 + 130)[1]; if (hit()) continue; } // a town's name moves below the town, or is left out, rather than hide under a plate
+      g.strokeText(t.n, x, y); g.fillText(t.n, x, y); }
   }
-  for (const [t, b] of M.bases.entries()) { const [x, y] = P(b.x * 1000, b.y * 1000); g.fillStyle = TEAMS[t].css; g.fillRect(x - 7, y - 7, 14, 14); g.strokeStyle = '#111'; g.strokeRect(x - 7, y - 7, 14, 14); }
-  const me = PLAYER.s && PLAYER.s.alive ? (PLAYER.s.veh || PLAYER.s) : null;
+  const plate = (lines, x, y) => { // a name on a dark plate, like the rest of the interface
+    g.font = `600 ${14 * u}px ${TXT}`; let w = g.measureText(lines[0][0]).width; if (lines[1]) { g.font = `500 ${12 * u}px ${TXT}`; w = Math.max(w, g.measureText(lines[1][0]).width); }
+    const h = (lines[1] ? 31 : 19) * u, pw = w + 14 * u;
+    g.fillStyle = 'rgba(16,23,31,.86)'; g.fillRect(x - pw / 2, y - h / 2, pw, h); g.strokeStyle = 'rgba(0,0,0,.7)'; g.lineWidth = 1; g.strokeRect(Math.round(x - pw / 2) + .5, Math.round(y - h / 2) + .5, Math.round(pw), Math.round(h));
+    g.font = `600 ${14 * u}px ${TXT}`; g.fillStyle = lines[0][1] || '#e8ecef'; g.fillText(lines[0][0], x, y - (lines[1] ? 6.5 * u : -1 * u));
+    if (lines[1]) { g.font = `500 ${12 * u}px ${TXT}`; g.fillStyle = lines[1][1] || '#cfd6c0'; g.fillText(lines[1][0], x, y + 8 * u); }
+  };
+  const brackets = (x, y, r) => { g.strokeStyle = '#fff'; g.lineWidth = 2 * u; const k = r * .45; g.beginPath(); for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { g.moveTo(x + sx * r, y + sy * (r - k)); g.lineTo(x + sx * r, y + sy * r); g.lineTo(x + sx * (r - k), y + sy * r); } g.stroke(); };
+  for (const c of GAME.cps) {
+    const [x, y] = P(c.p.x * 1000, c.p.y * 1000), r = (big ? (c.p.size === 'L' ? 13 : 11) : 9) * u, z = c.p.zone;
+    if (z) { g.save(); g.translate(x, y); g.rotate(z.ang || 0); g.setLineDash([5 * u, 4 * u]); g.strokeStyle = c.owner === -1 ? 'rgba(20,26,32,.8)' : OWN(c); g.lineWidth = 1.5 * u; g.strokeRect(-z.hx * 1000 * scale, -z.hy * 1000 * scale, z.hx * 2000 * scale, z.hy * 2000 * scale); g.setLineDash([]); g.restore(); }
+    if (o.spawns && o.spawns.includes(c.i)) { g.strokeStyle = '#e3ad3c'; g.lineWidth = 2 * u; g.beginPath(); g.arc(x, y, r + 9 * u, 0, TAU); g.stroke(); }
+    g.beginPath(); g.moveTo(x, y - r * 1.25); g.lineTo(x + r * 1.25, y); g.lineTo(x, y + r * 1.25); g.lineTo(x - r * 1.25, y); g.closePath();
+    g.fillStyle = OWN(c); g.fill(); g.strokeStyle = 'rgba(0,0,0,.8)'; g.lineWidth = 4 * u; g.stroke(); g.strokeStyle = '#f2f4f5'; g.lineWidth = 2 * u; g.stroke();
+    g.fillStyle = '#fff'; g.font = `700 ${(big ? 16 : 13) * u}px ${DISP}`; g.fillText(String(c.i + 1), x, y + 1 * u);
+    if (o.sel === c.i) brackets(x, y, r + 13 * u);
+    if (big) { const up = c.i % 2 === 1; plate([[c.p.name], c.guardsLeft ? [`${c.guardsLeft} guards`] : null], x, up ? y - (r + 28 * u) : y + (r + 28 * u)); } // (names alternate above and below the road so that neighbours never run into each other)
+  }
+  for (const [t, b] of M.bases.entries()) {
+    const [x, y] = P(b.x * 1000, b.y * 1000), r = (big ? 9 : 7) * u;
+    if (o.spawns && t === GAME.team) { g.strokeStyle = '#e3ad3c'; g.lineWidth = 2 * u; g.beginPath(); g.arc(x, y, r + 11 * u, 0, TAU); g.stroke(); }
+    g.fillStyle = t === 0 ? '#3f7df2' : '#e8483a'; g.fillRect(x - r, y - r, r * 2, r * 2); g.strokeStyle = 'rgba(0,0,0,.8)'; g.lineWidth = 4 * u; g.strokeRect(x - r, y - r, r * 2, r * 2); g.strokeStyle = '#f2f4f5'; g.lineWidth = 2 * u; g.strokeRect(x - r, y - r, r * 2, r * 2);
+    if (o.spawns && o.sel === -1 && t === GAME.team) brackets(x, y, r + 15 * u);
+    if (big) plate([[`${TEAMS[t].name} base`, t === 0 ? '#8fb4ff' : '#ff9084']], x, y + r + 20 * u);
+  }
+  const me = PLAYER.s && PLAYER.s.alive ? (PLAYER.s.veh || PLAYER.s) : null, k = u;
   for (const e of ENTS) {
     if (!e.alive || (e.kind === 'soldier' && e.veh) || e === me) continue;
     const ally = e.team === GAME.team; if (e.team === 2) continue;
     if (!ally && !(me && e.pos.distanceTo(me.pos) < (e.kind === 'air' ? 2500 : 350))) continue;
     const [x, y] = P(e.pos.x, e.pos.z);
-    g.fillStyle = ally ? TEAMS[GAME.team].css : TEAMS[e.team].css;
-    if (e.kind === 'air') { const h = Math.atan2(e.vel.z, e.vel.x) || e.hdg; g.save(); g.translate(x, y); g.rotate(h); g.beginPath(); g.moveTo(7, 0); g.lineTo(-5, 5); g.lineTo(-3, 0); g.lineTo(-5, -5); g.closePath(); g.fill(); g.restore(); }
-    else if (e.kind === 'vehicle') { g.save(); g.translate(x, y); g.rotate(e.yaw); g.fillRect(-5, -3, 10, 6); g.restore(); } else if (e.kind === 'gun') { g.fillRect(x - 2, y - 2, 4, 4); } else { g.beginPath(); g.arc(x, y, 2.6, 0, TAU); g.fill(); }
+    g.fillStyle = e.team === 0 ? '#3f7df2' : '#e8483a'; g.strokeStyle = 'rgba(0,0,0,.75)'; g.lineWidth = 1;
+    if (e.kind === 'air') { const h = Math.atan2(e.vel.z, e.vel.x) || e.hdg; g.save(); g.translate(x, y); g.rotate(h); g.scale(k, k); g.beginPath(); g.moveTo(7, 0); g.lineTo(-5, 5); g.lineTo(-3, 0); g.lineTo(-5, -5); g.closePath(); g.fill(); g.stroke(); g.restore(); }
+    else if (e.kind === 'vehicle') { g.save(); g.translate(x, y); g.rotate(e.yaw); g.scale(k, k); g.fillRect(-5, -3, 10, 6); g.strokeRect(-5, -3, 10, 6); g.restore(); } else if (e.kind === 'gun') { g.fillRect(x - 2 * k, y - 2 * k, 4 * k, 4 * k); } else { g.beginPath(); g.arc(x, y, 2.6 * k, 0, TAU); g.fill(); g.stroke(); }
   }
-  if (me) { const [x, y] = P(me.pos.x, me.pos.z); g.save(); g.translate(x, y); g.rotate(CAM.yaw); g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(8, 0); g.lineTo(-5, 5); g.lineTo(-2, 0); g.lineTo(-5, -5); g.closePath(); g.fill(); g.stroke(); g.restore(); }
+  if (me) { const [x, y] = P(me.pos.x, me.pos.z); g.save(); g.translate(x, y); g.rotate(CAM.yaw); g.scale(k, k); g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(8, 0); g.lineTo(-5, 5); g.lineTo(-2, 0); g.lineTo(-5, -5); g.closePath(); g.fill(); g.stroke(); g.restore(); }
 }
 function drawMini() {
   const cv = $('mini'), g = cv.getContext('2d'), S = cv.width, me = PLAYER.s ? (PLAYER.s.veh || PLAYER.s).pos : CAM.pos, view = 2400, scale = S / view;
-  g.fillStyle = '#1f4f6e'; g.fillRect(0, 0, S, S);
-  g.save(); g.scale(1, 1); drawMapLayer(g, me.x - view / 2, me.z - view / 2, scale, S, S, false); g.restore();
-  g.fillStyle = 'rgba(255,255,255,.75)'; g.font = "700 22px 'Barlow Condensed', sans-serif"; g.textAlign = 'center'; g.fillText('N', S / 2, 18);
+  g.fillStyle = '#17222c'; g.fillRect(0, 0, S, S);
+  drawMapLayer(g, me.x - view / 2, me.z - view / 2, scale, S, S, false, { u: 1.5 });
+  g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.font = "700 22px 'Barlow Condensed', sans-serif"; g.lineWidth = 4; g.strokeStyle = 'rgba(10,14,18,.8)'; g.strokeText('N', S / 2, 21); g.fillStyle = '#e8ecef'; g.fillText('N', S / 2, 21);
 }
-function drawBig() { const cv = $('bigCv'), g = cv.getContext('2d'); drawMapLayer(g, 0, 0, cv.width / WORLD_W, cv.width, cv.height, true); }
+function drawBig() { const cv = $('bigCv'), g = cv.getContext('2d'); g.fillStyle = '#17222c'; g.fillRect(0, 0, cv.width, cv.height); drawMapLayer(g, 0, 0, cv.width / WORLD_W, cv.width, cv.height, true, { u: 1.25 }); }
 
 /* ---------------- deploy screen ---------------- */
 const CLASSES = [
@@ -1174,7 +1206,8 @@ function renderDeploy() {
 function refreshDeploy() { // the parts that change while you look at it (rebuilding the buttons would eat clicks)
   const key = [-1, ...GAME.cps.filter(c => canSpawnAt(GAME.team, c.i)).map(c => c.i)].join() + '|' + PLAYER.sp;
   if (key !== $('dWhere')._key) return renderDeploy();
-  const g = $('dMap').getContext('2d'); drawMapLayer(g, 0, 0, $('dMap').width / WORLD_W, 751, 496, true);
+  const dm = $('dMap'), g = dm.getContext('2d'); g.fillStyle = '#17222c'; g.fillRect(0, 0, dm.width, dm.height);
+  drawMapLayer(g, 0, 0, dm.width / WORLD_W, dm.width, dm.height, true, { u: dm.width / 751, spawns: [...GAME.cps.filter(c => canSpawnAt(GAME.team, c.i)).map(c => c.i)], sel: GAME.sel.where });
   const wait = Math.max(0, GAME.deployT); $('dGo').disabled = wait > 0; $('dWait').textContent = wait > 0 ? `${GAME.deployWhy === 'dead' ? 'You were killed. ' : ''}Ready in ${Math.ceil(wait)} s` : 'Click a checkpoint you hold on the map to start there on foot';
   const left = Math.max(0, MATCH_S - GAME.time), clk = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}`; $('dTime').textContent = `Time left: ${clk}`; $('dClock').textContent = clk; renderCpBar();
 }
