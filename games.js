@@ -85,18 +85,30 @@ window.GAMES = [
     path: 'mile-zero/index.html',
     thumb: 'mile-zero/thumb.jpg',
     added: '2026-11-23T08:55:00+11:00',
-    updated: '2026-11-24T13:20:00+11:00',
+    updated: '2026-11-28T12:10:00+11:00',
     // 1.3: separate solo and convoy bests (the game's Furthest driven board reads this line; a convoy's code groups its crew)
+    // 1.4: each best carries its details "(day 3, v1.4, 28 Nov 2026)" and a convoy everyone who was in it ("with Ann, Bob");
+    // runs recorded by older copies of the game after 1.4 came out are not counted (no version stamp, newer than the release)
     stat() {
       const s = readSave('milezero.save.v1', true); if (!s) return null;
+      const REL = 1795824506047, newer = v => { const a = String(v).split('.').map(Number); return a[0] > 1 || (a[0] === 1 && (a[1] || 0) >= 4); };
+      const ok = r => r && r.km > 0 && (r.v ? newer(r.v) : (r.at || 0) < REL);
       let solo = s.bestSolo, cv = s.bestConvoy;
       if (!solo && !cv && s.best) { if (s.best.crew && s.best.crew.length > 1) cv = s.best; else solo = s.best; }
+      if (!ok(solo)) solo = null; if (!ok(cv)) cv = null;
+      const det = r => r.v && r.at ? ' (day ' + (r.days || 1) + ', v' + r.v + ', ' + new Date(r.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + ')' : '';
       const parts = [];
-      if (solo && solo.km > 0) parts.push('Solo ' + solo.km + ' km');
-      if (cv && cv.km > 0) parts.push('Convoy ' + cv.km + ' km' + (cv.code && /^[A-Z0-9]{3,8}$/i.test(cv.code) ? ' #' + String(cv.code).toUpperCase() : ''));
+      if (solo) parts.push('Solo ' + solo.km + ' km' + det(solo));
+      if (cv) {
+        let c = 'Convoy ' + cv.km + ' km' + (cv.code && /^[A-Z0-9]{3,8}$/i.test(cv.code) ? ' #' + String(cv.code).toUpperCase() : '') + det(cv);
+        const crew = (cv.crew || []).map(n => String(n).replace(/[,·()]/g, '').trim()).filter(n => n && n.length <= 24);
+        let w = ''; for (const n of crew) { const next = (w ? w + ', ' : '') + n; if (next.length > 110) break; w = next; }
+        if (w && cv.code) c += ' with ' + w;
+        parts.push(c);
+      }
       if (!parts.length) return null;
       const line = parts.join(' · ');
-      return s.runs > 1 && line.length < 48 ? line + ' · ' + s.runs + ' runs' : line;
+      return s.runs > 1 && line.length < 185 ? line + ' · ' + s.runs + ' runs' : line;
     },
   },
   {
@@ -474,6 +486,7 @@ window.COMING_SOON = [
 ];
 
 window.NEWS = [
+  { date: '2026-11-28', game: 'mile-zero', imgs: ['mile-zero/news/1.4-trailer.jpg', 'mile-zero/news/1.4-door-off.jpg'], headline: 'Mile Zero Beta 1.4: trailers, parts that tear off, carry the engine', text: "Mile Zero Beta 1.4. Added: trailers parked outside some gas stations, farms, junkyards, diners, rest stops and trading posts (back up and hold E at the coupler to weld one onto your tow hitch, carry things to it to load it, engines included); every door, the bonnet and the boot lid are their own hitbox, so an open one that clips a pole, a wall or a car gets torn off while the car keeps going, and crashes damage the part that actually hit; engines are carried by hand (half speed, no running); click a run on Furthest driven for its details (date, days on the road, game version) and a name for that player's profile; convoy rows list everyone who joined, even if they left; you can't steer while rubbing your eyes. Balance changes: squatters, guards and coyotes have about a third less health, move slower and hit about 40% softer; more food and a bit more loot; spare car parts are much easier to find; the fan belt snaps far less often; a shut boot keeps its things in a big crash. Removed: the engine hoist; leaderboard runs sent by older versions of the game after this update. Fixes: pulling the handbrake while sliding sideways no longer stops the car dead and throws you out; the car no longer sinks and flips when someone else takes the wheel in a convoy; the glass inside after a big crash blows out once you drive; the boot uses its whole floor and nothing pokes through the lid; the rear seat and parcel shelf no longer show through the back window.", post: 'Mile Zero Beta 1.4 is out 🚚\nADDED: trailers outside some stops (weld one to your hitch, load it up), doors, bonnet and boot lid that get torn off when they clip something, engines you carry by hand, run details and player profiles on the leaderboard\nBALANCE: weaker, slower hostiles, more food and spare parts, the fan belt rarely snaps\nREMOVED: the engine hoist\nFIXED: the handbrake throw-out, convoy cars flipping on seat changes, crash glass staying in the car' },
   { date: '2026-11-27', game: 'rillstone', imgs: ['rillstone/news/1.0-line.jpg', 'rillstone/news/1.0-town.jpg'], headline: 'Rillstone is out', text: 'New game: Rillstone. Dig a claim by the river, pan for metal and gems and sell them in town, then build water-powered drills, sluices, belts, furnaces and logic that mine for you. Play alone or in co-op with up to 4 friends.', post: "\u26cf\ufe0f NEW GAME: RILLSTONE!\n\n\ud83c\udf0a Pan the river for copper, silver, gold and gems\n\u2699\ufe0f Build water-powered drills, sluices and belts that mine for you\n\ud83d\udd25 Smelt ingots, mix alloys and craft rings and blades\n\ud83e\udd1d Co-op with up to 4 friends\n\nWhat will you build first? \ud83d\udc47\n\n#Rillstone #TheArcade #NewGame" },
   { date: '2026-11-27', game: 'wrecking-shift', imgs: ['wrecking-shift/news/1.0-blast.jpg', 'wrecking-shift/news/1.0-sunset.jpg'], headline: 'Wrecking Shift is out', text: 'New game: Wrecking Shift. A first-person heist game in a fully destructible voxel world: knock through walls with hammers, explosives and vehicles, grab the targets and get out before the alarm runs out. There is a free sandbox with a whole city to wreck.', post: "\ud83d\udca5 NEW GAME: WRECKING SHIFT!\n\n\ud83e\uddf1 Every wall, roof and car breaks voxel by voxel\n\ud83d\udcb0 Plan a heist, trip the alarm, grab the loot and escape\n\ud83d\udca3 Hammers, bombs, rockets, cars and a wheel loader\n\ud83c\udf06 A whole city to wreck in the sandbox\n\nWhat will you knock down first? \ud83d\udc47\n\n#WreckingShift #TheArcade #NewGame" },
   { date: '2026-11-27', game: 'snow-rider-3d', imgs: ['snow-rider-3d/news/1.1-leaderboard.jpg'], headline: 'Snow Rider 3D leaderboard', text: 'Snow Rider 3D 1.1: an online leaderboard. Your best run goes on the board with your Arcade account and follows you to every device. Tap the Leaderboard button in the game to see who is on top.', post: "\ud83c\udfc6 SNOW RIDER 3D now has a LEADERBOARD!\n\n\ud83d\udef7 Your best run goes on the board for everyone to see\n\ud83d\udcf1 Your best follows your Arcade account to every device\n\ud83e\udd47 Tap \ud83c\udfc6 Leaderboard in the game to see who's on top\n\nCan you take #1? \ud83d\udc47\n\n#snowrider3d #TheArcade #Leaderboard" },

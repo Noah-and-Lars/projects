@@ -952,7 +952,7 @@ export class Account extends DurableObject {
     if (route === 'profile') { // the player's best in each game, worked out by their browser from the saves (games.js stat())
       const st = body && body.s, clean = {};
       if (!st || typeof st !== 'object') return j({ error: 'bad' }, 400);
-      for (const [g, v] of Object.entries(st).slice(0, 60)) if (GAME_RE.test(g) && typeof v === 'string' && v) clean[g] = tidy(v).slice(0, 60);
+      for (const [g, v] of Object.entries(st).slice(0, 60)) if (GAME_RE.test(g) && typeof v === 'string' && v) clean[g] = tidy(v).slice(0, g === 'mile-zero' ? 200 : 60);   // Mile Zero 1.4: its line carries each run's day, version, date and convoy crew
       // Chess 1.6.1: the Elo on the leaderboard is the server's, whatever the browser says
       if (clean.chess) { const c = await this.chessOf(a), e = 'Elo ' + Math.round(c.r); clean.chess = /Elo \d+/.test(clean.chess || '') ? clean.chess.replace(/Elo \d+/, e) : [e, clean.chess].filter(Boolean).join(' · '); }
       const r = await dirCall(this.env, 'stats', { n: a.name, c: a.created, s: clean });
