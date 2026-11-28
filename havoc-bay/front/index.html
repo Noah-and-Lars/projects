@@ -56,6 +56,8 @@
             <div class="srow"><span>Difficulty</span><div class="seg" id="diffPick"><button class="btn" data-v="0">Easy</button><button class="btn" data-v="1">Normal</button><button class="btn" data-v="2">Hard</button></div></div>
             <div class="srow"><span>Gunnery</span><div class="seg" id="gunPick"><button class="btn" data-v="assisted" title="The gun is laid for the range of whatever the crosshair is on, as in arcade battles">Assisted</button><button class="btn" data-v="realistic" title="The gun is laid for 400 m until you lase with V">Realistic</button></div></div>
             <div class="srow"><span>Jet speed</span><div class="seg" id="jetPick"><button class="btn" data-v="arcade" title="Jets top out near 770 km/h at any height, so fights stay close and the map does not fly by">Arcade</button><button class="btn" data-v="realistic" title="Real top speeds: past Mach 1 flat out">Realistic</button></div></div>
+            <div class="srow"><span>Blue jet</span><div class="seg" id="jetLook0"></div></div>
+            <div class="srow"><span>Red jet</span><div class="seg" id="jetLook1"></div></div>
             <div class="srow"><span>Graphics</span><div class="seg" id="gfxPick"><button class="btn" data-v="optimised" title="The lighter map: runs on most computers">Optimised</button><button class="btn" data-v="realistic" title="European countryside: stone villages, mixed woods, hedgerows, wind-blown grass, detailed soldiers. Needs a good graphics card">Realistic</button><button class="btn" data-v="ultra" title="The Realistic world under a low golden sun: sun shafts through trees and cloud, glow, lens flare, haze that warms towards the sun, glitter on the sea. Needs a strong graphics card">Ultra</button></div></div>
           </div>
           <p class="note" id="gfxNote"></p>
@@ -75,6 +77,9 @@
       <p><b>Abandoned farmhouses.</b> This work is based on "<a href="https://sketchfab.com/3d-models/abandoned-farm-house-with-hay-ddb95f4e9deb4baf8c1dca6a7957b128" target="_blank" rel="noopener">Abandoned Farm House With Hay</a>" by <a href="https://sketchfab.com/azadbal" target="_blank" rel="noopener">Azad Balabanian</a>, licensed under <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a>. Changed for the game: textures shrunk to 1024 pixels.</p>
       <p><b>Roadside wrecks.</b> This work is based on "<a href="https://sketchfab.com/3d-models/panzer-iv-medium-tank-toshueyi-14c74d148326448c8edb5fee81be3894" target="_blank" rel="noopener">Panzer IV Medium Tank - Toshueyi</a>" by <a href="https://sketchfab.com/Toshueyi" target="_blank" rel="noopener">Joanthan To</a>, licensed under <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a>. Changed for the game: darkened as a burnt-out wreck, textures shrunk to 1024 pixels.</p>
       <p><b>Red's main battle tank (T-90).</b> This work is based on "<a href="https://sketchfab.com/3d-models/uralvagonzavod-t-90am-main-battle-tank-619de9f0908e4c8395fe036ffe6e3884" target="_blank" rel="noopener">Uralvagonzavod T-90AM Main Battle Tank</a>" by <a href="https://sketchfab.com/nazidefenseforceofficial" target="_blank" rel="noopener">Muhamad Mirza Arrafi</a>, licensed under <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a>. Changed for the game: cut into hull, turret and gun, textures shrunk to 1024 pixels.</p>
+      <p><b>MiG-35 fighter model.</b> This work is based on "<a href="https://sketchfab.com/3d-models/mig-35-fighter-jet-free-1dcea306e8a14ed4ab4d11a819cb6676" target="_blank" rel="noopener">MiG-35 - Fighter Jet - Free</a>" by <a href="https://sketchfab.com/bohmerang" target="_blank" rel="noopener">bohmerang</a>, licensed under <a href="http://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC-BY-NC-SA-4.0</a>. Changed for the game: scaled, cut into damage parts, textures shrunk to 1024 pixels. Non-commercial use only.</p>
+      <p><b>A-10 Thunderbolt II model.</b> This work is based on "<a href="https://sketchfab.com/3d-models/a-10-thunderbolt-ii-free-f297968397534b59bd41fe989497ffcb" target="_blank" rel="noopener">A-10 Thunderbolt II - Free</a>" by <a href="https://sketchfab.com/bohmerang" target="_blank" rel="noopener">bohmerang</a>, licensed under <a href="http://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC-BY-NC-SA-4.0</a>. Changed for the game: scaled, cut into damage parts, textures shrunk to 1024 pixels. Non-commercial use only.</p>
+      <p><b>F/A-18E/F Super Hornet model.</b> This work is based on "<a href="https://sketchfab.com/3d-models/boeing-fa-18ef-super-hornet-f71e9fea01e24fea9b1b380161d21d38" target="_blank" rel="noopener">Boeing F/A-18E/F "Super Hornet"</a>" by <a href="https://sketchfab.com/andertan" target="_blank" rel="noopener">andertan</a>, licensed under <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC-BY-4.0</a>. Changed for the game: scaled, cut into damage parts, textures shrunk to 1024 pixels.</p>
       <p><b>Typeface.</b> Barlow, Copyright 2017 The Barlow Project Authors, under the SIL Open Font License 1.1.</p>
       <p><b>Engine.</b> three.js r128, under the MIT licence.</p>
       </section>
@@ -151,6 +156,9 @@
 <script src="models/farmhouse.js"></script>
 <script src="models/panzer4.js"></script>
 <script src="models/t90am.js"></script>
+<script src="models/mig35.js"></script>
+<script src="models/a10.js"></script>
+<script src="models/fa18.js"></script>
 <script src="gltf-models.js"></script>
 <script src="model-kit.js"></script>
 <script src="models/config.js"></script>

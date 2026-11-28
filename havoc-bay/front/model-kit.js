@@ -385,3 +385,31 @@ function kitUse(unit, key, cfg = {}) {
   else if (unit === 'soldier' || unit === 'soldier0' || unit === 'soldier1') MKIT.soldier = MKIT.soldier || {}, (unit === 'soldier' ? [0, 1] : [+unit.slice(-1)]).forEach(t => MKIT.soldier[t] = { key, cfg });
 }
 function kitSoldierFor(team, npc) { const u = MKIT.soldier && MKIT.soldier[team]; return u && !npc && kitData(u.key) ? kitSoldier(u.key, u.cfg, team) : null; }
+
+/* ---------------- a jet, for the title screen's jet choice ----------------
+   Draws a downloaded jet in place of a side's built-in one. Only the look changes: the flight model, weapons and damage stay those of the slot
+   (def is the slot's entry in AIR). The model is scaled to the slot's length, turned nose forward (+x: the tail fins are the highest part, so the
+   nose is the other end), and cut into the slot's damage parts by nearest part centre, so a lost wing or fin disappears. Gear nodes named like
+   "Landing On/Open" and "Landing Off/Closed" become the extended and stowed gear. */
+function kitJet(key, team, def, cfg = {}) {
+  const model = kitData(key) && gltfBuild(key, {}); if (!model) return null;
+  const fitAt = yaw => kitFit(model, { fit: Object.assign({ length: def.len, yaw }, cfg.fit) });
+  let holder = fitAt(undefined);
+  if (holder.userData.yaw === 0 && kitBox(holder).getSize(new V3()).z > kitBox(holder).getSize(new V3()).x * 1.12) holder = fitAt(Math.PI / 2); // (length fore and aft)
+  { const b = kitBox(holder), top = b.min.y + .8 * (b.max.y - b.min.y), v = new V3(); let sx = 0, n = 0;
+    holder.updateMatrixWorld(true);
+    holder.traverse(o => { if (!o.isMesh) return; const P = o.geometry.attributes.position; for (let i = 0; i < P.count; i += 3) { v.fromBufferAttribute(P, i).applyMatrix4(o.matrixWorld); if (v.y > top) { sx += v.x; n++; } } });
+    if (n && sx / n > 0) holder = fitAt(holder.userData.yaw + Math.PI); }
+  holder.updateMatrixWorld(true);
+  const M = { root: new THREE.Group(), parts: {}, stores: [], kitJet: key }, ids = def.parts.filter(p => p.kind !== 'fuel');
+  const nearest = (x, y, z) => { let best = ids[0].id, bd = 1e9; for (const p of ids) { const d = (x - p.p[0]) ** 2 + (y - p.p[1]) ** 2 * 2 + (z - p.p[2]) ** 2; if (d < bd) { bd = d; best = p.id; } } return best; };
+  const down = cfg.gearDown || /landing.?(on|open)/i, up = cfg.gearUp || /landing.?(off|closed)/i, named = o => { for (let q = o; q; q = q.parent) if (q.name) { if (down.test(q.name)) return 'down'; if (up.test(q.name)) return 'up'; } return null; };
+  M.gearDown = new THREE.Group(); M.gearUp = new THREE.Group(); M.root.add(M.gearDown, M.gearUp);
+  for (const m of model.meshes.slice()) { const g = named(m), pieces = kitSplit(m, g ? () => g : nearest);
+    for (const [id, pm] of Object.entries(pieces)) { pm.castShadow = true; pm.receiveShadow = true; pm.userData.keep = true; (id === 'down' ? M.gearDown : id === 'up' ? M.gearUp : M.parts[id] || part(M, id)).add(pm); } }
+  for (const p of def.parts) if (!M.parts[p.id]) part(M, p.id);
+  const b = kitBox(M.root), eng = def.parts.filter(p => p.kind === 'engine');
+  M.nozzles = eng.map(p => [b.min.x + .25, p.p[1], p.p[2], eng.length > 1 ? .45 : .55, p.id]);
+  const ck = def.parts.find(p => p.id === 'cockpit');
+  return Object.assign(M, { gun: [def.len * .2, 0, .7], cockpit: ck ? ck.p.slice() : [def.len * .27, 1.2, 0] });
+}

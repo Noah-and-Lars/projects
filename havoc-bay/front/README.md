@@ -302,6 +302,8 @@ Open country (`propsCountry` in `props.js`): clusters of rocks (`models/rocks.js
 
 Red's main battle tank uses the T-90AM model (`models/t90am.js`, one piece, cut into hull, turret and gun in `models/config.js`). Only its look changes; armour and weapons are as in `vehicles.js`. If any of these files is missing, the game falls back to what it drew before.
 
+**Jet choice.** On the title screen, "Blue jet" and "Red jet" pick how each side's jet looks: F-2, Typhoon, MiG-35, A-10 or F/A-18 (saved with the other settings). Only the look changes: each side keeps its slot's flight model, weapons and damage (Blue the F-2's, Red the Typhoon's), and the HUD still names the slot's aircraft. A jet other than the slot's own is fitted by `kitJet` in `model-kit.js`: scaled to the slot's length, turned nose forward (the tail fins are its highest part), cut into the slot's damage parts by nearest part centre, with "Landing On/Off" nodes as the gear. It carries no visible weapons on its pylons (shots leave from the airframe), and its engine flames sit at the slot's engine height, so the A-10's come from low at the tail.
+
 To add another scenery model:
 
 1. Check its licence (CC0, CC-BY, CC-BY-SA or CC-BY-NC-SA) and keep it heavy only where it is placed once: about 5,000 triangles for a prop placed many times, 20,000 for a building.
@@ -328,6 +330,13 @@ Abandoned farmhouses: This work is based on "Abandoned Farm House With Hay" (htt
 Roadside wrecks: This work is based on "Panzer IV Medium Tank - Toshueyi" (https://sketchfab.com/3d-models/panzer-iv-medium-tank-toshueyi-14c74d148326448c8edb5fee81be3894) by Joanthan To (https://sketchfab.com/Toshueyi) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: darkened as a burnt-out wreck, textures shrunk to 1024 pixels. The licence note is in `models/panzer4-license.txt`.
 
 Red's main battle tank (T-90): This work is based on "Uralvagonzavod T-90AM Main Battle Tank" (https://sketchfab.com/3d-models/uralvagonzavod-t-90am-main-battle-tank-619de9f0908e4c8395fe036ffe6e3884) by Muhamad Mirza Arrafi (https://sketchfab.com/nazidefenseforceofficial) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: cut into hull, turret and gun, textures shrunk to 1024 pixels. The licence note is in `models/t90am-license.txt`.
+
+MiG-35 fighter model: This work is based on "MiG-35 - Fighter Jet - Free" (https://sketchfab.com/3d-models/mig-35-fighter-jet-free-1dcea306e8a14ed4ab4d11a819cb6676) by bohmerang (https://sketchfab.com/bohmerang) licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/). Changed for the game: scaled, cut into damage parts, textures shrunk to 1024 pixels. Non-commercial use only. The licence note is in `models/mig35-license.txt`.
+
+A-10 Thunderbolt II model: This work is based on "A-10 Thunderbolt II - Free" (https://sketchfab.com/3d-models/a-10-thunderbolt-ii-free-f297968397534b59bd41fe989497ffcb) by bohmerang (https://sketchfab.com/bohmerang) licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/). Changed for the game: scaled, cut into damage parts, textures shrunk to 1024 pixels. Non-commercial use only. The licence note is in `models/a10-license.txt`.
+
+F/A-18E/F Super Hornet model: This work is based on "Boeing F/A-18E/F "Super Hornet"" (https://sketchfab.com/3d-models/boeing-fa-18ef-super-hornet-f71e9fea01e24fea9b1b380161d21d38) by andertan (https://sketchfab.com/andertan) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: scaled, cut into damage parts, textures shrunk to 1024 pixels. The licence note is in `models/fa18-license.txt`.
+
 
 
 Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow), licensed under the SIL Open Font License 1.1. The licence text is in `docs/barlow-font-license.txt`.
@@ -358,6 +367,7 @@ Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://g
 | `models/farmhouse.js` | An abandoned farmhouse with hay (scenery prop) |
 | `models/panzer4.js` | A Panzer IV, darkened and used as a roadside wreck (scenery prop) |
 | `models/t90am.js` | The T-90AM, used for Red's main battle tank (fitted in `models/config.js`) |
+| `models/mig35.js`, `models/a10.js`, `models/fa18.js` | Extra jet looks for the title screen's jet choice (fitted by `kitJet` in `model-kit.js`) |
 | `props.js` | Scenery props from downloaded models: drawn instanced, culled by distance, with colliders; where they go |
 | `models/config.js` | Which downloaded model is used for which unit, and how it is fitted |
 | `tools/pack_model.py` | Packs a glTF or GLB download into `models/<key>.js` |

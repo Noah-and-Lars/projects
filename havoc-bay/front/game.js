@@ -1339,9 +1339,9 @@ $('eMenu').onclick = () => { $('end').classList.add('hidden'); toTitle(); };
 
 /* ---------------- title ---------------- */
 const PREF = (() => { try { return JSON.parse(localStorage.getItem('islandfront.v1') || '{}'); } catch (e) { return {}; } })();
-Object.assign(GAME, { map: PREF.map ?? 0, team: PREF.team ?? 0, bots: PREF.bots ?? 8, diff: PREF.diff ?? 1, gfx: PREF.gfx || 'optimised', gunnery: PREF.gunnery || 'assisted', jetSpeed: PREF.jetSpeed || 'arcade', sens: PREF.sens ?? 1, fov: PREF.fov ?? 65, vol: PREF.vol ?? 70 });
+Object.assign(GAME, { map: PREF.map ?? 0, team: PREF.team ?? 0, bots: PREF.bots ?? 8, diff: PREF.diff ?? 1, gfx: PREF.gfx || 'optimised', gunnery: PREF.gunnery || 'assisted', jetSpeed: PREF.jetSpeed || 'arcade', jetLook: Array.isArray(PREF.jetLook) ? PREF.jetLook : ['f2', 'typhoon'], sens: PREF.sens ?? 1, fov: PREF.fov ?? 65, vol: PREF.vol ?? 70 });
 Sound.volume(GAME.vol / 100);
-function savePref() { try { localStorage.setItem('islandfront.v1', JSON.stringify({ map: GAME.map, team: GAME.team, bots: GAME.bots, diff: GAME.diff, gfx: GAME.gfx, gunnery: GAME.gunnery, jetSpeed: GAME.jetSpeed, sens: GAME.sens, fov: GAME.fov, vol: GAME.vol })); } catch (err) {} }
+function savePref() { try { localStorage.setItem('islandfront.v1', JSON.stringify({ map: GAME.map, team: GAME.team, bots: GAME.bots, diff: GAME.diff, gfx: GAME.gfx, gunnery: GAME.gunnery, jetSpeed: GAME.jetSpeed, jetLook: GAME.jetLook, sens: GAME.sens, fov: GAME.fov, vol: GAME.vol })); } catch (err) {} }
 function renderTitle() {
   $('mapPick').innerHTML = MAPS.map((m, i) => `<button class="mrow${GAME.map === i ? ' on' : ''}" data-v="${i}">${m.name}<small>${m.pitch}</small></button>`).join('');
   $('tbMode').textContent = `Checkpoints · ${MAPS[GAME.map].name}`;
@@ -1349,10 +1349,12 @@ function renderTitle() {
   [...$('gfxPick').children].forEach(b => b.classList.toggle('on', b.dataset.v === GAME.gfx));
   [...$('gunPick').children].forEach(b => b.classList.toggle('on', b.dataset.v === GAME.gunnery));
   [...$('jetPick').children].forEach(b => b.classList.toggle('on', b.dataset.v === GAME.jetSpeed));
+  for (const t of [0, 1]) $('jetLook' + t).innerHTML = Object.entries(typeof JET_LOOKS !== 'undefined' ? JET_LOOKS : {}).map(([k, n]) => `<button class="btn${GAME.jetLook[t] === k ? ' on' : ''}" data-v="${k}" title="How this side's jet looks. Its flying, weapons and armour stay the same">${n}</button>`).join('');
   const gb = [...$('gfxPick').children].find(b => b.dataset.v === GAME.gfx); $('gfxNote').textContent = gb ? gb.title : '';
 }
 $('tTabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; for (const x of $('tTabs').children) x.classList.toggle('on', x === b); for (const pn of document.querySelectorAll('#title [data-pane]')) pn.hidden = pn.dataset.pane !== b.dataset.tab; };
 for (const [id, key] of [['mapPick', 'map'], ['teamPick', 'team'], ['botPick', 'bots'], ['diffPick', 'diff'], ['gfxPick', 'gfx'], ['gunPick', 'gunnery'], ['jetPick', 'jetSpeed']]) $(id).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; GAME[key] = key === 'gfx' || key === 'gunnery' || key === 'jetSpeed' ? b.dataset.v : +b.dataset.v; savePref(); renderTitle(); };
+for (const t of [0, 1]) $('jetLook' + t).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; GAME.jetLook[t] = b.dataset.v; savePref(); renderTitle(); }; // the jet each side flies (look only)
 function begin() {
   Sound.init();
   $('title').classList.add('hidden'); $('loadText').innerHTML = `${MAPS[GAME.map].name}<small>Checkpoints. ${GAME.gfx === 'optimised' ? 'Optimised graphics.' : GAME.gfx === 'ultra' ? 'Ultra graphics: this takes several seconds.' : 'Realistic graphics: this takes several seconds.'}</small>`; $('loading').classList.remove('hidden');
