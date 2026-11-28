@@ -30,8 +30,12 @@ kitUse('t90a', 't90am', { fit: { length: 9.6 }, split: (x, y, z) => y > 1.62 && 
 
 // Jets for the title screen's jet choice (only the look changes; see kitJet in model-kit.js). The F-2 and Typhoon keep their hand-fitted models in their own slot.
 const JET_LOOKS = { f2: 'F-2', typhoon: 'Typhoon', mig35: 'MiG-35', a10: 'A-10', fa18: 'F/A-18' };
+// where each model's engine flames start (metres, x forward, wheels at y = 0; measured from the models)
+const JET_FIT = { mig35: { nozzles: [[-7.3, 1.75, -.68, .5], [-7.3, 1.75, .68, .5]] }, a10: { nozzles: [[-2.3, 2.45, -1.45, .55], [-2.3, 2.45, 1.45, .55]] },
+  fa18: { nozzles: [[-7.2, 1.05, -.55, .45], [-7.2, 1.05, .55, .45]] }, f2: { nozzles: [[-7.4, 1.6, 0, .55]] }, typhoon: { nozzles: [[-7.6, 1.6, -.45, .5], [-7.6, 1.6, .45, .5]] } };
 for (const slot of ['f2', 'typhoon']) if (typeof AIR !== 'undefined' && AIR[slot]) {
   const own = AIR[slot].model;
   AIR[slot].model = team => { const pick = typeof GAME !== 'undefined' && GAME.jetLook ? GAME.jetLook[team] : slot;
-    return (pick && pick !== slot && JET_LOOKS[pick] && kitJet(pick, team, AIR[slot])) || own(team); };
+    if (!pick || pick === slot || !JET_LOOKS[pick]) return own(team);
+    return kitJet(pick, team, AIR[slot], JET_FIT[pick], own(team)) || own(team); };
 }
