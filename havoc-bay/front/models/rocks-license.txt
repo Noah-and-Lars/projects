@@ -1,0 +1,11 @@
+Model Information:
+* title:	midpoly Rocks
+* source:	https://sketchfab.com/3d-models/midpoly-rocks-d6d90d597a0e413f99ffbbd80ced8789
+* author:	Helindu (https://sketchfab.com/Helindu)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "midpoly Rocks" (https://sketchfab.com/3d-models/midpoly-rocks-d6d90d597a0e413f99ffbbd80ced8789) by Helindu (https://sketchfab.com/Helindu) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

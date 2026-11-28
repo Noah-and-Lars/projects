@@ -1,0 +1,11 @@
+Model Information:
+* title:	Panzer IV Medium Tank - Toshueyi
+* source:	https://sketchfab.com/3d-models/panzer-iv-medium-tank-toshueyi-14c74d148326448c8edb5fee81be3894
+* author:	Joanthan To (https://sketchfab.com/Toshueyi)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Panzer IV Medium Tank - Toshueyi" (https://sketchfab.com/3d-models/panzer-iv-medium-tank-toshueyi-14c74d148326448c8edb5fee81be3894) by Joanthan To (https://sketchfab.com/Toshueyi) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

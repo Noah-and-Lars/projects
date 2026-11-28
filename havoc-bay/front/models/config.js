@@ -23,3 +23,7 @@
    // kitUse('soldier', 'player', { fit: { height: 1.8 }, clips: { idle: /idle/i, walk: /walk/i, run: /run/i, crouch: /crouch/i } });
 */
 'use strict';
+
+// Red's main battle tank: "Uralvagonzavod T-90AM Main Battle Tank" by Muhamad Mirza Arrafi (CC-BY-4.0). One piece, so it is cut up here:
+// the turret is the raised part round its ring (behind the middle), the gun the thin part ahead of the hull at gun height.
+kitUse('t90a', 't90am', { fit: { length: 9.6 }, split: (x, y, z) => y > 1.62 && x > .35 && Math.abs(z) < .32 ? 'gun' : y > 1.45 && Math.hypot(x + 1.4, z) < 1.95 ? 'turret' : 'hull' });

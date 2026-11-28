@@ -296,6 +296,12 @@ All of it is in `ui.css`; the Barlow typeface and the wear tiles are packed into
 
 Sandbag walls (`models/sandbags.js`) stand at every checkpoint and base as L-shaped fighting positions, make up the base's howitzer rings, and sit beside the roads in open country, in every graphics level. They block movement like a low wall. They are kept off the roads and the vehicle lanes beside them, the middle of each checkpoint, the spawn spots, helipads, airfields, towns, bridges and woods. Close up each wall piece is about 5,200 triangles; beyond 180 m a 1,050-triangle copy is drawn, and beyond 1.1 km nothing. Without the model file the game keeps its plain box walls.
 
+Concrete barriers (`models/barricades.js`): an L of blast walls in each corner of a base, short staggered lines of jersey barriers beside the road at every compound gate, and a few loose blocks in checkpoints. The download's colour textures turned out to be copies of its normal maps, so the pieces are drawn in a plain concrete colour.
+
+Open country (`propsCountry` in `props.js`): clusters of rocks (`models/rocks.js`, about 12,000 triangles each, so drawn only within 420 m), burnt-out Panzer IV wrecks a little off the roads (`models/panzer4.js`), and a handful of abandoned farmhouses set back from the roads (`models/farmhouse.js`, about 130,000 triangles, so only about five a map). All block movement and are kept off roads, out of compounds, towns, woods and water. Distances to roads are measured to the road centre lines, as the road grid's 27 m cells are too coarse.
+
+Red's main battle tank uses the T-90AM model (`models/t90am.js`, one piece, cut into hull, turret and gun in `models/config.js`). Only its look changes; armour and weapons are as in `vehicles.js`. If any of these files is missing, the game falls back to what it drew before.
+
 To add another scenery model:
 
 1. Check its licence (CC0, CC-BY, CC-BY-SA or CC-BY-NC-SA) and keep it heavy only where it is placed once: about 5,000 triangles for a prop placed many times, 20,000 for a building.
@@ -312,6 +318,17 @@ Red's Eurofighter Typhoon: This work is based on "Eurofighter Typhoon - Fighter 
 Blue's F-2A: This work is based on "Mitsubishi F-2 - Fighter Jet - Free" (https://sketchfab.com/3d-models/mitsubishi-f-2-fighter-jet-free-d3d7244554974f499b106e6c11fe3aaf) by bohmerang (https://sketchfab.com/bohmerang) licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/). Because of that licence, the game (or at least the F-2 model and anything made from it) must not be used commercially, and changed versions of the model must be shared under the same licence. The full licence note is in `models/f2-license.txt`.
 
 Sandbag walls: This work is based on "Urban/Military Sandbag Wall" (https://sketchfab.com/3d-models/urbanmilitary-sandbag-wall-9c18daee3ecf41e995e54998d5cc61c0) by Neslihan Çakmak (https://sketchfab.com/neslihancakmak) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: only the straight run of bags is used, simplified from about 47,000 to about 5,200 triangles (and 1,050 for the distant copy), turned to lie along its length, and its textures shrunk to 1024 pixels. The licence note is in `models/sandbags-license.txt`.
+
+Concrete barriers: This work is based on "Military Barricades / Walls" (https://sketchfab.com/3d-models/military-barricades-walls-2e4080f7a3e34ef7a1b30ce38a24d744) by A_W (https://sketchfab.com/A_W) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: the pieces used separately, drawn in a plain concrete colour in place of the colour textures, textures shrunk to 1024 pixels. The licence note is in `models/barricades-license.txt`.
+
+Rocks: This work is based on "midpoly Rocks" (https://sketchfab.com/3d-models/midpoly-rocks-d6d90d597a0e413f99ffbbd80ced8789) by Helindu (https://sketchfab.com/Helindu) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: rocks used separately, rescaled, textures shrunk to 1024 pixels. The licence note is in `models/rocks-license.txt`.
+
+Abandoned farmhouses: This work is based on "Abandoned Farm House With Hay" (https://sketchfab.com/3d-models/abandoned-farm-house-with-hay-ddb95f4e9deb4baf8c1dca6a7957b128) by Azad Balabanian (https://sketchfab.com/azadbal) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: textures shrunk to 1024 pixels. The licence note is in `models/farmhouse-license.txt`.
+
+Roadside wrecks: This work is based on "Panzer IV Medium Tank - Toshueyi" (https://sketchfab.com/3d-models/panzer-iv-medium-tank-toshueyi-14c74d148326448c8edb5fee81be3894) by Joanthan To (https://sketchfab.com/Toshueyi) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: darkened as a burnt-out wreck, textures shrunk to 1024 pixels. The licence note is in `models/panzer4-license.txt`.
+
+Red's main battle tank (T-90): This work is based on "Uralvagonzavod T-90AM Main Battle Tank" (https://sketchfab.com/3d-models/uralvagonzavod-t-90am-main-battle-tank-619de9f0908e4c8395fe036ffe6e3884) by Muhamad Mirza Arrafi (https://sketchfab.com/nazidefenseforceofficial) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: cut into hull, turret and gun, textures shrunk to 1024 pixels. The licence note is in `models/t90am-license.txt`.
+
 
 Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow), licensed under the SIL Open Font License 1.1. The licence text is in `docs/barlow-font-license.txt`.
 
@@ -336,6 +353,11 @@ Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://g
 | `gltf-models.js` | Reads packed glTF models; builds the F-2A with damageable parts, pylons and retracting gear |
 | `model-kit.js` | The model kit: reads any packed glTF (parts, skeletons, animations) and fits it as a tank, helicopter or soldier |
 | `models/sandbags.js` | The sandbag wall, a scenery prop (near and distant copies), packed the same way |
+| `models/barricades.js` | Concrete barriers: blast walls, jersey barriers, blocks and tank traps (scenery props) |
+| `models/rocks.js` | Seven rocks for open country (scenery props) |
+| `models/farmhouse.js` | An abandoned farmhouse with hay (scenery prop) |
+| `models/panzer4.js` | A Panzer IV, darkened and used as a roadside wreck (scenery prop) |
+| `models/t90am.js` | The T-90AM, used for Red's main battle tank (fitted in `models/config.js`) |
 | `props.js` | Scenery props from downloaded models: drawn instanced, culled by distance, with colliders; where they go |
 | `models/config.js` | Which downloaded model is used for which unit, and how it is fitted |
 | `tools/pack_model.py` | Packs a glTF or GLB download into `models/<key>.js` |

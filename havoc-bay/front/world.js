@@ -343,7 +343,7 @@ function buildTeamBase(M, b, team) {
       addCollider(bx, bz, 2.7, .7, an + Math.PI / 2, y0 - 1, y0 + 1.1); }
     b.gunSpots.push([x, z]);
   }
-  propsCompound(site, 380, 320, 6, team * 53 + M.seed, [[260, 200, 50], [300, -140, 80], [50, 270, 24], [50, -270, 24], [0, 0, 20]]); // sandbag positions, clear of the spawn spots and helipads
+  propsCompound(site, 380, 320, 6, team * 53 + M.seed, [[260, 200, 50], [300, -140, 80], [50, 270, 24], [50, -270, 24], [0, 0, 20]]); propsConcrete(site, 380, 320, team * 59 + M.seed, true); // sandbag positions, clear of the spawn spots and helipads
   if (WORLD.gfx === 'realistic') { decorateCompound(site, 380, 320, 'B', team * 97 + M.seed); razorWire(site, -gx, -gz, gx, -gz, y0 + 2.4); razorWire(site, -gx, gz, gx, gz, y0 + 2.4); }
   b.vehicleSpawn = site.w(300, -150); b.infSpawn = site.w(260, 200); b.site = site;
 }
@@ -376,7 +376,7 @@ function buildCheckpoint(M, p) {
   // crates and barrels for cover
   const R = rng(p.n * 191 + M.seed);
   for (let k = 0; k < (p.size === 'L' ? 18 : p.size === 'M' ? 9 : 4); k++) { const fx = (R() - .5) * hx * 1.6, fz = (R() - .5) * hz * 1.6; if (Math.abs(fz) < 12) continue; site.box(fx, fz, 1.6, 1.6, 1.6, 0x7a6440, { rot: R() * 3 }); }
-  propsCompound(site, hx, hz, { S: 1, M: 2, L: 4 }[p.size], p.n * 71 + M.seed); // sandbag fighting positions (props.js; nothing if the model is missing)
+  propsCompound(site, hx, hz, { S: 1, M: 2, L: 4 }[p.size], p.n * 71 + M.seed); propsConcrete(site, hx, hz, p.n * 73 + M.seed, false); // sandbag fighting positions (props.js; nothing if the model is missing)
   // NPC guard posts: tower decks first, then spots round the yard
   for (const [[x, z], y] of p.towers) p.posts.push({ x, z, y, tower: true });
   const need = GARRISON[p.size];
@@ -432,7 +432,7 @@ function buildWorld(M) {
   M.bases.forEach((b, t) => buildTeamBase(M, b, t));
   M._cps.forEach(p => buildCheckpoint(M, p));
   buildTowns(M); buildAirfields(M); buildDocks(M);
-  propsRoadside(M, M.seed + 7); // sandbag positions along the roads in open country
+  propsRoadside(M, M.seed + 7); propsCountry(M, M.seed + 11); // sandbag positions along the roads in open country
   if (WORLD.gfx === 'realistic') buildRealFlora(M); // woods, hedgerows and grass, clear of the houses
   batchFlush(WORLD.group); propsFlush(WORLD.group);
   if (WORLD.gfx === 'realistic') flushWire();

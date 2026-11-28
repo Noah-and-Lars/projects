@@ -10,9 +10,23 @@
 const PROP_DEFS = {
   // key: the packed model; part / far: node-name patterns for the close-up and the distant copy; nearR / farR: draw distances (m);
   // collide: give each copy a box collider round its close-up part (false for things you can walk through);
+  // plain: a flat colour in place of the colour texture (the barricade download's colour maps are copies of its normal maps);
   // matte: draw it as non-metal whatever its texture says (without an environment map a metal reads almost black, as in Optimised);
   // tint: a colour multiplier (the sandbag texture is a dark grey-olive; this brings it to the dry khaki of the game's other sandbags)
+  // fit: scale so the longest side across the ground is this many metres (the piece is also centred and stood on the ground);
+  // farSame: draw the close-up geometry again (without shadows) as the distant copy
   sandbagWall: { key: 'sandbags', part: /^sandbags_straight$/, far: /^sandbags_straight_far$/, nearR: 180, farR: 1100, collide: true, matte: true, tint: [3.2, 2.9, 2.3] },
+  // "Military Barricades / Walls" by A_W: separate pieces laid out side by side in the file, each centred here
+  blastWall: { key: 'barricades', plain: 0x6f6c66, part: /^Barricade 1\.001_Barricade 2_0$/, nearR: 450, farR: 1400, farSame: true, collide: true, matte: true },
+  jersey: { key: 'barricades', plain: 0x6f6c66, part: /^Barricade 1\.002_Long Barricade_0$/, nearR: 350, farR: 900, farSame: true, collide: true, matte: true },
+  concreteBlock: { key: 'barricades', plain: 0x6f6c66, part: /^Cube_Block Barricade_0$/, nearR: 300, collide: true, matte: true },
+  tankTrap: { key: 'barricades', plain: 0x6f6c66, part: /^Cube\.002_Tri Barricade_0$/, nearR: 300, collide: true, matte: true },
+  // "midpoly Rocks" by Helindu: seven rocks of about 12,000 triangles each, so they are drawn close up only
+  ...Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(k => ['rock' + k, { key: 'rocks', part: new RegExp('^Cube' + (k ? '\\.00' + k : '') + '_Material'), fit: 3.2, nearR: 420, collide: true, matte: true }])),
+  // "Abandoned Farm House With Hay" by Azad Balabanian (about 130,000 triangles: only a few are placed)
+  farmhouse: { key: 'farmhouse', part: /_u[12]_v1_0$/, nearR: 1000, collide: true },
+  // "Panzer IV Medium Tank" by Joanthan To, darkened as a burnt-out wreck
+  wreck: { key: 'panzer4', part: /^Object_\d+$/, fit: 6.6, nearR: 450, farR: 1200, farSame: true, collide: true, matte: true, tint: [.42, .38, .34] },
 };
 const PROPS = { built: {}, queue: [], patches: [] };
 const PATCH = 600;
@@ -22,14 +36,21 @@ function propModel(name) { // the prop's geometry and materials, read once: { ne
   if (name in PROPS.built) return PROPS.built[name];
   const d = PROP_DEFS[name]; let out = null;
   if (d && typeof gltfBuild === 'function' && window.MODEL_DATA && MODEL_DATA[d.key]) {
-    const m = gltfBuild(d.key, d.matte ? { material: mt => kitVariant(mt, 'matte', x => Object.assign(x.clone(), { metalness: 0, metalnessMap: null })) } : {});
+    const m = gltfBuild(d.key, d.matte || d.plain ? { material: mt => kitVariant(mt, 'prop' + (d.plain || ''), x => { const c = Object.assign(x.clone(), { metalness: 0, metalnessMap: null });
+      if (d.plain) { c.map = null; c.color.setHex(d.plain); } return c; }) } : {});
     if (m && d.tint) for (const ms of m.meshes) ms.material = kitTint(ms.material, d.tint);
     if (m) {
       const parts = re => { const list = []; if (!re) return list; m.root.updateMatrixWorld(true);
         for (const n of m.named(re)) n.traverse(o => { if (o.isMesh) { const geo = o.geometry.clone(); geo.applyMatrix4(o.matrixWorld); geo.computeBoundingBox(); list.push({ geo, mat: o.material }); } });
         return list; };
-      const near = parts(d.part), far = parts(d.far);
-      if (near.length) { const box = new THREE.Box3(); for (const p of near) box.union(p.geo.boundingBox); out = { near, far, box }; }
+      const near = parts(d.part), far = d.farSame ? near : parts(d.far);
+      if (near.length) { let box = new THREE.Box3(); for (const p of near) box.union(p.geo.boundingBox);
+        if (d.fit || d.farSame || d.center !== false && d.key !== 'sandbags') { // centre the piece over its origin, on the ground, scaled to d.fit metres
+          const c = box.getCenter(new V3()), sz = box.getSize(new V3()), k = d.fit ? d.fit / Math.max(sz.x, sz.z, 1e-6) : 1;
+          const fix = new THREE.Matrix4().makeScale(k, k, k).multiply(new THREE.Matrix4().makeTranslation(-c.x, -box.min.y, -c.z));
+          for (const p of new Set([...near, ...far])) { p.geo.applyMatrix4(fix); p.geo.computeBoundingBox(); p.geo.computeBoundingSphere(); }
+          box = new THREE.Box3(); for (const p of near) box.union(p.geo.boundingBox); }
+        out = { near, far, box }; }
     }
   }
   return PROPS.built[name] = out;
@@ -119,6 +140,55 @@ function propsRoadside(M, seed) {
         const ang = Math.atan2(uz, ux), c = Math.cos(ang), s = Math.sin(ang);
         for (const e of [-3.2, 0, 3.2]) propPlace('sandbagWall', x + c * e, z + s * e, ang);
         propPlace('sandbagWall', x + c * 5 + s * side * 1.6, z + s * 5 - c * side * 1.6, ang + Math.PI / 2 * side); // a short return at one end
+      }
+    }
+  }
+}
+
+/* Concrete dressing for a compound: a blast-wall screen inside each base corner and jersey barriers either side of the road at each gate.
+   Kept off the road (|fz| < 14), the middle and the spawn ring, as for the sandbags. */
+function propsConcrete(site, hx, hz, seed, base) {
+  const R = rng(seed);
+  if (propAvailable('jersey')) for (const gx of [-1, 1]) for (const sd of [-1, 1]) { // a short staggered line beside the road at each gate
+    const fx = gx * (hx - 9), fz = sd * 17;
+    for (let k = 0; k < 2; k++) { const [x, z] = site.w(fx - gx * k * 3.4, fz + sd * k * .6); if (!pushOutCircle(new V3(x, 0, z), 1.2, site.y0, site.y0 + 1)) propPlace('jersey', x, z, site.ang, { y: site.y0 - .05 }); }
+  }
+  if (base && propAvailable('blastWall')) for (const [cx, cz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { // an L of blast walls in each corner
+    const fx = cx * (hx - 16), fz = cz * (hz - 16);
+    for (let k = 0; k < 5; k++) for (const [u, v, rot] of [[fx - cx * k * 1.95, fz, 0], [fx, fz - cz * (k + 1) * 1.95, Math.PI / 2]]) {
+      const [x, z] = site.w(u, v); if (pushOutCircle(new V3(x, 0, z), 1.2, site.y0, site.y0 + 3)) continue; propPlace('blastWall', x, z, site.ang + rot, { y: site.y0 - .05 }); }
+  }
+  if (!base && propAvailable('concreteBlock')) for (let k = 0; k < 3; k++) { // a few loose blocks
+    const fx = (R() - .5) * 2 * (hx - 8), fz = (R() < .5 ? -1 : 1) * (20 + R() * (hz - 28)); const [x, z] = site.w(fx, fz);
+    if (!pushOutCircle(new V3(x, 0, z), 1.5, site.y0, site.y0 + 1)) propPlace('concreteBlock', x, z, site.ang + R() * Math.PI, { y: site.y0 - .05 });
+  }
+}
+/* Open country: rocks in small clusters, burnt-out wrecks a little off the roads and a few abandoned farmhouses.
+   Kept off roads and their spawn lanes, out of bases, checkpoints, airfields, towns and woods, off bridges and out of the water. */
+function propsCountry(M, seed) {
+  const R = rng(seed), keepOut = M.zones.map(zn => ({ x: zn.x * 1000, z: zn.y * 1000, r: Math.hypot(zn.hx, zn.hy) * 1000 + 60 }));
+  for (const t of M.towns) keepOut.push({ x: t.x * 1000, z: t.y * 1000, r: t.r * 1000 + 80 });
+  for (const b of WORLD.bridges) keepOut.push({ x: b.x * 1000, z: b.y * 1000, r: 160 });
+  // (the road grid marks whole 27 m cells, too coarse here: measure the distance to the road centre lines instead)
+  const segs = []; for (const r of M._roads) for (let k = 0; k < r.P.length - 1; k++) segs.push([...kmToM(r.P[k]), ...kmToM(r.P[k + 1])]);
+  const roadDist = (x, z) => { let m = 1e9; for (const [ax, az, bx, bz] of segs) { const dx = bx - ax, dz = bz - az, t = clamp(((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1), 0, 1); m = Math.min(m, Math.hypot(x - ax - dx * t, z - az - dz * t)); } return m; };
+  const free = (x, z, r, road) => !keepOut.some(o => Math.hypot(o.x - x, o.z - z) < o.r + r) && terrainY(x, z) > 1.5 && !inForest(x, z) && roadDist(x, z) > road + r && !pushOutCircle(new V3(x, 0, z), r, terrainY(x, z), terrainY(x, z) + 2);
+  const WX = GW * CELL, WZ = GH * CELL; // (world x and z run from 0 to these)
+  if (propAvailable('rock0')) for (let c = 0; c < 70; c++) { // clusters of two to four rocks
+    const x0 = WX * (.04 + R() * .92), z0 = WZ * (.04 + R() * .92); if (!free(x0, z0, 8, 22)) continue;
+    for (let k = 0, n = 2 + Math.floor(R() * 3); k < n; k++) { const x = x0 + (R() - .5) * 14, z = z0 + (R() - .5) * 14, s = .5 + R() * .9; if (!free(x, z, 2 * s, 20)) continue;
+      propPlace('rock' + Math.floor(R() * 7), x, z, R() * 6.28, { scale: [s, s * (.6 + R() * .5), s], y: terrainY(x, z) - .35 * s }); }
+  }
+  for (const r of M._roads) { // wrecks and farmhouses along the roads
+    let carry = R() * 900;
+    for (let k = 0; k < r.P.length - 1; k++) {
+      const [x0, z0] = kmToM(r.P[k]), [x1, z1] = kmToM(r.P[k + 1]), L = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / L, uz = (z1 - z0) / L;
+      for (let t = carry; t < L; t += 900 + R() * 700) {
+        carry = 0; const side = R() < .5 ? -1 : 1, house = R() < .3, off = house ? 48 + R() * 14 : 26 + R() * 8, x = x0 + ux * t - uz * off * side, z = z0 + uz * t + ux * off * side;
+        const ang = Math.atan2(uz, ux) + (house ? 0 : (R() - .5) * 1.2);
+        if (x < 40 || z < 40 || x > WX - 40 || z > WZ - 40) continue;
+        if (house) { if (propAvailable('farmhouse') && free(x, z, 17, 24) && Math.abs(terrainY(x + 10, z) - terrainY(x - 10, z)) < 2.5 && Math.abs(terrainY(x, z + 10) - terrainY(x, z - 10)) < 2.5) propPlace('farmhouse', x, z, ang, { y: Math.min(terrainY(x + 10, z), terrainY(x - 10, z), terrainY(x, z + 10), terrainY(x, z - 10)) - .1 }); }
+        else if (propAvailable('wreck') && free(x, z, 4, 16)) propPlace('wreck', x, z, ang, { y: terrainY(x, z) - .15 });
       }
     }
   }
