@@ -591,10 +591,11 @@ function onCpChange(c, before) {
   c.p.flag.material.color.setHex(c.owner === -1 ? 0xdedede : TEAMS[c.owner].hex);
   if (c.owner >= 0) {
     const ours = c.owner === GAME.team;
-    showMsg(`${ours ? 'We took' : 'Enemy took'} ${c.p.name}`, ours ? 'You can spawn there now' : '');
-    Sound.play(ours ? 'cap' : 'ui');
+    bigBanner(`${ours ? 'We took' : 'We lost'} ${c.p.name}`, ours ? 'You can spawn there now' : 'Take it back: holding fewer checkpoints drains our strength', ours ? 'good' : 'bad');
+    Sound.play(ours ? 'cap' : 'alarm');
     if (PLAYER.s && PLAYER.s.alive && c.inside[GAME.team] && c.owner === GAME.team && inZone(c, (PLAYER.s.veh || PLAYER.s).pos)) PLAYER.caps++;
-  } else if (before === GAME.team) showMsg(`${c.p.name} is being taken!`, '');
+  } else if (before === GAME.team) bigBanner(`${c.p.name} is being taken`, 'Get back there and defend it', 'bad');
+  else if (before >= 0) bigBanner(`${c.p.name} neutralised`, 'Keep it clear and it is ours', 'good');
   renderCpBar();
 }
 function inZone(c, p) { const z = c.p.zone, dx = p.x - z.x * 1000, dz = p.z - z.y * 1000, cs = Math.cos(z.ang), sn = Math.sin(z.ang); return Math.abs(dx * cs + dz * sn) < z.hx * 1000 && Math.abs(-dx * sn + dz * cs) < z.hy * 1000; }
@@ -693,8 +694,10 @@ function botThink(b, u, dt) {
     const flinch = GAME.time - (u.lastHurt ?? (b.soldier.lastHurt ?? -99)) < 1.8 || (ai.threat && ai.threatT > GAME.time - 1.8) ? 1 + 2.2 * (1 - sk.nerve) : 1;
     ai.aimErr = new V3((Math.random() - .5), (Math.random() - .5) * .5, (Math.random() - .5)).multiplyScalar(D.aim * 2 * sk.aim * (ai.settle || 1) * flinch); // a new wobble every think: worse just after spotting you and when under fire
     if (Math.random() < .015 * (1.4 - sk.drive)) b.lane = (Math.random() - .5) * 28; // drifting out of formation
-    // objective
-    const ti = targetCpFor(team), c = GAME.cps[ti];
+    // objective: the next checkpoint along, unless one of ours is being taken and this bot is one who goes back for it
+    let ti = targetCpFor(team); const ob = objectiveFor(team);
+    if (ob && ob.kind === 'defend') { if (b.defends === undefined) b.defends = Math.random() < .45; if (b.defends && Math.abs(M.routeAt(u.pos.x, u.pos.z) - ob.c.p.s) < 2500) ti = ob.c.i; } else b.defends = undefined;
+    const c = GAME.cps[ti];
     ai.cp = ti;
     const sNow = M.routeAt(u.pos.x, u.pos.z), sGoal = c.p.s, dir = Math.sign(sGoal - sNow) || 1;
     ai.atCp = inZone(c, u.pos) || Math.abs(sGoal - sNow) < 140;
@@ -927,6 +930,7 @@ function addFeed(by, victim, wk) {
   if (victim.kind === 'vehicle' || victim.kind === 'air') return;
   const d = document.createElement('div'), col = e => e ? TEAMS[e.team].css : '#ccc';
   if ((by && by.isPlayer) || victim.isPlayer) d.className = 'me';
+  if (victim.isPlayer) PLAYER.killedBy = by && by !== victim ? `Knocked out by ${by.isPlayer ? 'yourself' : nameOf(by)}${by.veh ? ` (${(by.veh.T || by.veh.def).short || by.veh.def.name})` : ''} · ${WNAME[wk] || wk || ''}` : '';
   d.innerHTML = `<b style="color:${col(by)}">${nameOf(by)}</b> <span class="mut">[${WNAME[wk] || wk || '?'}]</span> <b style="color:${col(victim)}">${nameOf(victim)}</b>`;
   $('feed').prepend(d); while ($('feed').children.length > 6) $('feed').lastChild.remove();
   setTimeout(() => d.remove(), 7000);
@@ -1252,7 +1256,7 @@ function refreshDeploy() { // the parts that change while you look at it (rebuil
   $('dSp').textContent = Math.floor(PLAYER.sp);
   const dm = $('dMap'), g = dm.getContext('2d'); g.fillStyle = '#17222c'; g.fillRect(0, 0, dm.width, dm.height);
   drawMapLayer(g, 0, 0, dm.width / WORLD_W, dm.width, dm.height, true, { u: dm.width / 751, spawns: [...GAME.cps.filter(c => canSpawnAt(GAME.team, c.i)).map(c => c.i)], sel: GAME.sel.where });
-  const wait = Math.max(0, GAME.deployT); $('dGo').disabled = wait > 0; $('dWait').textContent = wait > 0 ? `${GAME.deployWhy === 'dead' ? 'You were knocked out. ' : ''}Ready in ${Math.ceil(wait)} s` : 'Enter: to battle · click a checkpoint you hold on the map to start there';
+  const wait = Math.max(0, GAME.deployT); $('dGo').disabled = wait > 0; $('dWait').textContent = wait > 0 ? `${GAME.deployWhy === 'dead' ? (PLAYER.killedBy || 'You were knocked out') + '. ' : ''}Ready in ${Math.ceil(wait)} s` : 'Enter: to battle · click a checkpoint you hold on the map to start there';
   const left = Math.max(0, MATCH_S - GAME.time), clk = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}`; $('dTime').textContent = `Time left: ${clk}`; $('dClock').textContent = clk; renderCpBar();
 }
 $('dClasses').onclick = e => { const b = e.target.closest('[data-c]'); if (!b || b.disabled) return; GAME.sel.cls = b.dataset.c; Sound.init(); Sound.play('ui'); renderDeploy(); };

@@ -18,7 +18,7 @@ Open `index.html` in this folder, or use the **Island Front** card on Havoc Bay'
   - Vehicles starting at your front checkpoint are put up to 1.6 km down the road towards the fight, but never closer than 1 km to the objective, and only if no enemy is within 500 m of that spot.
   - Aircraft start at the base.
   - A soldier who has just spawned can't be hurt for 3 seconds.
-  - After being knocked out you choose again after 5 seconds. On the deploy screen, Enter sends you back in with the same unit at the same place.
+  - After being knocked out you choose again after 5 seconds; the deploy screen says who knocked you out and with what. On the deploy screen, Enter sends you back in with the same unit at the same place.
 
 ## Graphics
 
@@ -236,6 +236,7 @@ Bots earn and spend SP the same way. Each bot has its own skill level, and bots 
 - A crew that is hit turns to look for whoever fired, and may pop smoke.
 - A crew that runs out of shells drives back to the nearest checkpoint its side holds (or the base), restocks there and returns. An immobilised crew repairs as soon as it is not under fire.
 - With six or fewer guards left at a checkpoint, bots there go for the guards first.
+- When one of their side's checkpoints is being taken, about half the bots within 2.5 km of it go back to defend it.
 - Bot pilots will not dive below the height a pull-out needs, give up attack runs that are too steep, watch for rising ground, and come back if a dogfight drifts more than 3 km off the map.
 - Bot pilots flare late or not at all, and their aim wanders, more so right after they are hit.
 
@@ -252,7 +253,7 @@ The interface is laid out the way War Thunder lays its own out, studied from tha
 - **Warnings** (fire, missile, stall and so on) appear in red under the compass.
 - **Objective marker:** a gold diamond floats over the objective with its name and distance; it turns white when you need to clear guards there and red when you must defend it.
 - **Enemy markers:** enemies your side can see get a red marker with their type and range. A ground enemy needs one of your side's units nearby (900 m for vehicles, 300 m for soldiers), and you must have a line of sight to it. Aircraft are marked out to 5 km.
-- **Kill banners:** a red banner under the crosshair for each kill with the SP it earned, and its own sound. Bigger banners call double and triple kills, streaks, base hits, your front collapsing or the enemy's breaking. Lines in the kill feed that involve you are highlighted.
+- **Kill banners:** a red banner under the crosshair for each kill with the SP it earned, and its own sound. Bigger banners call checkpoints taken, lost, being taken or neutralised, double and triple kills, streaks, base hits, your front collapsing or the enemy's breaking. Lines in the kill feed that involve you are highlighted.
 - **Scoreboard:** hold Tab. Both sides with their strength, and for each player their current unit, score, kills, assists, deaths and checkpoints taken.
 - **Battle results:** both sides' strength, your score, place, kills, assists, deaths, checkpoints taken and best streak, the top three players, and awards (top score, most kills, most captures, best streak, best helper).
 - **F1** shows or hides the controls for what you are in. They also show for 20 seconds each time you change unit.
