@@ -55,6 +55,7 @@ function startMatch(mapIdx, team, bots, diff) {
 }
 function clearMatch() {
   for (const e of ENTS.slice()) removeEnt(e);
+  if (typeof debrisClear === 'function') debrisClear();
   for (const p of PROJS) if (p.m) scene.remove(p.m); PROJS.length = 0;
   for (const s of FX.sprites) scene.remove(s); FX.sprites.length = 0;
   $('feed').innerHTML = '';
@@ -921,11 +922,11 @@ const SIDE = { // side views for the line-up cards
   heli: svg('78 40', '<path d="M12 7h64v1.700H12z"/><path d="M43 8h2v5h-2z"/><path d="M28 13h22c9 0 16 5 17 13v2H42c-8 0-14-6-14-15z"/><path d="M4 15.500h26v4H4z"/><path d="M2 8h2.600v15H2z"/><path d="M38 31h28v1.700H38zM46 28h2v3.500h-2zM58 28h2v3.500h-2z"/>'),
   jet: svg('78 40', '<path d="M3 25l9-2 15-6 18-2 30 8.500v2.500L46 29H14L3 27z"/><path d="M9 23L5 8h6l11 12.500z"/><path d="M40 15c4-4.500 11-4.500 15-.5z"/><path d="M24 27h18l-14 6h-6z"/>'),
 };
-const DCOL = { ok: '#3d66ad', dmg: '#ecc63a', dead: '#dc3a2c', vac: '#0d131a' };
+const DCOL = { ok: '#57b84a', dmg: '#ecc63a', dead: '#dc3a2c', vac: '#0d131a' }; // green: working, yellow: damaged, red: knocked out
 /* the damage panel: a plan view of what you are in on a round plate. st maps each part to ok, dmg, dead or vac (an empty seat) */
 function dmgPanel(kind, st, title, lN, rN, rGlyph) {
   const P = (k, shape) => { const s = st[k]; if (!s) return ''; return shape.replace('/>', ` fill="${DCOL[s]}" stroke="${s === 'vac' ? '#8f9aa3' : '#eef2f5'}" stroke-width=".7"/>`); };
-  const base = shape => shape.replace('/>', ' fill="#253c63" stroke="#dfe6ec" stroke-width=".8"/>');
+  const base = shape => shape.replace('/>', ' fill="#26323b" stroke="#dfe6ec" stroke-width=".8"/>');
   const crewAt = { driver: [50, 28.500], gunner: [55, 45.500], commander: [55, 52.500], loader: [45, 47] };
   let b = '<circle cx="50" cy="50" r="49" fill="rgba(20,30,46,.62)" stroke="rgba(200,212,224,.34)" stroke-width="1"/><circle cx="50" cy="50" r="33" fill="none" stroke="rgba(200,212,224,.2)" stroke-width="1"/>';
   if (kind === 'tank' || kind === 'car') {
@@ -934,7 +935,7 @@ function dmgPanel(kind, st, title, lN, rN, rGlyph) {
     else b += ['31 27', '62.500 27', '31 64', '62.500 64'].map(p => base(`<rect x="${p.split(' ')[0]}" y="${p.split(' ')[1]}" width="6.500" height="13" rx="1.500"/>`)).join('');
     b += base('<rect x="38" y="21" width="24" height="62" rx="2.500"/>');
     b += P('RAD', '<rect x="41" y="60.500" width="18" height="3"/>') + P('ENG', '<rect x="41" y="64.500" width="18" height="11"/>') + P('TRN', '<rect x="41" y="76.500" width="18" height="4.500"/>');
-    b += P('TRV', '<circle cx="50" cy="47" r="13.500"/>').replace(/fill="[^"]+"/, m => m.replace('#3d66ad', 'rgba(61,102,173,.35)'));
+    b += P('TRV', '<circle cx="50" cy="47" r="13.500"/>').replace(/fill="[^"]+"/, m => m.replace('#57b84a', 'rgba(87,184,74,.3)'));
     b += base('<rect x="40.500" y="36" width="19" height="22" rx="5"/>');
     b += P('BRL', '<rect x="48.600" y="8" width="2.800" height="28"/>') + P('BRC', '<rect x="47" y="37" width="6" height="8"/>') + P('ELV', '<rect x="54" y="38" width="3" height="4.500"/>') + P('FCS', '<rect x="42.500" y="38" width="3.500" height="3.500"/>') + P('SGT', '<rect x="56" y="32.500" width="3.500" height="3.500"/>') + P('ALD', '<rect x="44" y="52" width="12" height="4.500"/>');
     for (const role in crewAt) b += P(role, `<circle cx="${crewAt[role][0]}" cy="${crewAt[role][1]}" r="2.700"/>`);

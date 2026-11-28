@@ -228,7 +228,7 @@ kbd { display: inline-block; font: 500 13px/1 var(--text); color: var(--ink); ba
 #compStrip u.m { height: 7px; width: 2px; margin-left: -.5px; }
 #compass::after { content: ""; position: absolute; left: 50%; top: 0; margin-left: -4px; border: 4px solid transparent; border-top: 6px solid var(--gold); border-bottom: 0; }
 
-#msg { position: absolute; left: 50%; top: 25%; transform: translateX(-50%); text-align: center; font: 600 27px/1.1 var(--text); color: #fff; text-shadow: var(--edge), 0 2px 8px rgba(0, 0, 0, .7); transition: opacity .5s; width: max-content; max-width: 86vw; }
+#msg { position: absolute; left: 50%; top: 31%; transform: translateX(-50%); text-align: center; font: 600 27px/1.1 var(--text); color: #fff; text-shadow: var(--edge), 0 2px 8px rgba(0, 0, 0, .7); transition: opacity .5s; width: max-content; max-width: 86vw; }
 #msg small { display: block; margin: 6px auto 0; text-wrap: balance; font: 400 16px/1.35 var(--text); color: var(--ink); max-width: 60ch; }
 #alerts { position: absolute; left: 50%; top: 150px; transform: translateX(-50%); display: grid; gap: 2px; justify-items: center; font: 500 15px/1.2 var(--text); color: #fff; text-shadow: var(--edge); text-align: center; max-width: 70vw; }
 #alerts .warn { font: 700 19px/1.15 var(--disp); margin-right: 5px; }
@@ -277,6 +277,13 @@ kbd { display: inline-block; font: 500 13px/1 var(--text); color: var(--ink); ba
 #status.air .dmgp { position: fixed; left: 14px; bottom: 12px; }
 .dmgp { position: relative; width: 168px; height: 168px; }
 .dmgp svg { width: 100%; height: 100%; display: block; }
+.dmgp.plane .disc { position: absolute; inset: 0; border-radius: 50%; background: rgba(20, 30, 46, .62); border: 1px solid rgba(200, 212, 224, .34); }
+.pm { position: absolute; inset: 5px; -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; }
+.pm.all { background: #0a0e12; -webkit-mask-image: var(--f2-all); mask-image: var(--f2-all); }
+.pm.ok, .tank.ok, .wheel.ok { background: #57b84a; } .pm.dmg, .tank.dmg { background: #ecc63a; } .pm.bad, .tank.bad, .wheel.bad { background: #dc3a2c; } .pm.gone, .tank.gone { background: rgba(220, 58, 44, .26); } .pm.hit, .tank.hit, .wheel.hit { background: #fff; }
+.tank { position: absolute; left: 50%; top: 45%; width: 9px; height: 19px; margin-left: -4.5px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .75); } /* the fuel tank, inside the fuselage */
+.wheel { position: absolute; width: 5px; height: 8px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .75); } .wheel.n { left: calc(50% - 2.5px); top: 27%; } .wheel.l { left: calc(50% - 16px); top: 55%; } .wheel.r { left: calc(50% + 11px); top: 55%; }
+.burn { position: absolute; left: 50%; top: 60%; width: 14px; height: 14px; margin-left: -7px; background: #ff8a2a; clip-path: polygon(50% 0, 68% 34%, 88% 26%, 100% 64%, 82% 100%, 18% 100%, 0 64%, 14% 30%, 34% 44%); } /* on fire */
 .dmgp .nm { position: absolute; left: 0; right: 0; top: -15px; text-align: center; font: 600 14px/1 var(--disp); letter-spacing: .06em; color: #e6ebee; text-shadow: var(--edge); }
 .dmgp .cl, .dmgp .cr { position: absolute; bottom: 30px; font: 600 15px/1 var(--disp); color: #fff; text-shadow: var(--edge); display: flex; align-items: center; gap: 4px; }
 .dmgp .cl { left: 12px; } .dmgp .cr { right: 12px; }

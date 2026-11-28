@@ -117,12 +117,23 @@ The flight physics are written for this game (`aircraft.js`). The handling follo
 - **Fly-by-wire:** as on the real jets, the stick asks the flight computer for g. The computer holds 1 g hands-off, caps the pull at 9 g and stops at its angle-of-attack limit, so a healthy jet won't stall or overstress.
 - **Instructor (mouse aim):** the cursor leads the nose, where the guns point. The bank grows with how far the cursor is off the nose: a small nudge is flown with rudder and a few degrees of bank, about 10° off asks for a 40° bank, and a target well off the nose gets a full-rate turn. It pulls the g that turn needs and holds height if the wing can manage it. For a target behind you it flies a level turn. Slow, the nose rides above the flight path, so aim above where you want to go.
 - **Runway:** the nose lifts only once the tail has enough air over it. Ground effect cushions the flare. The gear and flaps lower themselves when low and slow; the flaps add lift and drag. B is the airbrake. Throttle right back gives wheel brakes on the ground.
-- **Landing:** touch down level at under 5.5 m/s sink and under 410 km/h. Between 3.6 and 5.5 m/s is a hard landing that damages the fuselage.
+- **Landing:** touch down level on the wheels at under 7 m/s sink and under 450 km/h. Above 3.6 m/s is a hard landing that strains the fuselage. Harder, faster or more crooked than that and the undercarriage gives way: the jet drops onto its belly and slides.
 - **Fuel and weight:** fuel burns with thrust, about four times faster in afterburner. The F-2A's standard load lasts about 23 minutes at 100 % and about 4 minutes on WEP; the HUD shows the time left. Burning fuel and dropping weapons makes the jet lighter, so it climbs and turns better. With no fuel the engine stops. A holed tank leaks.
 - **Overload:** the wings stand a load, which is weight times g, so a heavy jet takes less g than a light one. Past the limit, or past the airframe's speed limit, the HUD shows OVERLOAD and stress builds; ease off and it fades, hold it and a wing rips off. The F-2A's flight computer keeps it under its limit while it is working.
 - **Pilot:** holding 7 g or more greys the view in from the edges after a few seconds. Holding 9 g for about 4 seconds (8 g for about 7) blacks the pilot out, and nobody flies the jet for 4.5 seconds. Strong negative g reddens the view.
-- **Damage:**
-  - A damaged wing rolls the jet towards it, harder the more g you pull. A jet with a whole wing gone can limp level but can barely turn.
+- **Collisions (the jet is a solid body):** the jet has contact points on the nose, belly, tail, both wingtips, both mid-wings, the tailplane tips, the fin and the three wheels. A point that meets the ground gets a rigid-body impulse there, so the blow pushes back where it landed and friction drags that point.
+  - A wingtip on the ground rolls the jet back and slews it round. The first touch damages the wing by how fast it closed and how fast the jet was going, and dragging it grinds it away: a gentle touch at landing speed scuffs the tip, the same at 300 km/h tears the outer panel off.
+  - A wing against a building or bridge comes off and the jet slews towards it; the nose or fuselage into one at speed is a crash. Flying through the tops of a wood batters whatever goes through the trees and feeds branches to the engine.
+  - A flat, slow arrival without wheels is a belly landing. The jet slides, the nose swinging round if it arrived crooked or a wing is gone, the belly and the engine wearing away, until it stops. E gets you out. On your own airfield it is repaired like any other damage.
+  - In the sea it ploughs to a stop and sinks; the pilot gets out and swims.
+  - Only a hard hit with the nose or body destroys the jet outright: closing on the ground at more than about 80 km/h straight in, or a steep dive.
+  - Parts that come off keep flying: they tumble away at the jet's speed, fall, and lie where they land.
+- **Damage (where it is hit decides what stops working):**
+  - Nothing blows a jet up at once except a big warhead straight into the fuselage. A fire left burning for 18 seconds reaches the fuel, and that does. X pulls the fire handle.
+  - A warhead bursting nearby throws fragments that find some parts and miss others, more of them the closer it bursts.
+  - The rear fuselage shot through: the tail comes away with the engine, tailplanes and fin, and the jet tumbles. The forward fuselage wrecked: nothing answers the stick. Either way J bails you out.
+  - Fuselage damage weakens the hydraulics, so the stick does less. A wounded pilot cannot hold the jet steady.
+  - A damaged wing rolls the jet towards it, harder the more g you pull, and its drag pulls the nose that way. A jet with a whole wing gone can limp level but can barely turn.
   - Losing one tailplane slows the pitch response. Losing both leaves almost no pitch control.
   - Losing the fin makes the jet weave.
   - Losing the nose sensors, or both tailplanes, takes the flight computer out. The stick then sets angle of attack directly, so you can stall, and pulling well past 9 g bends the wings.
@@ -147,7 +158,7 @@ The flight physics are written for this game (`aircraft.js`). The handling follo
 - **Hover mode (H):** the helicopter holds its place and height. W/A/S/D move it about gently, Space and C climb and descend, and close to the ground the descent is held to a soft landing. It also works the collective for you in an autorotation.
 - **Ground effect:** close to the ground the rotor needs less power.
 - **Turning:** at speed the helicopter banks into its turns and can't spin on the spot, and the tail fin keeps the nose pointing the way it is going. In the hover it turns freely.
-- **The sea:** water is a surface. Touching it in a helicopter or a jet is a crash.
+- **The sea:** water is a surface. Touching it in a helicopter is a crash; a jet can be ditched in it.
 - **Vortex ring:** sinking faster than about 4 m/s with little forward speed puts the rotor in its own downwash and it loses lift. Fly forward to get out. Hover mode holds the descent to about 2.6 m/s when slow, lets you sink faster only above about 60 km/h, and puts the nose down to fly out if the rotor is caught anyway.
 - **One engine out:** the helicopter can't hover out of ground effect, but it flies on if you keep 100 km/h or more.
 - **Both engines out (autorotation):** lower the collective at once and the air coming up through the rotor keeps it turning; you come down at about 12 m/s at 150 km/h. Pull the nose up from about 25 m to flare, then raise the collective in the last 8 m to spend the rotor's spin on a soft touchdown. It takes practice. A run-on landing at up to 100 km/h is survivable.
@@ -198,7 +209,7 @@ The interface is laid out the way War Thunder lays its own out, studied from tha
 
 - **Top centre:** how many checkpoints each side holds on slanted blue and red plates with the clock between them, the five checkpoints as diamonds under that (blue, red or neutral, filling as they are taken, with the number of guards left beneath and corner brackets round the one you are standing in), then a compass tape.
 - **Top left:** spawn points. In an aircraft the flight read-out sits here as bare text: throttle, speed, altitude, then the weapons with `>` marking the chosen one, flares and fuel time, then the other instruments.
-- **Bottom left:** the damage panel, a plan view of what you are in on a round plate. Each part and crew seat is blue when working, yellow when damaged and red when knocked out; an empty seat is dark. Speed and sight range are under it.
+- **Bottom left:** the damage panel, a plan view of what you are in on a round plate. Each part and crew seat is green when working, yellow when damaged and red when knocked out; an empty seat is dark. The jet's panel is the aircraft's own shape, taken from the 3D model: a part flashes white when it is hit, and shows faint red where it has broken off. Damage to the jet is shown there and not in words. Speed and sight range are under it.
 - **Bottom centre:** the action bar. One slot for each thing you can use, with its key on a tab above, a picture, and how many are left. The chosen shell or weapon is lit, the shell in the gun has a gold marker, and the slot fills as the gun loads.
 - **Bottom right:** the map. **Top right:** who knocked out whom.
 - **The map** (minimap, deploy screen and the big map on M) is drawn as a printed tactical map to match: muted tints by height, hill shading, a contour every 50 m, woods, roads and runways, a dark coastline, fold creases and paper grain, under a 2 km grid numbered across and lettered down. Checkpoints are the same diamonds as on the HUD with their names and guard counts on dark plates; on the deploy screen a gold ring marks where you can start and white brackets mark the place you chose.

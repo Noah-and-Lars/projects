@@ -96,6 +96,23 @@ function f2Prepared() {
   const gearDown = named['F-2-landingOn_6'].geo; gearDown.computeBoundingBox();
   return GLTF.f2 = { named, parts, spheres, pylons, tip: [tipX / tipN, tipY / tipN, tipZ], gearH: -gearDown.boundingBox.min.y, mats };
 }
+/* plan views of the F-2's parts for the damage panel: each part's own triangles, seen from above, as a small picture used as a mask.
+   So the panel shows the real aircraft's shape, and each part can be coloured by the state it is in. */
+function f2Masks() {
+  const F = f2Prepared(); if (F.masks) return F.masks;
+  const S = 176, k = S / 17.4, cx = S / 2, cy = S / 2; // 17.4 m across the picture, nose up
+  const draw = (geos, lw) => { const cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d'); g.fillStyle = g.strokeStyle = '#fff'; g.lineWidth = lw; g.lineJoin = 'round';
+    for (const geo of geos) { const P = geo.attributes.position, I = geo.index, n = I ? I.count : P.count, at = i => I ? I.getX(i) : i; g.beginPath();
+      for (let t = 0; t < n; t += 3) { const i0 = at(t), i1 = at(t + 1), i2 = at(t + 2), x0 = cx + P.getZ(i0) * k, y0 = cy - P.getX(i0) * k, x1 = cx + P.getZ(i1) * k, y1 = cy - P.getX(i1) * k, x2 = cx + P.getZ(i2) * k, y2 = cy - P.getX(i2) * k;
+        g.moveTo(x0, y0); if ((x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0) > 0) { g.lineTo(x1, y1); g.lineTo(x2, y2); } else { g.lineTo(x2, y2); g.lineTo(x1, y1); } g.closePath(); } // (all wound the same way, or the top and bottom skins would cancel each other out)
+      g.fill(); if (lw) g.stroke(); }
+    return cv.toDataURL(); };
+  const m = {}; for (const [id, geo] of Object.entries(F.parts)) m[id] = draw([geo], id === 'fin' ? 1.8 : .5);
+  m.cockpit = draw([F.named['F-2-canopy_1'].geo], .4);
+  m.all = draw(Object.values(F.parts), 3); // the whole aircraft a little fat: a dark edge behind the parts
+  for (const [id, url] of Object.entries(m)) document.documentElement.style.setProperty('--f2-' + id, `url(${url})`);
+  return F.masks = m;
+}
 function modelF2(team) {
   const F = f2Prepared(), M = { root: new THREE.Group(), parts: {}, stores: [], partSpheres: F.spheres };
   // Red's aircraft wear the same camouflage darkened towards grey-brown, so the two sides can be told apart
