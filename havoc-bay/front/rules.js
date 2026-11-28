@@ -15,7 +15,7 @@ function statOf(s) { return !s ? null : s.isPlayer ? PLAYER.st : s.bot ? s.bot.s
 function allStats() { return [PLAYER.st, ...GAME.botsList.map(b => b.st)].filter(Boolean); }
 
 function rulesStart() {
-  GAME.str = [STRENGTH, STRENGTH]; GAME.rulesT = 0; GAME.warned = {}; GAME.baseHitT = [-99, -99];
+  GAME.str = [STRENGTH, STRENGTH]; GAME.rulesT = 0; for (const b of GAME.M.bases) b.fires = []; GAME.warned = {}; GAME.baseHitT = [-99, -99];
   setHTML($('board'), ''); $('board').classList.add('hidden'); $('banner').innerHTML = '';
 }
 
@@ -167,4 +167,27 @@ function hudRules(dt) {
     n++;
   }
   for (let i = n; i < foeEls.length; i++) foeEls[i].style.display = 'none';
+}
+
+/* ---------- a base visibly burns as its side's strength falls (as Havoc Bay's harbours do) ---------- */
+function baseFires(dt) {
+  if (!GAME.str || !GAME.M) return;
+  for (const t of [0, 1]) {
+    const b = GAME.M.bases[t], F = b.fires || (b.fires = []), want = Math.min(8, Math.floor((1 - GAME.str[t] / STRENGTH) * 10));
+    while (F.length < want) { // a new fire somewhere in the base, with a bang to start it
+      const [x, z] = b.site.w(rand(-300, 300), rand(-250, 250)), p = new V3(x, groundY(x, z) + 1, z);
+      F.push(p); explosion(p.clone(), 8); Sound.at('boom', p);
+    }
+    for (const p of F) {
+      if (Math.random() < dt * 3) sprite(_w.set(p.x + rand(-4, 4), p.y + 4, p.z + rand(-4, 4)), 10, 40, 7, 0x2b2927, false, 7, .7); // a tall column of black smoke, readable from far off
+      if (Math.random() < dt * 8) sprite(_w.set(p.x + rand(-3, 3), p.y + 1.5, p.z + rand(-3, 3)), 5, 3, .6, 0xffffff, true, 3);
+    }
+  }
+}
+/* first battles: a few tips, a few seconds apart, after the first deploy on the ground */
+function firstTips() {
+  let n = 0; try { n = +(localStorage.getItem('islandfront.tips') || 0); localStorage.setItem('islandfront.tips', n + 1); } catch (e) { return; }
+  if (n >= 2) return;
+  const tips = [['Head for the gold diamond', 'It marks the objective: the next checkpoint to take, or one of ours to defend.'], ['Red markers are enemies your side can see', 'Right click for the gun sight, left click to fire. The gun is laid for the range automatically.'], ['Every enemy you knock out drains their strength', 'Hold Tab for the scoreboard. Spawn points buy tanks, helicopters and jets on the deploy screen.']];
+  tips.forEach(([a, b], i) => setTimeout(() => { if (GAME.on && !GAME.over && PLAYER.s && PLAYER.s.alive) showMsg(a, b); }, 5000 + i * 9000));
 }

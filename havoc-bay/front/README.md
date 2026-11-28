@@ -10,7 +10,7 @@ Open `index.html` in this folder, or use the **Island Front** card on Havoc Bay'
 - **Front strength.** Each side has 600 front strength, shown on the blue and red plates at the top with a bar under each. Knock the enemy's to zero to win. When the 20 minutes run out, the stronger side wins. Strength falls three ways:
   - **Losses.** Every unit a side loses costs it strength: a soldier 6, a light vehicle 10, an IFV 15, a tank or helicopter 22, a jet 26, a howitzer 15.
   - **Bleed.** A side holding fewer checkpoints than the enemy loses 0.45 a second for each checkpoint of difference.
-  - **Base fire.** Shells, bombs and rockets that burst inside a base cost the defenders strength. A bomb takes about 27, a rocket about 3, so a jet or helicopter can wear a base down. Defenders are warned when their base is under fire.
+  - **Base fire.** Shells, bombs and rockets that burst inside a base cost the defenders strength. A bomb takes about 27, a rocket about 3, so a jet or helicopter can wear a base down. Defenders are warned when their base is under fire. A base visibly burns as its side's strength falls: a new fire with a column of black smoke for every tenth lost, up to eight.
 - **Taking checkpoints.** Once a checkpoint's guards are dead, the side with more troops and ground vehicles inside it takes it. The bigger its lead, the faster it goes; equal numbers hold it contested. You can only take the next checkpoint along from one your side holds. Aircraft never count.
 - Each team base has 4 towed howitzers that lob high shells at enemies up to 6 km away. About 1 shell in 6.5 lands on its target (`HIT_CHANCE` in `game.js`); the rest scatter 30 to 140 m away.
 - **Spawning.**
@@ -256,6 +256,7 @@ The interface is laid out the way War Thunder lays its own out, studied from tha
 - **Kill banners:** a red banner under the crosshair for each kill with the SP it earned, and its own sound. Bigger banners call checkpoints taken, lost, being taken or neutralised, double and triple kills, streaks, base hits, your front collapsing or the enemy's breaking. Lines in the kill feed that involve you are highlighted.
 - **Scoreboard:** hold Tab. Both sides with their strength, and for each player their current unit, score, kills, assists, deaths and checkpoints taken.
 - **Battle results:** both sides' strength, your score, place, kills, assists, deaths, checkpoints taken and best streak, the top three players, and awards (top score, most kills, most captures, best streak, best helper).
+- **First battles:** in your first two battles, three short tips appear one after another after you first deploy on the ground: the objective marker, enemy markers and aiming, and what wins.
 - **F1** shows or hides the controls for what you are in. They also show for 20 seconds each time you change unit.
 - **Menus** are flat slate windows with tabs and a row of buttons along the bottom. The title screen has the red "To battle" button at the top with the chosen map under it. The deploy screen shows the battle name, time left and score on top, your line-up as a strip of cards with their spawn-point costs, the chosen unit's weapons and figures and the mission objectives on the left, and the map on the right.
 

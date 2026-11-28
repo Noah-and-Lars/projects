@@ -27,7 +27,7 @@ const turnTo = (a, b, max) => a + clamp(angDiff(a, b), -max, max);
 
 /* ---------------- match setup ---------------- */
 function startMatch(mapIdx, team, bots, diff) {
-  Object.assign(GAME, { on: true, over: false, paused: false, time: 0, map: mapIdx, team, bots, diff, winner: -1 });
+  Object.assign(GAME, { on: true, over: false, paused: false, time: 0, map: mapIdx, team, bots, diff, winner: -1, tipped: false });
   clearMatch();
   const M = GAME.M = MAPS[mapIdx];
   if (!M.H) buildMap(M);
@@ -119,6 +119,7 @@ function deployPlayer(cls, where) {
     const v = makeVehicle(cls, team, where); enterVehicle(s, v); CAM.yaw = v.yaw;
   }
   GAME.last = { cls, where };
+  if (!(cls === 'jet' || cls === 'heli') && !GAME.tipped) { GAME.tipped = true; firstTips(); }
   if (!(cls === 'jet' || cls === 'heli')) CAM.pitch = -.05;
   $('deploy').classList.add('hidden'); GAME.deploying = false;
   if (!(cls === 'jet' || cls === 'heli')) showMsg(GAME.time < 2 ? 'Push the front' : 'Deployed', GAME.time < 2 ? 'Take the checkpoints ahead and knock out the enemy: every loss drains their strength.' : '');
@@ -1362,7 +1363,7 @@ function step(dt) {
   }
   airsStep(dt);
   updateProjectiles(dt); shellWarnings(); smokeStep(dt);
-  checkpointsStep(dt); rulesStep(dt);
+  checkpointsStep(dt); rulesStep(dt); baseFires(dt);
   resupply(PLAYER.s, dt);
   if (GAME.deploying && Math.floor(GAME.time * 4) !== Math.floor((GAME.time - dt) * 4)) refreshDeploy();
 }
