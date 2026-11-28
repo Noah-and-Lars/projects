@@ -185,19 +185,9 @@ function terrainMaterial() {
 }
 function buildTerrainChunks(M) {
   const HF = WORLD.HF, CH = 100, mat = terrainMaterial(), group = new THREE.Group();
-  // farm plots round the towns
-  const towns = M.towns.map(t => ({ x: t.x * 1000, z: t.y * 1000, a: hash2(t.x * 100 | 0, t.y * 100 | 0, 9) * Math.PI }));
-  let cropAng = 0;
-  const crop = (x, z) => {
-    for (const t of towns) {
-      const dx = x - t.x, dz = z - t.z, d = Math.hypot(dx, dz); if (d > 1300 || d < 260) continue;
-      const c = Math.cos(t.a), s = Math.sin(t.a), u = dx * c + dz * s, v = -dx * s + dz * c, pu = Math.floor(u / 160), pv = Math.floor(v / 110), k = hash2(pu + 500, pv + 500, 7);
-      const edge = Math.min(Math.abs(u / 160 - Math.round(u / 160)) * 160, Math.abs(v / 110 - Math.round(v / 110)) * 110);
-      if (edge < 4) return 0; // hedgerows and lanes between fields
-      cropAng = t.a; return 1 + Math.floor(k * 4) * (d < 1100 ? 1 : 0);
-    }
-    return 0;
-  };
+  // farm plots: round the towns and on the isolated farms (ground.js: the same layout the plants use)
+  const frames = farmFrames(M), cr = { ang: 0 }; let cropAng = 0;
+  const crop = (x, z) => { const cp = cropAtFrames(frames, x, z, cr); cropAng = cr.ang; return cp; };
   for (let cj = 0; cj < GHF - 1; cj += CH) for (let ci = 0; ci < GWF - 1; ci += CH) {
     const i1 = Math.min(ci + CH, GWF - 1), j1 = Math.min(cj + CH, GHF - 1), nx = i1 - ci + 1, nz = j1 - cj + 1, N = nx * nz;
     const pos = new Float32Array(N * 3), nor = new Float32Array(N * 3), col = new Float32Array(N * 3), spl = new Float32Array(N * 4), fld = new Float32Array(N * 2);

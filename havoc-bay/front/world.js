@@ -462,7 +462,7 @@ function buildWorld(M) {
   WORLD.bridges = M.bridges.map(b => ({ ...b, c: Math.cos(b.ang), s: Math.sin(b.ang) }));
   WORLD.trees = [];
   if (WORLD.gfx === 'realistic') { WORLD.HF = null; WORLD.HF = buildFine(M); buildRealWorld(M); }
-  else { WORLD.HF = null; WORLD.group.add(buildTerrainMesh(M)); WORLD.group.add(buildSea()); buildTrees(M); }
+  else { WORLD.HF = null; WORLD.group.add(buildTerrainMesh(M)); WORLD.group.add(buildSea()); buildTrees(M); if (typeof optHedgesBuild === 'function') optHedgesBuild(M); }
   buildRoads(M); buildBridges(M);
   M.bases.forEach((b, t) => buildTeamBase(M, b, t));
   M._cps.forEach(p => buildCheckpoint(M, p));
@@ -475,7 +475,7 @@ function buildWorld(M) {
 function updateWorldView(focus) {
   for (const t of WORLD.trees) { const d = Math.hypot(t.userData.cx - focus.x, t.userData.cz - focus.z); t.visible = t.userData.far ? d >= 1800 && d < 5200 : d < 1800; }
   for (const e of ENTS) if (e.model) { const d = Math.abs(e.pos.x - camera.position.x) + Math.abs(e.pos.z - camera.position.z); e.model.root.visible = !(e.kind === 'soldier' && e.veh) && d < (e.kind === 'soldier' ? 1100 : 6000); }
-  propsUpdate(camera.position); if (typeof optGrassUpdate === 'function') optGrassUpdate(camera.position);
+  propsUpdate(camera.position); if (typeof optGrassUpdate === 'function') { optGrassUpdate(camera.position); optHedgesUpdate(camera.position); }
   sun.position.copy(focus).addScaledVector(SUN_DIR, 600); sun.target.position.copy(focus);
   if (WORLD.gfx === 'realistic') { const now = performance.now(); updateReal(focus, Math.min(.1, (now - (WORLD._t || now)) / 1000)); WORLD._t = now; }
   SKY.position.copy(camera.position); SKY.position.y = 0;

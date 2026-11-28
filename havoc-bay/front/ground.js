@@ -19,16 +19,17 @@ function groundTex() { // tileable, grey (the terrain's vertex colour tints it):
 function optTerrainMat() {
   const m = new THREE.MeshLambertMaterial({ vertexColors: true, map: OGRASS.gtex || (OGRASS.gtex = groundTex()) });
   m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, farmUniforms(WORLD.M));
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGW;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvGW = (modelMatrix * vec4(position, 1.0)).xyz;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGW;').replace('#include <map_fragment>', `
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGW;' + FARM_GLSL).replace('#include <map_fragment>', `
       { float d = length(vGW - cameraPosition);
         vec3 a = texture2D(map, vGW.xz / 4.0).rgb, b = texture2D(map, vGW.xz / 26.0).rgb, c = texture2D(map, vGW.xz / 150.0 + .31).rgb;
         float nearW = 1.0 - smoothstep(25.0, 140.0, d);
         vec3 tx = mix(b, a, nearW) * (c * 1.25 + .05) / .77;                         // fine detail close up, coarser further out, patches everywhere
         float mottle = texture2D(map, vGW.xz / 620.0 + .7).r;                        // big light and dark drifts across the fields
-        diffuseColor.rgb *= tx * (.82 + (mottle - .77) * 1.4); }`);
+        diffuseColor.rgb *= tx * (.82 + (mottle - .77) * 1.4) * farmTint(vGW.xz, d); }`);
   };
-  m.customProgramCacheKey = () => 'optTerrain';
+  m.customProgramCacheKey = () => 'optTerrain' + (WORLD.M && WORLD.M.name); // (a map's own fields)
   return m;
 }
 
@@ -94,3 +95,98 @@ function roadNear(x, z) { // within the road's width (the road grid cells are 27
     const dx = bx - ax, dz = bz - az, t = clamp(((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1), 0, 1); if (Math.hypot(ax + dx * t - x, az + dz * t - z) < hw) return true; } }
   return false;
 }
+
+/* ---------------- farmland: one field layout for every graphics level ----------------
+   Each frame is a grid of fields (160 m by 110 m, turned by a) round a centre: the field systems round each village (from 260 m to 1300 m out),
+   and isolated farms spread over the open lowland. Kept off bases, checkpoints, airfields, woods, water and steep ground.
+   cropAtFrames: 0 none, 1 ploughed, 2 wheat, 3 young crop, 4 pasture (and the field grid's angle in .ang). */
+const FIELD_U = 160, FIELD_V = 110;
+function farmFrames(M) {
+  if (M._farms) return M._farms;
+  const out = M.towns.map((t, i) => ({ x: t.x * 1000, z: t.y * 1000, a: hash2(t.x * 100 | 0, t.y * 100 | 0, 9) * Math.PI, r0: 260, r1: 1300, rc: 1100, salt: 0 }));
+  const R = rng((M.seed || 1) * 7 + 71), WX = GW * CELL, WZ = GH * CELL;
+  const zoneDist = (x, z) => Math.min(...M.zones.map(zn => Math.hypot(x / 1000 - zn.x, z / 1000 - zn.y) * 1000 - Math.max(zn.hx, zn.hy) * 1000));
+  const open = (x, z, r) => { let bad = 0, n = 0; for (let a = 0; a < TAU; a += TAU / 12) for (const f of [.35, .7, 1]) { const px = x + Math.cos(a) * r * f, pz = z + Math.sin(a) * r * f, h = terrainY(px, pz), sl = Math.hypot(terrainY(px + 8, pz) - terrainY(px - 8, pz), terrainY(px, pz + 8) - terrainY(px, pz - 8)) / 16; n++; if (h < 6 || h > 300 || sl > .22 || inForest(px, pz)) bad++; } return 1 - bad / n; };
+  for (let gz = 700; gz < WZ - 700; gz += 900) for (let gx = 700; gx < WX - 700; gx += 900) {
+    const x = gx + (R() - .5) * 500, z = gz + (R() - .5) * 500, r1 = 420 + R() * 380;
+    if (out.some(f => Math.hypot(f.x - x, f.z - z) < f.r1 + r1 * .5)) continue;
+    if (zoneDist(x, z) < r1 + 60 || open(x, z, r1) < .6) continue;
+    out.push({ x, z, a: R() * Math.PI, r0: 0, r1, rc: r1 - 60, salt: out.length * 131 });
+  }
+  return M._farms = out;
+}
+function cropAtFrames(frames, x, z, out) {
+  for (const t of frames) {
+    const dx = x - t.x, dz = z - t.z; let d = Math.hypot(dx, dz); if (d > t.r1 + FIELD_U || d < t.r0 - FIELD_U) continue;
+    const c = Math.cos(t.a), s = Math.sin(t.a), u = dx * c + dz * s, v = -dx * s + dz * c, pu = Math.floor(u / FIELD_U), pv = Math.floor(v / FIELD_V), k = hash2(pu + 500 + t.salt, pv + 500, 7);
+    const dc = Math.hypot((pu + .5) * FIELD_U, (pv + .5) * FIELD_V) + (hash2(pu + 77 + t.salt, pv, 8) - .5) * 160; // whole fields only: a ragged, field-shaped edge
+    if (dc > t.r1 || dc < t.r0) continue;
+    d = dc;
+    const edge = Math.min(Math.abs(u / FIELD_U - Math.round(u / FIELD_U)) * FIELD_U, Math.abs(v / FIELD_V - Math.round(v / FIELD_V)) * FIELD_V);
+    if (out) out.ang = t.a;
+    if (edge < 4) return 0; // hedgerows and lanes between fields
+    return 1 + Math.floor(k * 4) * (d < t.rc ? 1 : 0);
+  }
+  return 0;
+}
+
+/* Field colours in the Optimised ground shader: the same frames, painted per pixel (crisp field edges instead of the 27 m colour grid). */
+const FARM_MAX = 24;
+function farmUniforms(M) {
+  const F = farmFrames(M).slice(0, FARM_MAX), a = [], b = [];
+  for (let i = 0; i < FARM_MAX; i++) { const f = F[i]; a.push(f ? new THREE.Vector4(f.x, f.z, f.a, f.r1) : new THREE.Vector4(-1e6, -1e6, 0, 0)); b.push(f ? new THREE.Vector4(f.r0, f.rc, f.salt % 997, 0) : new THREE.Vector4(0, 0, 0, 0)); }
+  return { uFarmA: { value: a }, uFarmB: { value: b } };
+}
+const FARM_GLSL = `
+  uniform vec4 uFarmA[${FARM_MAX}]; uniform vec4 uFarmB[${FARM_MAX}];
+  vec3 farmTint(vec2 p, float dist) {
+    for (int i = 0; i < ${FARM_MAX}; i++) {
+      vec4 f = uFarmA[i], g = uFarmB[i]; vec2 d = p - f.xy; float r = length(d); if (r > f.w + 170.0 || r < g.x - 170.0) continue;
+      float c = cos(f.z), s = sin(f.z), u = d.x * c + d.y * s, v = -d.x * s + d.y * c;
+      vec2 cell = floor(vec2(u / ${FIELD_U}.0, v / ${FIELD_V}.0)); float k = fract(sin(dot(cell + vec2(g.z, g.z * .37), vec2(12.9898, 78.233))) * 43758.5453);
+      { float dc = length((cell + .5) * vec2(${FIELD_U}.0, ${FIELD_V}.0)) + (fract(sin(dot(cell + vec2(g.z * .7, 3.1), vec2(39.3, 11.7))) * 24634.6345) - .5) * 160.0; if (dc > f.w || dc < g.x) continue; r = dc; } // whole fields only
+      float edge = min(abs(u / ${FIELD_U}.0 - floor(u / ${FIELD_U}.0 + .5)) * ${FIELD_U}.0, abs(v / ${FIELD_V}.0 - floor(v / ${FIELD_V}.0 + .5)) * ${FIELD_V}.0);
+      float hedge = 1.0 - smoothstep(1.5, 4.0, edge), fadeRows = 1.0 - smoothstep(150.0, 700.0, dist), soften = .85;
+      float type = r < g.y ? 1.0 + floor(k * 4.0) : 1.0;
+      vec3 t = vec3(1.0);
+      if (type < 1.5) { float fur = sin(u * 6.0) * .5 + .5; t = vec3(.78, .64, .5) * mix(1.0, .84 + .26 * fur, fadeRows); }            // ploughed: brown soil and furrows
+      else if (type < 2.5) { t = vec3(1.16, 1.02, .66) * mix(1.0, .94 + .1 * (sin(u * 22.0) * .5 + .5), fadeRows); }                   // wheat
+      else if (type < 3.5) { float row = smoothstep(.55, .85, sin(v * 10.0) * .5 + .5); t = mix(vec3(.8, .68, .54), vec3(.72, .92, .58), mix(.45, row, fadeRows)); } // young crop in rows
+      else { t = vec3(.9, 1.04, .8); }                                                                                               // pasture
+      t = mix(t, vec3(.62, .74, .5), hedge * .8);                                                                                    // hedge line or grass strip
+      return mix(vec3(1.0), t, soften);
+    }
+    return vec3(1.0);
+  }`;
+
+/* Hedgerows for Optimised: rounded green boxes along about a third of the field boundaries, instanced per 600 m patch and culled by distance. */
+const OHEDGE = { patches: [], R: 1600 };
+function optHedgesBuild(M) {
+  OHEDGE.patches = []; if (WORLD.gfx === 'realistic') return;
+  const geo = new THREE.BoxGeometry(1, 1, 1, 2, 2, 1); { const p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i), x = p.getX(i), z = p.getZ(i); p.setXYZ(i, x * (1 - (y + .5) * .25), y + .5, z * (1 - (y + .5) * .3)); } geo.computeVertexNormals(); } // tapering, rounded top
+  const mat = new THREE.MeshLambertMaterial({ color: 0x4d6233, map: OGRASS.gtex || (OGRASS.gtex = groundTex()) });
+  const groups = new Map(), dummy = new THREE.Object3D(), R = rng((M.seed || 1) + 404);
+  const zones = M.zones.concat(M.towns.map(t => t.zone)), inZone = (x, z) => zones.some(zn => { const dx = x / 1000 - zn.x, dz = z / 1000 - zn.y, c = Math.cos(zn.ang || 0), s = Math.sin(zn.ang || 0); return Math.abs(dx * c + dz * s) < zn.hx + .02 && Math.abs(-dx * s + dz * c) < zn.hy + .02; });
+  farmFrames(M).forEach((f, fi) => {
+    const c = Math.cos(f.a), s = Math.sin(f.a), W = (u, v) => [f.x + u * c - v * s, f.z + u * s + v * c], nU = Math.ceil(f.r1 / FIELD_U) + 1, nV = Math.ceil(f.r1 / FIELD_V) + 1;
+    for (let pu = -nU; pu <= nU; pu++) for (let pv = -nV; pv <= nV; pv++) for (const along of [0, 1]) {
+      if (hash2(pu + 300 + fi * 17, pv + 300, along ? 52 : 51) > .34) continue; // most boundaries are a grass strip
+      const u0 = pu * FIELD_U, v0 = pv * FIELD_V, u1 = along ? u0 + FIELD_U : u0, v1 = along ? v0 : v0 + FIELD_V, L = Math.hypot(u1 - u0, v1 - v0), seg = 5, n = Math.floor(L / seg), gate = hash2(pu, pv, 53) * n | 0;
+      for (let k = 0; k < n; k++) {
+        if (Math.abs(k - gate) < 1) continue; // a gap for a gate
+        const t = (k + .5) / n, [x, z] = W(lerp(u0, u1, t), lerp(v0, v1, t)), d = Math.hypot(x - f.x, z - f.z); if (d > f.r1 - 30 || d < f.r0 + 20) continue;
+        const h = terrainY(x, z); if (h < 6 || inForest(x, z) || inZone(x, z) || onRoad(x, z) && roadNear(x, z)) continue;
+        const sl = Math.hypot(terrainY(x + 4, z) - terrainY(x - 4, z), terrainY(x, z + 4) - terrainY(x, z - 4)) / 8; if (sl > .3) continue;
+        const ht = 1.4 + R() * 1.1 + (R() < .05 ? 3 : 0); // now and then a taller thorn or holly
+        dummy.position.set(x, h - .25, z); dummy.rotation.set(0, -(f.a + (along ? 0 : Math.PI / 2)) + (R() - .5) * .1, 0); dummy.scale.set(seg * 1.08, ht, 1.3 + R() * .6); dummy.updateMatrix();
+        const key = Math.floor(x / 600) + ',' + Math.floor(z / 600); let g = groups.get(key); if (!g) groups.set(key, g = { m: [], cx: 0, cz: 0 }); g.m.push(dummy.matrix.clone()); g.cx += x; g.cz += z;
+      }
+    }
+  });
+  for (const g of groups.values()) {
+    const im = new THREE.InstancedMesh(geo, mat, g.m.length); g.m.forEach((m, i) => im.setMatrixAt(i, m)); im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false; im.userData.shared = true;
+    WORLD.group.add(im); OHEDGE.patches.push({ im, x: g.cx / g.m.length, z: g.cz / g.m.length });
+  }
+  OHEDGE.count = [...groups.values()].reduce((a, g) => a + g.m.length, 0);
+}
+function optHedgesUpdate(cam) { for (const p of OHEDGE.patches) p.im.visible = Math.hypot(p.x - cam.x, p.z - cam.z) < OHEDGE.R; }

@@ -341,19 +341,8 @@ function floraModels() {
 }
 
 /* ---------------- placing the plants ---------------- */
-function fieldFrames(M) { // the farm field grids round the towns (the terrain shader paints the same fields)
-  return M.towns.map(t => ({ x: t.x * 1000, z: t.y * 1000, a: hash2(t.x * 100 | 0, t.y * 100 | 0, 9) * Math.PI }));
-}
-function cropAt(frames, x, z) { // 0 none, 1 ploughed, 2 wheat, 3 young crop, 4 pasture; -1 on a hedge line
-  for (const t of frames) {
-    const dx = x - t.x, dz = z - t.z, d = Math.hypot(dx, dz); if (d > 1300 || d < 260) continue;
-    const c = Math.cos(t.a), s = Math.sin(t.a), u = dx * c + dz * s, v = -dx * s + dz * c, pu = Math.floor(u / 160), pv = Math.floor(v / 110), k = hash2(pu + 500, pv + 500, 7);
-    const edge = Math.min(Math.abs(u / 160 - Math.round(u / 160)) * 160, Math.abs(v / 110 - Math.round(v / 110)) * 110);
-    if (edge < 4) return 0;
-    FL.cropAng = t.a; return 1 + Math.floor(k * 4) * (d < 1100 ? 1 : 0);
-  }
-  return 0;
-}
+function fieldFrames(M) { return farmFrames(M); } // the farm field grids (ground.js: the terrain shaders paint the same fields)
+function cropAt(frames, x, z) { const o = { ang: 0 }, cp = cropAtFrames(frames, x, z, o); FL.cropAng = o.ang; return cp; } // 0 none, 1 ploughed, 2 wheat, 3 young crop, 4 pasture
 function addTree(list, sp, x, z, s, R, sink = .3) { const y = terrainY(x, z), alt = SP_KEYS.indexOf(sp + '#1'); list.push([alt >= 0 && R() < .5 ? alt : SP_KEYS.indexOf(sp), x, y - sink, z, R() * TAU, s, s * (.9 + R() * .22), R()]); }
 function buildRealFlora(M) {
   const t0 = performance.now(), mods = floraModels(), R = rng(M.seed * 53 + 1), trees = [];
@@ -453,7 +442,7 @@ function updateFlora(cam) {
 function buildHedges(M, trees, R, nearHouse) {
   const pts = [], runs = [], frames = FL.frames;
   const zones = M.zones.concat(M.towns.map(t => t.zone)), inZone = (x, z) => zones.some(zn => { const dx = x / 1000 - zn.x, dz = z / 1000 - zn.y, c = Math.cos(zn.ang || 0), s = Math.sin(zn.ang || 0); return Math.abs(dx * c + dz * s) < zn.hx + .015 && Math.abs(-dx * s + dz * c) < zn.hy + .015; });
-  const ok = (x, z, f) => { const d = Math.hypot(x - f.x, z - f.z); if (d < 280 || d > 1260) return false; const h = terrainY(x, z); if (h < 6) return false; const sl = Math.hypot(terrainY(x + 4, z) - terrainY(x - 4, z), terrainY(x, z + 4) - terrainY(x, z - 4)) / 8; return sl < .3 && !onRoadFine(x, z) && !inForest(x, z) && !inZone(x, z) && !nearHouse(x, z, 3); };
+  const ok = (x, z, f) => { const d = Math.hypot(x - f.x, z - f.z); if (d < (f.r0 ? f.r0 + 20 : 0) || d > f.r1 - 40) return false; const h = terrainY(x, z); if (h < 6) return false; const sl = Math.hypot(terrainY(x + 4, z) - terrainY(x - 4, z), terrainY(x, z + 4) - terrainY(x, z - 4)) / 8; return sl < .3 && !onRoadFine(x, z) && !inForest(x, z) && !inZone(x, z) && !nearHouse(x, z, 3); };
   const T = typeof TB === 'function' ? new TB() : null; let walls = 0;
   frames.forEach((f, fi) => {
     const c = Math.cos(f.a), s = Math.sin(f.a), W = (u, v) => [f.x + u * c - v * s, f.z + u * s + v * c];
