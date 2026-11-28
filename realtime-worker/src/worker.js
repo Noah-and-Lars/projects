@@ -53,6 +53,7 @@ export default {
     if (url.pathname.startsWith('/kd/')) return krill(req, env, url);
     if (url.pathname.startsWith('/ttt/')) return turnBoard(req, env, url);
     if (url.pathname.startsWith('/sp/')) return sprout(req, env, url);
+    if (url.pathname.startsWith('/ct/')) return closingTime(req, env, url);
     if (url.pathname.startsWith('/clips/')) return clips(req, env, url);
     if (url.pathname === '/tourn') return tournApi(req, env, url);
     if (url.pathname === '/ai') return aiChat(req, env, ctx);
@@ -2107,6 +2108,7 @@ export class Tally extends DurableObject {
       return j({ rank: k >= 0 ? k + 1 : 0, best: b.ms });
     }
     if (route.startsWith('sp-')) return spTally(route.slice(3), b, S, j);
+    if (route.startsWith('ct-')) return ctTally(route.slice(3), b, S, j);
     return j({ error: 'not_found' }, 404);
   }
 }
@@ -2747,4 +2749,55 @@ async function spTally(r, b, S, j) {
     return j({ rank: k + 1, best, top: c.times.slice(0, SP_SHOW) });
   }
   return j({ error: "not_found" }, 404);
+}
+
+// 2026-11-28 Closing Time 1.2: the public stores (pub1..pub20) never reset. The host's screen saves the whole store
+// here every 15 s (and when it leaves), and whoever is first into an empty store loads it, so the world, the day
+// and the time of day carry on exactly where they were left. GET /ct/get?r=pub3 -> { s: save | null, at };
+// POST /ct/put { r, s } with an arcade account (Bearer token). One Tally object ('closing-time') holds all 20,
+// plus an hourly backup of each ('ctb:') in case a save ever goes bad. The game checks every piece in a save
+// against the store's own layout before using it, so a forged save can't add things that aren't there.
+const CT_ROOM = /^pub([1-9]|1[0-9]|20)$/, CT_MAX = 19e5, CT_GAP = 2e3, CT_BACKUP = 36e5;
+async function closingTime(req, env, url) {
+  const origin = req.headers.get("Origin") || "";
+  if (!ACCT_ORIGINS.includes(origin)) return new Response("only available on the official website", { status: 403 });
+  const cors = { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Headers": "content-type, authorization", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Max-Age": "86400", "Vary": "Origin" };
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+  const out = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { ...cors, "content-type": "application/json", "cache-control": "no-store" } });
+  const route = url.pathname.slice(4), tally = env.TALLY.get(env.TALLY.idFromName("closing-time"));
+  const call = async (r, body) => {
+    const q = await tally.fetch(new Request("https://tally/ct-" + r, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
+    return new Response(q.body, { status: q.status, headers: { ...cors, "content-type": "application/json", "cache-control": "no-store" } });
+  };
+  if (req.method === "GET" && route === "get") {
+    const r = url.searchParams.get("r") || "";
+    if (!CT_ROOM.test(r)) return out({ error: "bad" }, 400);
+    return call("get", { r });
+  }
+  if (req.method !== "POST" || route !== "put") return out({ error: "not_found" }, 404);
+  if (+(req.headers.get("content-length") || 0) > CT_MAX + 200) return out({ error: "big" }, 413);
+  const me = await whoami(env, req.headers.get("authorization") || "");
+  if (!me) return out({ error: "auth" }, 401);
+  let text;
+  try { text = await req.text(); } catch (e) { return out({ error: "bad" }, 400); }
+  if (text.length > CT_MAX + 200) return out({ error: "big" }, 413);
+  let b;
+  try { b = JSON.parse(text); } catch (e) { return out({ error: "bad" }, 400); }
+  const s = b && b.s;
+  if (!CT_ROOM.test(b.r || "") || !s || typeof s !== "object" || s.v !== 2 || !Array.isArray(s.mods) || !Number.isInteger(s.day) || s.day < 1 || s.day > 1e6 || !Number.isFinite(s.t) || !Number.isFinite(s.rt) || s.rt < 0) return out({ error: "bad" }, 400);
+  return call("put", { r: b.r, s, by: me });
+}
+async function ctTally(r, b, S, j) {
+  if (!CT_ROOM.test(b.r || "")) return j({ error: "bad" }, 400);
+  const key = "ct:" + b.r;
+  if (r === "get") {
+    const rec = await S.get(key);
+    return j(rec ? { s: rec.s, at: rec.at } : { s: null });
+  }
+  if (r !== "put") return j({ error: "not_found" }, 404);
+  const now = Date.now(), old = await S.get(key);
+  if (old && now - old.at < CT_GAP) return j({ error: "slow" }, 429);
+  if (old && now - ((await S.get("ctbt:" + b.r)) || 0) > CT_BACKUP) { await S.put("ctb:" + b.r, old); await S.put("ctbt:" + b.r, now); }
+  await S.put(key, { s: b.s, by: b.by, at: now });
+  return j({ ok: 1, at: now });
 }
