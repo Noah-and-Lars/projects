@@ -608,11 +608,13 @@ function onRoadFine(x, z) {
   for (const [ax, az, bx, bz, hw] of l) { const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1, t = clamp(((x - ax) * dx + (z - az) * dz) / l2, 0, 1); if (Math.hypot(ax + dx * t - x, az + dz * t - z) < hw) return true; }
   return false;
 }
+function zoneAirfield(x, z) { return WORLD.M.airfields.length && inAirfield(x, z); }
 function grassKind(x, z) { // [density, height, r, g, b] for the ground here
   const M = WORLD.M, i = Math.round(x / CELL), j = Math.round(z / CELL); if (i < 1 || j < 1 || i >= GW - 1 || j >= GH - 1) return null;
   const id = j * GW + i; if (M.ROAD[id] && onRoadFine(x, z)) return null;
   const h = terrainY(x, z); if (h < 4) return null;
   const sl = Math.hypot(terrainY(x + 3, z) - terrainY(x - 3, z), terrainY(x, z + 3) - terrainY(x, z - 3)) / 6; if (sl > .55) return null;
+  if (zoneAirfield(x, z)) return airPaved(x, z) ? null : [1, .42, .92, 1.05, .82]; // airfields: short mown grass, nothing on the pavement
   for (const zn of M.zones) { const dx = x / 1000 - zn.x, dz = z / 1000 - zn.y, c = Math.cos(zn.ang || 0), s = Math.sin(zn.ang || 0); if (Math.abs(dx * c + dz * s) < zn.hx + .01 && Math.abs(-dx * s + dz * c) < zn.hy + .01) return [.1, .7, 1.45, 1.15, .72]; } // worn compounds: a few dry tufts
   const k = 1 - sstep(.35, .55, sl);
   if (M.F[id]) return [.25 * k, .8, .62, .66, .58];
@@ -661,14 +663,14 @@ function updateGrassF(cam) {
     const M = WORLD.M, S = 2.2, RAD = 90; let nf = 0, nb = 0, nr = 0;
     for (let j = -Math.ceil(RAD / S); j <= Math.ceil(RAD / S); j++) for (let i = -Math.ceil(RAD / S); i <= Math.ceil(RAD / S); i++) {
       const gi = Math.floor(cam.x / S) + i, gj = Math.floor(cam.z / S) + j, x = (gi + hash2(gi, gj, 21)) * S, z = (gj + hash2(gi, gj, 22)) * S; if (Math.hypot(x - cam.x, z - cam.z) > RAD) continue;
-      const id = Math.round(z / CELL) * GW + Math.round(x / CELL), forest = M.F[id], h = terrainY(x, z); if (h < 4 || (M.ROAD[id] && onRoadFine(x, z))) continue;
+      const id = Math.round(z / CELL) * GW + Math.round(x / CELL), forest = M.F[id], h = terrainY(x, z); if (h < 4 || (M.ROAD[id] && onRoadFine(x, z)) || inAirfield(x, z, 10)) continue;
       if (forest && nf < 3000 && hash2(gi, gj, 23) < .42) { const s = .6 + hash2(gi, gj, 24) * .7; dummy.position.set(x, h - .05, z); dummy.rotation.set(0, hash2(gi, gj, 25) * TAU, 0); dummy.scale.set(s, s, s); dummy.updateMatrix(); G.fern.setMatrixAt(nf++, dummy.matrix); }
       else if (nb < 900 && hash2(gi, gj, 26) < (forest ? .06 : .004)) { const s = .35 + hash2(gi, gj, 27) * .45; dummy.position.set(x, h - .1, z); dummy.rotation.set(0, hash2(gi, gj, 28) * TAU, 0); dummy.scale.set(s, s * .8, s); dummy.updateMatrix(); G.bush.setMatrixAt(nb++, dummy.matrix); }
     }
     const Sr = 7;
     for (let j = -Math.ceil(140 / Sr); j <= Math.ceil(140 / Sr) && nr < 1600; j++) for (let i = -Math.ceil(140 / Sr); i <= Math.ceil(140 / Sr) && nr < 1600; i++) {
       const gi = Math.floor(cam.x / Sr) + i, gj = Math.floor(cam.z / Sr) + j, x = (gi + hash2(gi, gj, 11)) * Sr, z = (gj + hash2(gi, gj, 12)) * Sr; if (Math.hypot(x - cam.x, z - cam.z) > 140) continue;
-      const h = terrainY(x, z), sl = Math.hypot(terrainY(x + 3, z) - terrainY(x - 3, z), terrainY(x, z + 3) - terrainY(x, z - 3)) / 6, want = sl > .35 ? .35 : h < 3 && h > -1 ? .12 : .02; if (hash2(gi, gj, 13) > want || onRoad(x, z)) continue;
+      const h = terrainY(x, z), sl = Math.hypot(terrainY(x + 3, z) - terrainY(x - 3, z), terrainY(x, z + 3) - terrainY(x, z - 3)) / 6, want = sl > .35 ? .35 : h < 3 && h > -1 ? .12 : .02; if (hash2(gi, gj, 13) > want || onRoad(x, z) || inAirfield(x, z, 10)) continue;
       const s = sl > .35 ? .5 + hash2(gi, gj, 14) * 1.8 : .2 + hash2(gi, gj, 14) * .5;
       dummy.position.set(x, h - s * .2, z); dummy.rotation.set(hash2(gi, gj, 15) * 3, hash2(gi, gj, 16) * 6, 0); dummy.scale.set(s, s, s); dummy.updateMatrix(); G.rocks.setMatrixAt(nr++, dummy.matrix);
     }

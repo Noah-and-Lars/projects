@@ -79,6 +79,17 @@ function makeTextures() {
   { const cv = canvasOf(B), g = cv.getContext('2d'); g.fillStyle = '#6e6450'; g.fillRect(0, 0, B, B); for (let r = 0; r < 8; r++) for (let c = 0; c < 4; c++) { const x = c * 64 + (r % 2) * 32, y = r * 32, v = 170 + R() * 40 | 0; wrapDraw(g, B, x, y, (px, py) => { const gr = g.createLinearGradient(0, py, 0, py + 30); gr.addColorStop(0, `rgb(${v},${v - 8},${v - 30})`); gr.addColorStop(1, `rgb(${v - 60},${v - 66},${v - 80})`); g.fillStyle = gr; g.beginPath(); g.roundRect ? g.roundRect(px + 2, py + 2, 60, 28, 12) : g.rect(px + 2, py + 2, 60, 28); g.fill(); }); } TEX.sandbag = texOf(cv); }
   { const n = tfbm(B, 2, 4, 101); const cv = paint(B, (x, y, i) => { const plank = Math.floor(y / 32), v = 150 + hash2(plank, 0, 5) * 50 + n[i] * 20 + Math.sin(x * .3 + plank) * 6; return [v, v * .86, v * .7]; }), g = cv.getContext('2d'); g.fillStyle = 'rgba(30,20,10,.6)'; for (let p = 0; p < 8; p++) g.fillRect(0, p * 32, B, 2); TEX.wood = texOf(cv); }
   { const n = tfbm(B, 8, 4, 111), grit = tnoise(B, 128, 112); const cv = paint(B, (x, y, i) => { const v = 78 + n[i] * 14 + grit[i] * 10; return [v, v, v * 1.02]; }), g = cv.getContext('2d'); g.fillStyle = 'rgba(235,230,215,.9)'; g.fillRect(8, 0, 5, B); g.fillRect(B - 13, 0, 5, B); g.fillStyle = 'rgba(230,200,90,.85)'; g.fillRect(B / 2 - 3, 0, 6, B * .55); TEX.asphalt = texOf(cv); } // across the road; 6 m along
+  { // tarmac: weathered asphalt with sealed cracks, repair patches and rubber laid down by tyres (runways and taxiways: no road paint)
+    const n = tfbm(B, 6, 4, 121), grit = tnoise(B, 128, 122), R = rng(123); const cv = paint(B, (x, y, i) => { const v = 70 + n[i] * 12 + grit[i] * 9; return [v, v, v * 1.02]; }), g = cv.getContext('2d');
+    for (let k = 0; k < 9; k++) { g.fillStyle = `rgba(${40 + R() * 25 | 0},${40 + R() * 25 | 0},${42 + R() * 25 | 0},${.35 + R() * .3})`; wrapDraw(g, B, R() * B, R() * B, (gx, gy) => g.fillRect(gx, gy, 30 + R() * 140, 20 + R() * 90)); }
+    g.strokeStyle = 'rgba(25,25,27,.55)'; g.lineWidth = 2; for (let k = 0; k < 26; k++) { let x = R() * B, y = R() * B; g.beginPath(); g.moveTo(x, y); for (let q = 0; q < 6; q++) { x += (R() - .5) * 60; y += (R() - .5) * 60; g.lineTo(x, y); } g.stroke(); }
+    for (let k = 0; k < 40; k++) { g.fillStyle = `rgba(20,20,22,${.05 + R() * .12})`; g.fillRect(R() * B, 0, 4 + R() * 16, B); } // rubber streaks along the runway
+    TEX.tarmac = texOf(cv); }
+  { // apron slabs: concrete panels with dark joints and stains
+    const n = tfbm(B, 6, 4, 131), grit = tnoise(B, 128, 132), R = rng(133); const cv = paint(B, (x, y, i) => { const v = 120 + n[i] * 14 + grit[i] * 10; return [v, v * .99, v * .96]; }), g = cv.getContext('2d');
+    for (let k = 0; k < 14; k++) { g.fillStyle = `rgba(60,58,52,${.08 + R() * .18})`; wrapDraw(g, B, R() * B, R() * B, (gx, gy) => { g.beginPath(); g.ellipse(gx, gy, 20 + R() * 60, 14 + R() * 40, R() * 3, 0, TAU); g.fill(); }); } // oil and fuel stains
+    g.fillStyle = 'rgba(45,44,40,.8)'; for (let q = 0; q <= 4; q++) { g.fillRect(q * B / 4 - 1, 0, 3, B); g.fillRect(0, q * B / 4 - 1, B, 3); } // panel joints, 4 panels a side
+    TEX.slabs = texOf(cv); }
   { const n = tfbm(B, 6, 4, 121); const cv = paint(B, (x, y, i) => { const u = x / B, rut = Math.exp(-Math.pow((u - .28) / .07, 2)) + Math.exp(-Math.pow((u - .72) / .07, 2)), mid = Math.exp(-Math.pow((u - .5) / .1, 2)), edge = Math.min(1, Math.pow(Math.abs(u - .5) * 2, 6)); let c = mixc([132, 110, 82], [96, 78, 58], rut * .8 + n[i] * .3); c = mixc(c, [86, 102, 50], mid * .55 + edge * .6); return c; }); TEX.track = texOf(cv); }
 }
 
@@ -87,7 +98,7 @@ function buildFine(M) {
   const H = M.H, HF = new Float32Array(GWF * GHF);
   const mask = new Float32Array(GW * GH); // 1 = keep perfectly smooth (bases, towns, roads)
   for (const z of M.zones.concat(M.towns.map(t => t.zone))) zoneLoop(z, (id, d) => { mask[id] = Math.max(mask[id], 1 - sstep(.02, .09, d)); });
-  M.yard = new Float32Array(GW * GH); for (const z of M.zones) zoneLoop(z, (id, d) => { M.yard[id] = Math.max(M.yard[id], (1 - sstep(0, .015, d)) * (.55 + .45 * hash2(id % GW, id / GW | 0, 4))); }); // worn ground in compounds
+  M.yard = new Float32Array(GW * GH); for (const z of M.zones) if (!z.airfield) zoneLoop(z, (id, d) => { M.yard[id] = Math.max(M.yard[id], (1 - sstep(0, .015, d)) * (.55 + .45 * hash2(id % GW, id / GW | 0, 4))); }); // worn ground in compounds
   for (let id = 0; id < GW * GH; id++) if (M.ROAD[id]) mask[id] = 1;
   const cr = (p0, p1, p2, p3, t) => p1 + .5 * t * (p2 - p0 + t * (2 * p0 - 5 * p1 + 4 * p2 - p3 + t * (3 * (p1 - p2) + p3 - p0)));
   const Hc = (i, j) => H[clamp(j, 0, GH - 1) * GW + clamp(i, 0, GW - 1)];
@@ -340,13 +351,16 @@ const SURF = {
   facade: [0xb9b3a2, 0xa8a291, 0x9b9585, 0xa49e8d, 0x8f8a7c, 0x9d9686, 0xa29b88, 0xd8cfb8, 0xc9bfa4, 0xe0d6c2, 0xb8ad94],
   tiles: [0x8a4b38, 0x6b5a4a, 0x7b3f30], metalroof: [0x5e6a5c, 0x55604f, 0x4d5546, 0x5a5e60, 0x4a4a44], metal: [0x7d7b70, 0x8d9091, 0xdddddd, 0x5a6340, 0x9b8a62, 0x7a4a32, 0x4a5a6a],
   sandbag: [0x9b8d68, 0xa5946c, 0x5c6040, 0x4f5638], wood: [0x6e6450, 0x6b6656, 0x5a4a38, 0x4a3c2e, 0x7a6440, 0x6b5a46, 0x5b4632], asphalt: [0x3f4244],
+  runway: [0x3c3f41, 0x3c3f42], apron: [0x5d6062], paint: [0xe8e8e0, 0xd9b400],
 };
 const SURF_OF = {}; for (const [k, list] of Object.entries(SURF)) for (const c of list) SURF_OF[c] = k;
-const SURF_TEX = { concrete: ['concrete', 3], facade: ['facade', 3], tiles: ['tiles', 1.6], metalroof: ['metal', 2], metal: ['metal', 2], sandbag: ['sandbag', 1.6], wood: ['wood', 1.8], asphalt: ['asphalt', 9] };
+const SURF_TEX = { concrete: ['concrete', 3], facade: ['facade', 3], tiles: ['tiles', 1.6], metalroof: ['metal', 2], metal: ['metal', 2], sandbag: ['sandbag', 1.6], wood: ['wood', 1.8], asphalt: ['asphalt', 9], runway: ['tarmac', 26], apron: ['slabs', 10], paint: null };
 const REAL_MATS = {}, MILITARY = [0xb9b3a2, 0xa8a291, 0x9b9585, 0xa49e8d, 0x8f8a7c, 0x9d9686, 0xa29b88];
 function realMat(color) {
   if (REAL_MATS[color]) return REAL_MATS[color];
-  const kind = SURF_OF[color] || 'concrete', [tk, meters] = SURF_TEX[kind], tex = TEX[tk].clone(); tex.needsUpdate = true; tex.repeat.set(1 / meters, 1 / meters);
+  const kind = SURF_OF[color] || 'concrete';
+  if (kind === 'paint') return REAL_MATS[color] = new THREE.MeshStandardMaterial({ color: new THREE.Color(color).convertSRGBToLinear().multiplyScalar(.85), roughness: .75, envMapIntensity: .4 }); // runway and taxi paint: no texture
+  const [tk, meters] = SURF_TEX[kind], tex = TEX[tk].clone(); tex.needsUpdate = true; tex.repeat.set(1 / meters, 1 / meters);
   const c = new THREE.Color(color).convertSRGBToLinear(), lum = (c.r + c.g + c.b) / 3, tint = kind === 'facade' || kind === 'concrete' ? c.clone().multiplyScalar(.62 / Math.max(.05, lum)).lerp(new THREE.Color(1, 1, 1), .12) : kind === 'tiles' ? c.clone().multiplyScalar(2.2) : c.clone().multiplyScalar(1.6);
   if (MILITARY.includes(color)) tint.multiply(new THREE.Color(.78, .72, .55)); // weathered tan army buildings
   return REAL_MATS[color] = new THREE.MeshStandardMaterial({ map: tex, color: tint, roughness: kind === 'metal' || kind === 'metalroof' ? .6 : .9, metalness: kind === 'metal' || kind === 'metalroof' ? .2 : 0, envMapIntensity: .5 });

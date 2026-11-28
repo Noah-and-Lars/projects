@@ -161,11 +161,44 @@ const MAPS = [
 ];
 
 
+/* Roads never cross an airfield: a road that passes through one (the runway, the apron and the hangars behind it, with a margin) is led round
+   the edge the shorter way, with rounded corners; a road that ends inside one is cut back to its edge. Works in km, in the airfield's own frame
+   (u along the runway, v across it; the apron and hangars are on the -v side, as buildAirfields lays them out). */
+function detourAirfields(M) {
+  for (const a of M.airfields || []) {
+    const c = Math.cos(a.ang), s = Math.sin(a.ang), U = a.len / 2 + .14, V1 = .3, V2 = .085; // the keep-out box
+    const toL = p => [(p[0] - a.x) * c + (p[1] - a.y) * s, -(p[0] - a.x) * s + (p[1] - a.y) * c], toW = q => [a.x + q[0] * c - q[1] * s, a.y + q[0] * s + q[1] * c];
+    const inside = q => Math.abs(q[0]) < U && q[1] > -V1 && q[1] < V2;
+    const corners = [[-U, -V1], [U, -V1], [U, V2], [-U, V2]], edge = [2 * U, V1 + V2, 2 * U, V1 + V2], per = 2 * (2 * U + V1 + V2);
+    const perimT = q => { // the nearest boundary point's distance round the box from the first corner
+      const cand = [[0, clamp(q[0], -U, U) + U, Math.abs(q[1] + V1)], [1, clamp(q[1], -V1, V2) + V1, Math.abs(q[0] - U)], [2, U - clamp(q[0], -U, U), Math.abs(q[1] - V2)], [3, V2 - clamp(q[1], -V1, V2), Math.abs(q[0] + U)]];
+      const [e, d] = cand.reduce((b, x) => x[2] < b[2] ? x : b); let t = d; for (let k = 0; k < e; k++) t += edge[k]; return t; };
+    const atT = t => { t = ((t % per) + per) % per; for (let k = 0; k < 4; k++) { if (t <= edge[k]) { const A = corners[k], B = corners[(k + 1) % 4], f = t / edge[k]; return [lerp(A[0], B[0], f), lerp(A[1], B[1], f)]; } t -= edge[k]; } return corners[0]; };
+    const chaikin = (Q, n) => { for (let it = 0; it < n; it++) { const R = [Q[0]]; for (let k = 0; k < Q.length - 1; k++) { const p = Q[k], q = Q[k + 1]; R.push([p[0] * .75 + q[0] * .25, p[1] * .75 + q[1] * .25], [p[0] * .25 + q[0] * .75, p[1] * .25 + q[1] * .75]); } R.push(Q[Q.length - 1]); Q = R; } return Q; };
+    for (const r of M._roads) {
+      let P = r.P;
+      for (let guard = 0; guard < 6; guard++) {
+        const L = P.map(toL), i0 = L.findIndex(inside); if (i0 < 0) break;
+        let i1 = i0; while (i1 + 1 < L.length && inside(L[i1 + 1])) i1++;
+        if (i0 === 0 || i1 === L.length - 1) { P = i0 === 0 ? P.slice(i1 + 1) : P.slice(0, i0); if (P.length < 2) break; continue; } // a road that ends here: stop at the edge
+        const E = L[i0 - 1], X = L[i1 + 1], o = .035; // (walk a box a little bigger, so the rounded corners stay outside)
+        const big = q => [q[0] * (U + o) / U, q[1] < 0 ? q[1] * (V1 + o) / V1 : q[1] * (V2 + o) / V2];
+        let tE = perimT(E), tX = perimT(X), fwd = ((tX - tE) % per + per) % per; const dir = fwd <= per / 2 ? 1 : -1, span = dir > 0 ? fwd : per - fwd;
+        const Q = [E, big(atT(tE))]; for (let k = 0; k < 4; k++) { let tc = 0; for (let m = 0; m < k; m++) tc += edge[m]; const d = dir > 0 ? ((tc - tE) % per + per) % per : ((tE - tc) % per + per) % per; if (d > 1e-6 && d < span - 1e-6) Q.push([d, big(corners[k])]); }
+        const mid = Q.splice(2).sort((p, q) => p[0] - q[0]).map(x => x[1]); Q.push(...mid, big(atT(tX)), X);
+        P = P.slice(0, i0 - 1).concat(chaikin(Q, 3).map(toW), P.slice(i1 + 2));
+      }
+      r.P = P;
+    }
+  }
+  M._roads = M._roads.filter(r => r.P.length >= 2);
+}
 function prep(M) {
   M._ridges = M.ridges.map(r => { const P = smooth(r.pts, r.closed, 8); return { ...r, P, bb: bbox(P) }; });
   M._rivers = M.rivers.map(r => { const P = smooth(r.pts, false, 8); return { ...r, P, bb: bbox(P) }; });
   M._causeways = M.causeways.map(r => ({ P: r.pts, bb: bbox(r.pts) }));
   M._roads = M.roads.map(r => ({ ...r, P: smooth(r.pts, r.closed, 8) }));
+  detourAirfields(M);
   const tm = Math.atan2(M.bases[1].y - M.bases[0].y, M.bases[1].x - M.bases[0].x);
   M.bases[0].ang = tm; M.bases[1].ang = tm + Math.PI;
   const chain = [[M.bases[0].x, M.bases[0].y], ...M.cps.map(c => [c[1], c[2]]), [M.bases[1].x, M.bases[1].y]];
@@ -231,7 +264,7 @@ function buildMap(M) {
   M.zones = [];
   M.bases.forEach(b => { b.zone = { x: b.x, y: b.y, hx: .46, hy: .4, ang: b.ang, m: .4, min: 10 }; M.zones.push(b.zone); });
   M._cps.forEach(p => { const [dx, dy] = CP_DIM[p.size]; p.zone = { x: p.x, y: p.y, hx: dx / 2 + .05, hy: dy / 2 + .05, ang: p.ang, m: p.size === 'L' && M.islets.length ? .05 : p.size === 'L' ? .45 : .3, min: 8 }; if (p.size === 'L' && M.rivers.some(r => r.canal)) Object.assign(p.zone, { target: 9, m: .9 }); M.zones.push(p.zone); }); // the canal fort sits low so the canal isn't a gorge
-  M.airfields.forEach(a => { a.zone = { x: a.x, y: a.y, hx: a.len / 2 + .1, hy: .18, ang: a.ang, m: .35, min: 8 }; M.zones.push(a.zone); });
+  M.airfields.forEach(a => { a.zone = { x: a.x, y: a.y, hx: a.len / 2 + .1, hy: .18, ang: a.ang, m: .35, min: 8, airfield: true }; M.zones.push(a.zone); });
   for (const z of M.zones) flatten(H, z);
   for (const t of M.towns) { t.zone = { x: t.x, y: t.y, hx: t.r * .7, hy: t.r * .7, m: .25, k: .65, min: 5 }; flatten(H, t.zone); }
   for (const r of M._rivers) if (r.canal) { const [a, b, c, d] = r.bb; for (let j = clamp(Math.floor(gi(b - 1)), 0, GH - 1); j <= clamp(Math.ceil(gi(d + 1)), 0, GH - 1); j++) for (let i = clamp(Math.floor(gi(a - 1)), 0, GW - 1); i <= clamp(Math.ceil(gi(c + 1)), 0, GW - 1); i++) { const id = j * GW + i; H[id] = carveRiver(r, gx(i), gx(j), H[id]); } }

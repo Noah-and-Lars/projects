@@ -139,7 +139,9 @@ function batchFlush(parent) {
   for (const [color, b] of BATCH) {
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(b.nor, 3)); g.setIndex(new THREE.BufferAttribute(new Uint32Array(b.idx), 1));
     if (WORLD.gfx === 'realistic') g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2));
-    g.computeBoundingSphere(); const m = new THREE.Mesh(g, WORLD.gfx === 'realistic' ? realMat(color) : mat(color)); m.castShadow = m.receiveShadow = true; parent.add(m);
+    g.computeBoundingSphere(); let mt = WORLD.gfx === 'realistic' ? realMat(color) : mat(color); const dl = typeof DECAL_LEVEL !== 'undefined' && DECAL_LEVEL[color];
+    if (dl) { const k = mt.userData.decal || (mt.userData.decal = Object.assign(mt.clone(), { polygonOffset: true, polygonOffsetFactor: -2 * dl, polygonOffsetUnits: -4 * dl })); mt = k; }
+    const m = new THREE.Mesh(g, mt); m.castShadow = !dl; m.receiveShadow = true; parent.add(m);
   }
   BATCH.clear();
 }
@@ -403,12 +405,43 @@ function buildTowns(M) {
     s.roofHouse(0, 0, W, D, 3.2 + (W * 7 | 0) % 3 * 2.8, [0xd8cfb8, 0xc9bfa4, 0xe0d6c2, 0xb8ad94][(W * 3 | 0) % 4], [0x8a4b38, 0x6b5a4a, 0x7b3f30][(D * 5 | 0) % 3]);
   }
 }
+/* Airfield layout, in metres in the airfield's own frame (u along the runway, v across it; the apron and hangars are on the -v side). */
+const AF = { runwayW: 46, apron: [-230, 230, -205, -115], taxi: [-200, 200], taxiW: 20, hangars: [-255, -205] };
+function airLocal(a, x, z) { const c = Math.cos(a.ang), s = Math.sin(a.ang), dx = x - a.x * 1000, dz = z - a.y * 1000; return [dx * c + dz * s, -dx * s + dz * c]; }
+function airPaved(x, z) { // on the runway, a taxiway, the apron or under the hangars
+  for (const a of WORLD.M.airfields) { const [u, v] = airLocal(a, x, z), L = a.len * 1000;
+    if (Math.abs(u) < L / 2 + 6 && Math.abs(v) < AF.runwayW / 2 + 3) return true;
+    if (u > AF.apron[0] - 4 && u < AF.apron[1] + 4 && v > AF.hangars[0] - 6 && v < AF.apron[3] + 4) return true;
+    if (AF.taxi.some(t => Math.abs(u - t) < AF.taxiW / 2 + 3) && v > AF.apron[3] - 2 && v < 0) return true; }
+  return false;
+}
+function inAirfield(x, z, pad = 0) { // anywhere within the airfield's bounds
+  for (const a of WORLD.M.airfields) { const [u, v] = airLocal(a, x, z); if (Math.abs(u) < a.len * 500 + 120 + pad && v > -300 - pad && v < 85 + pad) return true; }
+  return false;
+}
+const RUNWAY_C = 0x3c3f41, TAXI_C = 0x3c3f42, APRON_C = 0x5d6062, PAINT_W = 0xe8e8e0, PAINT_Y = 0xd9b400;
+// paved surfaces lie only a few centimetres above the ground, so from height the terrain would flicker through them: draw them pulled towards
+// the camera (as the roads are), the paint a step further than the tarmac under it
+const DECAL_LEVEL = { [APRON_C]: 1, [RUNWAY_C]: 1, [TAXI_C]: 1, [PAINT_W]: 2, [PAINT_Y]: 2 };
 function buildAirfields(M) {
   for (const a of M.airfields) {
-    const s = new Site(a.x * 1000, a.y * 1000, a.ang, a.zone.y0), L = a.len * 1000;
-    s.box(0, 0, L, .12, 46, 0x3f4244, { collide: false });
-    for (let k = -L / 2 + 30; k < L / 2 - 30; k += 40) s.box(k, 0, 18, .14, 1, 0xe8e8e0, { collide: false });
-    s.box(0, -160, 460, .1, 90, 0x666a6c, { collide: false });
+    const s = new Site(a.x * 1000, a.y * 1000, a.ang, a.zone.y0), L = a.len * 1000, W = AF.runwayW, mk = { collide: false };
+    s.box(0, 0, L, .12, W, RUNWAY_C, mk);
+    // markings (ICAO style): edge lines, centreline dashes, threshold bars, touchdown-zone bars and the aiming point at each end
+    for (const sd of [-1, 1]) s.box(0, sd * (W / 2 - 1.2), L - 8, .15, .9, PAINT_W, mk);
+    for (let k = -L / 2 + 120; k < L / 2 - 120; k += 50) s.box(k, 0, 30, .15, .9, PAINT_W, mk);
+    for (const e of [-1, 1]) {
+      const end = e * L / 2;
+      for (let b = 0; b < 6; b++) for (const sd of [-1, 1]) s.box(end - e * 22, sd * (3.2 + b * 3.4), 30, .15, 1.8, PAINT_W, mk); // threshold "piano keys"
+      for (const sd of [-1, 1]) s.box(end - e * 300, sd * 9.5, 45, .15, 7, PAINT_W, mk);                                          // aiming point
+      for (const d of [150, 450, 600]) for (const sd of [-1, 1]) for (let b = 0; b < (d === 150 ? 3 : d === 450 ? 2 : 1); b++) s.box(end - e * d, sd * (6 + b * 2.6), 22, .15, 1.6, PAINT_W, mk); // touchdown zone
+      s.box(end - e * 3, 0, 2, .15, W - 2, PAINT_W, mk);                                                                            // runway end bar
+    }
+    // taxiways from the apron to the runway, with yellow centrelines
+    for (const t of AF.taxi) { const v0 = AF.apron[3] - 1, v1 = -W / 2 + .5, mid = (v0 + v1) / 2, len = v1 - v0;
+      s.box(t, mid, AF.taxiW, .11, len, TAXI_C, mk); s.box(t, mid + 1, .5, .14, len + 2, PAINT_Y, mk); }
+    const [a0, a1, b0, b1] = AF.apron; s.box((a0 + a1) / 2, (b0 + b1) / 2, a1 - a0, .1, b1 - b0, APRON_C, mk);
+    s.box(0, b1 - 6, a1 - a0 - 20, .13, .5, PAINT_Y, mk); // apron lead-in line
     for (const k of [-140, -40, 60]) s.roofHouse(k, -230, 60, 40, 11, 0x8d9091, 0x5a5e60);
     s.box(180, -225, 10, 22, 10, 0xc9c4b6); s.box(180, -225, 13, 4, 13, 0x6f8c9b, { y: a.zone.y0 + 22, collide: false });
   }
