@@ -224,7 +224,7 @@
   </div>
 </div>
 
-<script src="games.js?v=298"></script>
+<script src="games.js?v=299"></script>
 <script src="account.js?v=48"></script>
 <script src="assistant.js?v=7"></script>
 <script src="console.js?v=6"></script>
@@ -288,6 +288,15 @@ const TRAILER_VIDEOS = { 'turn-turn-turn': { src: 'trailers/turn-turn-turn.mp4',
 const SHOT = {};
 for (const n of NEWS) if (n.game && n.imgs && n.imgs.length && !SHOT[n.game]) SHOT[n.game] = n.imgs[0];
 const backdrop = g => SHOT[g.id] || g.thumb;
+// 2026-11-28: the big screen at the top uses a fixed cinematic shot per game (hero/<id>.jpg, taken in the game itself,
+// with the subject on the right and the left kept dark for the title), so it no longer changes with every update.
+// Only the top screen uses these; the More info sheet, cards and tournaments keep backdrop() / the thumbnails.
+const HERO = new Set(['2048', 'block-drop', 'blockcraft', 'bull-run', 'card-royale', 'checkers', 'chess', 'closing-time', 'cube-assault',
+  'cube-tower-defense', 'football', 'free-criminal', 'gamble-your-life-away', 'havoc-bay', 'krill-dive', 'mile-zero', 'poly-racer',
+  'rillstone', 'rocket-rivals', 'russian-roulette', 'siege', 'snow-rider-3d', 'space-strike', 'sproutling', 'storm-drop',
+  'throttle-ridge', 'turn-turn-turn', 'uno', 'wrecking-shift']);
+const heroArt = g => HERO.has(g.id) ? 'hero/' + g.id + '.jpg?v=1' : backdrop(g);
+const heroReal = g => HERO.has(g.id) || !!SHOT[g.id];
 let live = null;
 const liveN = id => live ? (live.byGame[id] || 0) : 0;
 const liveLabel = n => ArcadeOnline.label(n, live);
@@ -350,8 +359,8 @@ function select(i, reveal) {
   if (shelf.scrollLeft > l) shelf.scrollTo({ left: l, behavior: REDUCED ? 'auto' : 'smooth' });
   else if (shelf.scrollLeft < r) shelf.scrollTo({ left: r, behavior: REDUCED ? 'auto' : 'smooth' });
   // the backdrop cross-fades once the next picture has loaded
-  const tok = ++bgToken, next = bgs[1 - bgOn], src = backdrop(g);
-  const swap = () => { if (tok !== bgToken) return; bgs[bgOn].classList.remove('on'); next.classList.toggle('flatart', !SHOT[g.id]); next.classList.add('on'); bgOn = 1 - bgOn; };
+  const tok = ++bgToken, next = bgs[1 - bgOn], src = heroArt(g);
+  const swap = () => { if (tok !== bgToken) return; bgs[bgOn].classList.remove('on'); next.classList.toggle('flatart', !heroReal(g)); next.classList.add('on'); bgOn = 1 - bgOn; };
   next.classList.remove('on');
   if (next.getAttribute('src') === src && next.complete) swap(); else { next.onload = swap; next.onerror = swap; next.src = src; }
   renderStage(g);
@@ -381,7 +390,7 @@ function renderStage(g) {
 
 // until someone touches anything, the screen walks through the featured games by itself
 // Havoc Bay leads; then the next games that have real screenshots (board games don't make much of a backdrop)
-const AUTO = ORDER.map((g, i) => SHOT[g.id] && g.category !== 'Board' ? i : -1).filter(i => i >= 0).sort((a, b) => (ORDER[b].id === 'havoc-bay') - (ORDER[a].id === 'havoc-bay')).slice(0, 6);
+const AUTO = ORDER.map((g, i) => heroReal(g) && g.category !== 'Board' ? i : -1).filter(i => i >= 0).sort((a, b) => (ORDER[b].id === 'havoc-bay') - (ORDER[a].id === 'havoc-bay')).slice(0, 6);
 function startAuto() {
   if (REDUCED) return;
   dash.classList.add('auto');
