@@ -292,6 +292,13 @@ Nothing is flat paint: the menus, windows, buttons and HUD plates carry a worn f
 
 All of it is in `ui.css`; the Barlow typeface and the wear tiles are packed into that file so the game still opens from disk.
 
+## Chaos, craters and grit
+
+- **Automatic artillery.** Every checkpoint a side holds shells an enemy within 4.5 km of it every 6 to 11 seconds (half the time the player, if in reach). The rounds are the howitzers' 155 mm shells with the same damage and falling whistle, dropped from high above, and land 14 to 48 m off target, so the fighting is under steady fire. Tune it in `CHAOS` at the top of `chaos.js`.
+- **Craters.** Every big blast (tank HE and up, bombs, shells) leaves a scorched crater mark on the ground that stays until the match ends (up to 700, oldest replaced first). They are marks only: the ground itself is not dug out.
+- **Grit.** The terrain colours are washed towards a dry, muddy brown and darkened a little, in every graphics level, and the light bounced off the ground is browner. Trees and grass keep their own colours.
+- **Moving tracks.** The T-90AM's track texture slides with the tank's speed (`tracks` and `trackScroll` in `models/config.js`). The built-in tanks already had moving track links.
+
 ## Scenery models
 
 Sandbag walls (`models/sandbags.js`) stand at every checkpoint and base as L-shaped fighting positions, make up the base's howitzer rings, and sit beside the roads in open country, in every graphics level. They block movement like a low wall. They are kept off the roads and the vehicle lanes beside them, the middle of each checkpoint, the spawn spots, helipads, airfields, towns, bridges and woods. Close up each wall piece is about 5,200 triangles; beyond 180 m a 1,050-triangle copy is drawn, and beyond 1.1 km nothing. Without the model file the game keeps its plain box walls.
@@ -369,6 +376,7 @@ Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://g
 | `models/t90am.js` | The T-90AM, used for Red's main battle tank (fitted in `models/config.js`) |
 | `models/mig35.js`, `models/a10.js`, `models/fa18.js` | Extra jet looks for the title screen's jet choice (fitted by `kitJet` in `model-kit.js`) |
 | `props.js` | Scenery props from downloaded models: drawn instanced, culled by distance, with colliders; where they go |
+| `chaos.js` | Battlefield chaos and grit: automatic artillery from the checkpoints, lasting crater marks, the browner terrain grade |
 | `models/config.js` | Which downloaded model is used for which unit, and how it is fitted |
 | `tools/pack_model.py` | Packs a glTF or GLB download into `models/<key>.js` |
 | `docs/` | Research notes on War Thunder's tank and helicopter mechanics, and how to add models (`docs/models.md`) |

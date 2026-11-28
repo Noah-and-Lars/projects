@@ -168,7 +168,7 @@ function kitVehicle(key, cfg = {}, team = 0) {
   root.add(hull); hull.add(holder); holder.updateMatrixWorld(true);
   let tParts = [], gParts = [];
   if (cfg.split) { // one-piece model: cut it up
-    for (const m of model.meshes.slice()) { const parts = kitSplit(m, cfg.split); m.parent.remove(m); for (const [id, pm] of Object.entries(parts)) { (id === 'turret' ? tParts : id === 'gun' ? gParts : null || { push: x => hull.add(x) }).push(pm); } }
+    for (const m of model.meshes.slice()) { if (cfg.tracks && (cfg.tracks.test(m.userData.name) || cfg.tracks.test(m.material.name))) continue; /* (the tracks stay whole, so their texture can slide) */ const parts = kitSplit(m, cfg.split); m.parent.remove(m); for (const [id, pm] of Object.entries(parts)) { (id === 'turret' ? tParts : id === 'gun' ? gParts : null || { push: x => hull.add(x) }).push(pm); } }
   } else { gParts = kitFind(model, cfg.gun); tParts = kitFind(model, cfg.turret).filter(n => !gParts.includes(n)); }
   const boxOf = list => { const b = new THREE.Box3(); for (const o of list) { o.updateMatrixWorld(true); b.expandByObject(o); } return b; };
   const scratch = new THREE.Group(); root.add(scratch); if (cfg.split) for (const o of [...tParts, ...gParts]) scratch.add(o); root.updateMatrixWorld(true);

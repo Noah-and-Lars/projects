@@ -26,7 +26,8 @@
 
 // Red's main battle tank: "Uralvagonzavod T-90AM Main Battle Tank" by Muhamad Mirza Arrafi (CC-BY-4.0). One piece, so it is cut up here:
 // the turret is the raised part round its ring (behind the middle), the gun the thin part ahead of the hull at gun height.
-kitUse('t90a', 't90am', { fit: { length: 9.6 }, split: (x, y, z) => y > 1.62 && x > .35 && Math.abs(z) < .32 ? 'gun' : y > 1.45 && Math.hypot(x + 1.4, z) < 1.95 ? 'turret' : 'hull' });
+kitUse('t90a', 't90am', { fit: { length: 9.6 }, tracks: /03babf5e/, trackScroll: [0, -3.15], // (the tracks have their own material; their texture runs about 3 turns a metre along the hull)
+   split: (x, y, z) => y > 1.62 && x > .35 && Math.abs(z) < .32 ? 'gun' : y > 1.45 && Math.hypot(x + 1.4, z) < 1.95 ? 'turret' : 'hull' });
 
 // Jets for the title screen's jet choice (only the look changes; see kitJet in model-kit.js). The F-2 and Typhoon keep their hand-fitted models in their own slot.
 const JET_LOOKS = { f2: 'F-2', typhoon: 'Typhoon', mig35: 'MiG-35', a10: 'A-10', fa18: 'F/A-18' };

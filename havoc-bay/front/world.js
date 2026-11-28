@@ -226,6 +226,7 @@ function buildTerrainMesh(M) {
   const idx = new Uint32Array((GW - 1) * (GH - 1) * 6); let k = 0;
   for (let j = 0; j < GH - 1; j++) for (let i = 0; i < GW - 1; i++) { const a = j * GW + i, b = a + 1, d = a + GW, e = d + 1; idx[k++] = a; idx[k++] = d; idx[k++] = b; idx[k++] = b; idx[k++] = d; idx[k++] = e; }
   const g = new THREE.BufferGeometry();
+  if (typeof gritColors === 'function') gritColors(col); // (chaos.js: a drier, muddier look)
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   g.setIndex(new THREE.BufferAttribute(idx, 1)); g.computeVertexNormals();
   const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, map: noiseTex(256, 170, 255, 5) }));

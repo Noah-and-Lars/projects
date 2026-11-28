@@ -1371,7 +1371,7 @@ function step(dt) {
   playerStep(dt);
   botsStep(dt);
   guardsStep(dt);
-  howitzersStep(dt);
+  howitzersStep(dt); if (typeof chaosStep === 'function') chaosStep(dt);
   for (const e of ENTS) {
     if (e.kind === 'vehicle' && e.alive) { const nx = e.pos.x, nz = e.pos.z; e.vel.set((nx - (e._px ?? nx)) / dt, 0, (nz - (e._pz ?? nz)) / dt); e._px = nx; e._pz = nz; if (!e.driver) { e.speed *= Math.pow(.2, dt); if ((e.emptyT = (e.emptyT || 0) + dt) > 150 && e.team < 2 && e.emptyBy !== 'player' && (!PLAYER.s || PLAYER.s.pos.distanceTo(e.pos) > 250)) { removeEnt(e); continue; } driveVehicle(e, { throttle: 0, steer: 0, aimYaw: e.yaw + e.tYaw, aimPitch: e.gPitch }, dt); } }
     else if (e.kind === 'soldier' && !e.veh && !e.npc) { /* soldiers' vel is set by moveSoldier */ }
