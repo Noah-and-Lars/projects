@@ -154,7 +154,9 @@ function destroyVehicle(v, src, wk, how, toss) { // called by the damage model (
 }
 function onSoldierDead(s) {
   s.dead = 0;
-  if (s.isPlayer) { PLAYER.deaths++; GAME.deployT = 6; Sound.engine(false, 0); if (s.veh) { s.veh.driver = null; } s.veh = null; setTimeout(() => { if (GAME.on && !GAME.over && PLAYER.s === s) openDeploy('dead'); }, 2500); }
+  if (s.isPlayer) { PLAYER.deaths++; GAME.deployT = 6; Sound.engine(false, 0); if (s.veh) { s.veh.driver = null; } s.veh = null; const t0 = GAME.time; // (a wreck still falling is followed down: the deploy screen waits until it has hit the ground and come to rest, or 14 s)
+    const go = () => { if (!(GAME.on && !GAME.over && PLAYER.s === s)) return; const w = PLAYER.wreck && PLAYER.wreckT >= t0 - .1 ? PLAYER.wreck.wreck : null; if (w && (!w.landed || GAME.time - (w.restT ?? GAME.time) < 2.5) && GAME.time - t0 < 14) { if (w.landed && w.restT === undefined) w.restT = GAME.time; setTimeout(go, 400); } else openDeploy('dead'); };
+    setTimeout(go, 2500); }
   if (s.bot) s.bot.respawn = 8 + Math.random() * 5;
 }
 function alertGuards(g, src) {
@@ -848,6 +850,7 @@ function updateCamera(dt) {
   let fov = 65;
   pilotG(s && s.alive && s.veh && s.veh.alive && s.veh.kind === 'air' ? s.veh : null, dt);
   if (s && s.veh && s.veh.alive && s.veh.kind === 'air') fov = airCamera(s.veh, dt);
+  else if (s && !s.alive && PLAYER.wreck && PLAYER.wreck.model && GAME.time - PLAYER.wreckT < 16) fov = wreckCamera(PLAYER.wreck, dt); // your aircraft was destroyed: watch it go down
   else if (s && s.veh && s.veh.alive) {
     const v = s.veh, piv = _v.set(v.pos.x, v.pos.y + v.T.eye, v.pos.z);
     const dir = _w.set(Math.cos(CAM.yaw) * Math.cos(CAM.pitch), Math.sin(CAM.pitch), Math.sin(CAM.yaw) * Math.cos(CAM.pitch));

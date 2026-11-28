@@ -323,12 +323,12 @@ function groundNormal(x, z, out) { const e = 3; return out.set(groundY(x - e, z)
 const overWater = (x, z) => terrainY(x, z) < .3 && bridgeAt(x, z, 4) === null;
 /* a part that comes off keeps flying: it tumbles away at the jet's speed, falls, and lies where it lands for a while */
 const DEBRIS = [];
-function shedPart(a, id) {
+function shedPart(a, id, vel) {
   const g = a.model.parts[id], q = a.part(id); if (!g || !g.visible || !q) return;
   const c = new V3(...q.p), w = new THREE.Group(), cl = g.clone(true); cl.position.copy(c).multiplyScalar(-1); w.add(cl);
   w.position.copy(c).applyQuaternion(a.quat).add(a.pos); w.quaternion.copy(a.quat); scene.add(w);
   const out = c.clone().setX(0).normalize().applyQuaternion(a.quat); // thrown outwards from the fuselage
-  DEBRIS.push({ m: w, vel: a.vel.clone().multiplyScalar(.96).addScaledVector(out, 5 + Math.random() * 5).add(new V3(rand(-2, 2), rand(0, 4), rand(-2, 2))), spin: new V3(rand(-5, 5), rand(-5, 5), rand(-5, 5)), life: 30, rest: false });
+  DEBRIS.push({ m: w, vel: (vel || a.vel).clone().multiplyScalar(vel ? 1 : .96).addScaledVector(out, 5 + Math.random() * 5).add(new V3(rand(-2, 2), rand(0, 4), rand(-2, 2))), spin: new V3(rand(-5, 5), rand(-5, 5), rand(-5, 5)), life: 30, rest: false });
   if (DEBRIS.length > 24) scene.remove(DEBRIS.shift().m);
 }
 function debrisStep(dt) {
@@ -363,7 +363,7 @@ function jetTouch(a, V, dt) {
     breakGear(a); a.vel.y *= .5; const p = a.part('fuseF'); if (p) partDamage(a, p, Math.max(0, sink - 4) * 9, null, null);
     return !a.alive;
   }
-  const n = new V3(); let body = null, hard = 0;
+  const n = new V3(), vIn = a.vel.clone(); let body = null, hard = 0;
   for (const h of hits) {
     if (h.c.gear) continue;
     const wet = overWater(h.x, h.z); groundNormal(h.x, h.z, n); if (wet) n.set(0, 1, 0);
@@ -379,7 +379,7 @@ function jetTouch(a, V, dt) {
   }
   if (!body) return false;
   const steep = V > 1 ? Math.asin(clamp(-a.vel.y / V, -1, 1)) : 0;
-  if (hard > 22 || (body.c.id === 'nose' && hard > 9 && V > 95) || (V > 150 && steep > .2) || up < .2) { crashAir(a, 'crashed'); return true; } // that is a crash
+  if (hard > 22 || (body.c.id === 'nose' && hard > 9 && V > 95) || (V > 150 && steep > .2) || up < .2) { a.vel.copy(vIn); crashAir(a, 'crashed'); return true; } // that is a crash
   startSlide(a, hard, overWater(a.pos.x, a.pos.z)); return true;
 }
 function breakGear(a) { if (a.gearBroken) return; a.gearBroken = true; a.gearT = performance.now(); if (a.model.gearDown) { a.model.gearDown.visible = false; a.model.gearUp.visible = true; } sparks(a.pos.clone().setY(a.pos.y - a.def.gear + .3), 6); Sound.at('boom', a.pos, .4); }
@@ -462,6 +462,7 @@ function jetPhysics(a, cmd, dt) {
   a.flap = clamp((a.flap ?? 1) + (a.onGround || a.gearDown ? .5 : -.5) * dt, 0, 1); const fl = a.flap * .28 * lf; // flaps come down with the gear: more lift and more drag for take-off and landing
   if (!a.kick) a.kick = new V3();
   if (a.onGround && a.belly) { jetSlide(a, dt); return; }
+  if (a.tailOff && !a.onGround) { wreckFly(a, dt); const V = a.vel.length(); a.mach = V / sos; a.ias = V * Math.sqrt(sig); a.stall = 1; a.gearDown = false; a.stress = 0; jetTouch(a, V, dt); return; } // no tail: nothing is flying it any more, it falls as a wreck does (the pilot can still get out)
   /* Damage reaches the controls. The flying surfaces are worked by hydraulics that run through the fuselage: the more of it is shot
      away the less the stick does. A wounded pilot cannot hold the jet steady. With the forward fuselage wrecked nothing answers at all. */
   { const hyd = a.ctrlDead ? 0 : .35 + .65 * Math.min(pH(a.part('fuseF')), pH(a.part('fuseR'))), ck = a.part('cockpit'), hurt = ck && ck.hp > 0 ? clamp(1.5 - 2.5 * pH(ck), 0, 1) : 0;
@@ -509,7 +510,10 @@ function jetPhysics(a, cmd, dt) {
   const fbw = !a.ctrlDead && pOK(a.part('nose')) && stabs.some(pOK), qSl = q * D.S * lf * ge + 1;
   let aCmd;
   if (fbw) { const nz = cmd.z >= 0 ? trim + cmd.z * (D.gmax - trim) : trim + cmd.z * (trim + 3); aCmd = clamp(clInv((nz * W - thr * Math.sin(alpha)) / qSl - fl / lf, as, cm) - i0, -.3, D.alphaLim); }
-  else if (a.ctrlDead) aCmd = a.alphaStuck ?? (a.alphaStuck = alpha); // the surfaces stay where they were when the controls went
+  else if (a.ctrlDead) { // the surfaces stay where they were when the controls went. The F-2, like the F-16 it comes from, is built a little unstable in pitch
+    // and only the flight computer keeps the nose where it is put: without it any disturbance grows, and within a few seconds the nose has gone up into a stall or down into a bunt.
+    if (a.alphaStuck === undefined) { a.alphaStuck = alpha; a.alphaDrift = (Math.random() < .5 ? -1 : 1) * rand(.01, .03); }
+    a.alphaStuck = clamp(a.alphaStuck + (a.alphaStuck - .03 + a.alphaDrift) * .9 * dt, -as * 1.4, as * 1.8); aCmd = a.alphaStuck; }
   else aCmd = clamp(clInv(trim * W / qSl - fl / lf, as, cm) - i0 + cmd.z * as * 1.2 * Math.min(1, pitchEff * 1.2) + (pitchEff < .3 ? Math.sin(GAME.time * 1.3) * .07 + Math.sin(GAME.time * .47 + 1) * .05 : 0), -as, as * 1.45); // (no tailplanes at all: only a little pitch control is left, and the nose hunts)
   const wz = wv.dot(_az) * fol * Math.max(.3, Math.min(1, pitchEff)) + clamp((aCmd - alpha) * 5 * qf * Math.min(1, pitchEff), -1.5, 1.5);
   // yaw: the fin weathercocks the nose into the airflow; rudder asks for a little sideslip. A dead engine on a twin pushes the nose aside.
@@ -526,8 +530,7 @@ function jetPhysics(a, cmd, dt) {
   a.omega.x += (pT - a.omega.x) * Math.min(1, dt * 4.5) + (-(wr - wl) / (wl + wr + .01) * (.35 + Math.abs(nzNow)) * 6.5 - stabAsym * (nzNow - 1) * .5 - beta * 2.5 * qf) * dt;
   if (st > 0) { a.omega.x += (Math.sin(GAME.time * 2.7 + a.pos.x) * 2.4 + Math.sign(beta || 1) * -1.2) * st * dt; wy += Math.sin(GAME.time * 1.9 + a.pos.z) * .25 * st; } // stalled: wing rock, the nose slices
   a.omega.z += (wz - a.omega.z) * Math.min(1, dt * 15); a.omega.y += (wy - a.omega.y) * Math.min(1, dt * 15);
-  if (a.tailOff) { a.kick.z -= 1.1 * dt * qf; a.kick.y += Math.sin(GAME.time * 1.7 + a.pos.x) * 1.4 * dt; a.kick.x += Math.sin(GAME.time * 1.1) * 1.2 * dt; } // no tail: the nose drops and it tumbles
-  a.kick.multiplyScalar(Math.exp(-dt * (a.tailOff ? .5 : 1.5))); // whatever a blow set spinning dies away in the airflow
+  a.kick.multiplyScalar(Math.exp(-dt * 1.5)); // whatever a blow set spinning dies away in the airflow
   const wAll = _av.copy(a.omega).add(a.kick), w = wAll.length(); if (w > 1e-6) { _aq2.setFromAxisAngle(wAll.divideScalar(w), w * dt); a.quat.multiply(_aq2).normalize(); }
   a.pos.addScaledVector(a.vel, dt);
   a.alpha = alpha; a.gload = L / W; a.mach = mach; a.stall = st;
@@ -728,7 +731,7 @@ function partDamage(a, p, dmg, owner, A) {
       if (!jet || dmg > p.max * 1.6) { breakUp(a, owner); break; } // (a big warhead straight into the fuselage still blows it apart)
       if (p.id === 'fuseR') { // the rear fuselage fails: the tail comes away with the engine, tailplanes and fin
         a.tailOff = true; for (const q of a.parts) if ((q.kind === 'engine' || q.kind === 'stab' || q.kind === 'fin') && !q.gone) { q.hp = 0; q.gone = true; hide(q.id); }
-        a.kick.z -= 1.2; a.kick.x += rand(-1.5, 1.5); if (a.flames) for (const f of a.flames) f.grp.visible = false;
+        a.kick.z -= .25; a.kick.x += rand(-.4, .4); if (a.flames) for (const f of a.flames) f.grp.visible = false;
       } else { // the forward fuselage is wrecked: nothing answers the stick, the sensors are gone, and the pilot may not have lived through it
         a.ctrlDead = true; const n = a.part('nose'); if (n) n.hp = 0; const ck = a.part('cockpit'); if (ck && ck.hp > 0) partDamage(a, ck, Math.random() < .5 ? ck.hp + 1 : ck.hp * .6, owner, A);
       }
@@ -747,8 +750,18 @@ function partDamage(a, p, dmg, owner, A) {
   }
   explosion(a.model.root.localToWorld(new V3(...p.p)), 1.5);
 }
-function breakUp(a, src) { if (!a.alive) return; explosion(a.pos.clone(), 9); Sound.at('boom', a.pos); destroyAir(a, src, 'broke up in the air'); }
-function crashAir(a, how) { const src = a.lastAttacker && GAME.time - (a.lastHitT || -99) < 40 ? a.lastAttacker : null; explosion(a.pos.clone(), 10); Sound.at('bigboom', a.pos, .8); destroyAir(a, src, how); a.wreck = { landed: true }; a.vel.set(0, 0, 0); }
+function breakUp(a, src) { if (!a.alive) return; explosion(a.pos.clone(), 9); Sound.at('boom', a.pos); destroyAir(a, src, 'broke up in the air');
+  if (a.cls !== 'jet') return; // it comes apart: some of the airframe goes its own way, and what is left falls lopsided
+  const lose = ids => { for (const id of ids) { const q = a.part(id); if (q && !q.gone) { shedPart(a, id); q.hp = 0; q.gone = true; const g = a.model.parts[id]; if (g) g.visible = false; } } };
+  const tail = Math.random() < .55, wing = !tail || Math.random() < .4, sd = Math.random() < .5 ? 'L' : 'R';
+  if (tail) { lose(['eng1', 'stabL', 'stabR', 'fin']); a.tailOff = true; }
+  if (wing) lose([`wing${sd}o`, ...(Math.random() < .5 ? [`wing${sd}i`] : [])]);
+  a.omega.add(new V3(rand(-.8, .8), rand(-.3, .3), rand(-.5, .5))); }
+function crashAir(a, how) { const src = a.lastAttacker && GAME.time - (a.lastHitT || -99) < 40 ? a.lastAttacker : null;
+  if (a.cls !== 'jet') { explosion(a.pos.clone(), 10); Sound.at('bigboom', a.pos, .8); destroyAir(a, src, how); a.wreck = { landed: true }; a.vel.set(0, 0, 0); return; }
+  destroyAir(a, src, how);
+  if (/building/.test(how)) { explosion(a.pos.clone(), 12); Sound.at('bigboom', a.pos, 1); if (typeof shake === 'function') shake(a.pos, 2); a.wreck.landed = true; a.vel.set(0, 0, 0); return; } // against a wall it stops where it is
+  wreckImpact(a, new V3(a.pos.x, Math.max(0, groundY(a.pos.x, a.pos.z)), a.pos.z)); }
 function destroyAir(a, src, how) {
   if (!a.alive) return;
   a.alive = false; a.how = how; a.burnT = 40;
@@ -758,8 +771,112 @@ function destroyAir(a, src, how) {
   if (by && a.team !== by.team && typeof awardSP === 'function') awardSP(by, 250, 'aircraft');
   logDeath(a, by, how);
   a.model.root.traverse(o => { if (o.isMesh && (o.material === AIR_MAT || (o.material.map && o.material !== AIR_GLASS))) o.material = CHAR; });
+  if (a.driver && a.driver.isPlayer) { PLAYER.wreck = a; PLAYER.wreckT = GAME.time; a.camOff = null; }
   if (a.driver) { const d = a.driver; if (d.alive) { d.alive = false; d.hp = 0; addFeed(by, d, how === 'crashed' && !by ? 'crash' : 'aircraft'); onSoldierDead(d); } if (d.isPlayer) showMsg('Your aircraft was destroyed', how); }
-  if (!a.wreck) a.wreck = { landed: false, spin: new V3(rand(-1, 1), rand(-2, 2), rand(-1.5, 1.5)) };
+  if (!a.wreck) a.wreck = a.cls === 'jet' ? { landed: false, asym: [rand(-1, 1), rand(-1, 1)] } : { landed: false, spin: new V3(rand(-1, 1), rand(-2, 2), rand(-1.5, 1.5)) };
+  if (a.cls === 'jet') { a.omega.add(a.kick); a.kick.set(0, 0, 0); if (a.onGround && !a.belly) a.wreck.landed = true; } // (a wreck keeps turning the way the jet was turning)
+}
+
+/* ---------------- a jet nobody is flying: falling, hitting the ground, sliding ----------------
+   A wreck is a 10-13 tonne rigid body in the airflow, not a thing on a turntable. Gravity pulls it, drag depends on which way it
+   meets the air (nose first it is sleek and keeps gathering speed towards the speed of sound; broadside it is a barn door), and the
+   air turns it as well: with its tail on, the tailplane and fin weathercock it so the nose drops into the direction it is falling;
+   without them nothing holds it and it pitches over and tumbles. A lone wing lifts on one side only and rolls it. Every turning
+   moment works against the airframe's inertia, so a heavy wreck takes time to start turning and time to stop. */
+const _xu = new V3(), _xf = new V3(), _xq = new THREE.Quaternion(), _xn = new V3(), _xp = new V3();
+function wreckFly(a, dt) {
+  const D = a.def, m = airMass(a), { rho, sos } = airData(a.pos.y), w = a.omega;
+  w.add(a.kick); a.kick.set(0, 0, 0); // (a knock from a contact turns it the same way)
+  const V = a.vel.length();
+  if (V > .5) {
+    _jq.copy(a.quat).invert(); const u = _xu.copy(a.vel).applyQuaternion(_jq).divideScalar(V); // which way the air meets it, in the airframe's own axes
+    const q = .5 * rho * V * V, S = D.S, c = 3.6, b = D.wid, Vd = Math.max(V, 25), mach = V / sos;
+    const wl = wingLift(a, -1), wr = wingLift(a, 1), lf = (wl + wr) / 2;
+    const sf = a.parts.filter(p => p.kind === 'stab' && pOK(p)).length / 2, ff = a.parts.some(p => p.kind === 'fin' && pOK(p)) ? 1 : 0;
+    const alpha = Math.atan2(-u.y, u.x), st = sstep(.45, .8, Math.abs(alpha)), ax2 = u.x * u.x + u.y * u.y;
+    // forces: along the fuselage (sleek, worse tail first and near Mach 1), across the wings (lift while the airflow follows them, then a flat plate), sideways
+    const Ax = S * (D.cd0 + .03 + a.parts.filter(p => !pOK(p)).length * .004) * (1 + 2.5 * sstep(.85, 1.05, mach)) * (u.x < 0 ? 2.2 : 1);
+    const Ap = S * (.25 + .75 * lf) + 14, As = 16 + 6 * ff;
+    const CNw = D.CLa * -u.y * u.x * (1 - st); // the wings still lift as long as the air meets them at a shallow angle
+    _xf.set(-Ax * u.x * Math.abs(u.x), S * lf * CNw + Ap * 1.2 * -u.y * Math.abs(u.y), -As * 1.1 * u.z * Math.abs(u.z) - 6 * ff * u.z * Math.abs(u.x)).multiplyScalar(q);
+    const nz = _xf.y / (m * 9.81);
+    a.vel.addScaledVector(_xf.applyQuaternion(a.quat), dt / m);
+    // turning moments (N m): pitch, yaw, roll, each with its own damping, and a little lopsidedness because a wreck is never straight
+    const as = a.wreck && a.wreck.asym || [0, 0];
+    const Cm0 = a.tailOff ? -.07 : 0, Cma = -.4 * sf + .1; // the tailplane holds the nose into the airflow; without it the fuselage swings the other way, and losing its downforce pitches the nose down
+    const Mz = q * S * c * (Cm0 * ax2 + Cma * -u.y + .004 * as[0] - (5.5 * sf + 2.5) * (c / (2 * Vd)) * w.z);
+    const Cnb = .1 * ff - .045; // likewise the fin in yaw
+    const My = q * S * b * (-Cnb * u.z + .003 * as[1] - (.28 * ff + .1) * (b / (2 * Vd)) * w.y) - q * S * (wr - wl) * .06 * 2.8 * Math.abs(u.x); // (a torn wing drags its side back)
+    const Mx = -q * S * .5 * (wr - wl) * CNw * 2.8 + q * S * b * (.002 * as[0] - .35 * (lf + .2) * (b / (2 * Vd)) * w.x); // one wing lifting rolls it towards the side with none
+    // inertia: each axis resists by its own moment of inertia, and a tumbling body couples its axes (Euler's equations)
+    const Ix = m * JET_K[0] ** 2, Iy = m * JET_K[1] ** 2, Iz = m * JET_K[2] ** 2;
+    const dx = (Mx - (Iz - Iy) * w.y * w.z) / Ix, dy = (My - (Ix - Iz) * w.z * w.x) / Iy, dz = (Mz - (Iy - Ix) * w.x * w.y) / Iz;
+    w.x += dx * dt; w.y += dy * dt; w.z += dz * dt;
+    a.alpha = alpha; a.gload = nz;
+  }
+  a.vel.y -= 9.81 * dt;
+  const wl2 = w.length(); if (wl2 > 7) w.multiplyScalar(7 / wl2);
+  if (wl2 > 1e-6) { _xq.setFromAxisAngle(_xn.copy(w).divideScalar(wl2), wl2 * dt); a.quat.multiply(_xq).normalize(); }
+  a.pos.addScaledVector(a.vel, dt);
+}
+function wreckStep(a, dt) {
+  const W = a.wreck, prev = _xp.copy(a.pos);
+  if (W.slide) { wreckSlide(a, dt); return; }
+  wreckFly(a, dt);
+  // burning and trailing smoke: puffs laid along the path, so the trail stretches as it gathers speed
+  const d = prev.distanceTo(a.pos); W.trail = (W.trail || 0) + d;
+  while (W.trail > 3.5) { W.trail -= 3.5; sprite(_xn.copy(prev).lerp(a.pos, Math.random()), rand(2.5, 4), 9, 3.5, Math.random() < .3 ? 0x55514c : 0x2a2826, false, 1, .8); }
+  if (Math.random() < dt * 30) { axes(a); sprite(_xn.copy(a.pos).addScaledVector(_ax, rand(-4, 1)), rand(2, 3.5), 1.5, .2, 0xff8a30, true, 0, .85); }
+  if (segBoxes(prev, a.pos) !== null) { explosion(a.pos.clone(), 12); Sound.at('bigboom', a.pos, 1); if (typeof shake === 'function') shake(a.pos, 2); W.landed = true; a.vel.set(0, 0, 0); return; }
+  if (a.pos.y - Math.max(0, groundY(a.pos.x, a.pos.z)) > 12) return;
+  for (const c of JET_PTS) { if (c.gear || !jetPtLive(a, c)) continue; jetPtWorld(a, c, _xn); const g = Math.max(0, groundY(_xn.x, _xn.z)); if (_xn.y < g) { wreckImpact(a, _xn.setY(g).clone()); return; } }
+}
+/* hitting the ground: the speed it arrives with goes somewhere. Steep, it ends there in a crater and a fireball; shallow, the fireball is
+   smeared along the ground ahead and what is left skids and bounces on, throwing pieces forwards, until friction stops it. */
+function wreckImpact(a, pt) {
+  const W = a.wreck, wet = overWater(pt.x, pt.z), n = wet ? new V3(0, 1, 0) : groundNormal(pt.x, pt.z, new V3());
+  const V = a.vel.length(), vn = Math.max(0, -a.vel.dot(n)), vt = a.vel.clone().addScaledVector(n, -a.vel.dot(n)), Vt = vt.length(), td = Vt > 1 ? vt.clone().divideScalar(Vt) : new V3();
+  const first = !W.hit; W.hit = true;
+  if (first || vn > 20) {
+    const size = Math.min(18, 7 + V / 25); explosion(pt.clone(), size, wet);
+    if (wet) for (let k = 0; k < 8; k++) sprite(pt.clone().addScaledVector(td, k * Math.min(Vt * .06, 6)).setY(1), size * rand(.6, 1), size * 2, 2 + Math.random() * 2, 0xe6f0f2, false, size * rand(1.5, 3.5), .85); // a column of spray
+    else for (let k = 1; k <= 6 && Vt > 15; k++) { const p = pt.clone().addScaledVector(td, k * Math.min(Vt * .07, 9)); p.y = groundY(p.x, p.z) + rand(1, 3); sprite(p, size * rand(.5, .8), size, .4 + Math.random() * .4, 0xffffff, true, rand(1, 4)); sprite(p, size * rand(.6, 1), size * 2, 3 + Math.random() * 3, 0x3a3632, false, rand(1, 3), .8); } // the fireball carries on the way it was going
+    Sound.at('bigboom', pt, Math.min(1, .6 + V / 300)); if (typeof shake === 'function') shake(pt, Math.min(3, 1 + V / 100));
+    for (const id of ['wingLo', 'wingRo', 'wingLi', 'wingRi', 'stabL', 'stabR', 'fin', 'eng1']) { // pieces break off and fly on ahead
+      const q = a.part(id); if (!q || q.gone || Math.random() > clamp(V / 160, .15, .85)) continue;
+      shedPart(a, id, vt.clone().multiplyScalar(rand(.45, .9)).addScaledVector(n, vn * rand(.1, .35) + rand(2, 8)).add(new V3(rand(-6, 6), 0, rand(-6, 6))));
+      q.hp = 0; q.gone = true; const g = a.model.parts[id]; if (g) g.visible = false;
+    }
+  }
+  a.pos.y = Math.max(a.pos.y, pt.y + .8);
+  const steep = Math.atan2(vn, Vt);
+  if (wet || Vt < 12 || (first && steep > .55)) { // straight in, or into the sea: it stops where it is
+    W.landed = true; W.slide = false; a.vel.set(0, 0, 0); a.omega.set(0, 0, 0);
+    if (!wet && steep > .55) { a.pos.y = pt.y + .2; } // half buried
+    if (wet) a.pos.y = .2;
+    return;
+  }
+  // a glancing blow: it keeps most of its speed along the ground and hops a little
+  W.slide = true; a.vel.copy(vt).multiplyScalar(clamp(1 - 2 * vn / Math.max(V, 1), .2, .7)).addScaledVector(n, Math.min(vn * .2, 8));
+  W.yaw = (a.omega.y * .4 + rand(-.6, .6)) * Math.min(1, Vt / 60); a.omega.multiplyScalar(.25);
+}
+function wreckSlide(a, dt) {
+  const W = a.wreck, prev = _xp.copy(a.pos), gy = Math.max(0, groundY(a.pos.x, a.pos.z)), wet = overWater(a.pos.x, a.pos.z);
+  a.vel.y -= 9.81 * dt; a.pos.addScaledVector(a.vel, dt);
+  const air = a.pos.y > Math.max(0, groundY(a.pos.x, a.pos.z)) + .9;
+  if (air) { const w = a.omega, wl = w.length(); if (wl > 1e-6) { _xq.setFromAxisAngle(_xn.copy(w).divideScalar(wl), wl * dt); a.quat.multiply(_xq).normalize(); } } // bounced: it tumbles through the air until it comes down again
+  else {
+    const g2 = Math.max(0, groundY(a.pos.x, a.pos.z)); if (a.vel.y < -6) { wreckImpact(a, new V3(a.pos.x, g2, a.pos.z)); if (W.landed) return; } else if (a.vel.y < -2) dust(a.pos.clone().setY(g2), 3); // came down hard again
+    a.pos.y = g2 + .8; if (a.vel.y < 0) a.vel.y = 0;
+    const vh = Math.hypot(a.vel.x, a.vel.z), dv = .8 * 9.81 * dt; // the ground drags at it
+    if (vh <= dv + .3 || wet) { if (wet) { explosion(a.pos.clone(), 6, true); a.pos.y = .2; } W.landed = true; W.slide = false; a.vel.set(0, 0, 0); return; }
+    a.vel.x *= 1 - dv / vh; a.vel.z *= 1 - dv / vh;
+    // it slews round and settles flat on the ground, the right way up or upside down, whichever is nearer
+    axes(a); const hdg = Math.atan2(_ax.z, _ax.x) + (W.yaw || 0) * dt; W.yaw = (W.yaw || 0) * Math.exp(-dt * .8);
+    _xq.setFromEuler(_ae.set(_ay.y < 0 ? Math.PI : 0, -hdg, 0, 'YZX')); a.quat.slerp(_xq, Math.min(1, dt * 3)); a.omega.set(0, 0, 0);
+    if (Math.random() < dt * Math.min(40, vh)) { const p = a.pos.clone().add(new V3(rand(-4, 4), 0, rand(-4, 4))); p.y = g2 + .4; if (vh > 12) sparks(p, 2); sprite(p, 2.5, 7, 1.6, 0x8a7a60, false, 1.5, .6); if (Math.random() < .4) sprite(p.setY(g2 + 1.2), rand(2, 3), 2, .4, 0xff8a30, true, 1, .8); }
+  }
+  if (segBoxes(prev, a.pos) !== null) { a.pos.copy(prev); explosion(a.pos.clone(), 10); Sound.at('bigboom', a.pos, .8); W.landed = true; W.slide = false; a.vel.set(0, 0, 0); }
 }
 
 /* ---------------- each frame ---------------- */
@@ -768,8 +885,9 @@ function airsStep(dt) {
   for (const a of ENTS) {
     if (a.kind !== 'air') continue;
     if (!a.alive) { // a wreck: falls, hits the ground, burns
-      if (a.wreck && !a.wreck.landed) { a.vel.y -= 9.8 * dt; a.vel.multiplyScalar(Math.pow(.92, dt)); a.pos.addScaledVector(a.vel, dt); const w = a.wreck.spin; _aq2.setFromEuler(_ae.set(w.x * dt, w.y * dt, w.z * dt)); a.quat.multiply(_aq2); if (a.pos.y < groundY(a.pos.x, a.pos.z) + 1) { a.pos.y = groundY(a.pos.x, a.pos.z) + .8; a.wreck.landed = true; explosion(a.pos.clone(), 10); Sound.at('bigboom', a.pos, .8); } if (Math.random() < dt * 25) sprite(a.pos.clone(), 3, 6, 3, 0x2a2826, false, 2, .8); placeAir(a); }
-      else if ((a.burnT -= dt) > 0) { if (Math.random() < dt * 8) sprite(_av.copy(a.pos).setY(a.pos.y + 2), 2.5, 9, 3.5, 0x2a2826, false, 4, .7); } else removeEnt(a);
+      if (a.cls === 'jet' && a.wreck && !a.wreck.landed) { const n = Math.ceil(dt / (1 / 60)); for (let s = 0; s < n && !a.wreck.landed; s++) wreckStep(a, dt / n); placeAir(a); }
+      else if (a.wreck && !a.wreck.landed) { a.vel.y -= 9.8 * dt; a.vel.multiplyScalar(Math.pow(.92, dt)); a.pos.addScaledVector(a.vel, dt); const w = a.wreck.spin; _aq2.setFromEuler(_ae.set(w.x * dt, w.y * dt, w.z * dt)); a.quat.multiply(_aq2); if (a.pos.y < groundY(a.pos.x, a.pos.z) + 1) { a.pos.y = groundY(a.pos.x, a.pos.z) + .8; a.wreck.landed = true; explosion(a.pos.clone(), 10); Sound.at('bigboom', a.pos, .8); } if (Math.random() < dt * 25) sprite(a.pos.clone(), 3, 6, 3, 0x2a2826, false, 2, .8); placeAir(a); }
+      else if ((a.burnT -= dt) > 0) { if (Math.random() < dt * 8) sprite(_av.copy(a.pos).setY(a.pos.y + 2), 2.5, 9, 3.5, 0x2a2826, false, 4, .7); if (a.burnT > 12 && Math.random() < dt * 10) sprite(_av.copy(a.pos).add(_aw.set(rand(-3, 3), rand(.3, 1.5), rand(-3, 3))), rand(1.5, 3), 1.5, .5, 0xff8a30, true, 2, .8); } else removeEnt(a); // the fuel keeps burning on the ground
       continue;
     }
     for (let k = 0; k < a.cool.length; k++) a.cool[k] -= dt; a.flareT -= dt; a.extT -= dt;
@@ -864,6 +982,17 @@ function airCamera(a, dt) {
   camera.lookAt(_aw.copy(camera.position).addScaledVector(dir, 100));
   return fov;
 }
+/* your aircraft destroyed: the camera stays with the wreck as it goes down. It hangs back further the faster the wreck falls, so you see
+   it gather speed, and it shakes with the impact (the mouse still swings it round). */
+function wreckCamera(a, dt) {
+  const dir = _av.set(Math.cos(CAM.yaw) * Math.cos(CAM.pitch), Math.sin(CAM.pitch), Math.sin(CAM.yaw) * Math.cos(CAM.pitch)), R = a.def.cam * 1.2;
+  const off = _aw.copy(dir).multiplyScalar(-R).addScaledVector(a.vel, -.06); off.y += R * .25;
+  const o = a.camOff || (a.camOff = off.clone()); o.lerp(off, Math.min(1, dt * 2));
+  camera.position.copy(a.pos).add(o); const V = a.vel.length();
+  if (V > 120 && !a.wreck.landed) { const k = (V - 120) / 2000; camera.position.x += (Math.random() - .5) * k; camera.position.y += (Math.random() - .5) * k; }
+  camera.lookAt(a.pos);
+  return 65;
+}
 function airStatusHTML(a) {
   const D = a.def, V = a.vel.length(), alt = a.pos.y - Math.max(0, groundY(a.pos.x, a.pos.z));
   const groups = D.cls === 'jet' ? [['CKPT', 'cockpit'], ['FUS', 'fuseF', 'fuseR'], ['FUEL', 'fuel'], ...a.parts.filter(p => p.kind === 'engine').map(p => [p.id === 'eng1' ? 'ENG' : p.id === 'engL' ? 'ENG L' : 'ENG R', p.id]), ['WING L', 'wingLi', 'wingLo'], ['WING R', 'wingRi', 'wingRo'], ['TAIL', ...a.parts.filter(p => p.kind === 'stab' || p.kind === 'fin').map(p => p.id)]]
@@ -930,6 +1059,10 @@ function airBotThink(b, a, dt) {
   const ai = b.ai, sk = b.skill, D = a.def, M = GAME.M, team = b.team;
   ai.t = (ai.t ?? 0) - dt;
   const alt = a.pos.y - Math.max(0, groundY(a.pos.x, a.pos.z)), empty = a.ammo.every((n, i) => i === 0 ? n < a.def.weapons[0].n * .1 : n <= 0);
+  if ((a.tailOff || a.ctrlDead) && !a.onGround) { // nothing answers: after a moment to take it in, the pilot ejects and the jet goes down on its own
+    if (ai.ejectT === undefined || ai.ejectJet !== a) { ai.ejectJet = a; ai.ejectT = GAME.time + rand(.8, 2.5); }
+    if (GAME.time > ai.ejectT && a.driver && a.driver.alive) { const s = a.driver; s.veh = null; a.driver = null; s.model.root.visible = true; s.pos.copy(a.pos); s.pos.y += 2; s.vel.copy(a.vel).multiplyScalar(.3); s.vel.y = 8; s.chute = true; a.pilotDead = true; }
+    return; }
   if (ai.t <= 0) {
     ai.t = .5 + Math.random() * .4;
     // enemy aircraft close by come first; then ground targets near the fight

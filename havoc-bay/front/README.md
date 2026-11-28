@@ -128,10 +128,17 @@ The flight physics are written for this game (`aircraft.js`). The handling follo
   - In the sea it ploughs to a stop and sinks; the pilot gets out and swims.
   - Only a hard hit with the nose or body destroys the jet outright: closing on the ground at more than about 80 km/h straight in, or a steep dive.
   - Parts that come off keep flying: they tumble away at the jet's speed, fall, and lie where they land.
+- **Going down:** a wreck falls as a 10-13 tonne body, not a weightless one.
+  - Gravity pulls it and drag depends on how it meets the air: nose first it stays sleek and keeps gathering speed towards the speed of sound; broadside or tail first it is far draggier.
+  - The air also turns it. With the tail on, the tailplane and fin swing the nose round into the direction it is falling. Without them it pitches over and tumbles. A single wing lifts on one side only and rolls it. Every turn works against the airframe's inertia, so a heavy wreck takes time to start turning and time to stop, and a tumbling one couples its axes as real bodies do.
+  - A jet that breaks up in the air loses its tail, a wing or both on the way down. A wreck keeps turning the way the jet was turning when it was hit.
+  - It trails smoke laid along its path, so the trail stretches as it speeds up, and it burns as it falls.
+  - Hitting the ground, the speed has to go somewhere. Steeply (more than about 30 degrees), it ends there in a fireball. At a shallow angle the fireball is smeared along the ground ahead, the wings and tail are flung on, and what is left skids and bounces on until the ground stops it, then burns. In the sea it throws up a column of spray and stops.
+  - When your own jet is destroyed the camera follows the wreck down, hanging back further the faster it falls, and shakes on impact. The deploy screen waits until it has come to rest (14 seconds at most).
 - **Damage (where it is hit decides what stops working):**
   - Nothing blows a jet up at once except a big warhead straight into the fuselage. A fire left burning for 18 seconds reaches the fuel, and that does. X pulls the fire handle.
   - A warhead bursting nearby throws fragments that find some parts and miss others, more of them the closer it bursts.
-  - The rear fuselage shot through: the tail comes away with the engine, tailplanes and fin, and the jet tumbles. The forward fuselage wrecked: nothing answers the stick. Either way J bails you out.
+  - The rear fuselage shot through: the tail comes away with the engine, tailplanes and fin. Losing the tailplane's downforce pitches the nose down hard, and with nothing to hold it into the airflow the jet tumbles and falls as a wreck. The forward fuselage wrecked: nothing answers the stick, and because the F-2, like the F-16, is built slightly unstable in pitch and relies on its flight computer, the nose wanders off within a few seconds into a stall or a dive. Either way J bails you out. A bot pilot ejects a second or two after it happens.
   - Fuselage damage weakens the hydraulics, so the stick does less. A wounded pilot cannot hold the jet steady.
   - A damaged wing rolls the jet towards it, harder the more g you pull, and its drag pulls the nose that way. A jet with a whole wing gone can limp level but can barely turn.
   - Losing one tailplane slows the pitch response. Losing both leaves almost no pitch control.
