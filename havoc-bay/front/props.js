@@ -188,7 +188,7 @@ function propsCountry(M, seed) {
         const ang = Math.atan2(uz, ux) + (house ? 0 : (R() - .5) * 1.2);
         if (x < 40 || z < 40 || x > WX - 40 || z > WZ - 40) continue;
         if (house) { if (propAvailable('farmhouse') && free(x, z, 17, 24) && Math.abs(terrainY(x + 10, z) - terrainY(x - 10, z)) < 2.5 && Math.abs(terrainY(x, z + 10) - terrainY(x, z - 10)) < 2.5) propPlace('farmhouse', x, z, ang, { y: Math.min(terrainY(x + 10, z), terrainY(x - 10, z), terrainY(x, z + 10), terrainY(x, z - 10)) - .1 }); }
-        else if (propAvailable('wreck') && free(x, z, 4, 16)) propPlace('wreck', x, z, ang, { y: terrainY(x, z) - .15 });
+        else if (propAvailable('wreck') && free(x, z, 4, 16)) { propPlace('wreck', x, z, ang, { y: terrainY(x, z) - .15 }); if (typeof battleWreck === 'function') battleWreck(x, z, terrainY(x, z)); }
       }
     }
   }

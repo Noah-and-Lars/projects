@@ -462,7 +462,7 @@ function buildDocks(M) {
 
 function buildWorld(M) {
   if (WORLD.group) { scene.remove(WORLD.group); WORLD.group.traverse(o => { if (o.geometry && o.geometry !== BOX && !o.userData.shared && !Object.values(TREE_GEO).includes(o.geometry)) o.geometry.dispose(); }); }
-  WORLD.M = M; WORLD.colliders = []; propsReset(); WORLD.group = new THREE.Group(); scene.add(WORLD.group);
+  WORLD.M = M; WORLD.colliders = []; propsReset(); if (typeof battleReset === 'function') battleReset(); WORLD.group = new THREE.Group(); scene.add(WORLD.group);
   WORLD.bridges = M.bridges.map(b => ({ ...b, c: Math.cos(b.ang), s: Math.sin(b.ang) }));
   WORLD.trees = [];
   if (WORLD.gfx === 'realistic') { WORLD.HF = null; WORLD.HF = buildFine(M); buildRealWorld(M); }
@@ -473,13 +473,14 @@ function buildWorld(M) {
   buildTowns(M); buildAirfields(M); buildDocks(M);
   propsRoadside(M, M.seed + 7); propsCountry(M, M.seed + 11); // sandbag positions along the roads in open country
   if (WORLD.gfx === 'realistic') buildRealFlora(M); // woods, hedgerows and grass, clear of the houses
-  batchFlush(WORLD.group); propsFlush(WORLD.group);
+  batchFlush(WORLD.group); propsFlush(WORLD.group); if (typeof battleBuild === 'function') battleBuild(M); // (battlefield.js: burning wrecks, no man's land)
   if (WORLD.gfx === 'realistic') flushWire();
 }
 function updateWorldView(focus) {
   for (const t of WORLD.trees) { const d = Math.hypot(t.userData.cx - focus.x, t.userData.cz - focus.z); t.visible = t.userData.far ? d >= 1800 && d < 5200 : d < 1800; }
   for (const e of ENTS) if (e.model) { const d = Math.abs(e.pos.x - camera.position.x) + Math.abs(e.pos.z - camera.position.z); e.model.root.visible = !(e.kind === 'soldier' && e.veh) && d < (e.kind === 'soldier' ? 1100 : 6000); }
   propsUpdate(camera.position); if (typeof optGrassUpdate === 'function') { optGrassUpdate(camera.position); optHedgesUpdate(camera.position); }
+  if (typeof battleUpdate === 'function') battleUpdate(camera.position, focus);
   sun.position.copy(focus).addScaledVector(SUN_DIR, 600); sun.target.position.copy(focus);
   if (WORLD.gfx === 'realistic') { const now = performance.now(); updateReal(focus, Math.min(.1, (now - (WORLD._t || now)) / 1000)); WORLD._t = now; }
   SKY.position.copy(camera.position); SKY.position.y = 0;
