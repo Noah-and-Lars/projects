@@ -292,11 +292,26 @@ Nothing is flat paint: the menus, windows, buttons and HUD plates carry a worn f
 
 All of it is in `ui.css`; the Barlow typeface and the wear tiles are packed into that file so the game still opens from disk.
 
+## Scenery models
+
+Sandbag walls (`models/sandbags.js`) stand at every checkpoint and base as L-shaped fighting positions, make up the base's howitzer rings, and sit beside the roads in open country, in every graphics level. They block movement like a low wall. They are kept off the roads and the vehicle lanes beside them, the middle of each checkpoint, the spawn spots, helipads, airfields, towns, bridges and woods. Close up each wall piece is about 5,200 triangles; beyond 180 m a 1,050-triangle copy is drawn, and beyond 1.1 km nothing. Without the model file the game keeps its plain box walls.
+
+To add another scenery model:
+
+1. Check its licence (CC0, CC-BY, CC-BY-SA or CC-BY-NC-SA) and keep it heavy only where it is placed once: about 5,000 triangles for a prop placed many times, 20,000 for a building.
+2. Pack it: `python3 tools/pack_model.py <folder or .gltf> <key> --max 1024`, and copy its licence to `models/<key>-license.txt`.
+3. Add `<script src="models/<key>.js"></script>` to `index.html` above `models/config.js`.
+4. Add a line to `PROP_DEFS` in `props.js`: the model key, a name pattern for the part to draw close up (and, if the model has one, a lighter part for far away), draw distances, and whether it blocks movement.
+5. Place it with `propPlace(name, x, z, angle)` or `propRun(site, name, ...)` from `world.js`, or add a layout to `props.js` like `propsCompound` and `propsRoadside`. `propPlace` returns false when the model is missing, so the plain look can stay as the fallback.
+6. Credit it on the title screen's Credits tab and below, in the words its licence asks for.
+
 ## Credits
 
 Red's Eurofighter Typhoon: This work is based on "Eurofighter Typhoon - Fighter Jet - Free" (https://sketchfab.com/3d-models/eurofighter-typhoon-fighter-jet-free-992bcc8987964ca09d55410330aa8579) by bohmerang (https://sketchfab.com/bohmerang), licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/). The licence text is in `models/typhoon-license.txt`.
 
 Blue's F-2A: This work is based on "Mitsubishi F-2 - Fighter Jet - Free" (https://sketchfab.com/3d-models/mitsubishi-f-2-fighter-jet-free-d3d7244554974f499b106e6c11fe3aaf) by bohmerang (https://sketchfab.com/bohmerang) licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/). Because of that licence, the game (or at least the F-2 model and anything made from it) must not be used commercially, and changed versions of the model must be shared under the same licence. The full licence note is in `models/f2-license.txt`.
+
+Sandbag walls: This work is based on "Urban/Military Sandbag Wall" (https://sketchfab.com/3d-models/urbanmilitary-sandbag-wall-9c18daee3ecf41e995e54998d5cc61c0) by Neslihan Çakmak (https://sketchfab.com/neslihancakmak) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: only the straight run of bags is used, simplified from about 47,000 to about 5,200 triangles (and 1,050 for the distant copy), turned to lie along its length, and its textures shrunk to 1024 pixels. The licence note is in `models/sandbags-license.txt`.
 
 Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow), licensed under the SIL Open Font License 1.1. The licence text is in `docs/barlow-font-license.txt`.
 
@@ -320,6 +335,8 @@ Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://g
 | `models/typhoon.js` | The Eurofighter Typhoon model, packed the same way |
 | `gltf-models.js` | Reads packed glTF models; builds the F-2A with damageable parts, pylons and retracting gear |
 | `model-kit.js` | The model kit: reads any packed glTF (parts, skeletons, animations) and fits it as a tank, helicopter or soldier |
+| `models/sandbags.js` | The sandbag wall, a scenery prop (near and distant copies), packed the same way |
+| `props.js` | Scenery props from downloaded models: drawn instanced, culled by distance, with colliders; where they go |
 | `models/config.js` | Which downloaded model is used for which unit, and how it is fitted |
 | `tools/pack_model.py` | Packs a glTF or GLB download into `models/<key>.js` |
 | `docs/` | Research notes on War Thunder's tank and helicopter mechanics, and how to add models (`docs/models.md`) |

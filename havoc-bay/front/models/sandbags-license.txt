@@ -1,0 +1,11 @@
+Model Information:
+* title:	Urban/Military Sandbag Wall
+* source:	https://sketchfab.com/3d-models/urbanmilitary-sandbag-wall-9c18daee3ecf41e995e54998d5cc61c0
+* author:	Neslihan Çakmak (https://sketchfab.com/neslihancakmak)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Urban/Military Sandbag Wall" (https://sketchfab.com/3d-models/urbanmilitary-sandbag-wall-9c18daee3ecf41e995e54998d5cc61c0) by Neslihan Çakmak (https://sketchfab.com/neslihancakmak) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

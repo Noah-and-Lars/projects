@@ -338,9 +338,12 @@ function buildTeamBase(M, b, team) {
   b.gunSpots = [];
   for (let g = 0; g < 4; g++) {
     const fz2 = -240 + g * 160, [x, z] = site.w(-310, fz2);
-    for (let a = 0; a < 10; a++) { if (a === 5) continue; const an = a / 10 * TAU, bx = x + Math.cos(an) * 9, bz = z + Math.sin(an) * 9; addBoxMesh(WORLD.group, 5.4, 1.1, 1.4, 0x9b8d68, bx, y0 + .55, bz, an + Math.PI / 2); addCollider(bx, bz, 2.7, .7, an + Math.PI / 2, y0 - 1, y0 + 1.1); }
+    for (let a = 0; a < 10; a++) { if (a === 5) continue; const an = a / 10 * TAU, bx = x + Math.cos(an) * 9, bz = z + Math.sin(an) * 9;
+      if (!propPlace('sandbagWall', bx, bz, an + Math.PI / 2, { y: y0 - .05, scale: 1.65, collide: false })) addBoxMesh(WORLD.group, 5.4, 1.1, 1.4, 0x9b8d68, bx, y0 + .55, bz, an + Math.PI / 2); // the downloaded sandbags if present (props.js)
+      addCollider(bx, bz, 2.7, .7, an + Math.PI / 2, y0 - 1, y0 + 1.1); }
     b.gunSpots.push([x, z]);
   }
+  propsCompound(site, 380, 320, 6, team * 53 + M.seed, [[260, 200, 50], [300, -140, 80], [50, 270, 24], [50, -270, 24], [0, 0, 20]]); // sandbag positions, clear of the spawn spots and helipads
   if (WORLD.gfx === 'realistic') { decorateCompound(site, 380, 320, 'B', team * 97 + M.seed); razorWire(site, -gx, -gz, gx, -gz, y0 + 2.4); razorWire(site, -gx, gz, gx, gz, y0 + 2.4); }
   b.vehicleSpawn = site.w(300, -150); b.infSpawn = site.w(260, 200); b.site = site;
 }
@@ -373,6 +376,7 @@ function buildCheckpoint(M, p) {
   // crates and barrels for cover
   const R = rng(p.n * 191 + M.seed);
   for (let k = 0; k < (p.size === 'L' ? 18 : p.size === 'M' ? 9 : 4); k++) { const fx = (R() - .5) * hx * 1.6, fz = (R() - .5) * hz * 1.6; if (Math.abs(fz) < 12) continue; site.box(fx, fz, 1.6, 1.6, 1.6, 0x7a6440, { rot: R() * 3 }); }
+  propsCompound(site, hx, hz, { S: 1, M: 2, L: 4 }[p.size], p.n * 71 + M.seed); // sandbag fighting positions (props.js; nothing if the model is missing)
   // NPC guard posts: tower decks first, then spots round the yard
   for (const [[x, z], y] of p.towers) p.posts.push({ x, z, y, tower: true });
   const need = GARRISON[p.size];
@@ -418,8 +422,8 @@ function buildDocks(M) {
 }
 
 function buildWorld(M) {
-  if (WORLD.group) { scene.remove(WORLD.group); WORLD.group.traverse(o => { if (o.geometry && o.geometry !== BOX && !Object.values(TREE_GEO).includes(o.geometry)) o.geometry.dispose(); }); }
-  WORLD.M = M; WORLD.colliders = []; WORLD.group = new THREE.Group(); scene.add(WORLD.group);
+  if (WORLD.group) { scene.remove(WORLD.group); WORLD.group.traverse(o => { if (o.geometry && o.geometry !== BOX && !o.userData.shared && !Object.values(TREE_GEO).includes(o.geometry)) o.geometry.dispose(); }); }
+  WORLD.M = M; WORLD.colliders = []; propsReset(); WORLD.group = new THREE.Group(); scene.add(WORLD.group);
   WORLD.bridges = M.bridges.map(b => ({ ...b, c: Math.cos(b.ang), s: Math.sin(b.ang) }));
   WORLD.trees = [];
   if (WORLD.gfx === 'realistic') { WORLD.HF = null; WORLD.HF = buildFine(M); buildRealWorld(M); }
@@ -428,13 +432,15 @@ function buildWorld(M) {
   M.bases.forEach((b, t) => buildTeamBase(M, b, t));
   M._cps.forEach(p => buildCheckpoint(M, p));
   buildTowns(M); buildAirfields(M); buildDocks(M);
+  propsRoadside(M, M.seed + 7); // sandbag positions along the roads in open country
   if (WORLD.gfx === 'realistic') buildRealFlora(M); // woods, hedgerows and grass, clear of the houses
-  batchFlush(WORLD.group);
+  batchFlush(WORLD.group); propsFlush(WORLD.group);
   if (WORLD.gfx === 'realistic') flushWire();
 }
 function updateWorldView(focus) {
   for (const t of WORLD.trees) { const d = Math.hypot(t.userData.cx - focus.x, t.userData.cz - focus.z); t.visible = t.userData.far ? d >= 1800 && d < 5200 : d < 1800; }
   for (const e of ENTS) if (e.model) { const d = Math.abs(e.pos.x - camera.position.x) + Math.abs(e.pos.z - camera.position.z); e.model.root.visible = !(e.kind === 'soldier' && e.veh) && d < (e.kind === 'soldier' ? 1100 : 6000); }
+  propsUpdate(camera.position);
   sun.position.copy(focus).addScaledVector(SUN_DIR, 600); sun.target.position.copy(focus);
   if (WORLD.gfx === 'realistic') { const now = performance.now(); updateReal(focus, Math.min(.1, (now - (WORLD._t || now)) / 1000)); WORLD._t = now; }
   SKY.position.copy(camera.position); SKY.position.y = 0;
