@@ -376,7 +376,7 @@ function buildCheckpoint(M, p) {
   // NPC guard posts: tower decks first, then spots round the yard
   for (const [[x, z], y] of p.towers) p.posts.push({ x, z, y, tower: true });
   const need = GARRISON[p.size];
-  for (let k = 0; p.posts.length < need && k < 400; k++) {
+  for (let k = 0; p.posts.filter(q => !q.tower).length < need && k < 400; k++) { // (yard posts as well as the towers: guards on the ground are found and fought)
     const fx = (R() - .5) * (hx * 2 - 16), fz = (R() - .5) * (hz * 2 - 16), [x, z] = site.w(fx, fz), pt = new V3(x, y0 + 1, z);
     if (pushOutCircle(pt, 1.2, y0, y0 + 1.8) || terrainY(x, z) < 0.5) continue;
     p.posts.push({ x, z, y: groundY(x, z) });

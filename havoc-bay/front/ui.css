@@ -172,7 +172,7 @@ kbd { display: inline-block; font: 500 13px/1 var(--text); color: var(--ink); ba
 .menu .btn { width: 100%; padding: 11px 16px 10px; font-size: 18px; }
 #end { flex-direction: column; gap: 18px; }
 #endTitle { font: 700 clamp(48px, 7vw, 92px)/1 var(--disp); letter-spacing: .01em; text-shadow: 0 2px 0 #000, 0 0 18px rgba(0, 0, 0, .7); }
-.results { width: min(560px, 94vw); }
+.results { width: min(820px, 94vw); }
 .results .wbody { padding: 12px 16px 14px; overflow: visible; }
 #endWhy { color: var(--ink2); font-size: 15.5px; padding-bottom: 10px; }
 .endstats { display: grid; grid-template-columns: 1fr auto; }
@@ -355,3 +355,50 @@ html, body, #loading { background-image: var(--scuff), radial-gradient(ellipse a
 .dmgp .nm, .dmgp .cl, .dmgp .cr { z-index: 1; }
 #mini { box-shadow: 0 0 0 3px rgba(18, 24, 30, .8), 0 0 0 4px rgba(0, 0, 0, .7); }
 .brand b, #endTitle, #loadText { -webkit-mask-image: var(--chip); mask-image: var(--chip); -webkit-mask-size: 256px; mask-size: 256px; } /* lettering with the paint knocked off here and there */
+
+/* ---------- the rework: front strength, kill banners, objective marker, scoreboard, results ---------- */
+.strbars { display: flex; gap: 112px; margin-top: -4px; }
+.strbars .sb { width: 122px; height: 5px; background: rgba(0, 0, 0, .55); border: 1px solid rgba(0, 0, 0, .7); }
+.strbars .sb i { display: block; height: 100%; transition: width .4s; }
+.strbars .bl { transform: skewX(24deg); display: flex; justify-content: flex-end; } .strbars .bl i { background: var(--blue); }
+.strbars .rd { transform: skewX(-24deg); } .strbars .rd i { background: var(--red); }
+#banner { position: absolute; left: 50%; top: 27%; transform: translateX(-50%); text-align: center; pointer-events: none; opacity: 0; animation: banner 3s ease-out forwards; width: max-content; max-width: 90vw; }
+#banner:empty { display: none; }
+#banner b { display: block; font: 700 40px/1 var(--disp); letter-spacing: .04em; text-transform: uppercase; color: #fff; text-shadow: var(--edge), 0 0 22px rgba(0, 0, 0, .6); }
+#banner small { display: block; margin-top: 6px; font: 500 17px/1.2 var(--text); color: var(--ink); text-shadow: var(--edge); }
+#banner.streak b, #banner.multi b { color: var(--gold); } #banner.bad b { color: var(--red); } #banner.good b { color: #8fd16a; } #banner.base b { color: #ffb36b; font-size: 30px; }
+@keyframes banner { 0% { opacity: 0; transform: translateX(-50%) scale(1.35); } 8% { opacity: 1; transform: translateX(-50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; } }
+#kills { position: absolute; left: 50%; top: calc(50% + 62px); transform: translateX(-50%); display: grid; gap: 3px; justify-items: center; pointer-events: none; }
+.kb { display: flex; gap: 10px; align-items: baseline; padding: 4px 14px 3px; background: linear-gradient(90deg, transparent, rgba(150, 28, 18, .72) 18%, rgba(150, 28, 18, .72) 82%, transparent); animation: kb 2.6s ease-out forwards; }
+.kb b { font: 700 21px/1 var(--disp); letter-spacing: .05em; text-transform: uppercase; color: #fff; text-shadow: var(--edge); }
+.kb i { font: 700 18px/1 var(--disp); font-style: normal; color: var(--gold); text-shadow: var(--edge); }
+.kb.small { background: none; } .kb.small b { font-size: 16px; color: #e3e3e3; }
+@keyframes kb { 0% { opacity: 0; transform: scale(1.5); } 7% { opacity: 1; transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px); } }
+#feed div.me { background: rgba(227, 173, 60, .22); padding: 1px 6px; }
+#objMark { position: absolute; transform: translate(-50%, -100%); display: none; text-align: center; pointer-events: none; }
+#objMark b { display: block; width: 18px; height: 18px; margin: 0 auto 3px; transform: rotate(45deg); border: 2px solid var(--gold); background: rgba(227, 173, 60, .25); box-shadow: 0 0 0 1px rgba(0, 0, 0, .6); }
+#objMark span { font: 600 13px/1.1 var(--disp); letter-spacing: .03em; color: var(--gold); text-shadow: var(--edge); white-space: nowrap; }
+#objMark.attack b { border-color: #fff; background: rgba(255, 255, 255, .2); } #objMark.attack span { color: #fff; }
+#objMark.defend b { border-color: var(--red); background: rgba(232, 72, 58, .3); } #objMark.defend span { color: #ffb0a8; }
+#objLine { font: 600 14px/1 var(--disp); letter-spacing: .04em; color: var(--gold); text-shadow: var(--edge); text-transform: uppercase; }
+#objLine:empty { display: none; }
+.tag.foe { color: var(--red); }
+.tag.foe::after { border-top-color: var(--red); }
+#board { pointer-events: none; }
+#board .win { width: min(1000px, 96vw); }
+.bcols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
+.bcol h3 { display: flex; justify-content: space-between; margin: 0 0 6px; padding: 6px 10px; font: 700 18px/1 var(--disp); color: #fff; }
+.bcol.t0 h3 { background: var(--blue); } .bcol.t1 h3 { background: var(--red); }
+.brow { display: grid; grid-template-columns: 1fr 86px 50px 26px 26px 26px 38px; gap: 4px; padding: 4px 8px 3px; font: 500 14px/1.2 var(--text); border-top: 1px solid rgba(255, 255, 255, .05); }
+.brow span:nth-child(n+3) { text-align: right; } .brow span:nth-child(2) { color: var(--ink2); font-size: 12.5px; }
+.brow.head { font: 600 12px/1 var(--disp); color: var(--ink2); letter-spacing: .05em; text-transform: uppercase; border: 0; }
+.brow.me { background: rgba(227, 173, 60, .18); } .brow.dead { opacity: .55; }
+.rstr { display: flex; justify-content: center; gap: 4px; margin: 4px 0 14px; }
+.rstr span { display: flex; gap: 14px; align-items: baseline; padding: 7px 18px; font: 600 16px var(--disp); color: #fff; }
+.rstr span b { font: 700 26px/1 var(--disp); }
+.rstr .bl { background: var(--blue); } .rstr .rd { background: var(--red); }
+.rcols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.rcols h4 { margin: 0 0 6px; }
+.top3 { margin: 0 0 14px; padding: 0 0 0 22px; } .top3 li { display: flex; justify-content: space-between; padding: 4px 0; font: 500 16px var(--text); } .top3 i { font-style: normal; color: var(--gold); font-weight: 700; }
+.awards { list-style: none; margin: 0; padding: 0; } .awards li { display: flex; justify-content: space-between; padding: 4px 0; font: 400 15px var(--text); border-top: 1px solid rgba(255, 255, 255, .06); }
+@media (max-width: 700px) { .rcols, .bcols { grid-template-columns: 1fr; } .strbars { gap: 80px; } .strbars .sb { width: 90px; } }

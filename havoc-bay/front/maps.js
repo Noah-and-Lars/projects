@@ -51,7 +51,7 @@ function segX(a, b, c, d) {
 }
 const ellipse = (cx, cy, rx, ry, n, wob = 0, ph = 0) => Array.from({ length: n }, (_, k) => { const a = k / n * Math.PI * 2, w = 1 + wob * Math.sin(a * 3 + ph) + wob * .6 * Math.cos(a * 5 + ph); return [cx + Math.cos(a) * rx * w, cy + Math.sin(a) * ry * w]; });
 
-const GARRISON = { S: 6, M: 14, L: 30 };
+const GARRISON = { S: 3, M: 3, L: 4 }; // guards per checkpoint (the outposts start held, so theirs are not used)
 const SIZE_NAME = { S: 'Small', M: 'Medium', L: 'Main base' };
 const CP_DIM = { S: [.12, .09], M: [.22, .17], L: [.42, .32] }; // km (the drafts drew them bigger so they showed up)
 const CAP_TIME = { S: 20, M: 30, L: 45 };   // seconds to capture with one unit inside

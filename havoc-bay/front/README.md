@@ -6,13 +6,19 @@ Open `index.html` in this folder, or use the **Island Front** card on Havoc Bay'
 ## The rules
 
 - Three maps: **Ironback Ridge**, **Kettle Lake**, **The Narrows**. Each is 20 × 13.2 km.
-- Between the two team bases sit five neutral checkpoints in order: small, medium, the main base, medium, small.
-- Every checkpoint is guarded by neutral infantry NPCs (6 / 14 / 30) who shoot both teams. A guard killed in a match stays dead. The last three guards of a checkpoint leave their posts and come out to the road, so a match cannot stall on one guard hidden in a corner. A post that a building was placed on is moved beside it.
-- Roads are graded where they leave a bridge or reach a levelled site (a base, checkpoint, airfield or town): cut into the bank or carried on an embankment at about 1 in 4, so every bridge and every checkpoint can be driven into at any speed.
-- Once a checkpoint's guards are all dead, stand inside it to capture it. You can only take the next checkpoint along from one your team holds.
-- Hold all five to win. After 30 minutes, the team holding more checkpoints wins.
+- Five checkpoints lie in a line between the two team bases. Each side starts holding the two nearest its base. The fort in the middle starts neutral, held by 4 neutral guards who shoot both sides and come out to the road to fight. Guards stand in the yard, not up the corner towers.
+- **Front strength.** Each side has 600 front strength, shown on the blue and red plates at the top with a bar under each. Knock the enemy's to zero to win. When the 20 minutes run out, the stronger side wins. Strength falls three ways:
+  - **Losses.** Every unit a side loses costs it strength: a soldier 6, a light vehicle 10, an IFV 15, a tank or helicopter 22, a jet 26, a howitzer 15.
+  - **Bleed.** A side holding fewer checkpoints than the enemy loses 0.45 a second for each checkpoint of difference.
+  - **Base fire.** Shells, bombs and rockets that burst inside a base cost the defenders strength. A bomb takes about 27, a rocket about 3, so a jet or helicopter can wear a base down. Defenders are warned when their base is under fire.
+- **Taking checkpoints.** Once a checkpoint's guards are dead, the side with more troops and ground vehicles inside it takes it. The bigger its lead, the faster it goes; equal numbers hold it contested. You can only take the next checkpoint along from one your side holds. Aircraft never count.
 - Each team base has 4 towed howitzers that lob high shells at enemies up to 6 km away. About 1 shell in 6.5 lands on its target (`HIT_CHANCE` in `game.js`); the rest scatter 30 to 140 m away.
-- Infantry can spawn at checkpoints their team holds. Vehicles start at the team base.
+- **Spawning.**
+  - Infantry and ground vehicles can start at the base or at any checkpoint your side holds, if no enemy is inside it.
+  - Vehicles starting at your front checkpoint are put up to 1.6 km down the road towards the fight, but never closer than 1 km to the objective, and only if no enemy is within 500 m of that spot.
+  - Aircraft start at the base.
+  - A soldier who has just spawned can't be hurt for 3 seconds.
+  - After being knocked out you choose again after 5 seconds. On the deploy screen, Enter sends you back in with the same unit at the same place.
 
 ## Graphics
 
@@ -81,6 +87,7 @@ The ground vehicles follow War Thunder's Ground Realistic Battles. The research,
 - **Ready rack:** the Abrams keeps 18 rounds ready and the T-90A 22 in its autoloader. Once the ready rounds are gone, loading is slower (1.4 times on the Abrams, 2.2 times on the T-90A, which must then be loaded by hand). The rack refills one round every 6 seconds while the gun is loaded and idle.
 - **Changing shell:** the loaded round goes back in the rack and the new type is loaded.
 - **Sights:**
+  - **Gunnery** on the title screen is **Assisted** by default: the gun is laid for the range of whatever the crosshair is on, as in War Thunder's arcade battles, and the sight shows that range. **Realistic** works as described below.
   - The gun is laid for the range set on the sight: 400 m until you lase.
   - V lases what the crosshair is on, and the gun takes the right elevation for that range for 45 seconds.
   - The marker still shows where the shell will land.
@@ -189,29 +196,38 @@ How the Typhoon is meant to feel, from pilots' accounts:
 | Top speed | 303 km/h | 305 km/h | 293 and 300 km/h |
 | Vertical climb | 8.4 m/s | 7.1 m/s | 8-12 m/s |
 
-## Spawn points
+## Spawn points and score
 
-You start with 150 SP. Infantry and jeeps are free, an IFV costs 50, a tank 150, a helicopter 400 and a jet 500. There is no limit on aircraft.
+You start with 250 SP. Infantry and light vehicles are free, an IFV costs 40, a tank 120, a helicopter 300 and a jet 350.
 
-You earn SP on the ground:
+You earn SP all the time: 0.4 a second, plus 0.2 a second for each checkpoint your side holds. You also earn them for fighting:
 
 | Action | SP |
 | --- | --- |
-| Soldier kill | 60 |
-| Guard kill | 50 |
-| Jeep destroyed | 80 |
-| Howitzer destroyed | 120 |
-| IFV destroyed | 150 |
+| A penetrating hit on a vehicle | 8, plus 4 for each part knocked out (up to 3) |
+| A hit on an aircraft | 10 (1 for each cannon or machine gun round) |
+| Guard kill | 30 |
+| Soldier kill | 50 |
+| Light vehicle destroyed | 70 |
+| Howitzer destroyed | 100 |
+| IFV destroyed | 120 |
+| Tank destroyed | 180 |
+| Helicopter destroyed | 200 |
+| Jet destroyed | 220 |
+| Assist (you hit it in the last 20 seconds, someone else finished it) | 40 % of the kill |
+| Neutralising an enemy checkpoint | 50 |
 | Checkpoint capture | 150 |
-| Tank destroyed | 200 |
-| Aircraft destroyed | 250 |
+| Hit on the enemy base | 3 times the strength it costs them |
+| Kill streak without dying: 3, 5, 8, 12 | 40, 80, 120, 200 |
 
-Only ground units can capture checkpoints, so a team still needs tanks and infantry to win.
+Every SP earned also counts as score on the scoreboard. Only ground units can take checkpoints, so a team still needs tanks and infantry to win.
 
 For testing, press 0 six times in a row (each press within 1.5 seconds of the last) to get 10,000 SP. It works in a match and on the deploy screen.
 
 Bots earn and spend SP the same way. Each bot has its own skill level, and bots make human mistakes:
 
+- No more than a quarter of a side's bots fly at once, so there are always enough on the ground to take checkpoints.
+- Most bots start at the front, as a player can. A bot stranded more than 1.5 km behind the front with nothing to fight redeploys there, and a bot that would have to walk more than 1.2 km to the fight takes a light vehicle instead.
 - They are slow to notice targets, and their aim takes time to settle.
 - They flinch when hit and sometimes freeze.
 - They pick the wrong ammo, reload at bad moments and forget to crouch.
@@ -227,13 +243,18 @@ Bots earn and spend SP the same way. Each bot has its own skill level, and bots 
 
 The interface is laid out the way War Thunder lays its own out, studied from that game's official wiki and news screenshots. Only the layout and conventions are borrowed: every drawing, icon and colour here is the game's own, and no War Thunder artwork, logo or font is used.
 
-- **Top centre:** how many checkpoints each side holds on slanted blue and red plates with the clock between them, the five checkpoints as diamonds under that (blue, red or neutral, filling as they are taken, with the number of guards left beneath and corner brackets round the one you are standing in), then a compass tape.
+- **Top centre:** each side's front strength on slanted blue and red plates with the clock between them and a strength bar under each, the five checkpoints as diamonds under that (blue, red or neutral, filling as they are taken, with the number of guards left beneath and corner brackets round the one you are standing in), then a compass tape, and under it the current objective in gold (the next checkpoint to take, or one of yours being taken) with its distance.
 - **Top left:** spawn points. In an aircraft the flight read-out sits here as bare text: throttle, speed, altitude, then the weapons with `>` marking the chosen one, flares and fuel time, then the other instruments.
 - **Bottom left:** the damage panel, a plan view of what you are in on a round plate. Each part and crew seat is green when working, yellow when damaged and red when knocked out; an empty seat is dark. The jet's panel is the aircraft's own shape, taken from the 3D model: a part flashes white when it is hit, and shows faint red where it has broken off. Damage to the jet is shown there and not in words. Speed and sight range are under it.
 - **Bottom centre:** the action bar. One slot for each thing you can use, with its key on a tab above, a picture, and how many are left. The chosen shell or weapon is lit, the shell in the gun has a gold marker, and the slot fills as the gun loads.
 - **Bottom right:** the map. **Top right:** who knocked out whom.
 - **The map** (minimap, deploy screen and the big map on M) is drawn as a printed tactical map to match: muted tints by height, hill shading, a contour every 50 m, woods, roads and runways, a dark coastline, fold creases and paper grain, under a 2 km grid numbered across and lettered down. Checkpoints are the same diamonds as on the HUD with their names and guard counts on dark plates; on the deploy screen a gold ring marks where you can start and white brackets mark the place you chose.
 - **Warnings** (fire, missile, stall and so on) appear in red under the compass.
+- **Objective marker:** a gold diamond floats over the objective with its name and distance; it turns white when you need to clear guards there and red when you must defend it.
+- **Enemy markers:** enemies your side can see get a red marker with their type and range. A ground enemy needs one of your side's units nearby (900 m for vehicles, 300 m for soldiers), and you must have a line of sight to it. Aircraft are marked out to 5 km.
+- **Kill banners:** a red banner under the crosshair for each kill with the SP it earned, and its own sound. Bigger banners call double and triple kills, streaks, base hits, your front collapsing or the enemy's breaking. Lines in the kill feed that involve you are highlighted.
+- **Scoreboard:** hold Tab. Both sides with their strength, and for each player their current unit, score, kills, assists, deaths and checkpoints taken.
+- **Battle results:** both sides' strength, your score, place, kills, assists, deaths, checkpoints taken and best streak, the top three players, and awards (top score, most kills, most captures, best streak, best helper).
 - **F1** shows or hides the controls for what you are in. They also show for 20 seconds each time you change unit.
 - **Menus** are flat slate windows with tabs and a row of buttons along the bottom. The title screen has the red "To battle" button at the top with the chosen map under it. The deploy screen shows the battle name, time left and score on top, your line-up as a strip of cards with their spawn-point costs, the chosen unit's weapons and figures and the mission objectives on the left, and the map on the right.
 
@@ -274,11 +295,13 @@ Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://g
 | `docs/` | Research notes on War Thunder's tank and helicopter mechanics, and how to add models (`docs/models.md`) |
 | `vehicles.js` | Real vehicles, ammunition, armour, modules, crew, the damage model, running gear and track links |
 | `units.js` | Howitzer and soldier models, projectiles, effects, sound |
-| `game.js` | Match rules, checkpoints, NPC guards, howitzers, bots, player controls, camera, HUD, menus |
+| `game.js` | Match setup, checkpoints, NPC guards, howitzers, bots, player controls, camera, HUD, menus |
+| `rules.js` | Front strength, the spawn-point economy, kill and streak rewards, objective and enemy markers, scoreboard, battle results |
 
 ## Tuning
 
 - Guard counts: `GARRISON` in `maps.js`.
+- Front strength, losses, bleed, income and assists: `STRENGTH`, `LOSS`, `BLEED`, `INCOME`, `ASSIST` in `rules.js`. Prices and kill rewards: `SP_COST`, `SP_AWARD` in `game.js`. Match length: `MATCH_S` in `game.js`.
 - Capture times: `CAP_TIME` in `maps.js`.
 - Checkpoint sizes: `CP_DIM` in `maps.js`.
 - Howitzer accuracy, range and reload: `HIT_CHANCE`, `HOW_RANGE`, `HOW_COOL` in `game.js`.

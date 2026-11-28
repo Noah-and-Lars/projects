@@ -304,6 +304,7 @@ function splash(pt, A, owner, skip) {
     if (d > A.splash) continue;
     const f = 1 - d / A.splash; damage(e, A.splashDmg * f * f * (e.kind === 'soldier' ? 1 : .6), owner, 'splash');
   }
+  if (typeof baseBlast === 'function') baseBlast(pt, A, owner);
 }
 
 /* ---------------- sound: made with Web Audio, no files ---------------- */
@@ -335,6 +336,12 @@ const Sound = (() => {
     whistle: v => { if (!ctx) return; const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(1500, t); o.frequency.exponentialRampToValueAtTime(380, t + 2.2); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.18 * v, t + 1.6); g.gain.exponentialRampToValueAtTime(.001, t + 2.3); o.connect(g); g.connect(master); o.start(t); o.stop(t + 2.4); },
     hit: v => { thump(.25 * v, .07, 900); },
     ui: v => { thump(.2 * v, .06, 600); },
+    kill: v => { thump(.35 * v, .09, 1300); setTimeout(() => thump(.3 * v, .12, 1750), 70); },
+    killbig: v => { thump(.4 * v, .1, 980); setTimeout(() => thump(.35 * v, .14, 1470), 80); setTimeout(() => burst(.18 * v, .35, 3000, .7, 'highpass'), 60); },
+    streak: v => { if (!ctx) return; [440, 554, 659, 880].forEach((f, i) => { const t = ctx.currentTime + i * .07, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(.12 * v, t); g.gain.exponentialRampToValueAtTime(.001, t + .35); o.connect(g); g.connect(master); o.start(t); o.stop(t + .4); }); },
+    alarm: v => { if (!ctx) return; for (let i = 0; i < 3; i++) { const t = ctx.currentTime + i * .32, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'square'; o.frequency.setValueAtTime(620, t); o.frequency.setValueAtTime(470, t + .15); g.gain.setValueAtTime(.05 * v, t); g.gain.exponentialRampToValueAtTime(.001, t + .3); o.connect(g); g.connect(master); o.start(t); o.stop(t + .31); } },
+    win: v => { if (!ctx) return; [392, 523, 659, 784].forEach((f, i) => { const t = ctx.currentTime + i * .16, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(.16 * v, t); g.gain.exponentialRampToValueAtTime(.001, t + .7); o.connect(g); g.connect(master); o.start(t); o.stop(t + .75); }); },
+    lose: v => { if (!ctx) return; [392, 330, 262].forEach((f, i) => { const t = ctx.currentTime + i * .25, o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(.15 * v, t); g.gain.exponentialRampToValueAtTime(.001, t + .8); o.connect(g); g.connect(master); o.start(t); o.stop(t + .85); }); },
     cap: v => { if (!ctx) return; [523, 659, 784].forEach((f, i) => { const t = ctx.currentTime + i * .12, o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = f; g.gain.setValueAtTime(.15 * v, t); g.gain.exponentialRampToValueAtTime(.001, t + .4); o.connect(g); g.connect(master); o.start(t); o.stop(t + .45); }); },
   };
   function play(name, vol = 1) { if (ctx && DEF[name]) DEF[name](vol); }

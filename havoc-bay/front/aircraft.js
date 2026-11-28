@@ -742,6 +742,7 @@ function airShot(e, A, owner, a, b) {
   hits.slice(0, deep).forEach(([t, p], k) => partDamage(e, p, dmg * (k ? .45 : 1), owner, A));
   const pt = a.clone().lerp(b, hits[0][0]); sparks(pt, A.kind === 'bullet' ? 2 : 5);
   const by = creditOf(owner);
+  if (by && by.team !== e.team && typeof noteHit === 'function') { noteHit(e, by); awardSP(by, A.kind === 'bullet' ? 1 : 10, 'hit', A.kind === 'bullet'); }
   if (by && by.isPlayer && e.team !== GAME.team) { hitMarker(!e.alive); hitInfo(`HIT · ${[...new Set(hits.slice(0, deep).map(h => h[1].name || AIR_PART_NAME[h[1].kind]))].join(', ').toUpperCase()}`, '#ffd27a'); }
   if (e.driver && e.driver.isPlayer) flashDamage();
   return { pt, pen: true };
@@ -805,8 +806,8 @@ function destroyAir(a, src, how) {
   a.alive = false; a.how = how; a.burnT = 40;
   if (a.flames) for (const f of a.flames) f.grp.visible = false;
   const by = creditOf(src);
-  if (by && by.isPlayer && a.team !== GAME.team) { PLAYER.kills++; hitInfo('AIRCRAFT DESTROYED', '#ff8a6a'); }
-  if (by && a.team !== by.team && typeof awardSP === 'function') awardSP(by, 250, 'aircraft');
+  if (by && by.isPlayer && a.team !== GAME.team) hitInfo('AIRCRAFT DESTROYED', '#ff8a6a');
+  if (!a.scored && typeof unitLost === 'function') { a.scored = true; unitLost(a, by, a.cls, how); }
   logDeath(a, by, how);
   a.model.root.traverse(o => { if (o.isMesh && (o.material === AIR_MAT || (o.material.map && o.material !== AIR_GLASS))) o.material = CHAR; });
   if (a.driver && a.driver.isPlayer) { PLAYER.wreck = a; PLAYER.wreckT = GAME.time; a.camOff = null; }

@@ -3,17 +3,18 @@
 const $ = id => document.getElementById(id);
 const HIT_CHANCE = 1 / 6.5;      // howitzer shells that land on target
 const HOW_RANGE = 6000, HOW_COOL = [10, 14];
-const MATCH_S = 30 * 60;
+const MATCH_S = 20 * 60;
 const DIFF = [{ aim: .03, guard: .55, react: 1.1 }, { aim: .018, guard: .85, react: .75 }, { aim: .01, guard: 1.15, react: .5 }];
 const BOT_NAMES = ['Viper', 'Hollis', 'Raptor', 'Kestrel', 'Boone', 'Mako', 'Drift', 'Saber', 'Tundra', 'Lark', 'Rook', 'Hatch', 'Quill', 'Brigg', 'Onyx', 'Fable', 'Cobalt', 'Wren', 'Torque', 'Ash', 'Sully', 'Pike', 'Gale', 'Juno'];
 const GAME = { on: false, over: false, paused: false, time: 0, map: 0, team: 0, bots: 8, diff: 1, M: null, cps: [], guns: [], botsList: [], winner: -1, deployT: 0, sel: { cls: 'mbt', where: -1 } };
 const PLAYER = { s: null, kills: 0, deaths: 0, caps: 0, dmg: 0, sp: 0 };
 /* spawn points: earned on the ground, spent on bigger kit. Only ground units can take checkpoints, so the air can't win alone. */
-const SP_START = 150, SP_COST = { inf: 0, jeep: 0, ifv: 50, mbt: 150, heli: 400, jet: 500 };
-const SP_AWARD = { soldier: 60, guard: 50, jeep: 80, ifv: 150, mbt: 200, gun: 120, capture: 150 };
-function awardSP(by, n, why) {
+const SP_START = 250, SP_COST = { inf: 0, jeep: 0, ifv: 40, mbt: 120, heli: 300, jet: 350 };
+const SP_AWARD = { soldier: 50, guard: 30, jeep: 70, ifv: 120, mbt: 180, heli: 200, jet: 220, gun: 100, capture: 150, neutral: 50 };
+function awardSP(by, n, why, quiet) { // spawn points also count towards the score on the scoreboard (rules.js)
   if (!by || n <= 0) return;
-  if (by.isPlayer) { PLAYER.sp += n; spPop(`+${n} ${why}`); }
+  const st = statOf(by); if (st) st.score += n;
+  if (by.isPlayer) { PLAYER.sp += n; if (!quiet) spPop(`+${Math.round(n)} ${why}`); }
   else if (by.bot) by.bot.sp = (by.bot.sp || 0) + n;
 }
 function spPop(t) { const el = $('vehMsg'); if (!el) return; const d = document.createElement('div'); d.className = 'sppop'; d.textContent = t; $('hud').appendChild(d); setTimeout(() => d.remove(), 1600); }
@@ -35,18 +36,23 @@ function startMatch(mapIdx, team, bots, diff) {
   buildWorld(M); if (typeof ultraWorld === 'function') ultraWorld();
   M.img = M.img || mapImage(M);
   GAME.cps = M._cps.map((p, i) => ({ p, i, owner: -1, val: 0, guards: [], inside: [0, 0] }));
-  for (const c of GAME.cps) for (let k = 0; k < c.p.posts.length; k++) {
-    let post = c.p.posts[k]; const g = new Soldier(2, { npc: true, name: 'Guard' });
+  // each side starts holding the two checkpoints nearest its base, so both race from there for the fort in the middle
+  for (const c of GAME.cps) if (c.i !== 2) { c.owner = c.i < 2 ? 0 : 1; c.val = c.i < 2 ? 1 : -1; c.p.flag.material.color.setHex(TEAMS[c.owner].hex); }
+  for (const c of GAME.cps) { const posts = [...c.p.posts].sort((a, b) => (a.tower ? 1 : 0) - (b.tower ? 1 : 0)); // (a few guards in the yard, not up the corner towers where nobody can find them)
+  for (let k = 0; k < (c.owner >= 0 ? 0 : Math.min(posts.length, GARRISON[c.p.size])); k++) {
+    let post = posts[k]; const g = new Soldier(2, { npc: true, name: 'Guard' });
     if (!post.tower) { _v.set(post.x, 0, post.z); if (pushOutCircle(_v, .8, post.y + .3, post.y + 1.7)) post = Object.assign({}, post, { x: _v.x, z: _v.z, y: groundY(_v.x, _v.z) }); } // a post that a building was put on top of: stand beside it instead (nobody could see or shoot a guard inside the wall)
     g.pos.set(post.x, post.y, post.z); g.post = post; g.cp = c.i; g.yaw = c.p.ang + (Math.random() - .5) * 3; g.rpgGuard = c.p.size !== 'S' && k % 5 === 4; g.ai = { t: Math.random(), target: null, burst: 0, shotT: 0, rpgT: 4 + Math.random() * 6 };
     c.guards.push(g);
-  }
+  } }
   GAME.guns = [];
   M.bases.forEach((b, t) => b.gunSpots.forEach(([x, z]) => { const h = new Howitzer(t, x, z, groundY(x, z), b.ang); h.home = [x, z]; GAME.guns.push(h); }));
   GAME.botsList = [];
   let n = 0;
   for (const t of [0, 1]) for (let k = 0; k < bots - (t === team ? 1 : 0); k++) GAME.botsList.push({ team: t, name: BOT_NAMES[n++ % BOT_NAMES.length], unit: null, soldier: null, respawn: 1 + k * 1.5, lane: (k % 5 - 2) * 7, ai: {}, sp: SP_START, skill: botSkill() });
-  PLAYER.s = null; PLAYER.kills = PLAYER.deaths = PLAYER.caps = 0; PLAYER.sp = SP_START;
+  for (const b of GAME.botsList) b.st = newStat(b.name, b.team, false);
+  PLAYER.s = null; PLAYER.kills = PLAYER.deaths = PLAYER.caps = 0; PLAYER.sp = SP_START; PLAYER.st = newStat('You', team, true);
+  rulesStart();
   const b = M.bases[team]; CAM.yaw = b.ang; CAM.pitch = -.1;
   CAM.pos.set(b.x * 1000, b.zone.y0 + 40, b.y * 1000);
   $('hud').classList.remove('hidden');
@@ -68,7 +74,16 @@ function spawnSpot(team, where) { // where: -1 = base, else checkpoint index
   if (where >= 0) { const c = GAME.cps[where], s = c.p.site, a = Math.random() * TAU; const [x, z] = s.w(Math.cos(a) * 25, Math.sin(a) * 15 + 30 * (Math.random() < .5 ? -1 : 1)); return [x, z]; }
   const [x, z] = M.bases[team].infSpawn; return [x + rand(-20, 20), z + rand(-20, 20)];
 }
-function vehicleSpot(team) {
+function vehicleSpot(team, where) {
+  if (where >= 0 && GAME.cps[where]) { // a forward spawn: on the road just behind the checkpoint, on the side facing home, in a few lanes
+    const c = GAME.cps[where], back = team === 0 ? -1 : 1, P = new V3(), Q = new V3(), adv = frontAdvance(team, where);
+    for (let k = 0; k < 24; k++) {
+      const sAt = c.p.s + back * (60 + Math.floor(k / 4) * 16 - adv), lane = (k % 4 - 1.5) * 9;
+      routePoint(sAt, lane, P); routePoint(sAt - back * 5, lane, Q);
+      if (terrainY(P.x, P.z) < .5 || pushOutCircle(_v.set(P.x, 0, P.z), 3, groundY(P.x, P.z) + .3, groundY(P.x, P.z) + 2.5)) continue;
+      if (!ENTS.some(e => e.kind === 'vehicle' && e.alive && Math.hypot(e.pos.x - P.x, e.pos.z - P.z) < 9)) return [P.x, P.z, Math.atan2(Q.z - P.z, Q.x - P.x)];
+    }
+  }
   const b = GAME.M.bases[team], [x0, z0] = b.vehicleSpawn;
   for (let k = 0; k < 30; k++) {
     const x = x0 + (k % 6 - 2.5) * 12, z = z0 + Math.floor(k / 6) * 14 * (team ? -1 : 1);
@@ -76,7 +91,14 @@ function vehicleSpot(team) {
   }
   return [x0 + rand(-30, 30), z0 + rand(-30, 30)];
 }
-function makeVehicle(cls, team) { const v = new Vehicle(TEAM_VEH[team][cls] || cls, team), [x, z] = vehicleSpot(team); v.pos.set(x, groundY(x, z), z); v.yaw = GAME.M.bases[team].ang; placeVehicle(v, 1); updateRunningGear(v, 0, true); return v; }
+function makeVehicle(cls, team, where = -1) { const v = new Vehicle(TEAM_VEH[team][cls] || cls, team), [x, z, yaw] = vehicleSpot(team, where); v.pos.set(x, groundY(x, z), z); v.yaw = yaw ?? GAME.M.bases[team].ang; placeVehicle(v, 1); updateRunningGear(v, 0, true); return v; }
+function frontAdvance(team, i) { // the front checkpoint's vehicles start up to 1.6 km down the road towards the fight (never closer than 1 km to it), if no enemy is near there
+  if (frontCp(team) !== i) return 0;
+  const c = GAME.cps[i], o = GAME.cps[targetCpFor(team)]; if (!o || o === c) return 0;
+  const adv = clamp(Math.abs(o.p.s - c.p.s) - 1000, 0, 1600); if (!adv) return 0;
+  const P = routePoint(c.p.s + (team === 0 ? 1 : -1) * adv, 0, new V3());
+  return ENTS.some(e => e.alive && e.team === 1 - team && e.kind !== 'air' && Math.hypot(e.pos.x - P.x, e.pos.z - P.z) < 500) ? 0 : adv;
+}
 function canSpawnAt(team, i) { const c = GAME.cps[i]; return c && c.owner === team && c.inside[1 - team] === 0; }
 function frontCp(team) { // the owned checkpoint nearest the enemy
   let best = -1;
@@ -89,16 +111,17 @@ function deployPlayer(cls, where) {
   const s = new Soldier(team, { player: true, name: 'You' }); PLAYER.s = s;
   const cost = SP_COST[cls] || 0; PLAYER.sp = Math.max(0, PLAYER.sp - cost);
   if (cls === 'inf') {
-    const [x, z] = spawnSpot(team, where); s.pos.set(x, groundY(x, z) + .1, z); s.yaw = CAM.yaw = GAME.M.bases[team].ang;
+    const [x, z] = spawnSpot(team, where); s.pos.set(x, groundY(x, z) + .1, z); s.yaw = CAM.yaw = GAME.M.bases[team].ang; s.protT = GAME.time + 3;
   } else if (cls === 'jet' || cls === 'heli') {
     const a = airSpawn(cls, team); enterVehicle(s, a); CAM.yaw = a.hdg; CAM.pitch = cls === 'jet' ? .02 : -.08;
     showMsg(cls === 'jet' ? 'Take off: full throttle, look up past 250 km/h' : 'Hold Space to raise the collective and lift off', cls === 'jet' ? 'The jet follows your aim. Land on your runway to rearm and refuel.' : 'The nose follows your aim: look down to fly forward. Land at your base to rearm.');
   } else {
-    const v = makeVehicle(cls, team); enterVehicle(s, v); CAM.yaw = v.yaw;
+    const v = makeVehicle(cls, team, where); enterVehicle(s, v); CAM.yaw = v.yaw;
   }
+  GAME.last = { cls, where };
   if (!(cls === 'jet' || cls === 'heli')) CAM.pitch = -.05;
   $('deploy').classList.add('hidden'); GAME.deploying = false;
-  if (!(cls === 'jet' || cls === 'heli')) showMsg(GAME.time < 2 ? 'Take the checkpoints' : 'Deployed', GAME.time < 2 ? 'Clear each checkpoint\'s guards, then stand inside it. Start with the one nearest your base.' : '');
+  if (!(cls === 'jet' || cls === 'heli')) showMsg(GAME.time < 2 ? 'Push the front' : 'Deployed', GAME.time < 2 ? 'Take the checkpoints ahead and knock out the enemy: every loss drains their strength.' : '');
   requestLock();
 }
 function enterVehicle(s, v) { s.veh = v; v.driver = s; s.model.root.visible = false; s.pos.copy(v.pos); }
@@ -118,9 +141,10 @@ function damage(e, amt, src, wk) {
   if (!e.alive || amt <= 0 || e.kind === 'vehicle' || e.kind === 'air') return; // vehicles take damage through their armour (vehicles.js), aircraft part by part (aircraft.js)
   const srcTeam = src ? src.team : -1;
   if (src && srcTeam === e.team && creditOf(src) !== e) return; // no friendly fire
+  if (e.protT > GAME.time && src) return; // a few seconds of cover just after spawning
   if (e === PLAYER.s) flashDamage();
   e.hp -= amt; e.lastHurt = GAME.time; e.lastAttacker = src;
-  const by = creditOf(src);
+  const by = creditOf(src); noteHit(e, by);
   if (by && by.isPlayer && e.team !== GAME.team) { PLAYER.dmg += amt; hitMarker(e.hp <= 0); }
   if (e.npc) alertGuards(e, src);
   if (e.bot && src) { e.bot.ai.threat = src; e.bot.ai.threatT = GAME.time; }
@@ -130,8 +154,8 @@ function logDeath(e, by, wk) { const key = (e.kind === 'vehicle' ? e.type : e.np
 function kill(e, src, wk) {
   e.alive = false; e.dead = 0;
   const by = creditOf(src);
-  if (by && by.isPlayer && e.team !== GAME.team && e !== PLAYER.s) PLAYER.kills++;
-  if (by && by.team !== e.team && by !== e) awardSP(by, e.kind === 'gun' ? SP_AWARD.gun : e.npc ? SP_AWARD.guard : SP_AWARD.soldier, e.kind === 'gun' ? 'howitzer' : 'kill');
+  if (e.kind === 'soldier' && e.veh && e.veh.kind === 'air') { const a = e.veh; if (!a.scored) { a.scored = true; unitLost(a, by, a.cls, wk); } } // the pilot killed in the cockpit: the aircraft is lost
+  else unitLost(e, by, e.kind === 'gun' ? 'gun' : e.npc ? 'guard' : 'soldier', wk);
   addFeed(by, e, wk); logDeath(e, by, wk);
   if (e.kind === 'soldier') onSoldierDead(e);
   else if (e.kind === 'gun') { explosion(_v.copy(e.pos).setY(e.pos.y + 1), 6); e.model.root.traverse(o => { if (o.isMesh) o.material = mat(0x262422); }); e.respawnT = 120; }
@@ -141,9 +165,9 @@ function destroyVehicle(v, src, wk, how, toss) { // called by the damage model (
   if (!v.alive) return;
   v.alive = false; v.how = how;
   const by = creditOf(src);
-  if (by && by.isPlayer && v.team !== GAME.team) { PLAYER.kills++; hitInfo(how === 'ammo detonation' ? 'AMMO DETONATION · TARGET DESTROYED' : 'TARGET DESTROYED', '#ff8a6a'); }
+  if (by && by.isPlayer && v.team !== GAME.team) hitInfo(how === 'ammo detonation' ? 'AMMO DETONATION · TARGET DESTROYED' : 'TARGET DESTROYED', '#ff8a6a');
   logDeath(v, by, wk);
-  if (by && by.team !== v.team) awardSP(by, SP_AWARD[v.cls] || 100, 'vehicle');
+  if (v.driver || (v.emptyT || 0) < 20) unitLost(v, by, v.cls, wk); // (an empty wreck left behind long ago costs nobody anything)
   const big = how === 'ammo detonation';
   explosion(_v.copy(v.pos).setY(v.pos.y + 1.8), big ? 14 : 6); Sound.at(big ? 'bigboom' : 'boom', v.pos);
   v.model.root.traverse(o => { if (o.isMesh && !o.isInstancedMesh) o.material = CHAR; });
@@ -154,10 +178,11 @@ function destroyVehicle(v, src, wk, how, toss) { // called by the damage model (
 }
 function onSoldierDead(s) {
   s.dead = 0;
-  if (s.isPlayer) { PLAYER.deaths++; GAME.deployT = 6; Sound.engine(false, 0); if (s.veh) { s.veh.driver = null; } s.veh = null; const t0 = GAME.time; // (a wreck still falling is followed down: the deploy screen waits until it has hit the ground and come to rest, or 14 s)
+  if (s.team < 2) unitDied(s);
+  if (s.isPlayer) { PLAYER.deaths++; GAME.deployT = 5; Sound.engine(false, 0); if (s.veh) { s.veh.driver = null; } s.veh = null; const t0 = GAME.time; // (a wreck still falling is followed down: the deploy screen waits until it has hit the ground and come to rest, or 14 s)
     const go = () => { if (!(GAME.on && !GAME.over && PLAYER.s === s)) return; const w = PLAYER.wreck && PLAYER.wreckT >= t0 - .1 ? PLAYER.wreck.wreck : null; if (w && (!w.landed || GAME.time - (w.restT ?? GAME.time) < 2.5) && GAME.time - t0 < 14) { if (w.landed && w.restT === undefined) w.restT = GAME.time; setTimeout(go, 400); } else openDeploy('dead'); };
     setTimeout(go, 2500); }
-  if (s.bot) s.bot.respawn = 8 + Math.random() * 5;
+  if (s.bot) s.bot.respawn = 5 + Math.random() * 3;
 }
 function alertGuards(g, src) {
   const by = creditOf(src) || src; if (!by || !by.alive) return;
@@ -168,6 +193,7 @@ function alertGuards(g, src) {
 function hitReport(owner, target, res) {
   const by = creditOf(owner), mine = by && by.isPlayer, me = target.driver && target.driver.isPlayer;
   const mods = [...new Set(res.modules || [])].map(m => MOD_NAME[m] || m), list = mods.length ? ' · ' + mods.slice(0, 3).join(', ') : '';
+  if (by && by.team !== target.team && target.alive && (res.pen || mods.length)) { noteHit(target, by); awardSP(by, (res.pen ? 8 : 0) + 4 * Math.min(3, mods.length), res.pen ? 'penetration' : 'hit'); } // paid for damage, not just kills
   if (mine && target.team !== GAME.team) {
     const col = res.pen ? '#ffd27a' : res.rico ? '#9ecbff' : '#c9c9c9';
     if (!res.destroyed && !res.detonate) hitInfo(`${res.text.toUpperCase()}${res.eff && !res.pen ? ` · ${res.eff} mm` : ''}${list}`, col);
@@ -463,7 +489,7 @@ function guardsStep(dt) {
       }
     } else {
       g.crouch = false; g.pitch = 0;
-      if (c.guardsLeft <= 3 && !g.post.tower) { // the last few do not sit hidden in a corner: they come out to the road through the checkpoint
+      if (c.guardsLeft <= 4 && !g.post.tower) { // the last few do not sit hidden in a corner: they come out to the road through the checkpoint
         const rp = routePoint(c.p.s, 0, _f), dx = rp.x - g.pos.x, dz = rp.z - g.pos.z;
         if (Math.hypot(dx, dz) > 12) { g.yaw = turnTo(g.yaw, Math.atan2(dz, dx), 3 * dt); moveSoldier(g, { fwd: 1, side: 0, sprint: false, crouch: false, jump: false }, dt); poseSoldier(g, dt); continue; } }
       if (Math.random() < dt * .25) g.yaw += (Math.random() - .5) * 1.5;
@@ -548,16 +574,16 @@ function checkpointsStep(dt) {
       if (Math.abs(dx * cs + dz * sn) < hx && Math.abs(-dx * sn + dz * cs) < hz) c.inside[e.team]++;
     }
     if (c.guardsLeft > 0) continue;
-    const [nb, nr] = c.inside;
-    let team = -1; if (nb && !nr) team = 0; else if (nr && !nb) team = 1;
+    const [nb, nr] = c.inside; // the side with more units in the zone takes it, faster the bigger its lead (equal numbers: contested, nothing moves)
+    let team = -1; if (nb > nr) team = 0; else if (nr > nb) team = 1;
     if (team < 0 || !canCapture(team, c.i)) continue;
-    const n = c.inside[team], rate = step / CAP_TIME[c.p.size] * Math.min(2, 1 + (n - 1) * .25), dir = team === 0 ? 1 : -1;
+    const n = c.inside[team] - c.inside[1 - team], rate = step / CAP_TIME[c.p.size] * Math.min(2, 1 + (n - 1) * .25), dir = team === 0 ? 1 : -1;
     if ((team === 0 && c.val >= 1) || (team === 1 && c.val <= -1)) continue;
     const before = c.owner;
     c.val = clamp(c.val + dir * rate * (c.owner === -1 || c.owner === team ? 1 : 2), -1, 1);
-    if (c.owner === 1 - team && (dir > 0 ? c.val >= 0 : c.val <= 0)) c.owner = -1;
+    if (c.owner === 1 - team && (dir > 0 ? c.val >= 0 : c.val <= 0)) { c.owner = -1; for (const e of ENTS) if (e.alive && e.team === team && e.kind !== 'air' && !(e.kind === 'soldier' && e.veh) && inZone(c, e.pos)) awardSP(e.kind === 'vehicle' ? e.driver : e, SP_AWARD.neutral, 'neutralised'); }
     if (c.val >= 1) c.owner = 0; else if (c.val <= -1) c.owner = 1;
-    if (c.owner !== before) { onCpChange(c, before); if (c.owner >= 0) for (const e of ENTS) if (e.alive && e.team === c.owner && e.kind !== 'air' && !(e.kind === 'soldier' && e.veh) && inZone(c, e.pos)) awardSP(e.kind === 'vehicle' ? e.driver : e, SP_AWARD.capture, 'capture'); }
+    if (c.owner !== before) { onCpChange(c, before); if (c.owner >= 0) for (const e of ENTS) if (e.alive && e.team === c.owner && e.kind !== 'air' && !(e.kind === 'soldier' && e.veh) && inZone(c, e.pos)) { const w = e.kind === 'vehicle' ? e.driver : e; awardSP(w, SP_AWARD.capture, 'capture'); const st = statOf(w); if (st) st.caps++; } }
   }
   checkWin();
 }
@@ -574,20 +600,21 @@ function onCpChange(c, before) {
 function inZone(c, p) { const z = c.p.zone, dx = p.x - z.x * 1000, dz = p.z - z.y * 1000, cs = Math.cos(z.ang), sn = Math.sin(z.ang); return Math.abs(dx * cs + dz * sn) < z.hx * 1000 && Math.abs(-dx * sn + dz * cs) < z.hy * 1000; }
 function checkWin() {
   if (GAME.over) return;
-  for (const t of [0, 1]) if (GAME.cps.every(c => c.owner === t)) return endMatch(t, `${TEAMS[t].name} holds all five checkpoints.`);
-  if (GAME.time >= MATCH_S) {
-    const n = [0, 1].map(t => GAME.cps.filter(c => c.owner === t).length);
-    endMatch(n[0] === n[1] ? -1 : n[0] > n[1] ? 0 : 1, `Time is up: Blue ${n[0]}, Red ${n[1]} checkpoints.`);
+  if (GAME.time >= MATCH_S) { // (a side whose strength reaches 0 loses at once: hurtStrength in rules.js)
+    const n = GAME.str.map(Math.ceil);
+    endMatch(n[0] === n[1] ? -1 : n[0] > n[1] ? 0 : 1, `Time is up: ${TEAMS[0].name} strength ${n[0]}, ${TEAMS[1].name} ${n[1]}.`);
   }
 }
 function endMatch(winner, why) {
+  if (GAME.over) return;
   GAME.over = true; GAME.winner = winner;
+  bigBanner(winner < 0 ? 'Draw' : winner === GAME.team ? 'Victory' : 'Defeat', why, winner === GAME.team ? 'good' : 'bad'); Sound.play(winner === GAME.team ? 'win' : 'lose');
   setTimeout(() => {
     document.exitPointerLock && document.exitPointerLock();
     $('endTitle').textContent = winner < 0 ? 'Draw' : winner === GAME.team ? 'Victory' : 'Defeat';
     $('endTitle').style.color = winner < 0 ? '#c5ccd2' : winner === GAME.team ? '#f4f6f7' : '#e8483a';
     $('endWhy').textContent = why;
-    $('endStats').innerHTML = `<span>Enemies knocked out</span><b>${PLAYER.kills}</b><span>Times knocked out</span><b>${PLAYER.deaths}</b><span>Checkpoints taken</span><b>${PLAYER.caps}</b><span>Spawn points left</span><b>${PLAYER.sp}</b>`;
+    $('endStats').innerHTML = resultsHTML(winner);
     $('end').classList.remove('hidden');
   }, 2500);
 }
@@ -603,10 +630,11 @@ function targetCpFor(team) { // the checkpoint this team should push next
 function spawnBot(b) {
   const roll = Math.random(), team = b.team;
   const vehCount = ENTS.filter(e => e.kind === 'vehicle' && e.alive && e.team === team && e.driver).length;
-  let type = vehCount >= Math.ceil(GAME.bots * .6) ? 'inf' : roll < .35 ? 'mbt' : roll < .57 ? 'ifv' : roll < .72 ? 'jeep' : 'inf';
+  const fc = frontCp(team), obj = GAME.cps[targetCpFor(team)], walk = fc >= 0 && obj ? Math.abs(GAME.cps[fc].p.s - obj.p.s) - frontAdvance(team, fc) : 9e9; // (nobody walks 2 km to the fight: a long way off, foot soldiers take a jeep)
+  let type = vehCount >= Math.ceil(GAME.bots * .6) ? (walk < 1200 ? 'inf' : 'jeep') : roll < .35 ? 'mbt' : roll < .57 ? 'ifv' : roll < .72 || walk > 1200 ? 'jeep' : 'inf';
   // a bot with points to spend sometimes takes an aircraft (no limit on how many), otherwise the ground kit it can afford
-  const r2 = Math.random();
-  if (b.sp >= SP_COST.jet && r2 < .35) type = 'jet'; else if (b.sp >= SP_COST.heli && r2 < .6) type = 'heli';
+  const r2 = Math.random(), airN = ENTS.filter(e => e.kind === 'air' && e.alive && e.team === team && e.driver).length; // (no more than a quarter of a side in the air: only ground units take checkpoints)
+  if (airN < Math.max(1, Math.round(GAME.bots * .25))) { if (b.sp >= SP_COST.jet && r2 < .35) type = 'jet'; else if (b.sp >= SP_COST.heli && r2 < .6) type = 'heli'; }
   if ((SP_COST[type] || 0) > b.sp) type = b.sp >= SP_COST.ifv && Math.random() < .5 ? 'ifv' : Math.random() < .3 ? 'jeep' : 'inf';
   b.sp -= SP_COST[type] || 0;
   const s = new Soldier(team, { bot: b, name: b.name }); b.soldier = s; s.bot = b;
@@ -614,7 +642,8 @@ function spawnBot(b) {
     const where = Math.random() < .8 ? frontCp(team) : -1; const [x, z] = spawnSpot(team, where);
     s.pos.set(x, groundY(x, z) + .1, z); s.yaw = GAME.M.bases[team].ang; b.unit = s;
   } else if (type === 'jet' || type === 'heli') { const a = airSpawn(type, team); enterVehicle(s, a); b.unit = a; }
-  else { const v = makeVehicle(type, team); enterVehicle(s, v); b.unit = v; }
+  else { const v = makeVehicle(type, team, Math.random() < .75 ? frontCp(team) : -1); enterVehicle(s, v); b.unit = v; } // most start at the front, like the player can
+  b.spawnT = GAME.time;
   b.ai = { t: Math.random(), target: null, stuck: 0, rev: 0, goal: null, think: 0, lastS: 0, holdT: 0 };
 }
 function routePoint(s, lane, out) { // point on the route at distance s, shifted sideways by lane
@@ -691,6 +720,9 @@ function botThink(b, u, dt) {
     // stuck?
     const moved = ai.lastP ? Math.hypot(u.pos.x - ai.lastP[0], u.pos.z - ai.lastP[1]) : 9; ai.lastP = [u.pos.x, u.pos.z]; ai.lastS = sNow; // (real distance covered, not progress along the road: a vehicle crossing the route is not stuck)
     if (!ai.progP || Math.hypot(u.pos.x - ai.progP[0], u.pos.z - ai.progP[1]) > 25 || ai.atCp || (ai.target && !ai.resupply) || ai.resting) { ai.progP = [u.pos.x, u.pos.z]; ai.progT = GAME.time; }
+    { const fc = frontCp(team); // stranded far behind the front with nothing to do: redeploy there, as a player would
+      if (fc >= 0 && !ai.target && !ai.resupply && Math.abs(sGoal - sNow) - Math.abs(sGoal - GAME.cps[fc].p.s) > 1500 && GAME.time - (ai.threatT ?? -99) > 20 && GAME.time - (b.spawnT || 0) > 30) {
+        const s0 = b.soldier; if (isV) { exitVehicle(s0); u.emptyBy = 'redeploy'; } removeEnt(s0); b.soldier = null; b.unit = null; b.respawn = 2; b.redeploys = (b.redeploys || 0) + 1; return; } }
     if (isV && GAME.time - ai.progT > 70) { ai.progT = GAME.time; b.bails = (b.bails || 0) + 1; b.bailAt = [Math.round(u.pos.x), Math.round(u.pos.z), u.type]; exitVehicle(b.soldier); return; } // bogged down for over a minute (a ravine, a wreck in the way): the crew gets out and walks
     if (isV && !ai.atCp && moved < 1.2 && ai.rev <= 0) { if ((ai.stuck += .5) > 3) { ai.rev = 2.2; ai.stuck = 0; ai.revSteer = Math.random() < .5 ? -1 : 1; } } else ai.stuck = 0;
   }
@@ -783,7 +815,9 @@ function playerStep(dt) {
     const v = s.veh;
     if (!v.alive) return;
     const inp = { throttle: (KEYS.KeyW ? 1 : 0) - (KEYS.KeyS ? 1 : 0), steer: (KEYS.KeyD ? 1 : 0) - (KEYS.KeyA ? 1 : 0), fire: MOUSE.l && locked, fire2: !!KEYS.KeyF && locked, fire3: !!KEYS.KeyT && locked, smoke: !!KEYS.KeyG, guide: () => CAM.aim.clone() };
-    const A = AMMO[v.def.reload ? (v.loaded || v.sel) : v.sel], lased = v.def.lrf && vState(v).fcs && v.sightR > 0 && GAME.time - v.lrfT < 45, sol = aimSolution(v, CAM.aim, A, v.cls === 'jeep' ? 0 : lased ? v.sightR : 400); inp.aimYaw = sol.yaw; inp.aimPitch = sol.pitch; CAM.range = sol.range; CAM.lased = lased;
+    const A = AMMO[v.def.reload ? (v.loaded || v.sel) : v.sel], assist = GAME.gunnery !== 'realistic' && v.cls !== 'jeep', lased = v.def.lrf && vState(v).fcs && v.sightR > 0 && GAME.time - v.lrfT < 45;
+    const sol = assist ? aimSolution(v, CAM.aim, A) : aimSolution(v, CAM.aim, A, v.cls === 'jeep' ? 0 : lased ? v.sightR : 400); // assisted gunnery: the gun is laid for whatever the crosshair is on, as in War Thunder's arcade battles
+    inp.aimYaw = sol.yaw; inp.aimPitch = sol.pitch; CAM.range = sol.range; CAM.lased = lased; CAM.assist = assist;
     inp.ess = !!KEYS.KeyH;
     driveVehicle(v, inp, dt);
     s.pos.copy(v.pos);
@@ -892,6 +926,7 @@ function nameOf(e) { if (!e) return 'Something'; if (e.kind === 'gun') return `$
 function addFeed(by, victim, wk) {
   if (victim.kind === 'vehicle' || victim.kind === 'air') return;
   const d = document.createElement('div'), col = e => e ? TEAMS[e.team].css : '#ccc';
+  if ((by && by.isPlayer) || victim.isPlayer) d.className = 'me';
   d.innerHTML = `<b style="color:${col(by)}">${nameOf(by)}</b> <span class="mut">[${WNAME[wk] || wk || '?'}]</span> <b style="color:${col(victim)}">${nameOf(victim)}</b>`;
   $('feed').prepend(d); while ($('feed').children.length > 6) $('feed').lastChild.remove();
   setTimeout(() => d.remove(), 7000);
@@ -981,7 +1016,7 @@ function vehStatusHTML(v) {
   else if (v.mods.some(m => m.kind !== 'crew' && m.kind !== 'ammo' && m.hp < m.max * .6)) notes.push('R: repair (stand still)');
   if (v.swapT > 0) notes.push('Crew changing seats');
   const lased = D.lrf && st.fcs && v.sightR > 0 && GAME.time - v.lrfT < 45, crewN = D.crew.filter(role => r[role] && r[role].hp > 0).length, rounds = v.load ? D.ammo.reduce((n, k) => n + (v.load[k] || 0), 0) : null;
-  const rows = [['SPD', Math.round(Math.abs(v.speed) * 3.6), 'km/h']]; if (D.cls !== 'jeep') rows.push(['RNG', lased ? Math.round(v.sightR) : 400, 'm']);
+  const rows = [['SPD', Math.round(Math.abs(v.speed) * 3.6), 'km/h']]; if (D.cls !== 'jeep') rows.push(['RNG', CAM.assist ? Math.round(CAM.range || 0) : lased ? Math.round(v.sightR) : 400, 'm']);
   return dmgPanel(D.wheeled ? 'car' : 'tank', S, (D.short || D.name).toUpperCase(), crewN, rounds, ammoGlyph(AMMO[D.ammo[0]])) + ro(rows) + noteLines(notes);
 }
 function vehAmmoHTML(v) {
@@ -1011,8 +1046,9 @@ function renderCpBar() {
     h += `<div class="cp${cls}${lock}${c.p.size === 'L' ? ' big' : ''}${pos && inZone(c, pos) ? ' here' : ''}" title="${c.p.name}" style="${fill}"><em>${c.i + 1}</em>${c.guardsLeft ? `<small>${c.guardsLeft}</small>` : ''}</div>`;
   }
   setHTML($('cpbar'), h);
-  const n = [0, 1].map(t => C.filter(c => c.owner === t).length);
+  const n = (GAME.str || [0, 0]).map(Math.ceil); // the plates show each side's front strength, the bars under them how much is left
   for (const [id, v] of [['scB', n[0]], ['scR', n[1]], ['dScB', n[0]], ['dScR', n[1]]]) if ($(id)._t !== v) { $(id).textContent = v; $(id)._t = v; }
+  for (const [id, t] of [['strB', 0], ['strR', 1]]) { const el = $(id); if (el) { const w = `${(n[t] / STRENGTH * 100).toFixed(1)}%`; if (el._w !== w) { el.style.width = w; el._w = w; } } }
 }
 const HELP = { // the key reminder for whatever you are in (F1 shows and hides it)
   foot: [['W A S D', 'Move'], ['Shift', 'Sprint'], ['C', 'Crouch'], ['Space', 'Jump'], ['1 / 2', 'Rifle / rockets'], ['R', 'Reload'], ['E', 'Get in a vehicle'], ['M', 'Map']],
@@ -1053,7 +1089,7 @@ function updateHUD(dt) {
   $('gunMark').style.display = gm ? 'block' : 'none';
   const si = $('sightInfo'), showSi = alive && s.veh && !inAir && CAM.zoom;
   si.style.display = showSi ? 'block' : 'none';
-  if (showSi) { const v = s.veh, k = v.def.reload ? (v.loaded || v.sel) : v.sel; si.textContent = `${v.cls === 'jeep' ? '' : CAM.lased ? `RNG ${Math.round(v.sightR)} m (lased)` : v.def.lrf ? 'RNG 400 m (battle sight) · V: lase' : 'RNG 400 m (battle sight)'} · ${AMMO[k].type} ${AMMO[k].name}${v.def.reload ? (v.loaded ? ' · LOADED' : ' · LOADING') : ''}`; }
+  if (showSi) { const v = s.veh, k = v.def.reload ? (v.loaded || v.sel) : v.sel; si.textContent = `${v.cls === 'jeep' ? '' : CAM.assist ? `RNG ${Math.round(CAM.range)} m (assisted)` : CAM.lased ? `RNG ${Math.round(v.sightR)} m (lased)` : v.def.lrf ? 'RNG 400 m (battle sight) · V: lase' : 'RNG 400 m (battle sight)'} · ${AMMO[k].type} ${AMMO[k].name}${v.def.reload ? (v.loaded ? ' · LOADED' : ' · LOADING') : ''}`; }
   // the read-out, the damage panel and the action bar
   HUDX.alerts = [];
   if (alive) {
@@ -1088,7 +1124,7 @@ function updateHUD(dt) {
   { const mode = !alive ? '' : inAir ? (s.veh.cls === 'jet' ? 'jet' : 'heli') : s.veh ? 'veh' : 'foot'; if (mode !== GAME.helpMode) { GAME.helpMode = mode; GAME.helpT = performance.now(); }
     const show = GAME.helpOn || performance.now() - (GAME.helpT || 0) < 20000;
     $('help2').classList.toggle('air', !!inAir);
-    setHTML($('help2'), !alive ? '' : `<div class="spnow">SPAWN POINTS<b>${PLAYER.sp}</b></div>` + (show ? `<div class="keys2"><h5>Controls</h5>${HELP[mode].map(([k, t]) => `<span>${t}</span><i>${k}</i>`).join('')}<em>F1 hides this</em></div>` : '<div class="f1">F1: controls</div>')); }
+    setHTML($('help2'), !alive ? '' : `<div class="spnow">SPAWN POINTS<b>${Math.floor(PLAYER.sp)}</b></div>` + (show ? `<div class="keys2"><h5>Controls</h5>${HELP[mode].map(([k, t]) => `<span>${t}</span><i>${k}</i>`).join('')}<em>F1 hides this</em></div>` : '<div class="f1">F1: controls</div>')); }
   // ally tags
   let n = 0;
   if (alive) for (const e of ENTS) {
@@ -1102,6 +1138,7 @@ function updateHUD(dt) {
     if (++n >= 30) break;
   }
   for (let i = n; i < tagEls.length; i++) tagEls[i].style.display = 'none';
+  hudRules(dt);
   if ((miniT -= dt) <= 0) { miniT = .1; drawMini(); }
 }
 function drawMapLayer(g, x0, z0, scale, W2, H2, big, o = {}) { // world (x0,z0) at canvas (0,0), px per metre = scale. o.u: how much to enlarge marks and lettering; o.spawns, o.sel: the deploy screen's spawn points
@@ -1184,12 +1221,13 @@ function openDeploy(why) {
 }
 function renderDeploy() {
   const sel = GAME.sel;
-  if (sel.cls !== 'inf') sel.where = -1;
+  const airSel = sel.cls === 'jet' || sel.cls === 'heli';
+  if (airSel) sel.where = -1;
   if (sel.where >= 0 && !canSpawnAt(GAME.team, sel.where)) sel.where = -1;
   if ((SP_COST[sel.cls] || 0) > PLAYER.sp) sel.cls = 'inf';
   const defOf = c => c.veh ? VEH[TEAM_VEH[GAME.team][c.id]] : c.air ? AIR[TEAM_AIR[GAME.team][c.id]] : null, list = CLASSES.filter(c => !c.off);
   $('dClasses').innerHTML = list.map(c => { const d = defOf(c), cost = SP_COST[c.id] || 0, poor = cost > PLAYER.sp;
-    const sub = poor ? `Needs ${cost - PLAYER.sp} more spawn points` : c.veh ? `${{ mbt: 'Tank', ifv: 'Infantry fighting vehicle', jeep: 'Light vehicle' }[d.cls]}` : c.air ? (d.cls === 'jet' ? 'Jet fighter' : 'Attack helicopter') : 'Infantry';
+    const sub = poor ? `Needs ${Math.ceil(cost - PLAYER.sp)} more spawn points` : c.veh ? `${{ mbt: 'Tank', ifv: 'Infantry fighting vehicle', jeep: 'Light vehicle' }[d.cls]}` : c.air ? (d.cls === 'jet' ? 'Jet fighter' : 'Attack helicopter') : 'Infantry';
     return `<button class="card${sel.cls === c.id ? ' on' : ''}" data-c="${c.id}" ${poor ? 'disabled' : ''}><div class="face">${SIDE[c.id]}<b>${d ? d.short || d.name : c.name}</b><em>${cost || 'Free'}${cost ? '<small>SP</small>' : ''}</em></div><div class="sub">${sub}</div></button>`; }).join('');
   { const c = list.find(c => c.id === sel.cls) || list[0], d = defOf(c);
     const tile = (t, n) => `<div><b>${t}</b><span>${n}</span></div>`;
@@ -1198,26 +1236,28 @@ function renderDeploy() {
       : c.air ? d.weapons.map(w => tile(`${AMMO[w.k].type} × ${w.n}`, AMMO[w.k].name)).join('') : tile('Rifle', '30-round magazines') + tile('Rockets × 3', 'RPG');
     const F = c.veh ? [['Vehicle', d.name], ['Top speed', `${Math.round(d.vmax * 3.6)} km/h`], ['Weight', `${d.mass} t`], ['Crew', d.crew.length]] : c.air ? [['Aircraft', d.name], ['Type', d.cls === 'jet' ? 'Jet fighter' : 'Attack helicopter'], ['Weight', `${(d.mass / 1000).toFixed(1)} t`], ['Starts', d.cls === 'jet' ? 'On your runway' : 'On your helipad']] : [['Soldier', 'Rifleman'], ['Starts', 'Base or a checkpoint you hold']];
     $('dFields').innerHTML = F.map(([l, v]) => `<label>${l}<b>${v}</b></label>`).join('');
-    $('dInfo').textContent = (d ? d.info : c.info) + (c.id === 'inf' ? '' : ' Vehicles and aircraft start at your base.'); }
+    $('dInfo').textContent = (d ? d.info : c.info) + (c.air ? ' Aircraft start at your base.' : ' Starts at your base or any checkpoint you hold.'); }
   { const me = GAME.team, order = me === 0 ? GAME.cps : [...GAME.cps].reverse(), next = order.find(c => c.owner !== me && canCapture(me, c.i)), held = GAME.cps.filter(c => c.owner === me).length;
-    $('dObj').innerHTML = [next ? `Capture ${next.p.name}${next.guardsLeft ? `: clear its ${next.guardsLeft} guards, then stand inside` : ''}` : 'Hold every checkpoint', `Hold what you have: ${held} of ${GAME.cps.length}`, 'Hold all five to win, or the most when the time runs out'].map(t => `<li>${t}</li>`).join(''); }
-  $('dSp').textContent = PLAYER.sp;
+    $('dObj').innerHTML = [next ? `Capture ${next.p.name}${next.guardsLeft ? `: clear its ${next.guardsLeft} guards, then stand inside` : ''}` : 'Hold every checkpoint', `Hold what you have: ${held} of ${GAME.cps.length}. Holding fewer than the enemy drains our strength`, 'Knock the enemy\'s strength to zero, or be stronger when the time runs out'].map(t => `<li>${t}</li>`).join(''); }
+  $('dSp').textContent = Math.floor(PLAYER.sp);
   const spots = [{ i: -1, n: `${TEAMS[GAME.team].name} base` }, ...GAME.cps.filter(c => canSpawnAt(GAME.team, c.i)).map(c => ({ i: c.i, n: `${c.i + 1} · ${c.p.name}` }))];
-  $('dWhere').innerHTML = spots.map(s => `<button class="btn${sel.where === s.i ? ' on' : ''}" data-w="${s.i}" ${s.i >= 0 && sel.cls !== 'inf' ? 'disabled title="Vehicles start at your base"' : ''}>${s.n}</button>`).join('');
-  $('dWhere')._key = spots.map(s => s.i).join() + '|' + PLAYER.sp;
+  $('dWhere').innerHTML = spots.map(s => `<button class="btn${sel.where === s.i ? ' on' : ''}" data-w="${s.i}" ${s.i >= 0 && airSel ? 'disabled title="Aircraft start at your base"' : ''}>${s.n}</button>`).join('');
+  $('dWhere')._key = spots.map(s => s.i).join() + '|' + affordKey();
   refreshDeploy();
 }
+const affordKey = () => Object.keys(SP_COST).filter(k => SP_COST[k] <= PLAYER.sp).join(); // (the cards are rebuilt only when what you can afford changes: spawn points now trickle in)
 function refreshDeploy() { // the parts that change while you look at it (rebuilding the buttons would eat clicks)
-  const key = [-1, ...GAME.cps.filter(c => canSpawnAt(GAME.team, c.i)).map(c => c.i)].join() + '|' + PLAYER.sp;
+  const key = [-1, ...GAME.cps.filter(c => canSpawnAt(GAME.team, c.i)).map(c => c.i)].join() + '|' + affordKey();
   if (key !== $('dWhere')._key) return renderDeploy();
+  $('dSp').textContent = Math.floor(PLAYER.sp);
   const dm = $('dMap'), g = dm.getContext('2d'); g.fillStyle = '#17222c'; g.fillRect(0, 0, dm.width, dm.height);
   drawMapLayer(g, 0, 0, dm.width / WORLD_W, dm.width, dm.height, true, { u: dm.width / 751, spawns: [...GAME.cps.filter(c => canSpawnAt(GAME.team, c.i)).map(c => c.i)], sel: GAME.sel.where });
-  const wait = Math.max(0, GAME.deployT); $('dGo').disabled = wait > 0; $('dWait').textContent = wait > 0 ? `${GAME.deployWhy === 'dead' ? 'You were killed. ' : ''}Ready in ${Math.ceil(wait)} s` : 'Click a checkpoint you hold on the map to start there on foot';
+  const wait = Math.max(0, GAME.deployT); $('dGo').disabled = wait > 0; $('dWait').textContent = wait > 0 ? `${GAME.deployWhy === 'dead' ? 'You were knocked out. ' : ''}Ready in ${Math.ceil(wait)} s` : 'Enter: to battle · click a checkpoint you hold on the map to start there';
   const left = Math.max(0, MATCH_S - GAME.time), clk = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}`; $('dTime').textContent = `Time left: ${clk}`; $('dClock').textContent = clk; renderCpBar();
 }
 $('dClasses').onclick = e => { const b = e.target.closest('[data-c]'); if (!b || b.disabled) return; GAME.sel.cls = b.dataset.c; Sound.init(); Sound.play('ui'); renderDeploy(); };
 $('dWhere').onclick = e => { const b = e.target.closest('[data-w]'); if (!b || b.disabled) return; GAME.sel.where = +b.dataset.w; renderDeploy(); };
-$('dMap').onclick = e => { const r = $('dMap').getBoundingClientRect(), x = (e.clientX - r.left) / r.width * WORLD_W, z = (e.clientY - r.top) / r.height * WORLD_H; const c = GAME.cps.find(c => Math.hypot(c.p.x * 1000 - x, c.p.y * 1000 - z) < 500 && canSpawnAt(GAME.team, c.i)); if (c) { GAME.sel.cls = 'inf'; GAME.sel.where = c.i; renderDeploy(); } };
+$('dMap').onclick = e => { const r = $('dMap').getBoundingClientRect(), x = (e.clientX - r.left) / r.width * WORLD_W, z = (e.clientY - r.top) / r.height * WORLD_H; const c = GAME.cps.find(c => Math.hypot(c.p.x * 1000 - x, c.p.y * 1000 - z) < 500 && canSpawnAt(GAME.team, c.i)); if (c) { if (GAME.sel.cls === 'jet' || GAME.sel.cls === 'heli') GAME.sel.cls = 'inf'; GAME.sel.where = c.i; renderDeploy(); } };
 $('dGo').onclick = () => { if (GAME.deployT > 0) return; Sound.init(); deployPlayer(GAME.sel.cls, GAME.sel.where); };
 
 /* ---------------- input ---------------- */
@@ -1238,6 +1278,7 @@ addEventListener('keydown', e => {
   if (e.code === 'F1') e.preventDefault();
   if (e.repeat) return; KEYS[e.code] = true;
   if (!GAME.on) return;
+  if ((e.code === 'Enter' || e.code === 'NumpadEnter') && GAME.deploying && !GAME.over && GAME.deployT <= 0) { $('dGo').click(); return; } // straight back in with what you had
   if (e.code === 'F1') GAME.helpOn = !GAME.helpOn, GAME.helpT = 0;
   // test cheat: press 0 six times in a row for 10,000 spawn points
   if (e.code === 'Digit0' || e.code === 'Numpad0') { const t = performance.now(); GAME.zeroN = t - (GAME.zeroT || 0) < 1500 ? (GAME.zeroN || 0) + 1 : 1; GAME.zeroT = t; if (GAME.zeroN >= 6) { GAME.zeroN = 0; PLAYER.sp += 10000; spPop('+10000 SP · test'); if (!$('deploy').classList.contains('hidden')) refreshDeploy(); } } else GAME.zeroN = 0;
@@ -1281,16 +1322,17 @@ $('eMenu').onclick = () => { $('end').classList.add('hidden'); toTitle(); };
 
 /* ---------------- title ---------------- */
 const PREF = (() => { try { return JSON.parse(localStorage.getItem('islandfront.v1') || '{}'); } catch (e) { return {}; } })();
-Object.assign(GAME, { map: PREF.map ?? 0, team: PREF.team ?? 0, bots: PREF.bots ?? 8, diff: PREF.diff ?? 1, gfx: PREF.gfx || 'optimised' });
+Object.assign(GAME, { map: PREF.map ?? 0, team: PREF.team ?? 0, bots: PREF.bots ?? 8, diff: PREF.diff ?? 1, gfx: PREF.gfx || 'optimised', gunnery: PREF.gunnery || 'assisted' });
 function renderTitle() {
   $('mapPick').innerHTML = MAPS.map((m, i) => `<button class="mrow${GAME.map === i ? ' on' : ''}" data-v="${i}">${m.name}<small>${m.pitch}</small></button>`).join('');
   $('tbMode').textContent = `Checkpoints · ${MAPS[GAME.map].name}`;
   for (const [id, key] of [['teamPick', 'team'], ['botPick', 'bots'], ['diffPick', 'diff']]) [...$(id).children].forEach(b => b.classList.toggle('on', +b.dataset.v === GAME[key]));
   [...$('gfxPick').children].forEach(b => b.classList.toggle('on', b.dataset.v === GAME.gfx));
+  [...$('gunPick').children].forEach(b => b.classList.toggle('on', b.dataset.v === GAME.gunnery));
   const gb = [...$('gfxPick').children].find(b => b.dataset.v === GAME.gfx); $('gfxNote').textContent = gb ? gb.title : '';
 }
 $('tTabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; for (const x of $('tTabs').children) x.classList.toggle('on', x === b); for (const pn of document.querySelectorAll('#title [data-pane]')) pn.hidden = pn.dataset.pane !== b.dataset.tab; };
-for (const [id, key] of [['mapPick', 'map'], ['teamPick', 'team'], ['botPick', 'bots'], ['diffPick', 'diff'], ['gfxPick', 'gfx']]) $(id).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; GAME[key] = key === 'gfx' ? b.dataset.v : +b.dataset.v; try { localStorage.setItem('islandfront.v1', JSON.stringify({ map: GAME.map, team: GAME.team, bots: GAME.bots, diff: GAME.diff, gfx: GAME.gfx })); } catch (err) {} renderTitle(); };
+for (const [id, key] of [['mapPick', 'map'], ['teamPick', 'team'], ['botPick', 'bots'], ['diffPick', 'diff'], ['gfxPick', 'gfx'], ['gunPick', 'gunnery']]) $(id).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; GAME[key] = key === 'gfx' || key === 'gunnery' ? b.dataset.v : +b.dataset.v; try { localStorage.setItem('islandfront.v1', JSON.stringify({ map: GAME.map, team: GAME.team, bots: GAME.bots, diff: GAME.diff, gfx: GAME.gfx, gunnery: GAME.gunnery })); } catch (err) {} renderTitle(); };
 function begin() {
   Sound.init();
   $('title').classList.add('hidden'); $('loadText').innerHTML = `${MAPS[GAME.map].name}<small>Checkpoints. ${GAME.gfx === 'optimised' ? 'Optimised graphics.' : GAME.gfx === 'ultra' ? 'Ultra graphics: this takes several seconds.' : 'Realistic graphics: this takes several seconds.'}</small>`; $('loading').classList.remove('hidden');
@@ -1316,7 +1358,7 @@ function step(dt) {
   }
   airsStep(dt);
   updateProjectiles(dt); shellWarnings(); smokeStep(dt);
-  checkpointsStep(dt);
+  checkpointsStep(dt); rulesStep(dt);
   resupply(PLAYER.s, dt);
   if (GAME.deploying && Math.floor(GAME.time * 4) !== Math.floor((GAME.time - dt) * 4)) refreshDeploy();
 }

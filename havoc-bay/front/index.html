@@ -10,7 +10,7 @@
 <div id="gl"></div>
 
 <div id="hud" class="hidden">
-  <div id="top"><div class="score" id="score"><b class="bl" id="scB">0</b><span id="clock"></span><b class="rd" id="scR">0</b></div><div id="cpbar"></div><div id="compass"><div id="compStrip"></div></div></div>
+  <div id="top"><div class="score" id="score"><b class="bl" id="scB">0</b><span id="clock"></span><b class="rd" id="scR">0</b></div><div class="strbars"><div class="sb bl"><i id="strB"></i></div><div class="sb rd"><i id="strR"></i></div></div><div id="cpbar"></div><div id="compass"><div id="compStrip"></div></div><div id="objLine"></div></div>
   <div id="scope"><div class="ret"><i style="left:-180px;top:-1px;width:160px;height:2px"></i><i style="left:20px;top:-1px;width:160px;height:2px"></i><i style="left:-1px;top:14px;width:2px;height:150px"></i><i style="left:-8px;top:0;width:16px;height:2px;transform:rotate(35deg);transform-origin:left"></i><i style="left:-14px;top:0;width:16px;height:2px;transform:rotate(-35deg);transform-origin:right"></i><i style="left:-30px;top:40px;width:60px;height:1px"></i><i style="left:-20px;top:80px;width:40px;height:1px"></i><i style="left:-12px;top:120px;width:24px;height:1px"></i></div></div>
   <div id="cross"></div>
   <div id="gunMark"></div>
@@ -18,6 +18,9 @@
   <div id="dmgFlash"></div>
   <div id="tags"></div>
   <div id="msg"></div>
+  <div id="banner"></div>
+  <div id="kills"></div>
+  <div id="objMark"><b></b><span></span></div>
   <div id="alerts"></div>
   <div id="capMsg"></div>
   <div id="prompt" class="hidden"></div>
@@ -44,13 +47,14 @@
         <div class="nav"><h4>Location</h4><div class="mlist" id="mapPick"></div></div>
         <div class="pane">
           <h4>Mission objectives</h4>
-          <ul class="obj"><li>Clear the guards out of each checkpoint, then stand inside it to take it</li><li>Take the five checkpoints in order, starting from your own base</li><li>Hold all five to win, or hold the most when the 30 minutes run out</li></ul>
-          <p class="lead">Five checkpoints lie between the two bases: small, medium, the main base, medium, small. The guards shoot both sides and do not come back.</p>
+          <ul class="obj"><li>Each side has 600 front strength. Knock it to zero to win, or be the stronger side when the 20 minutes run out</li><li>Every unit a side loses costs it strength, and holding fewer checkpoints than the enemy drains it every second</li><li>Shells, bombs and rockets that land in the enemy base wear it down too</li></ul>
+          <p class="lead">Five checkpoints lie between the two bases. Each side starts holding the two nearest its base; the fort in the middle is held by a few neutral guards. Take the fort, then push on into the enemy's checkpoints. The side with more troops and vehicles in a checkpoint takes it. Kills, hits, assists and captures earn spawn points (SP) for tanks, helicopters and jets, and you earn a little all the time, more for each checkpoint held. You can start a ground vehicle at any checkpoint your side holds. Hold Tab for the scoreboard; on the deploy screen, Enter sends you straight back in.</p>
           <h4>Battle settings</h4>
           <div class="setup">
             <div class="srow"><span>Your team</span><div class="seg" id="teamPick"><button class="btn" data-v="0">Blue</button><button class="btn" data-v="1">Red</button></div></div>
             <div class="srow"><span>Bots per team</span><div class="seg" id="botPick"><button class="btn" data-v="4">4</button><button class="btn" data-v="8">8</button><button class="btn" data-v="12">12</button></div></div>
             <div class="srow"><span>Difficulty</span><div class="seg" id="diffPick"><button class="btn" data-v="0">Easy</button><button class="btn" data-v="1">Normal</button><button class="btn" data-v="2">Hard</button></div></div>
+            <div class="srow"><span>Gunnery</span><div class="seg" id="gunPick"><button class="btn" data-v="assisted" title="The gun is laid for the range of whatever the crosshair is on, as in arcade battles">Assisted</button><button class="btn" data-v="realistic" title="The gun is laid for 400 m until you lase with V">Realistic</button></div></div>
             <div class="srow"><span>Graphics</span><div class="seg" id="gfxPick"><button class="btn" data-v="optimised" title="The lighter map: runs on most computers">Optimised</button><button class="btn" data-v="realistic" title="European countryside: stone villages, mixed woods, hedgerows, wind-blown grass, detailed soldiers. Needs a good graphics card">Realistic</button><button class="btn" data-v="ultra" title="The Realistic world under a low golden sun: sun shafts through trees and cloud, glow, lens flare, haze that warms towards the sun, glitter on the sea. Needs a strong graphics card">Ultra</button></div></div>
           </div>
           <p class="note" id="gfxNote"></p>
@@ -97,13 +101,15 @@
   </div>
 </div>
 
+<div id="board" class="ov hidden"></div>
+
 <div id="bigmap" class="ov dim hidden"><canvas id="bigCv" width="1502" height="992"></canvas></div>
 
 <div id="end" class="ov dim hidden">
   <h1 id="endTitle">Victory</h1>
   <div class="win results">
     <div class="wbar">Battle results</div>
-    <div class="wbody"><p id="endWhy"></p><div class="endstats" id="endStats"></div></div>
+    <div class="wbody"><p id="endWhy"></p><div class="endres" id="endStats"></div></div>
     <div class="wfoot"><button class="btn" id="eMenu">To menu</button><span class="sp"></span><button class="btn on" id="eAgain">Play again</button></div>
   </div>
 </div>
@@ -127,5 +133,6 @@
 <script src="model-kit.js"></script>
 <script src="models/config.js"></script>
 <script src="game.js"></script>
+<script src="rules.js"></script>
 </body>
 </html>
