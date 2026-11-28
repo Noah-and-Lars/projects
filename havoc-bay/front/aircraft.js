@@ -132,7 +132,7 @@ const AIR = {
      out-accelerates and out-climbs the F-2 by a wide margin and supercruises a little past Mach 1. The low aspect ratio delta
      costs it lift slope and makes hard turns expensive in energy: pilots say it wins on excess power, not by hanging slow at high
      alpha ("Typhoon doesn't do very slow"). Below about 230 km/h at high alpha the flight computer's low-speed recovery takes over. */
-  typhoon: { name: 'Eurofighter Typhoon EF2000', short: 'Typhoon', cls: 'jet', model: team => modelTyphoon(team), mass: 16000, S: 51.2, thrust: [120e3, 180e3], CLa: 3.2, aStall: .62, alphaLim: .42, cd0: .017, wave: .02, kInd: .165, rates: [3.4, .6, .3], gmax: 9, mDry: 11600, fuelMax: 4500, fuel0: 3400, gRip: 13.5, mRef: 15500, vne: 425, machMax: 2.35, gear: 2.4, len: 15.96, wid: 10.95, R: 9.5, cam: 22, flares: 32,
+  typhoon: { name: 'Eurofighter Typhoon EF2000', short: 'Typhoon', cls: 'jet', arcadeTop: 1.08, /* (arcade speed: its extra power still shows, about 800 km/h flat out) */ model: team => modelTyphoon(team), mass: 16000, S: 51.2, thrust: [120e3, 180e3], CLa: 3.2, aStall: .62, alphaLim: .42, cd0: .017, wave: .02, kInd: .165, rates: [3.4, .6, .3], gmax: 9, mDry: 11600, fuelMax: 4500, fuel0: 3400, gRip: 13.5, mRef: 15500, vne: 425, machMax: 2.35, gear: 2.4, len: 15.96, wid: 10.95, R: 9.5, cam: 22, flares: 32,
     canard: true, unstable: 1.4, alsr: true, dass: true, chute: true,
     flame: { hot: [1, .88, .66], mid: [1, .6, .2], cool: [.95, .3, .08], dia: 7.5, diaK: 1.4, len: 13 },
     info: 'Twin-engined canard-delta, Luftwaffe: BK-27 cannon, 2 IRIS-T, 4 Meteor, 6 Brimstone 3, 2 GBU-48. Ferocious acceleration and climb; DASS fires flares and chaff at incoming missiles by itself. Takes off from your airfield, lands there to rearm.',
@@ -246,6 +246,14 @@ function placeAir(a) { a.model.root.position.copy(a.pos); a.model.root.quaternio
 function axes(a) { _ax.set(1, 0, 0).applyQuaternion(a.quat); _ay.set(0, 1, 0).applyQuaternion(a.quat); _az.set(0, 0, 1).applyQuaternion(a.quat); }
 
 /* ---------------- flying ---------------- */
+/* Arcade jet speed (the default; Realistic on the title screen turns it off): extra drag that builds from about 610 km/h and holds
+   a jet near 770 km/h flat out, at any height (it is scaled by air density, so thin air gives no extra speed). Below that the
+   flight model is untouched: take-off, climb, turns and landings are as before, and turning at the lower speed is tighter. */
+const ARCADE_V = [170, 215];        // m/s: where the extra drag starts and where it holds the jet
+function arcadeDrag(V, sig) {
+  if (typeof GAME !== 'undefined' && GAME.jetSpeed === 'realistic') return 0;
+  return (.12 * sstep(ARCADE_V[0], ARCADE_V[1], V) + .5 * Math.max(0, V - ARCADE_V[1]) / ARCADE_V[1]) / Math.max(.2, sig);
+}
 /* The air: density falls with height (so do lift, drag and thrust), and the speed of sound gives the Mach number. */
 function airData(h) { h = Math.max(0, h); return { rho: 1.225 * Math.exp(-h / 8500), sos: 340.3 - .0041 * h }; }
 /* Lift curve of a slender fighter wing: a straight line at first, rounding off to its peak at the stall angle
@@ -528,7 +536,7 @@ function jetPhysics(a, cmd, dt) {
   const st = sstep(as * .85, as * 1.25, Math.abs(alpha)), CL = (clCurve(alpha + i0, as, cm) * lf + fl * (1 - st)) * ge;
   const wk = D.wave ?? .03, wave = wk * sstep(.86, 1.06, mach) - wk * .27 * sstep(1.1, 1.7, mach); // the drag rise through the speed of sound (the Typhoon was shaped to cross it cheaply: it supercruises)
   const broken = a.parts.filter(p => !pOK(p)).length * .004 + a.stores();
-  const CD = D.cd0 + wave + broken + D.kInd * CL * CL / ge + 1.1 * Math.sin(alpha) ** 2 * st + .7 * Math.sin(beta) ** 2 + (a.gearDown ? .018 : 0) + .03 * a.flap + ab;
+  const CD = D.cd0 + wave + broken + D.kInd * CL * CL / ge + 1.1 * Math.sin(alpha) ** 2 * st + .7 * Math.sin(beta) ** 2 + (a.gearDown ? .018 : 0) + .03 * a.flap + ab + arcadeDrag(V / (D.arcadeTop || 1), sig);
   const lift = _av.copy(_ay).addScaledVector(vh, -_ay.dot(vh)); const ll = lift.length(); if (ll > 1e-4) lift.divideScalar(ll);
   const L = q * D.S * CL, F = new V3().addScaledVector(lift, L).addScaledVector(vh, -q * D.S * CD).addScaledVector(_az, -q * D.S * .9 * beta).addScaledVector(_ax, thr);
   F.y -= W;
@@ -1109,11 +1117,11 @@ function airBotThink(b, a, dt) {
     ai.t = .5 + Math.random() * .4;
     // enemy aircraft close by come first; then ground targets near the fight
     if (ai.target && (!ai.target.alive || ai.target.pos.distanceTo(a.pos) > (ai.target.kind === 'gun' ? 22000 : 6500))) ai.target = null; // (a strike on a base is flown from home)
-    const air = lockAir(a, a.vel.clone().normalize(), Math.PI, 3500);
-    if (air && Math.random() < sk.aware) ai.target = air;
+    const role = b.role || 'cas', air = lockAir(a, a.vel.clone().normalize(), Math.PI, role === 'intercept' ? 8000 : 3500); // fighters look far for aircraft; ground attack only takes on ones close by
+    if (air && Math.random() < sk.aware * (role === 'cas' && air.pos.distanceTo(a.pos) > 1500 ? .3 : 1)) ai.target = air;
     else if (!ai.target || ai.target.kind === 'air' || Math.random() < .05) {
       const c = GAME.cps[targetCpFor(team)], cx = c.p.x * 1000, cz = c.p.y * 1000; let best = null, bs = 1e9;
-      if (a.cls === 'jet' && ai.striker === undefined) ai.striker = Math.random() < .35 && a.def.weapons.some(w => AMMO[w.k].look === 'bomb'); // some bomb-carrying jets go for the enemy base's guns: bombs there drain its side's strength
+      if (a.cls === 'jet' && ai.striker === undefined) ai.striker = b.role ? b.role === 'strike' : Math.random() < .35 && a.def.weapons.some(w => AMMO[w.k].look === 'bomb'); // some bomb-carrying jets go for the enemy base's guns: bombs there drain its side's strength
       if (ai.striker && a.ammo.some((n, i) => n > 0 && AMMO[a.def.weapons[i].k].look === 'bomb')) for (const e of ENTS) if (e.kind === 'gun' && e.alive && e.team === 1 - team) { const sc = Math.random() * 400; if (sc < bs) { bs = sc; best = e; } }
       for (const e of ENTS) { if (!e.alive || !hostile(team, e.team) || e.team === team || e.kind === 'air' || e.kind === 'gun' || (e.kind === 'soldier' && e.veh) || (e.kind === 'vehicle' && !e.driver && e.team !== 2) || best && best.kind === 'gun') continue; const d = Math.hypot(e.pos.x - cx, e.pos.z - cz); if (d > 1800) continue; const sc = d * (e.kind === 'vehicle' ? .5 : 1) * (e.team === 2 ? 1.6 : 1) + Math.random() * 300; if (sc < bs) { bs = sc; best = e; } }
       if (best && Math.random() < sk.aware) { ai.target = best; ai.settle = 2.5; }
@@ -1168,7 +1176,7 @@ function airBotThink(b, a, dt) {
     // helicopter: hang back 1.5-2.5 km from the fight, low; missiles at vehicles, rockets and gun at the rest; rearm when empty
     if (ai.goHome) { const d = Math.hypot(hx - a.pos.x, hz - a.pos.z); if (d < 400) { despawnAirBot(b, a); return; } want = new V3(hx - a.pos.x, 0, hz - a.pos.z); }
     const c = GAME.cps[targetCpFor(team)], cx = c.p.x * 1000, cz = c.p.y * 1000, bx = M.bases[team].x * 1000, bz = M.bases[team].y * 1000, bd = Math.hypot(bx - cx, bz - cz) || 1;
-    if (!ai.goHome) { if (!ai.post || (ai.postT -= dt) <= 0) { const r = 1500 + Math.random() * 900, a0 = Math.atan2(bz - cz, bx - cx) + (Math.random() - .5) * 1.2; ai.post = new V3(cx + Math.cos(a0) * r, 0, cz + Math.sin(a0) * r); ai.postT = 18 + Math.random() * 14; } want = ai.post.clone().sub(a.pos); }
+    if (!ai.goHome) { if (!ai.post || (ai.postT -= dt) <= 0) { const r = 1500 + Math.random() * 900, a0 = Math.atan2(bz - cz, bx - cx) + (Math.random() - .5) * 1.2; ai.post = new V3(cx + Math.cos(a0) * r, 0, cz + Math.sin(a0) * r); if (b.role === 'intercept' && GAME.lastBaseHit && GAME.time - GAME.lastBaseHit[team] < 60) ai.post.set(bx + Math.cos(a0) * 900, 0, bz + Math.sin(a0) * 900); /* fighters sent up because the base is being bombed patrol over it */ ai.postT = 18 + Math.random() * 14; } want = ai.post.clone().sub(a.pos); }
     const hd = Math.hypot(want.x, want.z), wantAlt = 45 + sk.aim * 15, hdgWant = tg && hd < 400 ? Math.atan2(tg.pos.z - a.pos.z, tg.pos.x - a.pos.x) : Math.atan2(want.z, want.x);
     const fwdC = hd > 60 ? clamp(hd / 300, .2, 1) * Math.cos(angDiffA(a.hdg, Math.atan2(want.z, want.x))) : 0;
     // flying low: watch the ground coming up ahead. "need" is the climb rate it takes to clear every point on the next 14 seconds of track

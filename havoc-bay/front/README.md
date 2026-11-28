@@ -118,6 +118,10 @@ Blue flies the Mitsubishi F-2A and Red the Eurofighter Typhoon, in Luftwaffe mar
   - **Reheat:** two flames, one per EJ200, yellow-white at the nozzle rather than the F-2A's blue-white, with more shock diamonds.
 - **The F-2A** is a downloaded 3D model (`models/f2.js`). `gltf-models.js` reads it without a loader, so the game still opens straight from disk. It cuts the one-piece airframe into the damageable parts above, with hit areas fitted to the real shape. The model keeps its own JASDF blue camouflage, and its landing gear retracts after take-off.
 
+### Jet speed
+
+**Jet speed** on the title screen is **Arcade** by default. Extra drag builds from about 610 km/h and holds a jet near 760 km/h flat out (the Typhoon about 800 km/h, so its extra power still shows), at any height: the drag is scaled by air density, so thin air gives no extra speed. Below that the flight model is untouched: take-off, climb, turns and landings are as before, and turns at the lower speed are tighter, so fights stay close and the map doesn't fly by. **Realistic** turns it off and gives the real top speeds in the table below (`ARCADE_V`, `arcadeDrag` in `aircraft.js`).
+
 ### Flight model
 
 The flight physics are written for this game (`aircraft.js`). The handling follows War Thunder's Realistic Battles: an instructor flies the aircraft towards your aim, and fuel, weight, overload, blackout and the helicopter's collective work as they do there. The numbers use real figures for weight, wing area, thrust and rotor size.
@@ -224,9 +228,29 @@ Every SP earned also counts as score on the scoreboard. Only ground units can ta
 
 For testing, press 0 six times in a row (each press within 1.5 seconds of the last) to get 10,000 SP. It works in a match and on the deploy screen.
 
-Bots earn and spend SP the same way. Each bot has its own skill level, and bots make human mistakes:
+Bots earn and spend SP the same way.
 
-- No more than a quarter of a side's bots fly at once, so there are always enough on the ground to take checkpoints.
+### Bots answer the other side
+
+Each side's bots have a command (`tactics.js`) that looks at the enemy every 3 seconds and sets a plan the bots follow:
+
+- **Counter-picks.** It counts what the enemy fields and what has killed its units in the last 75 seconds, with recent losses counting most. From that it works out the mix of units that beats those threats (`COUNTER` in `tactics.js`). A bot coming back in brings the most wanted unit its side is shortest of, within what it can afford.
+  - Against aircraft: jets flown as fighters, and IFVs, whose autocannon fires at aircraft.
+  - Against armour: tanks, attack helicopters, IFVs (anti-tank missiles) and ground-attack jets.
+  - Against infantry: IFVs and light vehicles.
+- **Aircraft jobs.** Every aircraft a bot takes gets a job. Fighters look for aircraft out to 8 km. Ground-attack aircraft only take on aircraft that come within 1.5 km. Strike jets bomb the enemy base.
+  - More fighters go up the more the enemy flies; if the enemy has the sky, up to 38 % of the side may fly instead of 25 %.
+  - When the base is being bombed, fighters go up and patrol over it, and fewer strikes are sent.
+- **Defence.** When enemy ground units mass within 700 m of one of its checkpoints, the bots nearest it go back, a few more than the enemy has there.
+- **Flanking.** When the enemy is dug in on the checkpoint it must take, its bots leave the road for one side or the other on the last stretch (150 m out for vehicles, 90 m for soldiers) and come back in at the end.
+- **Push or hold.** Behind on strength and checkpoints, it pushes: tanks fight on the move and soldiers run. Ahead, it holds: some bots stay on the front checkpoint, and tanks stop to shoot.
+- **Hunting.** An enemy player on a streak of 3 or more, or with 6 kills, is hunted. Bots prefer that player as a target, and about a third of them go looking for that player if they are on the ground within 1.5 km. If it's you, you see "You are being hunted".
+- **Fights it wins.** Bots prefer targets their unit is good against.
+- Your side's command says what it is doing in the kill feed ("Blue command: enemy armour massing: bringing anti-tank").
+
+Each bot has its own skill level, and bots make human mistakes:
+
+- No more than a quarter of a side's bots fly at once (more if the enemy owns the sky), so there are always enough on the ground to take checkpoints.
 - Most bots start at the front, as a player can. A bot stranded more than 1.5 km behind the front with nothing to fight redeploys there, and a bot that would have to walk more than 1.2 km to the fight takes a light vehicle instead.
 - They are slow to notice targets, and their aim takes time to settle.
 - They flinch when hit and sometimes freeze.
@@ -299,6 +323,7 @@ Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://g
 | `vehicles.js` | Real vehicles, ammunition, armour, modules, crew, the damage model, running gear and track links |
 | `units.js` | Howitzer and soldier models, projectiles, effects, sound |
 | `game.js` | Match setup, checkpoints, NPC guards, howitzers, bots, player controls, camera, HUD, menus |
+| `tactics.js` | Each side's bot command: reads the enemy, counter-picks, aircraft jobs, defence, flanking, push or hold, hunting |
 | `rules.js` | Front strength, the spawn-point economy, kill and streak rewards, objective and enemy markers, scoreboard, battle results |
 
 ## Tuning

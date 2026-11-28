@@ -637,15 +637,16 @@ function spawnBot(b) {
   // a bot with points to spend sometimes takes an aircraft (no limit on how many), otherwise the ground kit it can afford
   const r2 = Math.random(), airN = ENTS.filter(e => e.kind === 'air' && e.alive && e.team === team && e.driver).length; // (no more than a quarter of a side in the air: only ground units take checkpoints)
   if (airN < Math.max(1, Math.round(GAME.bots * .25))) { if (b.sp >= SP_COST.jet && r2 < .35) type = 'jet'; else if (b.sp >= SP_COST.heli && r2 < .6) type = 'heli'; }
-  if ((SP_COST[type] || 0) > b.sp) type = b.sp >= SP_COST.ifv && Math.random() < .5 ? 'ifv' : Math.random() < .3 ? 'jeep' : 'inf';
+  type = tacPickUnit(b, type, walk); // the side's command answers what the enemy fields (tactics.js)
+  if ((SP_COST[type] || 0) > b.sp) type = b.sp >= SP_COST.ifv && Math.random() < .5 ? 'ifv' : Math.random() < .3 || walk > 1200 ? 'jeep' : 'inf';
   b.sp -= SP_COST[type] || 0;
   const s = new Soldier(team, { bot: b, name: b.name }); b.soldier = s; s.bot = b;
   if (type === 'inf') {
     const where = Math.random() < .8 ? frontCp(team) : -1; const [x, z] = spawnSpot(team, where);
     s.pos.set(x, groundY(x, z) + .1, z); s.yaw = GAME.M.bases[team].ang; b.unit = s;
-  } else if (type === 'jet' || type === 'heli') { const a = airSpawn(type, team); enterVehicle(s, a); b.unit = a; }
+  } else if (type === 'jet' || type === 'heli') { const a = airSpawn(type, team); enterVehicle(s, a); b.unit = a; b.role = tacAirRole(b, a); }
   else { const v = makeVehicle(type, team, Math.random() < .75 ? frontCp(team) : -1); enterVehicle(s, v); b.unit = v; } // most start at the front, like the player can
-  b.spawnT = GAME.time;
+  b.spawnT = GAME.time; b.huntPick = undefined; b.holdPick = Math.random() < .4; b.flankSide = Math.random() < .5 ? -1 : 1;
   b.ai = { t: Math.random(), target: null, stuck: 0, rev: 0, goal: null, think: 0, lastS: 0, holdT: 0 };
 }
 function routePoint(s, lane, out) { // point on the route at distance s, shifted sideways by lane
@@ -687,7 +688,7 @@ function botThink(b, u, dt) {
         // people miss things: far, still or hidden targets often go unnoticed for a while
         const moving = e.vel && e.vel.lengthSq() > 4, notice = sk.aware * (1 - d / range * .55) * (moving ? 1.15 : .75) * (e.kind === 'soldier' && e.crouch ? .7 : 1) * (e.kind === 'air' ? 1.2 : 1);
         if (Math.random() > notice) continue;
-        let score = (e.kind === 'air' ? (e.cls === 'heli' ? 1.6 : 5) : 1) * d * (e.kind === 'vehicle' && isV && u.cls !== 'jeep' ? .55 : 1) * (e.kind === 'vehicle' && u.cls === 'jeep' && e.cls !== 'jeep' ? 4 : 1) * (e.team === 2 ? (mopUp ? .2 : 1.2) : 1);
+        let score = (e.kind === 'air' ? (e.cls === 'heli' ? 1.6 : 5) : 1) * d * (e.kind === 'vehicle' && isV && u.cls !== 'jeep' ? .55 : 1) * (e.kind === 'vehicle' && u.cls === 'jeep' && e.cls !== 'jeep' ? 4 : 1) * (e.team === 2 ? (mopUp ? .2 : 1.2) : 1) * tacTargetBias(b, e);
         if (score < bs && lineOfSight(from, aimCenter(e, _v))) { best = e; bs = score; }
       }
       if (best) { ai.target = best; ai.tgtT = GAME.time; ai.react = D.react * sk.react + (Math.random() < .08 ? 1 + Math.random() * 1.2 : 0); ai.settle = 2.6; ai.wrongAmmo = Math.random() < .07; } // some freeze for a moment; first shots go wide
@@ -698,6 +699,8 @@ function botThink(b, u, dt) {
     // objective: the next checkpoint along, unless one of ours is being taken and this bot is one who goes back for it
     let ti = targetCpFor(team); const ob = objectiveFor(team);
     if (ob && ob.kind === 'defend') { if (b.defends === undefined) b.defends = Math.random() < .45; if (b.defends && Math.abs(M.routeAt(u.pos.x, u.pos.z) - ob.c.p.s) < 2500) ti = ob.c.i; } else b.defends = undefined;
+    ti = tacObjective(b, ti); // the command sends the nearest back to a checkpoint the enemy is massing on
+    if (tacStance(team) === 'hold' && b.holdPick && ti === targetCpFor(team) && frontCp(team) >= 0) ti = frontCp(team); // ahead: some hold the front checkpoint and let the enemy come
     const c = GAME.cps[ti];
     ai.cp = ti;
     const sNow = M.routeAt(u.pos.x, u.pos.z), sGoal = c.p.s, dir = Math.sign(sGoal - sNow) || 1;
@@ -706,7 +709,9 @@ function botThink(b, u, dt) {
     if (ai.atCp && c.guardsLeft > 0 && !ai.target) { let bd = 1e9; for (const g of c.guards) if (g.alive) { const d = g.pos.distanceTo(u.pos); if (d < bd) { bd = d; hunt = g; } } }
     if (hunt) { const r = isV ? (hunt.post && hunt.post.tower ? 65 : 40) : 7, a = GAME.time * (isV ? .12 : .3) + b.lane; ai.goal = new V3(hunt.pos.x + Math.cos(a) * r, 0, hunt.pos.z + Math.sin(a) * r); ai.hold = null; } // circle round it until it's in sight
     else if (ai.atCp) { if (!ai.hold || ai.holdCp !== ti) { const [dx, dz] = CP_DIM[c.p.size]; ai.hold = new V3(...(([x, z]) => [x, 0, z])(c.p.site.w((Math.random() - .5) * dx * 600, (Math.random() - .5) * dz * 500))); ai.holdCp = ti; } ai.goal = ai.hold; }
-    else { ai.hold = null; ai.goal = routePoint(sNow + dir * (isV ? Math.max(45, Math.abs(u.speed) * 2.6) : 25), b.lane, new V3()); }
+    else { ai.hold = null; const near = Math.abs(sGoal - sNow), fl = tacFlank(team) && near < 1400 && near > 250 ? b.flankSide * (isV ? 150 : 90) * Math.min(1, (near - 250) / 400) : 0; // flanking: off the road on one side, coming back in at the end
+      ai.goal = routePoint(sNow + dir * (isV ? Math.max(45, Math.abs(u.speed) * 2.6) : 25), b.lane + fl, new V3()); if (fl && terrainY(ai.goal.x, ai.goal.z) < 1) ai.goal = routePoint(sNow + dir * (isV ? Math.max(45, Math.abs(u.speed) * 2.6) : 25), b.lane, new V3()); }
+    { const hg = !ai.target && !ai.resupply ? tacHuntGoal(b, u) : null; if (hg) { ai.goal = hg; ai.hold = null; } } // hunters go after the enemy's star
     // out of shells: back down the road to the nearest checkpoint the side holds (or the base), stand there until restocked, then return to the fight
     ai.resting = false;
     if (isV && u.load) { const total = u.def.ammo.reduce((n, k) => n + (u.load[k] || 0), 0) + (u.def.reload && u.loaded ? 1 : 0), cap = u.def.ammo.reduce((n, k) => n + (u.def.load[k] || 0), 0);
@@ -745,7 +750,7 @@ function botThink(b, u, dt) {
       const G = ai.detourT > GAME.time ? ai.detour : ai.goal, dx = G.x - u.pos.x, dz = G.z - u.pos.z, dist = Math.hypot(dx, dz), want = Math.atan2(dz, dx), da = angDiff(u.yaw, want);
       if (ai.rev > 0) { ai.rev -= dt; inp.throttle = -1; inp.steer = ai.revSteer; }
       else if (!(ai.atCp && dist < 12)) { const sp = Math.abs(u.speed), calm = 1 / (1 + sp * sp / 90); // wheels at speed: ask for a yaw rate the tyres can give, not full lock
-        const want = (u.def.wheeled && sp > 3 ? clamp(Math.atan(clamp(da * 1.4, -7 / sp, 7 / sp) * u.def.len * .62 / sp) / u.def.steer, -1, 1) : clamp(da * 2, -1, 1)) + Math.sin(GAME.time * .8 + b.lane) * .2 * (1 - sk.drive) * (ai.bridge ? .15 : calm); ai.steerS = (ai.steerS || 0) + (want - (ai.steerS || 0)) * Math.min(1, dt * (1.5 + 3 * sk.drive)); inp.steer = clamp(ai.steerS, -1, 1); /* late, sloppy steering overshoots turns */ inp.throttle = Math.abs(da) > 1.2 ? .25 : Math.abs(da) > .5 ? .6 : 1; if (tg && u.cls === 'mbt' && aimP.distanceTo(u.pos) < 1100) inp.throttle *= .4;
+        const want = (u.def.wheeled && sp > 3 ? clamp(Math.atan(clamp(da * 1.4, -7 / sp, 7 / sp) * u.def.len * .62 / sp) / u.def.steer, -1, 1) : clamp(da * 2, -1, 1)) + Math.sin(GAME.time * .8 + b.lane) * .2 * (1 - sk.drive) * (ai.bridge ? .15 : calm); ai.steerS = (ai.steerS || 0) + (want - (ai.steerS || 0)) * Math.min(1, dt * (1.5 + 3 * sk.drive)); inp.steer = clamp(ai.steerS, -1, 1); /* late, sloppy steering overshoots turns */ inp.throttle = Math.abs(da) > 1.2 ? .25 : Math.abs(da) > .5 ? .6 : 1; if (tg && u.cls === 'mbt' && aimP.distanceTo(u.pos) < 1100) inp.throttle *= { push: .8, hold: .2 }[tacStance(team)] ?? .4; // pushing tanks fight on the move; holding ones sit and shoot
         if (ai.bridge && !ai.atCp) inp.throttle = u.speed > 15 ? -1 : u.speed > 11 ? 0 : inp.throttle; }
     }
     if (aimP) {
@@ -769,7 +774,7 @@ function botThink(b, u, dt) {
     const s = u, inp = { fwd: 0, side: 0, sprint: false, crouch: false, jump: false };
     if (ai.goal) {
       const dx = ai.goal.x - s.pos.x, dz = ai.goal.z - s.pos.z, dist = Math.hypot(dx, dz);
-      if (!tg || dist > 40) { s.yaw = turnTo(s.yaw, Math.atan2(dz, dx), 3 * dt); inp.fwd = dist > 3 ? 1 : 0; inp.sprint = !tg && dist > 60; }
+      if (!tg || dist > 40) { s.yaw = turnTo(s.yaw, Math.atan2(dz, dx), 3 * dt); inp.fwd = dist > 3 ? 1 : 0; inp.sprint = (!tg || tacStance(team) === 'push') && dist > 60; }
     }
     if (tg) {
       const d = aimP.distanceTo(s.eye);
@@ -1327,17 +1332,18 @@ $('eMenu').onclick = () => { $('end').classList.add('hidden'); toTitle(); };
 
 /* ---------------- title ---------------- */
 const PREF = (() => { try { return JSON.parse(localStorage.getItem('islandfront.v1') || '{}'); } catch (e) { return {}; } })();
-Object.assign(GAME, { map: PREF.map ?? 0, team: PREF.team ?? 0, bots: PREF.bots ?? 8, diff: PREF.diff ?? 1, gfx: PREF.gfx || 'optimised', gunnery: PREF.gunnery || 'assisted' });
+Object.assign(GAME, { map: PREF.map ?? 0, team: PREF.team ?? 0, bots: PREF.bots ?? 8, diff: PREF.diff ?? 1, gfx: PREF.gfx || 'optimised', gunnery: PREF.gunnery || 'assisted', jetSpeed: PREF.jetSpeed || 'arcade' });
 function renderTitle() {
   $('mapPick').innerHTML = MAPS.map((m, i) => `<button class="mrow${GAME.map === i ? ' on' : ''}" data-v="${i}">${m.name}<small>${m.pitch}</small></button>`).join('');
   $('tbMode').textContent = `Checkpoints · ${MAPS[GAME.map].name}`;
   for (const [id, key] of [['teamPick', 'team'], ['botPick', 'bots'], ['diffPick', 'diff']]) [...$(id).children].forEach(b => b.classList.toggle('on', +b.dataset.v === GAME[key]));
   [...$('gfxPick').children].forEach(b => b.classList.toggle('on', b.dataset.v === GAME.gfx));
   [...$('gunPick').children].forEach(b => b.classList.toggle('on', b.dataset.v === GAME.gunnery));
+  [...$('jetPick').children].forEach(b => b.classList.toggle('on', b.dataset.v === GAME.jetSpeed));
   const gb = [...$('gfxPick').children].find(b => b.dataset.v === GAME.gfx); $('gfxNote').textContent = gb ? gb.title : '';
 }
 $('tTabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; for (const x of $('tTabs').children) x.classList.toggle('on', x === b); for (const pn of document.querySelectorAll('#title [data-pane]')) pn.hidden = pn.dataset.pane !== b.dataset.tab; };
-for (const [id, key] of [['mapPick', 'map'], ['teamPick', 'team'], ['botPick', 'bots'], ['diffPick', 'diff'], ['gfxPick', 'gfx'], ['gunPick', 'gunnery']]) $(id).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; GAME[key] = key === 'gfx' || key === 'gunnery' ? b.dataset.v : +b.dataset.v; try { localStorage.setItem('islandfront.v1', JSON.stringify({ map: GAME.map, team: GAME.team, bots: GAME.bots, diff: GAME.diff, gfx: GAME.gfx, gunnery: GAME.gunnery })); } catch (err) {} renderTitle(); };
+for (const [id, key] of [['mapPick', 'map'], ['teamPick', 'team'], ['botPick', 'bots'], ['diffPick', 'diff'], ['gfxPick', 'gfx'], ['gunPick', 'gunnery'], ['jetPick', 'jetSpeed']]) $(id).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; GAME[key] = key === 'gfx' || key === 'gunnery' || key === 'jetSpeed' ? b.dataset.v : +b.dataset.v; try { localStorage.setItem('islandfront.v1', JSON.stringify({ map: GAME.map, team: GAME.team, bots: GAME.bots, diff: GAME.diff, gfx: GAME.gfx, gunnery: GAME.gunnery, jetSpeed: GAME.jetSpeed })); } catch (err) {} renderTitle(); };
 function begin() {
   Sound.init();
   $('title').classList.add('hidden'); $('loadText').innerHTML = `${MAPS[GAME.map].name}<small>Checkpoints. ${GAME.gfx === 'optimised' ? 'Optimised graphics.' : GAME.gfx === 'ultra' ? 'Ultra graphics: this takes several seconds.' : 'Realistic graphics: this takes several seconds.'}</small>`; $('loading').classList.remove('hidden');
@@ -1363,7 +1369,7 @@ function step(dt) {
   }
   airsStep(dt);
   updateProjectiles(dt); shellWarnings(); smokeStep(dt);
-  checkpointsStep(dt); rulesStep(dt); baseFires(dt);
+  checkpointsStep(dt); rulesStep(dt); baseFires(dt); tacticsStep(dt);
   resupply(PLAYER.s, dt);
   if (GAME.deploying && Math.floor(GAME.time * 4) !== Math.floor((GAME.time - dt) * 4)) refreshDeploy();
 }

@@ -15,8 +15,8 @@ function statOf(s) { return !s ? null : s.isPlayer ? PLAYER.st : s.bot ? s.bot.s
 function allStats() { return [PLAYER.st, ...GAME.botsList.map(b => b.st)].filter(Boolean); }
 
 function rulesStart() {
-  GAME.str = [STRENGTH, STRENGTH]; GAME.baseDmg = [0, 0]; GAME.rulesT = 0; for (const b of GAME.M.bases) b.fires = []; GAME.warned = {}; GAME.baseHitT = [-99, -99];
-  setHTML($('board'), ''); $('board').classList.add('hidden'); $('banner').innerHTML = '';
+  GAME.str = [STRENGTH, STRENGTH]; GAME.baseDmg = [0, 0]; GAME.lastBaseHit = [-99, -99]; GAME.rulesT = 0; for (const b of GAME.M.bases) b.fires = []; GAME.warned = {}; GAME.baseHitT = [-99, -99];
+  tacticsStart(); setHTML($('board'), ''); $('board').classList.add('hidden'); $('banner').innerHTML = '';
 }
 
 /* who has hit what lately: anyone but the killer who hit it in the last 20 s gets an assist */
@@ -25,6 +25,7 @@ function noteHit(e, by) { if (!by || !e || by === e) return; const st = statOf(b
 /* a unit is gone: its side loses strength, whoever did it is paid, helpers get assists */
 function unitLost(e, by, cls, wk) {
   if (e.team < 2 && LOSS[cls]) hurtStrength(e.team, LOSS[cls]);
+  tacNoteLoss(e, by);
   const killer = by && by.team !== e.team && by !== e ? by : null, ks = statOf(killer);
   if (killer) {
     awardSP(killer, SP_AWARD[cls] || 50, `${UNIT_NAME[cls] || 'kill'}${cls === 'guard' ? '' : ' destroyed'}`.toLowerCase(), true);
@@ -59,7 +60,7 @@ function baseBlast(pt, A, owner) {
     if (owner.team === t) continue;
     const b = GAME.M.bases[t]; if (!inZone({ p: { zone: b.zone } }, pt)) continue;
     const n = Math.pow(A.splashDmg || 0, 1.5) / 1000; if (n < .05) return;
-    hurtStrength(t, n); GAME.baseDmg[t] += n;
+    hurtStrength(t, n); GAME.baseDmg[t] += n; GAME.lastBaseHit[t] = GAME.time;
     const by = creditOf(owner); if (by) awardSP(by, n * 3, 'base hit', n < 3);
     if (by && by.isPlayer && n >= 3) bigBanner('Base hit', `${TEAMS[t].name} strength −${Math.round(n)}`, 'base');
     if (t === GAME.team && GAME.time - GAME.baseHitT[t] > 20) { GAME.baseHitT[t] = GAME.time; showMsg('Our base is under attack!', 'Enemy fire is landing in the base and draining our strength.'); Sound.play('alarm'); }
