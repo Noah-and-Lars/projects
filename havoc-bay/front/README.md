@@ -91,18 +91,24 @@ The ground vehicles follow War Thunder's Ground Realistic Battles. The research,
 
 ## Aircraft
 
-Both sides fly the Mitsubishi F-2A; Red's wear a darker paint. Blue also has the AH-64D Apache and Red the Ka-52 Alligator. The earlier code-built F-16C and Su-30SM models have been removed.
+Blue flies the Mitsubishi F-2A and Red the Eurofighter Typhoon, in Luftwaffe markings. Blue also has the AH-64D Apache and Red the Ka-52 Alligator. The earlier code-built F-16C and Su-30SM models have been removed.
 
-- **Jets** start at the end of your runway. Take off at full throttle and look up past 250 km/h; the jet lifts off at about 270 km/h. The jet follows your aim. W/S set the throttle, A/D roll, Q/E work the rudder and B is the airbrake. 1-4 choose a weapon, F fires the gun, G drops flares and X pulls the fire handle. Land on your runway to rearm and refuel, which takes 15 seconds.
+- **Jets** start at the end of your runway. Take off at full throttle and look up past 250 km/h; the jet lifts off at about 270 km/h. The jet follows your aim. W/S set the throttle, A/D roll, Q/E work the rudder and B is the airbrake. The number keys choose a weapon (1-4 on the F-2A, 1-5 on the Typhoon), F fires the gun, G drops flares and X pulls the fire handle. Land on your runway to rearm and refuel, which takes 15 seconds.
 - **Helicopters** start at your base. Hold Space to raise the collective and lift off; C lowers it. The nose follows your aim, so look down to fly forward. W/S push the nose down or up, A/D roll. H switches hover mode on and off. The gun follows your aim. Land at your base to rearm. Key 4 selects air-to-air missiles (Stinger on the Apache, Igla on the Ka-52), N switches the thermal view on when zoomed, a marker shows where rockets will land, and a timer counts a guided missile down to impact. Each helicopter has a pilot and a gunner and flies on with one. The research behind this is in `docs/wt-helicopter-mechanics.md`.
-- **Missiles** lock on before you fire. AIM-9X and R-73 chase heat and can be decoyed by flares. Maverick and Kh-29T lock onto ground targets. Hellfire and Vikhr follow your crosshair. Jets also carry bombs, aimed with a falling-bomb sight.
+- **Missiles** lock on before you fire. AIM-9X, R-73 and IRIS-T chase heat and can be decoyed by flares. Meteor is radar-guided: flares do nothing to it, the chaff fired with them breaks its lock only sometimes, and the HUD warns RADAR MISSILE. Maverick, Kh-29T and Brimstone lock onto ground targets. Hellfire and Vikhr follow your crosshair. Jets also carry bombs, aimed with a falling-bomb sight; the Typhoon's GBU-48 then steers itself onto the target.
 - **Damage** is tracked per part, not as one health bar:
   - Each aircraft is split into the cockpit, nose, front and rear fuselage, fuel tank, each engine, inner and outer wing on each side, tailplanes and fin. Helicopters also have the rotor, transmission, tail boom and tail rotor.
   - Losing an outer wing makes the jet roll towards that side.
-  - A twin-engined jet with one engine out yaws but keeps flying on the other (the code supports it; the F-2A has one engine).
+  - The Typhoon has two engines: with one out it yaws towards the dead one but flies on the other. It has canards beside the cockpit instead of tailplanes.
   - An Apache that loses its tail rotor spins. A dead transmission forces an autorotation landing.
   - Fires spread until they burn out. J bails you out, and you come down on a parachute. E gets you out once you have landed. In a jet E is also the right rudder, so it only lets you out once the jet has stopped. An aircraft you have parked stays where it is, and E beside it puts you back in the cockpit.
 - **The battle area:** fly more than 2.5 km past the edge of the map and you are warned to turn back. Nothing else happens; bot pilots turn round at 3 km.
+- **The Eurofighter Typhoon** (Red) is a downloaded 3D model too (`models/typhoon.js`), cut into parts the same way: nose, canards, front and rear fuselage, both engines, inner and outer wing each side, fin. It has its own features, as the real aircraft does:
+  - **Weapons, as a Luftwaffe jet carries them:** the Mauser BK-27 27 mm cannon in the right wing root (150 rounds at 1,700 a minute), 2 IRIS-T heat-seekers on the outer wing stations (they lock far off the nose), 4 Meteor radar missiles half sunk into the fuselage (they lock out to 9 km and keep their speed), 6 Brimstone 3 on two triple launchers (fire and forget, and can be rippled), and 2 GBU-48 1,000 lb guided bombs.
+  - **DASS:** its defensive aids system sees a missile coming and fires flares and chaff by itself a moment after the launch.
+  - **Low-speed recovery:** too slow with the nose high or the wing loaded, and the flight computer unloads the wing and selects full reheat until it is flying again. The HUD says LOW SPEED RECOVERY.
+  - **Brake chute:** it streams from the base of the fin on the landing roll and is let go once slow, or if you open the throttle to go round.
+  - **Reheat:** two flames, one per EJ200, yellow-white at the nozzle rather than the F-2A's blue-white, with more shock diamonds.
 - **The F-2A** is a downloaded 3D model (`models/f2.js`). `gltf-models.js` reads it without a loader, so the game still opens straight from disk. It cuts the one-piece airframe into the damageable parts above, with hit areas fitted to the real shape. The model keeps its own JASDF blue camouflage, and its landing gear retracts after take-off.
 
 ### Flight model
@@ -145,13 +151,20 @@ The flight physics are written for this game (`aircraft.js`). The handling follo
   - Losing the fin makes the jet weave.
   - Losing the nose sensors, or both tailplanes, takes the flight computer out. The stick then sets angle of attack directly, so you can stall, and pulling well past 9 g bends the wings.
 
-| | F-2A | Real aircraft |
-| --- | --- | --- |
-| Top speed at low level, afterburner | Mach 1.05 | about Mach 1.1 |
-| Top speed at low level, dry | Mach 0.95 | about Mach 0.95 |
-| Take-off run, afterburner | 290 m | 300-550 m |
-| Landing roll | 820 m | 600-900 m |
-| Roll rate | 250°/s | 180-270°/s |
+| | F-2A | Real F-2 | Typhoon | Real Typhoon |
+| --- | --- | --- | --- | --- |
+| Top speed at low level, afterburner | Mach 1.05 | about Mach 1.1 | Mach 1.2 | Mach 1.25 (limit) |
+| Top speed at low level, dry | Mach 0.95 | about Mach 0.95 | Mach 1.0 | |
+| Top speed at 9 km, dry (supercruise) | Mach 1.0 | none | Mach 1.2 | Mach 1.1-1.5 (1.21 seen loaded) |
+| Take-off run, afterburner, from a standstill | 250 m | 300-550 m | 240 m | about 300 m |
+| Landing roll | 650 m | 600-900 m | 540 m, with the chute | about 700 m (unverified) |
+| Roll rate | 250°/s | 180-270°/s | 210°/s | 150-200°/s (estimates) |
+
+How the Typhoon is meant to feel, from pilots' accounts:
+- **Power first.** Two EJ200s give 180 kN in reheat for about 16 t, a thrust-to-weight ratio above 1. It accelerates from 540 to 1,080 km/h in 17 seconds where the F-2A takes 20, and it supercruises.
+- **Carefree handling.** The flight computer will not let it pass 24° angle of attack or 9 g, so full back stick goes straight to the limit and no further.
+- **It doesn't do very slow.** The low aspect ratio delta has less lift per degree than the F-2A's wing and pays more drag for it. In a hard turn at 540 km/h it pulls 4 g where the F-2A pulls 4.5, so it fights by keeping its speed, not by hanging on the nose.
+- **Unstable by design.** If the forward fuselage is wrecked and the flight computer goes, the nose wanders off faster than the F-2A's does.
 
 **Helicopters**
 
@@ -230,6 +243,8 @@ All of it is in `ui.css`; the Barlow typeface and the wear tiles are packed into
 
 ## Credits
 
+Red's Eurofighter Typhoon: This work is based on "Eurofighter Typhoon - Fighter Jet - Free" (https://sketchfab.com/3d-models/eurofighter-typhoon-fighter-jet-free-992bcc8987964ca09d55410330aa8579) by bohmerang (https://sketchfab.com/bohmerang), licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/). The licence text is in `models/typhoon-license.txt`.
+
 Blue's F-2A: This work is based on "Mitsubishi F-2 - Fighter Jet - Free" (https://sketchfab.com/3d-models/mitsubishi-f-2-fighter-jet-free-d3d7244554974f499b106e6c11fe3aaf) by bohmerang (https://sketchfab.com/bohmerang) licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/). Because of that licence, the game (or at least the F-2 model and anything made from it) must not be used commercially, and changed versions of the model must be shared under the same licence. The full licence note is in `models/f2-license.txt`.
 
 Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow), licensed under the SIL Open Font License 1.1. The licence text is in `docs/barlow-font-license.txt`.
@@ -251,6 +266,7 @@ Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://g
 | `tank-models.js` | The detailed M1A2 and T-90A models |
 | `aircraft.js` | Jets and helicopters: built-in models, weapons, flight physics, part damage, bot pilots |
 | `models/f2.js` | The F-2 model (glTF with its textures packed in, so it loads from disk) |
+| `models/typhoon.js` | The Eurofighter Typhoon model, packed the same way |
 | `gltf-models.js` | Reads packed glTF models; builds the F-2A with damageable parts, pylons and retracting gear |
 | `model-kit.js` | The model kit: reads any packed glTF (parts, skeletons, animations) and fits it as a tank, helicopter or soldier |
 | `models/config.js` | Which downloaded model is used for which unit, and how it is fitted |

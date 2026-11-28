@@ -53,21 +53,10 @@ function gltfMaterials(g) {
   });
 }
 
-/* the F-2: the source model in the game's frame (x forward, y up, z right), scaled to the real aircraft */
-const F2_FIT = { s: 1.1, dx: -2.8, dy: 0 };
-function f2Prepared() {
-  if (GLTF.f2) return GLTF.f2;
-  const g = MODEL_DATA.f2, list = gltfParse(g), mats = gltfMaterials(g), fit = new THREE.Matrix4().makeTranslation(F2_FIT.dx, F2_FIT.dy, 0).multiply(new THREE.Matrix4().makeScale(F2_FIT.s, F2_FIT.s, F2_FIT.s));
-  const named = {}; for (const o of list) { const name = g.nodes.find(n => n.children && n.children.includes(g.nodes.indexOf(o.node))).name; const geo = o.geo.clone().applyMatrix4(fit); named[name] = { geo, mat: mats[o.mat] }; }
-  // cut the airframe into parts by where each triangle sits
-  const air = named['F-2-airframe_0'].geo.toNonIndexed(), P = air.attributes.position, N = air.attributes.normal, U = air.attributes.uv;
-  const which = (x, y, z) => { const az = Math.abs(z);
-    if (x > 6.1) return 'nose';
-    if (y > 1.25 && x < -1.6) return 'fin';
-    if (x < -3.7 && az > 1.3 && y < 1.25) return z < 0 ? 'stabL' : 'stabR';
-    if (az > 1.45 && x > -4.6 && x < 4.2) return az < 3.4 ? (z < 0 ? 'wingLi' : 'wingRi') : (z < 0 ? 'wingLo' : 'wingRo');
-    if (x < -5.7) return 'eng1';
-    return x > .3 ? 'fuseF' : 'fuseR'; };
+/* cut an airframe mesh into the damageable parts by where each triangle sits (which(x, y, z) names the part), with hit spheres:
+   one per occupied 1.6 m cell, sized to the triangles in it */
+function airframeCut(air, which) {
+  const P = air.attributes.position, N = air.attributes.normal, U = air.attributes.uv;
   const buckets = {};
   for (let t = 0; t < P.count; t += 3) {
     const cx = (P.getX(t) + P.getX(t + 1) + P.getX(t + 2)) / 3, cy = (P.getY(t) + P.getY(t + 1) + P.getY(t + 2)) / 3, cz = (P.getZ(t) + P.getZ(t + 1) + P.getZ(t + 2)) / 3, id = which(cx, cy, cz);
@@ -84,6 +73,24 @@ function f2Prepared() {
     const sph = []; for (const a of cells.values()) { if (a.length < 3) continue; const m = a.reduce((s, c) => [s[0] + c[0], s[1] + c[1], s[2] + c[2]], [0, 0, 0]).map(v => v / a.length); let r = 0; for (const c of a) r = Math.max(r, Math.hypot(c[0] - m[0], c[1] - m[1], c[2] - m[2])); sph.push([m[0], m[1], m[2], Math.max(.35, r + .15)]); }
     const bs = geo.boundingSphere; spheres[id] = { p: [bs.center.x, bs.center.y, bs.center.z], r: bs.radius * .7, sph };
   }
+  return { parts, spheres };
+}
+/* the F-2: the source model in the game's frame (x forward, y up, z right), scaled to the real aircraft */
+const F2_FIT = { s: 1.1, dx: -2.8, dy: 0 };
+function f2Prepared() {
+  if (GLTF.f2) return GLTF.f2;
+  const g = MODEL_DATA.f2, list = gltfParse(g), mats = gltfMaterials(g), fit = new THREE.Matrix4().makeTranslation(F2_FIT.dx, F2_FIT.dy, 0).multiply(new THREE.Matrix4().makeScale(F2_FIT.s, F2_FIT.s, F2_FIT.s));
+  const named = {}; for (const o of list) { const name = g.nodes.find(n => n.children && n.children.includes(g.nodes.indexOf(o.node))).name; const geo = o.geo.clone().applyMatrix4(fit); named[name] = { geo, mat: mats[o.mat] }; }
+  // cut the airframe into parts by where each triangle sits
+  const air = named['F-2-airframe_0'].geo.toNonIndexed(), P = air.attributes.position, N = air.attributes.normal, U = air.attributes.uv;
+  const which = (x, y, z) => { const az = Math.abs(z);
+    if (x > 6.1) return 'nose';
+    if (y > 1.25 && x < -1.6) return 'fin';
+    if (x < -3.7 && az > 1.3 && y < 1.25) return z < 0 ? 'stabL' : 'stabR';
+    if (az > 1.45 && x > -4.6 && x < 4.2) return az < 3.4 ? (z < 0 ? 'wingLi' : 'wingRi') : (z < 0 ? 'wingLo' : 'wingRo');
+    if (x < -5.7) return 'eng1';
+    return x > .3 ? 'fuseF' : 'fuseR'; };
+  const { parts, spheres } = airframeCut(air, which);
   // pylons (from the rails mesh) and the wingtip launchers
   const R = named['F-2-rails_8'].geo, RP = R.attributes.position, groups = [];
   for (let i = 0; i < RP.count; i++) { const x = RP.getX(i), y = RP.getY(i), z = RP.getZ(i); let gr = groups.find(gq => Math.abs(gq.z / gq.n - z) < .5); if (!gr) groups.push(gr = { x: 0, y: 0, z: 0, n: 0, miny: 9 }); gr.x += x; gr.y += y; gr.z += z; gr.n++; gr.miny = Math.min(gr.miny, y); }
@@ -94,12 +101,13 @@ function f2Prepared() {
   // the engine nozzle: the rearmost ring of the airframe
   let nx = 1e9; { const q = parts.eng1.attributes.position; for (let i = 0; i < q.count; i++) if (Math.abs(q.getZ(i)) < .7 && q.getY(i) < .6) nx = Math.min(nx, q.getX(i)); /* (below the drag-chute housing, which sticks out further back) */ let y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = 0; i < q.count; i++) if (q.getX(i) < nx + .12 && Math.abs(q.getZ(i)) < .9 && q.getY(i) < .75) { y0 = Math.min(y0, q.getY(i)); y1 = Math.max(y1, q.getY(i)); z0 = Math.min(z0, q.getZ(i)); z1 = Math.max(z1, q.getZ(i)); } GLTF.f2nozzle = [nx + .1, (y0 + y1) / 2, (z0 + z1) / 2, clamp(Math.min(y1 - y0, z1 - z0) / 2 * .9, .3, .6), 'eng1']; }
   const gearDown = named['F-2-landingOn_6'].geo; gearDown.computeBoundingBox();
-  return GLTF.f2 = { named, parts, spheres, pylons, tip: [tipX / tipN, tipY / tipN, tipZ], gearH: -gearDown.boundingBox.min.y, mats };
+  return GLTF.f2 = { canopy: named['F-2-canopy_1'].geo, named, parts, spheres, pylons, tip: [tipX / tipN, tipY / tipN, tipZ], gearH: -gearDown.boundingBox.min.y, mats };
 }
 /* plan views of the F-2's parts for the damage panel: each part's own triangles, seen from above, as a small picture used as a mask.
    So the panel shows the real aircraft's shape, and each part can be coloured by the state it is in. */
-function f2Masks() {
-  const F = f2Prepared(); if (F.masks) return F.masks;
+function f2Masks() { return airMasks('f2'); }
+function airMasks(key) {
+  const F = GLTF[key] || (key === 'f2' ? f2Prepared() : typhoonPrepared()); if (F.masks) return F.masks;
   const S = 176, k = S / 17.4, cx = S / 2, cy = S / 2; // 17.4 m across the picture, nose up
   const draw = (geos, lw) => { const cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d'); g.fillStyle = g.strokeStyle = '#fff'; g.lineWidth = lw; g.lineJoin = 'round';
     for (const geo of geos) { const P = geo.attributes.position, I = geo.index, n = I ? I.count : P.count, at = i => I ? I.getX(i) : i; g.beginPath();
@@ -108,9 +116,9 @@ function f2Masks() {
       g.fill(); if (lw) g.stroke(); }
     return cv.toDataURL(); };
   const m = {}; for (const [id, geo] of Object.entries(F.parts)) m[id] = draw([geo], id === 'fin' ? 1.8 : .5);
-  m.cockpit = draw([F.named['F-2-canopy_1'].geo], .4);
+  m.cockpit = draw([F.canopy], .4);
   m.all = draw(Object.values(F.parts), 3); // the whole aircraft a little fat: a dark edge behind the parts
-  for (const [id, url] of Object.entries(m)) document.documentElement.style.setProperty('--f2-' + id, `url(${url})`);
+  for (const [id, url] of Object.entries(m)) document.documentElement.style.setProperty(`--${key}-` + id, `url(${url})`);
   return F.masks = m;
 }
 function modelF2(team) {
@@ -138,4 +146,70 @@ function modelF2(team) {
   }
   M.nozzles = [GLTF.f2nozzle];
   return Object.assign(M, { gun: [3.4, .55, -1.0], cockpit: [4.9 * F2_FIT.s + F2_FIT.dx + .3, 1.35, 0] });
+}
+
+/* ---------------- the Eurofighter Typhoon ----------------
+   Credit: "Eurofighter Typhoon - Fighter Jet - Free" (https://sketchfab.com/3d-models/eurofighter-typhoon-fighter-jet-free-992bcc8987964ca09d55410330aa8579)
+   by bohmerang (https://sketchfab.com/bohmerang), licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/).
+   A canard delta: instead of the F-2's tailplanes it has two canards (foreplanes) beside the cockpit, the delta wing carries the
+   elevons, and there are two EJ200 engines side by side. The model comes at ten times size; it is scaled to the real 15.96 m and
+   set so the centre of mass sits about a quarter of the way along the wing's mean chord. */
+const TY_FIT = { s: .1, dx: -2.2, dy: 0 };
+function typhoonPrepared() {
+  if (GLTF.typhoon) return GLTF.typhoon;
+  const g = MODEL_DATA.typhoon, list = gltfParse(g), mats = gltfMaterials(g), fit = new THREE.Matrix4().makeTranslation(TY_FIT.dx, TY_FIT.dy, 0).multiply(new THREE.Matrix4().makeScale(TY_FIT.s, TY_FIT.s, TY_FIT.s));
+  const named = {}; for (const o of list) { const name = g.nodes.find(n => n.children && n.children.includes(g.nodes.indexOf(o.node))).name; named[name] = { geo: o.geo.clone().applyMatrix4(fit), mat: mats[o.mat] }; }
+  const air = named['Airframe_0'].geo.toNonIndexed(), P = air.attributes.position;
+  const which = (x, y, z) => { const az = Math.abs(z);
+    if (x > 6.3) return 'nose';
+    if (x > 4.0 && x < 6.3 && az > .85 && y > -.4) return z < 0 ? 'canL' : 'canR';
+    if (y > 1.1 && x < -3.0) return 'fin';
+    if (az > 1.05 && x < 3.0) return az < 3.2 ? (z < 0 ? 'wingLi' : 'wingRi') : (z < 0 ? 'wingLo' : 'wingRo');
+    if (x < -5.2) return z < 0 ? 'engL' : 'engR';
+    return x > .5 ? 'fuseF' : 'fuseR'; };
+  const { parts, spheres } = airframeCut(air, which);
+  { const c = named['Cockpit_2'].geo; c.computeBoundingSphere(); const bs = c.boundingSphere; spheres.cockpit = { p: [bs.center.x, bs.center.y, bs.center.z], r: Math.min(.9, bs.radius * .6), sph: [] }; }
+  // the two nozzles: the rearmost ring of each engine
+  const nozzles = ['engL', 'engR'].map(id => { const q = parts[id].attributes.position, ok = i => q.getY(i) < .42 && Math.abs(q.getZ(i)) > .12; let nx = 1e9; for (let i = 0; i < q.count; i++) if (ok(i)) nx = Math.min(nx, q.getX(i)); // (below and beside the brake-chute housing that sits between them)
+    let y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9; for (let i = 0; i < q.count; i++) if (q.getX(i) < nx + .15 && ok(i)) { y0 = Math.min(y0, q.getY(i)); y1 = Math.max(y1, q.getY(i)); z0 = Math.min(z0, q.getZ(i)); z1 = Math.max(z1, q.getZ(i)); }
+    return [nx + .1, (y0 + y1) / 2, (z0 + z1) / 2, clamp(Math.min(y1 - y0, z1 - z0) / 2 * .9, .3, .5), id]; });
+  // where the stores hang: the underside of the skin at a given point
+  const under = (x, z, r = .25) => { let m = 1e9; for (let i = 0; i < P.count; i++) if (Math.abs(P.getX(i) - x) < r && Math.abs(P.getZ(i) - z) < r && P.getY(i) < .6) m = Math.min(m, P.getY(i)); return m < 1e8 ? m : 0; };
+  const R = named['WeaponRails_8'].geo, RP = R.attributes.position, groups = [];
+  for (let i = 0; i < RP.count; i++) { const x = RP.getX(i), y = RP.getY(i), z = RP.getZ(i); let gr = groups.find(gq => Math.abs(gq.z / gq.n - z) < .5); if (!gr) groups.push(gr = { x: 0, y: 0, z: 0, n: 0, miny: 9 }); gr.x += x; gr.y += y; gr.z += z; gr.n++; gr.miny = Math.min(gr.miny, y); }
+  const pylons = groups.filter(gq => gq.n > 20).map(gq => ({ x: gq.x / gq.n, y: gq.miny, z: gq.z / gq.n })).sort((a, b) => Math.abs(a.z) - Math.abs(b.z));
+  const gearDown = named['LandingOn_6'].geo; gearDown.computeBoundingBox();
+  return GLTF.typhoon = { canopy: named['Canopy_1'].geo, named, parts, spheres, pylons, nozzles, under, gearH: -gearDown.boundingBox.min.y, mats };
+}
+function modelTyphoon(team) {
+  const F = typhoonPrepared(), M = { root: new THREE.Group(), parts: {}, stores: [], partSpheres: F.spheres, maskKey: 'typhoon' };
+  const skin = F.named['Airframe_0'].mat;
+  const mk = (parent, geo, mat) => { if (!mat) return null; const m = new THREE.Mesh(geo, mat); m.castShadow = mat !== AIR_GLASS; m.receiveShadow = true; m.userData.keep = true; parent.add(m); return m; };
+  for (const [id, geo] of Object.entries(F.parts)) mk(part(M, id), geo, skin);
+  for (const id of ['fuel', 'cockpit']) if (!M.parts[id]) part(M, id);
+  mk(M.parts.cockpit, F.named['Cockpit_2'].geo, F.named['Cockpit_2'].mat);
+  mk(M.parts.cockpit, F.named['Canopy_1'].geo, AIR_GLASS);
+  mk(M.parts.fuseF, F.named['InstrGlass_4'].geo, AIR_GLASS);
+  const rails = F.named['WeaponRails_8'];
+  for (const sd of [-1, 1]) { const g = M.parts[sd < 0 ? 'wingLi' : 'wingRi']; if (g) { const geo = rails.geo.clone(); const pos = geo.attributes.position; for (let i = 0; i < pos.count; i++) if (Math.sign(pos.getZ(i)) !== sd) pos.setXYZ(i, 0, 0, 0); mk(g, geo, rails.mat); } }
+  M.gearUp = new THREE.Group(); M.root.add(M.gearUp); mk(M.gearUp, F.named['LandingOff_5'].geo, F.named['LandingOff_5'].mat);
+  M.gearDown = new THREE.Group(); M.root.add(M.gearDown); mk(M.gearDown, F.named['LandingOn_6'].geo, F.named['LandingOn_6'].mat); mk(M.gearDown, F.named['LandingLight_7'].geo, F.named['LandingLight_7'].mat);
+  /* a Luftwaffe swing-role load: IRIS-T on the outboard wing stations, four Meteor half sunk into the fuselage underside,
+     six Brimstone 3 on two triple launchers and two GBU-48 on the inboard pylons */
+  const white = 0xd8dad6, grey = 0xa6aaa4;
+  for (const sd of [-1, 1]) {
+    const zA = sd * 4.35, xA = -3.5; store(M, 1, missileModel(2.94, .064, white, .06), xA, F.under(xA, zA, .4) - .2, zA).userData.drag = .5;
+    for (const x of [2.1, -2.2]) { const z = sd * .6; store(M, 2, missileModel(3.65, .09, grey, .1), x, F.under(x, z) - .02, z).userData.drag = .3; } // (half sunk into the fuselage: little drag)
+    const side = F.pylons.filter(p => Math.sign(p.z) === sd), inner = side[0], outer = side[side.length - 1];
+    if (outer) { const y = outer.y - .28; for (const [dy, dz] of [[-.2, 0], [0, -.19], [0, .19]]) store(M, 3, missileModel(1.8, .09, 0x8f9488, .09), outer.x + .1, y + dy, outer.z + dz).userData.drag = .4; }
+    if (inner) store(M, 4, bombModel(3.7, .18), inner.x, inner.y - .3, inner.z).userData.drag = 1.4;
+  }
+  // the brake chute, streamed from its housing at the base of the fin on the landing roll
+  M.chute = new THREE.Group(); M.chute.visible = false; M.root.add(M.chute);
+  { const cm = new THREE.MeshStandardMaterial({ color: 0xd9d4c8, roughness: .9, side: THREE.DoubleSide }), canopy = new THREE.Mesh(new THREE.SphereGeometry(2.3, 16, 8, 0, TAU, 0, Math.PI * .45), cm);
+    canopy.rotation.z = Math.PI / 2; canopy.position.set(-16.5, .9, 0); M.chute.add(canopy);
+    const lm = new THREE.LineBasicMaterial({ color: 0x9a968c }), pts = []; for (let k = 0; k < 8; k++) { const an = k / 8 * TAU; pts.push(new V3(-6.6, .6, 0), new V3(-16.5 + .6, .9 + Math.sin(an) * 2.1, Math.cos(an) * 2.1)); }
+    M.chute.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), lm)); }
+  M.nozzles = F.nozzles;
+  return Object.assign(M, { gun: [3.0, .05, .85], cockpit: [4.3, 1.3, 0] }); // (the BK-27 sits in the right wing root)
 }

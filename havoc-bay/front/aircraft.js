@@ -1,5 +1,6 @@
 /* Island Front: modern aircraft.
-   Both sides fly the Mitsubishi F-2A (model in gltf-models.js); Blue has the AH-64D Apache and Red the Ka-52 Alligator.
+   Blue flies the Mitsubishi F-2A and Red the Eurofighter Typhoon (models in gltf-models.js); Blue has the AH-64D Apache and Red
+   the Ka-52 Alligator.
    Each aircraft is built from separate parts (cockpit, nose sensors, fuselage, fuel, every engine, inner and outer wing on
    each side, tailplanes, fins; on helicopters the rotor, transmission, tail boom and tail rotor). Parts take damage on their
    own and change how the aircraft flies: a shot-up wing rolls it, a dead engine cuts thrust (and yaws a twin), a lost tail
@@ -20,6 +21,11 @@ Object.assign(AMMO, {
   vikhr: { name: '9K121 Vikhr', type: 'Beam ATGM', kind: 'heat', v: 600, pen: [900, 900], tandem: true, main: 220, spall: [14, .2, 3.5, 45], rico: 88, splash: 5, splashDmg: 190, fragPen: 15, guided: true, turn: 1.5, life: 16, look: 'missile', cal: 130, ag: true },
   hydra: { name: 'Hydra 70 M151', type: 'HE rocket', kind: 'he', v: 700, pen: [20, 20], main: 0, op: 1.2, splash: 9, splashDmg: 220, fragPen: 12, look: 'rocket', life: 8, cal: 70, spread: .011, rate: .08 },
   s8: { name: 'S-8KOM', type: 'HEAT rocket', kind: 'heat', v: 600, pen: [400, 400], main: 150, spall: [8, .18, 2.6, 36], rico: 84, splash: 5, splashDmg: 140, fragPen: 8, look: 'rocket', life: 8, cal: 80, spread: .011, rate: .08 },
+  bk27: { name: 'Mauser BK-27 27 mm', type: 'HEI', kind: 'bullet', v: 1050, pen: [16, 11], main: 52, rico: 70, rate: .035, spread: .003, range: 1900 }, // 1,700 rounds a minute, 150 carried
+  irist: { name: 'IRIS-T', type: 'IR missile', kind: 'he', v: 1000, pen: [10, 10], main: 0, splash: 10, splashDmg: 250, fragPen: 10, guided: true, turn: 5.5, prox: 9, life: 12, look: 'missile', cal: 127, aa: true, offBore: 1.0 }, // Mach 3, thrust-vectoring: locks and turns far off the nose
+  meteor: { name: 'MBDA Meteor', type: 'Radar AAM', kind: 'he', v: 1150, pen: [10, 10], main: 0, splash: 12, splashDmg: 280, fragPen: 10, guided: true, turn: 2.5, prox: 12, life: 22, look: 'missile', cal: 178, aa: true, radar: true, lockR: 9000, offBore: .35 }, // ramjet, keeps its speed to the end; radar-guided: flares do not fool it, chaff only sometimes
+  brimstone: { name: 'MBDA Brimstone 3', type: 'MMW AGM', kind: 'heat', v: 450, pen: [950, 950], tandem: true, main: 220, spall: [14, .2, 3.5, 45], rico: 88, splash: 5, splashDmg: 170, fragPen: 14, guided: true, turn: 2.0, life: 25, look: 'missile', cal: 178, ag: true, ripple: .45 }, // millimetre-wave radar: fire and forget, several in quick succession
+  gbu48: { name: 'GBU-48 Enhanced Paveway II', type: 'GPS/laser bomb', kind: 'he', v: 0, pen: [180, 180], main: 0, op: 6, splash: 34, splashDmg: 1100, fragPen: 45, look: 'bomb', life: 60, cal: 356, guided: true, glide: true, turn: .35, ag: true }, // 1,000 lb (454 kg), laser and GPS guided: it steers onto the target it was dropped at
   mk82: { name: 'Mk 82', type: 'Bomb', kind: 'he', v: 0, pen: [150, 150], main: 0, op: 6, splash: 28, splashDmg: 900, fragPen: 40, look: 'bomb', life: 60, cal: 273 },
   fab250: { name: 'FAB-250M62', type: 'Bomb', kind: 'he', v: 0, pen: [150, 150], main: 0, op: 6, splash: 26, splashDmg: 850, fragPen: 40, look: 'bomb', life: 60, cal: 325 },
 });
@@ -119,6 +125,28 @@ const AIR = {
     parts: [P_('cockpit', 'cockpit', [4.3, 1.0, 0], .75, 40), P_('nose', 'nose', [6.4, .35, 0], .6, 45), P_('fuseF', 'fuse', [2.0, .4, 0], 1.1, 150), P_('fuseR', 'fuse', [-2.6, .35, 0], 1.05, 150), P_('fuel', 'fuel', [-.2, .35, 0], .85, 60),
       P_('eng1', 'engine', [-5.4, .35, 0], .8, 75), P_('wingLi', 'wing', [-1.3, .25, -1.9], 1.05, 90, { side: -1, seg: 'in' }), P_('wingLo', 'wing', [-2.8, .25, -3.7], .85, 55, { side: -1, seg: 'out' }), P_('wingRi', 'wing', [-1.3, .25, 1.9], 1.05, 90, { side: 1, seg: 'in' }), P_('wingRo', 'wing', [-2.8, .25, 3.7], .85, 55, { side: 1, seg: 'out' }),
       P_('stabL', 'stab', [-6.4, .3, -1.8], .75, 40, { side: -1 }), P_('stabR', 'stab', [-6.4, .3, 1.8], .75, 40, { side: 1 }), P_('fin', 'fin', [-6.0, 2.3, 0], .9, 45)] },
+  /* Eurofighter Typhoon EF2000 in Luftwaffe service, as the model is painted (figures: Eurofighter via Wikipedia, Flight International 1999,
+     Hushkit pilot interviews; weapons: Janes, the Bundeswehr).
+     A canard delta that is unstable in pitch and flown by a quadruplex fly-by-wire system with "carefree handling": 24° angle of
+     attack and +9 g are as far as the computer lets it go. Two EJ200s give 120 kN dry and 180 kN in reheat for about 16 t, so it
+     out-accelerates and out-climbs the F-2 by a wide margin and supercruises a little past Mach 1. The low aspect ratio delta
+     costs it lift slope and makes hard turns expensive in energy: pilots say it wins on excess power, not by hanging slow at high
+     alpha ("Typhoon doesn't do very slow"). Below about 230 km/h at high alpha the flight computer's low-speed recovery takes over. */
+  typhoon: { name: 'Eurofighter Typhoon EF2000', short: 'Typhoon', cls: 'jet', model: team => modelTyphoon(team), mass: 16000, S: 51.2, thrust: [120e3, 180e3], CLa: 3.2, aStall: .62, alphaLim: .42, cd0: .017, wave: .02, kInd: .165, rates: [3.4, .6, .3], gmax: 9, mDry: 11600, fuelMax: 4500, fuel0: 3400, gRip: 13.5, mRef: 15500, vne: 425, machMax: 2.35, gear: 2.4, len: 15.96, wid: 10.95, R: 9.5, cam: 22, flares: 32,
+    canard: true, unstable: 1.4, alsr: true, dass: true, chute: true,
+    flame: { hot: [1, .88, .66], mid: [1, .6, .2], cool: [.95, .3, .08], dia: 7.5, diaK: 1.4, len: 13 },
+    info: 'Twin-engined canard-delta, Luftwaffe: BK-27 cannon, 2 IRIS-T, 4 Meteor, 6 Brimstone 3, 2 GBU-48. Ferocious acceleration and climb; DASS fires flares and chaff at incoming missiles by itself. Takes off from your airfield, lands there to rearm.',
+    weapons: [{ k: 'bk27', n: 150 }, { k: 'irist', n: 2 }, { k: 'meteor', n: 4 }, { k: 'brimstone', n: 6 }, { k: 'gbu48', n: 2 }],
+    parts: [P_('cockpit', 'cockpit', [4.3, 1.0, 0], .75, 40), P_('nose', 'nose', [7.2, .2, 0], .6, 45), P_('fuseF', 'fuse', [2.5, .2, 0], 1.1, 160), P_('fuseR', 'fuse', [-2.5, .2, 0], 1.1, 160), P_('fuel', 'fuel', [-.5, .3, 0], .9, 65),
+      P_('engL', 'engine', [-5.8, .1, -.45], .6, 70), P_('engR', 'engine', [-5.8, .1, .45], .6, 70),
+      P_('wingLi', 'wing', [-2.2, 0, -2.1], 1.1, 100, { side: -1, seg: 'in' }), P_('wingLo', 'wing', [-3.6, 0, -4.2], .85, 55, { side: -1, seg: 'out' }), P_('wingRi', 'wing', [-2.2, 0, 2.1], 1.1, 100, { side: 1, seg: 'in' }), P_('wingRo', 'wing', [-3.6, 0, 4.2], .85, 55, { side: 1, seg: 'out' }),
+      P_('canL', 'stab', [5.0, .2, -1.4], .55, 35, { side: -1, fore: true, name: 'canard' }), P_('canR', 'stab', [5.0, .2, 1.4], .55, 35, { side: 1, fore: true, name: 'canard' }), P_('fin', 'fin', [-5.8, 2.2, 0], .9, 45)],
+    pts: [ // where it touches: the canard tips stand in for the F-2's tailplane tips, the DASS pods are the wingtips
+      { id: 'nose', p: [8.4, .1, 0], part: 'nose', body: true }, { id: 'belly', p: [1.0, -.62, 0], part: 'fuseF', body: true }, { id: 'tail', p: [-7.2, -.2, 0], part: 'fuseR', body: true },
+      { id: 'tipL', p: [-3.8, -.05, -5.45], part: 'wingLo', side: -1 }, { id: 'tipR', p: [-3.8, -.05, 5.45], part: 'wingRo', side: 1 },
+      { id: 'midL', p: [-2.4, 0, -3.0], part: 'wingLi', side: -1 }, { id: 'midR', p: [-2.4, 0, 3.0], part: 'wingRi', side: 1 },
+      { id: 'canL', p: [4.6, .2, -1.85], part: 'canL', side: -1 }, { id: 'canR', p: [4.6, .2, 1.85], part: 'canR', side: 1 }, { id: 'fin', p: [-7.0, 3.45, 0], part: 'fin' },
+      { id: 'gearN', p: [3.1, -1, 0], gear: true }, { id: 'gearL', p: [-1.3, -1, -1.7], gear: true }, { id: 'gearR', p: [-1.3, -1, 1.7], gear: true }] },
   ah64: { name: 'AH-64D Apache Longbow', short: 'Apache', cls: 'heli', model: modelAH64, mass: 8000, power: 2.1e6, rotorR: 7.3, f: 3.6, tmax: 1.6, pprof: 3.0e5, rotE: 2.3e6, vne: 95, len: 17.7, wid: 5, R: 8.5, cam: 17, flares: 30, tailRotor: true, skid: 0,
     info: 'Armoured attack helicopter: M230 chain gun (follows your aim), 38 Hydra rockets, 8 Hellfire (laser: keep the crosshair on the target), 4 Stinger air-to-air missiles. Two crew: it flies on with one. Rearms at your base.',
     weapons: [{ k: 'm230', n: 1200, turret: [-1.75, 1.75, -1.05, .19] }, { k: 'hydra', n: 38 }, { k: 'hellfire', n: 8 }, { k: 'stinger', n: 4 }], thermal: 2,
@@ -132,35 +160,37 @@ const AIR = {
       P_('engL', 'engine', [-.2, 2.35, -1.0], .55, 60), P_('engR', 'engine', [-.2, 2.35, 1.0], .55, 60), P_('trans', 'trans', [.6, 2.8, 0], .55, 70), P_('rotor', 'rotor', [.6, 4.7, 0], 1.6, 90),
       P_('boom', 'boom', [-4.4, 1.8, 0], .7, 70), P_('fin', 'fin', [-6.8, 2.2, 0], 1.0, 40), P_('stubL', 'stub', [.8, 1.3, -1.9], .7, 50), P_('stubR', 'stub', [.8, 1.3, 1.9], .7, 50)] },
 };
-const TEAM_AIR = [{ jet: 'f2', heli: 'ah64' }, { jet: 'f2', heli: 'ka52' }]; // both sides fly the F-2A (Red's in a darker paint) until Red has a model of its own
+const TEAM_AIR = [{ jet: 'f2', heli: 'ah64' }, { jet: 'typhoon', heli: 'ka52' }]; // Blue flies the F-2A, Red the Eurofighter Typhoon
 const AIR_PART_NAME = { cockpit: 'cockpit', nose: 'sensors', fuse: 'fuselage', fuel: 'fuel tank', engine: 'engine', wing: 'wing', stab: 'tailplane', fin: 'fin', rotor: 'main rotor', trans: 'transmission', boom: 'tail boom', trot: 'tail rotor', stub: 'stub wing' };
 
 /* The afterburner: a cone of flame behind each nozzle. Pale blue-white where it leaves the nozzle, orange further back, with the bright
    shock diamonds a supersonic exhaust shows. It grows as the afterburner comes in, flickers, and is see-through at its edges. */
 const FLAME_VS = `varying float vU; varying vec3 vN; varying vec3 vV;
   void main() { vU = uv.y; vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`;
-const FLAME_FS = `uniform float uT; uniform float uP; uniform float uCore; varying float vU; varying vec3 vN; varying vec3 vV;
+const FLAME_FS = `uniform float uT; uniform float uP; uniform float uCore; uniform vec3 uHot; uniform vec3 uMid; uniform vec3 uCool; uniform float uDia; uniform float uDiaK; varying float vU; varying vec3 vN; varying vec3 vV;
   float hash(float n) { return fract(sin(n) * 43758.5453); }
   void main() {
     float u = 1.0 - vU; // 0 at the nozzle, 1 at the tip
     float edge = pow(abs(dot(normalize(vN), normalize(vV))), mix(1.1, .6, uCore)); // looking through the middle of the cone it is bright, at its rim thin
-    float dia = .5 + .5 * pow(abs(sin(u * 5.2 * 3.14159 + .6)), 3.0) * (1.0 - u); // shock diamonds, fading down the plume
+    float dia = .5 + .5 * uDiaK * pow(abs(sin(u * uDia * 3.14159 + .6)), 3.0) * (1.0 - u); // shock diamonds, fading down the plume
     float fl = .82 + .18 * sin(uT * 61.0 + u * 9.0) * sin(uT * 37.0 + 1.3) + .06 * hash(floor(uT * 60.0));
-    vec3 hot = vec3(.55, .68, 1.0), mid = vec3(1.0, .52, .16), cool = vec3(.85, .22, .05);
+    vec3 hot = uHot, mid = uMid, cool = uCool;
     vec3 col = mix(mix(hot, mid, smoothstep(.0, .35, u)), cool, smoothstep(.45, 1.0, u));
     col = mix(col, vec3(1.0, .9, .72), uCore * (1.0 - u) * .6);
     float a = edge * pow(1.0 - u, mix(1.0, .7, uCore)) * smoothstep(0.0, .03, u) * (.7 + .9 * dia) * fl * uP;
     a = min(a, 1.0); gl_FragColor = vec4(col * a * mix(.95, 1.25, uCore), a * .6); // adds its light and veils what is behind it a little, so it shows against a bright sky too
   }`;
 let GLOW_TEX = null;
-function buildFlames(M) {
+/* Each type can set its own flame: colours from the nozzle back, how many shock diamonds and how strong, and how long. */
+const FLAME_F2 = { hot: [.55, .68, 1], mid: [1, .52, .16], cool: [.85, .22, .05], dia: 5.2, diaK: 1, len: 15 };
+function buildFlames(M, F = FLAME_F2) {
   if (!GLOW_TEX) { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,240,215,1)'); gr.addColorStop(.25, 'rgba(255,170,80,.7)'); gr.addColorStop(1, 'rgba(255,90,20,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); GLOW_TEX = new THREE.CanvasTexture(c); }
   return M.nozzles.map(([x, y, z, r, eng]) => {
     const grp = new THREE.Group(); grp.position.set(x, y, z); M.root.add(grp);
     const mk = (len, r0, r1, core) => { const geo = new THREE.CylinderGeometry(r0, r1, len, 20, 10, true); geo.rotateZ(-Math.PI / 2); geo.translate(-len / 2, 0, 0); // base at the nozzle (uv.y = 1), tip behind it
-      const mat = new THREE.ShaderMaterial({ vertexShader: FLAME_VS, fragmentShader: FLAME_FS, uniforms: { uT: { value: 0 }, uP: { value: 0 }, uCore: { value: core } }, transparent: true, depthWrite: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, side: THREE.DoubleSide, toneMapped: false });
+      const mat = new THREE.ShaderMaterial({ vertexShader: FLAME_VS, fragmentShader: FLAME_FS, uniforms: { uT: { value: 0 }, uP: { value: 0 }, uCore: { value: core }, uHot: { value: new THREE.Vector3(...F.hot) }, uMid: { value: new THREE.Vector3(...F.mid) }, uCool: { value: new THREE.Vector3(...F.cool) }, uDia: { value: F.dia }, uDiaK: { value: F.diaK } }, transparent: true, depthWrite: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, side: THREE.DoubleSide, toneMapped: false });
       const m = new THREE.Mesh(geo, mat); m.frustumCulled = false; grp.add(m); return m; };
-    const outer = mk(r * 15, r * .95, r * .18, 0), inner = mk(r * 8, r * .6, r * .06, 1);
+    const outer = mk(r * F.len, r * .95, r * .18, 0), inner = mk(r * F.len * .53, r * .6, r * .06, 1);
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW_TEX, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false })); glow.position.set(-r * .4, 0, 0); grp.add(glow);
     // the nozzle itself glows dull orange whenever the engine is running hard
     const ring = new THREE.Mesh(new THREE.CircleGeometry(r * .9, 20), new THREE.MeshBasicMaterial({ color: 0xff7a28, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); ring.rotation.y = -Math.PI / 2; ring.position.x = .06; grp.add(ring);
@@ -192,7 +222,7 @@ class Aircraft extends Ent {
     this.model = this.def.model(team); mergeModel(this.model.root);
     const PS = this.model.partSpheres; if (PS) for (const p of this.parts) { const q = PS[p.id]; if (q) { p.p = q.p; p.r = q.r; if (q.sph && q.sph.length) p.sph = q.sph; } } // a model with its own shape brings its own hit spheres
     this.model.root.traverse(o => { if (o.isMesh && o.material === VCOL_MAT) o.material = AIR_MAT; if (o.isMesh) o.castShadow = o.material !== AIR_DISC && o.material !== AIR_GLASS; });
-    if (this.model.nozzles) this.flames = buildFlames(this.model);
+    if (this.model.nozzles) this.flames = buildFlames(this.model, this.def.flame);
     scene.add(this.model.root);
   }
   part(id) { return this.parts.find(p => p.id === id); }
@@ -269,7 +299,7 @@ function steerToward(a, dir, out) {
 }
 /* Weight changes in flight: fuel burns off and weapons leave the rails. A lighter jet climbs, turns and accelerates better,
    and its wings stand more g (the load on them is weight times g). */
-const STORE_MASS = { aim9x: 85, r73: 105, agm65: 300, kh29t: 680, mk82: 240, fab250: 250 };
+const STORE_MASS = { aim9x: 85, r73: 105, agm65: 300, kh29t: 680, mk82: 240, fab250: 250, irist: 87, meteor: 190, brimstone: 50, gbu48: 454 };
 function airMass(a) { const D = a.def; if (!D.mDry) return D.mass; let m = D.mDry + (a.fuel ?? D.fuel0); D.weapons.forEach((w, i) => { m += (STORE_MASS[w.k] || 0) * a.ammo[i]; }); return m; }
 function gAllowed(a) { return a.def.gRip * a.def.mRef / airMass(a); } // the g at which the wings start to fail, at this weight
 function wingLift(a, side) { const i = a.parts.find(p => p.kind === 'wing' && p.side === side && p.seg === 'in'), o = a.parts.find(p => p.kind === 'wing' && p.side === side && p.seg === 'out'); if (!pOK(i)) return 0; return (.62 + .38 * pH(i)) * (pOK(o) ? .55 + .45 * pH(o) : .5); }
@@ -277,7 +307,7 @@ function wingLift(a, side) { const i = a.parts.find(p => p.kind === 'wing' && p.
    Thrust falls with air density and gains a little from ram air at speed. */
 function jetThrust(a, dt, mach, sig) {
   const D = a.def, engs = a.parts.filter(p => p.kind === 'engine'), ef = engs.reduce((s, p) => s + (pOK(p) ? .45 + .55 * pH(p) : 0), 0) / engs.length;
-  const want = ef > 0 && (a.fuel === undefined || a.fuel > 0) ? a.throttle : 0; if (a.spool === undefined) a.spool = want; // (no fuel: the engine winds down)
+  const want = ef > 0 && (a.fuel === undefined || a.fuel > 0) ? (a.alsr ? 1 : a.throttle) : 0; if (a.spool === undefined) a.spool = want; // (no fuel: the engine winds down)
   const rate = want < a.spool ? .5 : a.spool < .85 ? .3 : .45; a.spool += clamp(want - a.spool, -rate * dt, rate * dt);
   const s = a.spool, t0 = s <= .85 ? D.thrust[0] * (.07 + .93 * Math.pow(s / .85, 1.6)) : lerp(D.thrust[0], D.thrust[1], (s - .85) / .15);
   const T = t0 * ef * Math.pow(sig, .75) * (1 + .2 * mach);
@@ -302,7 +332,7 @@ const JET_PTS = [
   { id: 'gearN', p: [4.2, -1, 0], gear: true }, { id: 'gearL', p: [-1.3, -1, -1.5], gear: true }, { id: 'gearR', p: [-1.3, -1, 1.5], gear: true }, // (y is times the gear height)
 ];
 const JET_K = [1.7, 3.7, 3.4]; // how far the mass sits from the roll, yaw and pitch axes (radii of gyration, m)
-const _jq = new THREE.Quaternion();
+const _jq = new THREE.Quaternion(), jetPts = a => a.def.pts || JET_PTS;
 function jetPtWorld(a, c, out) { return out.set(c.p[0], c.gear ? c.p[1] * a.def.gear : c.p[1], c.p[2]).applyQuaternion(a.quat).add(a.pos); }
 function jetPtLive(a, c) { if (c.gear) return a.gearDown && !a.gearBroken; if (c.body) return true; const q = a.part(c.part); return q && !q.gone; }
 function jetImpulse(a, c, n, e, mu) { // a contact at point c against a surface with normal n (bounce e, friction mu). Returns how fast the point was closing on it.
@@ -347,7 +377,7 @@ function jetTouch(a, V, dt) {
   const D = a.def, gy0 = Math.max(0, groundY(a.pos.x, a.pos.z));
   if (a.pos.y - gy0 > 10) return false;
   const hits = [], pw = new V3();
-  for (const c of JET_PTS) { if (!jetPtLive(a, c)) continue; jetPtWorld(a, c, pw); const g = Math.max(0, groundY(pw.x, pw.z)), pen = g - pw.y; if (pen > 0) hits.push({ c, pen, x: pw.x, y: g, z: pw.z }); }
+  for (const c of jetPts(a)) { if (!jetPtLive(a, c)) continue; jetPtWorld(a, c, pw); const g = Math.max(0, groundY(pw.x, pw.z)), pen = g - pw.y; if (pen > 0) hits.push({ c, pen, x: pw.x, y: g, z: pw.z }); }
   if (!hits.length) return false;
   axes(a); const roll = Math.asin(clamp(_az.y, -1, 1)), pitch = Math.asin(clamp(_ax.y, -1, 1)), sink = -a.vel.y, up = _ay.y;
   const sl = Math.abs(groundY(a.pos.x + 12, a.pos.z) - groundY(a.pos.x - 12, a.pos.z)) / 24 + Math.abs(groundY(a.pos.x, a.pos.z + 12) - groundY(a.pos.x, a.pos.z - 12)) / 24;
@@ -430,7 +460,7 @@ function ditched(a) { // stopped in the sea: the crew gets out, the aircraft goe
 function jetObstacles(a, dt) {
   if (a.onGround) { a._pp = null; return false; }
   const V = a.vel.length(), pp = a._pp || (a._pp = {}), pw = new V3(), M = GAME.M;
-  for (const c of JET_PTS) {
+  for (const c of jetPts(a)) {
     if (c.gear || !jetPtLive(a, c)) { delete pp[c.id]; continue; }
     jetPtWorld(a, c, pw); const was = pp[c.id]; pp[c.id] = (was || new V3()).copy(pw); if (!was) { pp[c.id] = pw.clone(); continue; }
     _aw.copy(pw).addScaledVector(a.vel, -dt); // (where this point was a frame ago)
@@ -456,7 +486,8 @@ function jetPhysics(a, cmd, dt) {
   const { rho, sos } = airData(a.pos.y), sig = rho / 1.225;
   const wl = wingLift(a, -1), wr = wingLift(a, 1), lf = Math.max(.02, (wl + wr) / 2);
   const stabs = a.parts.filter(p => p.kind === 'stab'), fins = a.parts.filter(p => p.kind === 'fin'), engs = a.parts.filter(p => p.kind === 'engine');
-  const pitchEff = stabs.reduce((s, p) => s + (pOK(p) ? .5 * (.5 + .5 * pH(p)) : .1), 0), finEff = fins.reduce((s, p) => s + (pOK(p) ? (.5 + .5 * pH(p)) / fins.length : 0), 0);
+  const pitchEff = D.canard ? .45 * Math.min(1, lf / .6) + stabs.reduce((s, p) => s + (pOK(p) ? .275 * (.5 + .5 * pH(p)) : 0), 0) // (a canard delta pitches with the elevons on its wing as well as the canards)
+    : stabs.reduce((s, p) => s + (pOK(p) ? .5 * (.5 + .5 * pH(p)) : .1), 0), finEff = fins.reduce((s, p) => s + (pOK(p) ? (.5 + .5 * pH(p)) / fins.length : 0), 0);
   const rollEff = (pOK(a.parts.find(p => p.id.endsWith('Lo'))) ? .5 : .2) + (pOK(a.parts.find(p => p.id.endsWith('Ro'))) ? .5 : .2);
   const brake = a.throttle < .05, ab = a.airbrake ? .05 : 0; // throttle right back on the ground: wheel brakes. The airbrake has its own key.
   a.flap = clamp((a.flap ?? 1) + (a.onGround || a.gearDown ? .5 : -.5) * dt, 0, 1); const fl = a.flap * .28 * lf; // flaps come down with the gear: more lift and more drag for take-off and landing
@@ -471,7 +502,8 @@ function jetPhysics(a, cmd, dt) {
   if (a.onGround) { // the take-off and landing roll: weight on the wheels until the wing carries it
     const V = a.vel.length(), q = .5 * rho * V * V, thr = jetThrust(a, dt, V / sos, sig), gy = groundY(a.pos.x, a.pos.z) + D.gear;
     const cl = (clCurve(a.pit + i0, as, cm) * lf + fl) * 1.12, L = q * D.S * cl, N = Math.max(0, W - L), mu = brake ? .5 : .02;
-    const drag = q * D.S * (D.cd0 + .02 + .025 * a.flap + D.kInd * cl * cl * .55 + ab);
+    if (D.chute) { if (!a.chuteUsed && V > 40 && a.throttle < .3 && !a.belly) { a.chuteOut = a.chuteUsed = true; } if (a.chuteOut && (V < 14 || a.throttle > .5)) a.chuteOut = false; } // the brake chute streams on landing and is let go once slow (or if the pilot opens the throttle to go round)
+    const drag = q * D.S * (D.cd0 + .02 + .025 * a.flap + D.kInd * cl * cl * .55 + ab) + (a.chuteOut ? q * 11 : 0);
     let nv = V + (thr - drag - (V > .15 ? N * mu : 0)) / m * dt; if (V <= .15 && thr < N * mu) nv = 0; nv = Math.max(0, nv);
     // nose-wheel steering when slow, the rudder when fast (never more than about half a g sideways)
     a.hdg += clamp(-cmd.y * .9 + cmd.x * .3, -1, 1) * Math.min(.55, 5 / Math.max(V, 1)) * (V < 1 ? 0 : 1) * dt;
@@ -481,7 +513,7 @@ function jetPhysics(a, cmd, dt) {
     a.vel.set(Math.cos(a.hdg) * nv, 0, Math.sin(a.hdg) * nv); a.pos.addScaledVector(a.vel, dt); a.pos.y = gy;
     if (gy - D.gear < -.6 || overWater(a.pos.x, a.pos.z)) { startSlide(a, 2, true); return; } // rolled into the water
     airQuatFromEuler(a); a.omega.set(0, 0, 0); a.alpha = a.pit; a.gload = 1; a.mach = nv / sos; a.ias = nv * Math.sqrt(sig); a.stall = 0; a.gearDown = true; a.nzTrim = 1; a.stress = Math.max(0, (a.stress || 0) - .25 * dt);
-    if (L > W) { a.onGround = false; a.vel.y = .4; }
+    if (L > W) { a.onGround = false; a.vel.y = .4; a.chuteUsed = a.chuteOut = false; }
     const sl = Math.abs(groundY(a.pos.x + Math.cos(a.hdg) * 10, a.pos.z + Math.sin(a.hdg) * 10) - groundY(a.pos.x, a.pos.z)) / 10;
     if (nv > 30 && sl > .12) { if (sl > .3 && nv > 45) crashAir(a, 'ran off the runway'); else startSlide(a, 3 + sl * 20, false); } // rough ground at speed takes the wheels off: it carries on sliding on its belly
     return;
@@ -494,7 +526,7 @@ function jetPhysics(a, cmd, dt) {
   a.gearDown = !a.gearBroken && agl < 70 && V < 110;
   // forces: lift (across the airflow, in the aircraft's own up direction), drag, side force, thrust, weight
   const st = sstep(as * .85, as * 1.25, Math.abs(alpha)), CL = (clCurve(alpha + i0, as, cm) * lf + fl * (1 - st)) * ge;
-  const wave = .03 * sstep(.86, 1.06, mach) - .008 * sstep(1.1, 1.7, mach); // the drag rise through the speed of sound
+  const wk = D.wave ?? .03, wave = wk * sstep(.86, 1.06, mach) - wk * .27 * sstep(1.1, 1.7, mach); // the drag rise through the speed of sound (the Typhoon was shaped to cross it cheaply: it supercruises)
   const broken = a.parts.filter(p => !pOK(p)).length * .004 + a.stores();
   const CD = D.cd0 + wave + broken + D.kInd * CL * CL / ge + 1.1 * Math.sin(alpha) ** 2 * st + .7 * Math.sin(beta) ** 2 + (a.gearDown ? .018 : 0) + .03 * a.flap + ab;
   const lift = _av.copy(_ay).addScaledVector(vh, -_ay.dot(vh)); const ll = lift.length(); if (ll > 1e-4) lift.divideScalar(ll);
@@ -507,13 +539,14 @@ function jetPhysics(a, cmd, dt) {
   // pitch: the flight computer turns the stick into a g demand, finds the angle of attack that gives it, and will not go past its limit.
   // With the nose sensors or both tailplanes shot away it falls back to a direct link: the stick sets angle of attack, and you can stall or overstress.
   const cg = Math.hypot(vh.x, vh.z), ly = lift.y, trim = clamp(Math.abs(ly) >= .5 ? cg * cg / ly : cg * cg * ly * 4, -1.5, 2); a.nzTrim = trim;
-  const fbw = !a.ctrlDead && pOK(a.part('nose')) && stabs.some(pOK), qSl = q * D.S * lf * ge + 1;
+  const fbw = !a.ctrlDead && pOK(a.part('nose')) && (D.canard || stabs.some(pOK)), qSl = q * D.S * lf * ge + 1;
   let aCmd;
-  if (fbw) { const nz = cmd.z >= 0 ? trim + cmd.z * (D.gmax - trim) : trim + cmd.z * (trim + 3); aCmd = clamp(clInv((nz * W - thr * Math.sin(alpha)) / qSl - fl / lf, as, cm) - i0, -.3, D.alphaLim); }
-  else if (a.ctrlDead) { // the surfaces stay where they were when the controls went. The F-2, like the F-16 it comes from, is built a little unstable in pitch
+  a.alsr = D.alsr && fbw && !a.gearDown && a.ias !== undefined && (a.alsr ? a.ias < 85 : a.ias < 62 && (alpha > .25 || _ax.y > .45)); // (slow with the wing loaded, or slow with the nose high and falling) // the Typhoon's automatic low-speed recovery: too slow at high alpha or nose high, and the computer unloads the wing and selects full reheat until it has flying speed again
+  if (fbw) { const nz = cmd.z >= 0 ? trim + cmd.z * (D.gmax - trim) : trim + cmd.z * (trim + 3); aCmd = clamp(clInv((nz * W - thr * Math.sin(alpha)) / qSl - fl / lf, as, cm) - i0, -.3, D.alphaLim); if (a.alsr) aCmd = Math.min(aCmd, .1); }
+  else if (a.ctrlDead) { // the surfaces stay where they were when the controls went. The F-2, like the F-16 it comes from, is built a little unstable in pitch (the Typhoon more so)
     // and only the flight computer keeps the nose where it is put: without it any disturbance grows, and within a few seconds the nose has gone up into a stall or down into a bunt.
     if (a.alphaStuck === undefined) { a.alphaStuck = alpha; a.alphaDrift = (Math.random() < .5 ? -1 : 1) * rand(.01, .03); }
-    a.alphaStuck = clamp(a.alphaStuck + (a.alphaStuck - .03 + a.alphaDrift) * .9 * dt, -as * 1.4, as * 1.8); aCmd = a.alphaStuck; }
+    a.alphaStuck = clamp(a.alphaStuck + (a.alphaStuck - .03 + a.alphaDrift) * (D.unstable || .9) * dt, -as * 1.4, as * 1.8); aCmd = a.alphaStuck; }
   else aCmd = clamp(clInv(trim * W / qSl - fl / lf, as, cm) - i0 + cmd.z * as * 1.2 * Math.min(1, pitchEff * 1.2) + (pitchEff < .3 ? Math.sin(GAME.time * 1.3) * .07 + Math.sin(GAME.time * .47 + 1) * .05 : 0), -as, as * 1.45); // (no tailplanes at all: only a little pitch control is left, and the nose hunts)
   const wz = wv.dot(_az) * fol * Math.max(.3, Math.min(1, pitchEff)) + clamp((aCmd - alpha) * 5 * qf * Math.min(1, pitchEff), -1.5, 1.5);
   // yaw: the fin weathercocks the nose into the airflow; rudder asks for a little sideslip. A dead engine on a twin pushes the nose aside.
@@ -628,7 +661,7 @@ function heliPhysics(a, inp, dt) {
   } else if (a.pos.y > gy + .6) a.onGround = false;
 }
 const angDiffA = (a, b) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
-Aircraft.prototype.stores = function () { let n = 0; for (const list of this.model.stores) if (list) for (const g of list) if (g.visible) n++; return n * .0012; };
+Aircraft.prototype.stores = function () { let n = 0; for (const list of this.model.stores) if (list) for (const g of list) if (g.visible) n += g.userData.drag ?? 1; return n * .042 / this.def.S; }; // each store adds drag by its size (about 0.04 m² for a bomb or a Maverick), not by the wing it hangs under
 
 /* ---------------- weapons ---------------- */
 function airGunWorld(a, out) { a.model.root.updateMatrixWorld(true); return out.set(...a.model.gun).applyMatrix4(a.model.root.matrixWorld); }
@@ -659,10 +692,15 @@ function fireAir(a, slot, o) { // o: { dir (aim direction), aimPt, aimEnt, targe
   }
   const hideStore = () => { const list = a.model.stores[slot]; if (list) { const g = list.find(s => s.visible); if (g && !(A.look === 'rocket')) g.visible = false; } };
   if (A.aa) {
-    const tg = o.target || lockAir(a, o.dir); if (!tg) return 'nolock';
+    const tg = o.target || lockAir(a, o.dir, A.offBore || .5, A.lockR || 5000); if (!tg) return 'nolock';
     const st = (a.model.stores[slot] || []).find(s => s.visible), sp = st ? st.getWorldPosition(new V3()) : from;
     const p = launch(W.k, a, a.team, sp, _ax.clone(), A.v * .7); p.vel.add(a.vel); p.target = tg; p.guide = () => tg.alive ? tg.pos.clone().addScaledVector(tg.vel, clamp(tg.pos.distanceTo(p.pos) / A.v, 0, 2.5)) : null;
     a.cool[slot] = .8; a.ammo[slot]--; hideStore(); Sound.at('rpg', sp, 1.2); return true;
+  }
+  if (A.look === 'bomb' && A.guided) { // a guided bomb: dropped like any other, then steers its fins towards the target under the crosshair (or wherever the crosshair was)
+    const tg = o.target || lockGround(a, o.dir, o.aimPt, o.aimEnt), pt = o.aimPt ? o.aimPt.clone() : null;
+    const st = (a.model.stores[slot] || []).find(s => s.visible), sp = st ? st.getWorldPosition(new V3()) : from; const p = launch(W.k, a, a.team, sp, _ax.clone(), 1); p.vel.copy(a.vel);
+    p.guide = tg ? () => tg.alive ? aimCenter(tg, new V3()) : pt : pt ? () => pt : null; a.cool[slot] = .5; a.ammo[slot]--; hideStore(); return true;
   }
   if (A.guided) { // air-to-ground missile: locks a target, or rides the laser / beam to the crosshair
     const tg = o.target || lockGround(a, o.dir, o.aimPt, o.aimEnt), pt = o.aimPt ? o.aimPt.clone() : null;
@@ -671,7 +709,7 @@ function fireAir(a, slot, o) { // o: { dir (aim direction), aimPt, aimEnt, targe
     const p = launch(W.k, a, a.team, sp, _ax.clone().addScaledVector(_ay, -.03), A.v * .8); p.vel.add(a.vel);
     const laser = a.cls === 'heli' && a.driver && a.driver.isPlayer;
     p.guide = laser ? () => CAM.aim.clone() : tg ? () => tg.alive ? aimCenter(tg, new V3()) : (pt || null) : () => pt;
-    a.cool[slot] = 1.0; a.ammo[slot]--; hideStore(); Sound.at('rpg', sp, 1); return true;
+    a.cool[slot] = A.ripple || 1.0; a.ammo[slot]--; hideStore(); Sound.at('rpg', sp, 1); return true;
   }
   if (A.look === 'bomb') { const st = (a.model.stores[slot] || []).find(s => s.visible), sp = st ? st.getWorldPosition(new V3()) : from; const p = launch(W.k, a, a.team, sp, _ax.clone(), 1); p.vel.copy(a.vel); a.cool[slot] = .35; a.ammo[slot]--; hideStore(); return true; }
   // rockets: along the nose (a helicopter can nudge them a little toward the crosshair)
@@ -683,7 +721,7 @@ function fireAir(a, slot, o) { // o: { dir (aim direction), aimPt, aimEnt, targe
 function popFlares(a) {
   if (a.flares <= 0 || a.flareT > 0) return; a.flares -= 2; a.flareT = 1.2;
   axes(a); for (let k = 0; k < 6; k++) { const s = sprite(a.pos.clone().addScaledVector(_ax, -a.def.len * .3), 1.6, .6, 1.6, 0xfff0c0, true, -3, 1); s.userData.vel = a.vel.clone().multiplyScalar(.6).add(new V3(rand(-15, 15), rand(-12, 2), rand(-15, 15))); }
-  for (const p of PROJS) if (p.target === a && Math.random() < .72) { p.guide = null; p.target = null; } // the seekers go for the flares
+  for (const p of PROJS) if (p.target === a && Math.random() < (p.A.radar ? .3 : .72)) { p.guide = null; p.target = null; } // heat seekers go for the flares; chaff fired with them breaks a radar missile's lock less often
 }
 function incoming(a) { return PROJS.some(p => p.target === a && p.guide); }
 
@@ -704,7 +742,7 @@ function airShot(e, A, owner, a, b) {
   hits.slice(0, deep).forEach(([t, p], k) => partDamage(e, p, dmg * (k ? .45 : 1), owner, A));
   const pt = a.clone().lerp(b, hits[0][0]); sparks(pt, A.kind === 'bullet' ? 2 : 5);
   const by = creditOf(owner);
-  if (by && by.isPlayer && e.team !== GAME.team) { hitMarker(!e.alive); hitInfo(`HIT · ${[...new Set(hits.slice(0, deep).map(h => AIR_PART_NAME[h[1].kind]))].join(', ').toUpperCase()}`, '#ffd27a'); }
+  if (by && by.isPlayer && e.team !== GAME.team) { hitMarker(!e.alive); hitInfo(`HIT · ${[...new Set(hits.slice(0, deep).map(h => h[1].name || AIR_PART_NAME[h[1].kind]))].join(', ').toUpperCase()}`, '#ffd27a'); }
   if (e.driver && e.driver.isPlayer) flashDamage();
   return { pt, pen: true };
 }
@@ -730,7 +768,7 @@ function partDamage(a, p, dmg, owner, A) {
     case 'fuse': {
       if (!jet || dmg > p.max * 1.6) { breakUp(a, owner); break; } // (a big warhead straight into the fuselage still blows it apart)
       if (p.id === 'fuseR') { // the rear fuselage fails: the tail comes away with the engine, tailplanes and fin
-        a.tailOff = true; for (const q of a.parts) if ((q.kind === 'engine' || q.kind === 'stab' || q.kind === 'fin') && !q.gone) { q.hp = 0; q.gone = true; hide(q.id); }
+        a.tailOff = true; for (const q of a.parts) if ((q.kind === 'engine' || (q.kind === 'stab' && !q.fore) || q.kind === 'fin') && !q.gone) { q.hp = 0; q.gone = true; hide(q.id); }
         a.kick.z -= .25; a.kick.x += rand(-.4, .4); if (a.flames) for (const f of a.flames) f.grp.visible = false;
       } else { // the forward fuselage is wrecked: nothing answers the stick, the sensors are gone, and the pilot may not have lived through it
         a.ctrlDead = true; const n = a.part('nose'); if (n) n.hp = 0; const ck = a.part('cockpit'); if (ck && ck.hp > 0) partDamage(a, ck, Math.random() < .5 ? ck.hp + 1 : ck.hp * .6, owner, A);
@@ -754,7 +792,7 @@ function breakUp(a, src) { if (!a.alive) return; explosion(a.pos.clone(), 9); So
   if (a.cls !== 'jet') return; // it comes apart: some of the airframe goes its own way, and what is left falls lopsided
   const lose = ids => { for (const id of ids) { const q = a.part(id); if (q && !q.gone) { shedPart(a, id); q.hp = 0; q.gone = true; const g = a.model.parts[id]; if (g) g.visible = false; } } };
   const tail = Math.random() < .55, wing = !tail || Math.random() < .4, sd = Math.random() < .5 ? 'L' : 'R';
-  if (tail) { lose(['eng1', 'stabL', 'stabR', 'fin']); a.tailOff = true; }
+  if (tail) { lose(a.parts.filter(p => p.kind === 'engine' || p.kind === 'fin' || (p.kind === 'stab' && !p.fore)).map(p => p.id)); a.tailOff = true; }
   if (wing) lose([`wing${sd}o`, ...(Math.random() < .5 ? [`wing${sd}i`] : [])]);
   a.omega.add(new V3(rand(-.8, .8), rand(-.3, .3), rand(-.5, .5))); }
 function crashAir(a, how) { const src = a.lastAttacker && GAME.time - (a.lastHitT || -99) < 40 ? a.lastAttacker : null;
@@ -792,7 +830,7 @@ function wreckFly(a, dt) {
     _jq.copy(a.quat).invert(); const u = _xu.copy(a.vel).applyQuaternion(_jq).divideScalar(V); // which way the air meets it, in the airframe's own axes
     const q = .5 * rho * V * V, S = D.S, c = 3.6, b = D.wid, Vd = Math.max(V, 25), mach = V / sos;
     const wl = wingLift(a, -1), wr = wingLift(a, 1), lf = (wl + wr) / 2;
-    const sf = a.parts.filter(p => p.kind === 'stab' && pOK(p)).length / 2, ff = a.parts.some(p => p.kind === 'fin' && pOK(p)) ? 1 : 0;
+    const sf = D.canard ? .8 * lf : a.parts.filter(p => p.kind === 'stab' && pOK(p)).length / 2, ff = a.parts.some(p => p.kind === 'fin' && pOK(p)) ? 1 : 0;
     const alpha = Math.atan2(-u.y, u.x), st = sstep(.45, .8, Math.abs(alpha)), ax2 = u.x * u.x + u.y * u.y;
     // forces: along the fuselage (sleek, worse tail first and near Mach 1), across the wings (lift while the airflow follows them, then a flat plate), sideways
     const Ax = S * (D.cd0 + .03 + a.parts.filter(p => !pOK(p)).length * .004) * (1 + 2.5 * sstep(.85, 1.05, mach)) * (u.x < 0 ? 2.2 : 1);
@@ -803,7 +841,7 @@ function wreckFly(a, dt) {
     a.vel.addScaledVector(_xf.applyQuaternion(a.quat), dt / m);
     // turning moments (N m): pitch, yaw, roll, each with its own damping, and a little lopsidedness because a wreck is never straight
     const as = a.wreck && a.wreck.asym || [0, 0];
-    const Cm0 = a.tailOff ? -.07 : 0, Cma = -.4 * sf + .1; // the tailplane holds the nose into the airflow; without it the fuselage swings the other way, and losing its downforce pitches the nose down
+    const Cm0 = a.tailOff ? (D.canard ? -.05 : -.07) : 0, Cma = -.4 * sf + .1; // the tailplane holds the nose into the airflow; without it the fuselage swings the other way, and losing its downforce pitches the nose down (a canard delta keeps its wing, which still holds it into the airflow, but losing the engines from the back leaves it nose-heavy)
     const Mz = q * S * c * (Cm0 * ax2 + Cma * -u.y + .004 * as[0] - (5.5 * sf + 2.5) * (c / (2 * Vd)) * w.z);
     const Cnb = .1 * ff - .045; // likewise the fin in yaw
     const My = q * S * b * (-Cnb * u.z + .003 * as[1] - (.28 * ff + .1) * (b / (2 * Vd)) * w.y) - q * S * (wr - wl) * .06 * 2.8 * Math.abs(u.x); // (a torn wing drags its side back)
@@ -829,7 +867,7 @@ function wreckStep(a, dt) {
   if (Math.random() < dt * 30) { axes(a); sprite(_xn.copy(a.pos).addScaledVector(_ax, rand(-4, 1)), rand(2, 3.5), 1.5, .2, 0xff8a30, true, 0, .85); }
   if (segBoxes(prev, a.pos) !== null) { explosion(a.pos.clone(), 12); Sound.at('bigboom', a.pos, 1); if (typeof shake === 'function') shake(a.pos, 2); W.landed = true; a.vel.set(0, 0, 0); return; }
   if (a.pos.y - Math.max(0, groundY(a.pos.x, a.pos.z)) > 12) return;
-  for (const c of JET_PTS) { if (c.gear || !jetPtLive(a, c)) continue; jetPtWorld(a, c, _xn); const g = Math.max(0, groundY(_xn.x, _xn.z)); if (_xn.y < g) { wreckImpact(a, _xn.setY(g).clone()); return; } }
+  for (const c of jetPts(a)) { if (c.gear || !jetPtLive(a, c)) continue; jetPtWorld(a, c, _xn); const g = Math.max(0, groundY(_xn.x, _xn.z)); if (_xn.y < g) { wreckImpact(a, _xn.setY(g).clone()); return; } }
 }
 /* hitting the ground: the speed it arrives with goes somewhere. Steep, it ends there in a crater and a fireball; shallow, the fireball is
    smeared along the ground ahead and what is left skids and bounces on, throwing pieces forwards, until friction stops it. */
@@ -842,7 +880,7 @@ function wreckImpact(a, pt) {
     if (wet) for (let k = 0; k < 8; k++) sprite(pt.clone().addScaledVector(td, k * Math.min(Vt * .06, 6)).setY(1), size * rand(.6, 1), size * 2, 2 + Math.random() * 2, 0xe6f0f2, false, size * rand(1.5, 3.5), .85); // a column of spray
     else for (let k = 1; k <= 6 && Vt > 15; k++) { const p = pt.clone().addScaledVector(td, k * Math.min(Vt * .07, 9)); p.y = groundY(p.x, p.z) + rand(1, 3); sprite(p, size * rand(.5, .8), size, .4 + Math.random() * .4, 0xffffff, true, rand(1, 4)); sprite(p, size * rand(.6, 1), size * 2, 3 + Math.random() * 3, 0x3a3632, false, rand(1, 3), .8); } // the fireball carries on the way it was going
     Sound.at('bigboom', pt, Math.min(1, .6 + V / 300)); if (typeof shake === 'function') shake(pt, Math.min(3, 1 + V / 100));
-    for (const id of ['wingLo', 'wingRo', 'wingLi', 'wingRi', 'stabL', 'stabR', 'fin', 'eng1']) { // pieces break off and fly on ahead
+    for (const id of a.parts.filter(p => p.kind === 'wing' || p.kind === 'stab' || p.kind === 'fin' || p.kind === 'engine').map(p => p.id)) { // pieces break off and fly on ahead
       const q = a.part(id); if (!q || q.gone || Math.random() > clamp(V / 160, .15, .85)) continue;
       shedPart(a, id, vt.clone().multiplyScalar(rand(.45, .9)).addScaledVector(n, vn * rand(.1, .35) + rand(2, 8)).add(new V3(rand(-6, 6), 0, rand(-6, 6))));
       q.hp = 0; q.gone = true; const g = a.model.parts[id]; if (g) g.visible = false;
@@ -910,6 +948,9 @@ function airsStep(dt) {
     const smoking = a.parts.some(p => (p.kind === 'engine' || p.kind === 'fuel') && p.hp < p.max * .5); if (smoking && Math.random() < dt * 14) { axes(a); sprite(a.pos.clone().addScaledVector(_ax, -a.def.len * .35), 1.2, 3, 1.8, 0x5a5650, false, 0, .55); }
     // rotors turn, rearming when parked at home
     if (a.model.rotor) { const sp = a.rpm * (a.onGround && !a.driver ? .3 : 1) * 28; a.model.rotor.blades.rotation.y += sp * dt; a.model.rotor.disc.material.opacity = .12 * a.rpm; if (a.model.rotor2) a.model.rotor2.blades.rotation.y -= sp * dt; if (a.model.trotor) a.model.trotor.blades.rotation.y += sp * 4 * dt; }
+    if (a.model.chute) { const on = !!a.chuteOut; a.model.chute.visible = on; if (on) a.model.chute.children[0].scale.setScalar(1 + Math.sin(GAME.time * 9) * .04); }
+    // DASS (Praetorian): the Typhoon's defensive aids see a missile coming and fire flares and chaff on their own, a moment after the launch
+    if (a.def.dass && a.flares > 0) { if (incoming(a)) { if (a.dassT === undefined) a.dassT = GAME.time + rand(.35, .7); if (GAME.time > a.dassT ) { popFlares(a); a.dassT = GAME.time + 1.3; } } else a.dassT = undefined; }
     if (a.model.gearDown) { const down = !a.gearBroken && (a.onGround || a.gearDown); a.model.gearDown.visible = down; a.model.gearUp.visible = !down; }
     if (a.onGround && a.vel.length() < 3) rearmAir(a, dt); else a.rearmT = 0;
     updateFlames(a, dt);
@@ -995,12 +1036,12 @@ function wreckCamera(a, dt) {
 }
 function airStatusHTML(a) {
   const D = a.def, V = a.vel.length(), alt = a.pos.y - Math.max(0, groundY(a.pos.x, a.pos.z));
-  const groups = D.cls === 'jet' ? [['CKPT', 'cockpit'], ['FUS', 'fuseF', 'fuseR'], ['FUEL', 'fuel'], ...a.parts.filter(p => p.kind === 'engine').map(p => [p.id === 'eng1' ? 'ENG' : p.id === 'engL' ? 'ENG L' : 'ENG R', p.id]), ['WING L', 'wingLi', 'wingLo'], ['WING R', 'wingRi', 'wingRo'], ['TAIL', ...a.parts.filter(p => p.kind === 'stab' || p.kind === 'fin').map(p => p.id)]]
+  const groups = D.cls === 'jet' ? [['CKPT', 'cockpit'], ['FUS', 'fuseF', 'fuseR'], ['FUEL', 'fuel'], ...a.parts.filter(p => p.kind === 'engine').map(p => [p.id === 'eng1' ? 'ENG' : p.id === 'engL' ? 'ENG L' : 'ENG R', p.id]), ['WING L', 'wingLi', 'wingLo'], ['WING R', 'wingRi', 'wingRo'], ['TAIL', ...a.parts.filter(p => (p.kind === 'stab' && !p.fore) || p.kind === 'fin').map(p => p.id)], ...(a.parts.some(p => p.fore) ? [['CNRD', ...a.parts.filter(p => p.fore).map(p => p.id)]] : [])]
     : [['PILOT', 'cockpit'], ['GUNNER', 'gunner'], ['FUS', 'fuse'], ['FUEL', 'fuel'], ['ENG L', 'engL'], ['ENG R', 'engR'], ['XMSN', 'trans'], ['ROTOR', 'rotor'], ['TAIL', 'boom', ...(D.tailRotor ? ['trot'] : ['fin'])]];
   const S = {}; for (const [l, ...ids] of groups) { const ps = ids.map(i => a.part(i)).filter(Boolean); if (!ps.length) continue; const worst = Math.min(...ps.map(p => p.hp / p.max)); S[l] = worst <= 0 ? 'dead' : worst < .6 ? 'dmg' : 'ok'; }
   const code = A => A.look === 'bomb' ? 'BMB' : A.look === 'rocket' ? 'RKT' : A.look === 'missile' ? (A.aa ? 'AAM' : 'AGM') : 'GUN';
   const wpn = D.weapons.map((w, i) => [code(AMMO[w.k]), a.ammo[i], '', a.ammo[i] <= 0 ? 'red' : '', a.sel === i]);
-  const notes = []; if (a.fire > 0) notes.push(`<span class="warn">FIRE${a.extT > 0 ? '' : ' · X: fire handle'}</span>`); if (incoming(a)) notes.push('<span class="warn">MISSILE · G: flares</span>');
+  const notes = []; if (a.fire > 0) notes.push(`<span class="warn">FIRE${a.extT > 0 ? '' : ' · X: fire handle'}</span>`); if (incoming(a)) notes.push(`<span class="warn">${PROJS.some(p => p.target === a && p.guide && p.A.radar) ? 'RADAR MISSILE · G: chaff, break hard' : a.def.dass ? 'MISSILE · DASS countermeasures' : 'MISSILE · G: flares'}</span>`); if (a.alsr) notes.push('<span class="warn">LOW SPEED RECOVERY</span>'); if (a.chuteOut) notes.push('Brake chute');
   if (a.cls === 'heli' && a.spin > .5) notes.push('<span class="warn">SPINNING</span>'); if (a.onGround && a.rearmT > 0) notes.push('rearming');
   let extra, spd = V;
   if (D.cls === 'jet') {
@@ -1026,17 +1067,17 @@ function airStatusHTML(a) {
     if (a.vrs > .3) notes.push('<span class="warn">SINKING IN OWN DOWNWASH · fly forward</span>');
   }
   if (a.hover) extra.push('HOVER MODE');
-  if (D.cls === 'jet' && typeof f2Masks === 'function' && a.model.partSpheres) return ro(extra) + noteLines(notes) + planePanel(a);
+  if (D.cls === 'jet' && typeof airMasks === 'function' && a.model.partSpheres) return ro(extra) + noteLines(notes) + planePanel(a);
   return ro(extra) + noteLines(notes) + dmgPanel(D.cls === 'jet' ? 'jet' : 'heli', S, (D.short || D.name).toUpperCase());
 }
 /* the jet's damage panel: the aircraft's own shape seen from above, each part green when sound, yellow when damaged, red when it is
    nearly gone or dead, faint red where it has broken off, and white for a moment when it is hit */
 function planePanel(a) {
-  f2Masks(); const now = performance.now();
+  const key = a.model.maskKey || 'f2', masks = airMasks(key), now = performance.now();
   const st = p => !p ? 'ok' : now - (p.hitT || -1e9) < 320 && !p.gone ? 'hit' : p.gone ? 'gone' : p.hp < p.max * .35 ? 'bad' : p.hp < p.max * .7 ? 'dmg' : 'ok';
-  const lay = id => `<i class="pm ${st(a.part(id))}" style="-webkit-mask-image:var(--f2-${id});mask-image:var(--f2-${id})"></i>`;
+  const lay = id => `<i class="pm ${st(a.part(id))}" style="-webkit-mask-image:var(--${key}-${id});mask-image:var(--${key}-${id})"></i>`;
   const gear = a.gearBroken ? (now - (a.gearT || 0) < 320 ? 'hit' : 'bad') : 'ok', gd = a.gearBroken || a.gearDown || a.onGround;
-  return `<div class="dmgp plane"><i class="disc"></i><i class="pm all"></i>${['fuseR', 'fuseF', 'wingLi', 'wingLo', 'wingRi', 'wingRo', 'stabL', 'stabR', 'eng1', 'nose', 'cockpit', 'fin'].map(lay).join('')}<i class="tank ${st(a.part('fuel'))}"></i>${gd ? `<i class="wheel n ${gear}"></i><i class="wheel l ${gear}"></i><i class="wheel r ${gear}"></i>` : ''}${a.fire > 0 ? '<i class="burn"></i>' : ''}<span class="nm">${(a.def.short || a.def.name).toUpperCase()}</span></div>`;
+  return `<div class="dmgp plane"><i class="disc"></i><i class="pm all" style="-webkit-mask-image:var(--${key}-all);mask-image:var(--${key}-all)"></i>${['fuseR', 'fuseF', 'wingLi', 'wingLo', 'wingRi', 'wingRo', 'stabL', 'stabR', 'canL', 'canR', 'eng1', 'engL', 'engR', 'nose', 'cockpit', 'fin'].filter(id => masks[id]).map(lay).join('')}<i class="tank ${st(a.part('fuel'))}"></i>${gd ? `<i class="wheel n ${gear}"></i><i class="wheel l ${gear}"></i><i class="wheel r ${gear}"></i>` : ''}${a.fire > 0 ? '<i class="burn"></i>' : ''}<span class="nm">${(a.def.short || a.def.name).toUpperCase()}</span></div>`;
 }
 function airAmmoHTML(a) {
   const s = a.def.weapons.map((w, i) => slot(i + 1, ammoGlyph(AMMO[w.k]), AMMO[w.k].type.toUpperCase(), a.ammo[i], { sel: a.sel === i, out: a.ammo[i] <= 0 }));
@@ -1086,21 +1127,23 @@ function airBotThink(b, a, dt) {
   const tg = ai.target;
   if (a.cls === 'jet') {
     if (a.onGround) { a.inp = { cmd: new V3(0, 0, a.vel.length() > 70 ? .6 : 0), throttle: 1 }; a.throttle = 1; return; }
+    const W = a.def.weapons, find = f => W.findIndex(w => f(AMMO[w.k])), SL = a.slotMap || (a.slotMap = { ir: find(A => A.aa && !A.radar), bvr: find(A => A.aa && A.radar), agm: find(A => A.ag && A.look === 'missile'), bomb: find(A => A.look === 'bomb') }), has = k => SL[k] > 0 && a.ammo[SL[k]] > 0; // which slot holds what
     const cruise = 700 + sk.aim * 100; if (ai.run && (ai.goHome || !tg || tg.kind === 'air')) ai.run = null; // an attack run belongs to its ground target
     if (ai.goHome) { want = new V3(hx - a.pos.x, 0, hz - a.pos.z); const d = want.length(); want.normalize(); want.y = clamp((cruise - alt) / 800, -.3, .4); if (d < 1500) { despawnAirBot(b, a); return; } }
     else if (tg && tg.kind === 'air') { // dogfight: lead the target, missile when it's in the seeker, guns up close
       const d = tg.pos.distanceTo(a.pos), lead = tg.pos.clone().addScaledVector(tg.vel, d / 900).add(ai.aimErr.clone().multiplyScalar(d));
       want = lead.sub(a.pos).normalize(); const an = want.angleTo(_ax.set(1, 0, 0).applyQuaternion(a.quat));
-      if (d < 3200 && an < .35 && a.ammo[1] > 0 && Math.random() < dt * (1.2 + sk.aware)) { fire = 1; fo.target = tg; }
+      if (d > 2500 && d < 8500 && an < .3 && has('bvr') && Math.random() < dt * (.4 + sk.aware * .6)) { fire = SL.bvr; fo.target = tg; } // a radar missile from beyond the dogfight
+      else if (d < 3200 && an < .35 && has('ir') && Math.random() < dt * (1.2 + sk.aware)) { fire = SL.ir; fo.target = tg; }
       else if (d < 900 && an < .07) fire = 0;
     } else if (tg) { // a ground attack run: line up from a few km, dive, release, pull out
       const tp = aimCenter(tg, new V3()), d = tp.distanceTo(a.pos), hd = Math.hypot(tp.x - a.pos.x, tp.z - a.pos.z);
       if (!ai.run) ai.run = { phase: 'in', fix: Math.random() < .05 * (1 - sk.nerve) }; // (a few nervous ones fixate on the target and pull out late)
       const R = ai.run;
       if (R.phase === 'in') { want = tp.clone().add(ai.aimErr.clone().multiplyScalar(d)).sub(a.pos).normalize(); if (hd > 2500) want.y = clamp((cruise - alt) / 600, -.2, .3); const an = want.angleTo(_ax.set(1, 0, 0).applyQuaternion(a.quat));
-        if (an < .08 && d < 4200 + sk.aim * 600 && a.ammo[2] > 0 && Math.random() < dt * 2) { fire = 2; fo.target = tg; } // (some fire from too far out)
+        if (an < .08 && d < 4200 + sk.aim * 600 && has('agm') && Math.random() < dt * 2) { fire = SL.agm; fo.target = tg; } // (some fire from too far out)
         else if (an < .05 && d < 1100 && a.ammo[0] > 0) fire = 0;
-        if (a.ammo[3] > 0 && tg.kind === 'vehicle') { const cp = ccipPoint(a, new V3()); if (cp && cp.distanceTo(tp) < 20 + sk.aim * 25) fire = 3; }
+        if (has('bomb') && tg.kind === 'vehicle') { const cp = ccipPoint(a, new V3()); if (cp && cp.distanceTo(tp) < (AMMO[W[SL.bomb].k].guided ? 120 : 20 + sk.aim * 25)) { fire = SL.bomb; fo.target = tg; } } // (a guided bomb need only be dropped near)
         const Vd = a.vel.length(), sinkR = Math.max(0, -a.vel.y), need = sinkR * 1.1 + Vd * Vd / 39 * (1 - Math.sqrt(Math.max(0, 1 - (sinkR / Math.max(Vd, 1)) ** 2))) + 150; // height the pull-out takes: the delay, then a 5 g arc
         const pull = Math.max(need, 330 + 120 * (1 - sk.nerve)) * (R.fix ? .62 : 1);
         if (alt < pull || d < 450) { R.phase = 'out'; R.t = 7 + Math.random() * 4; }

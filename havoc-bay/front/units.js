@@ -269,7 +269,8 @@ function updateProjectiles(dt) {
     const p = PROJS[i], A = p.A; p.t += dt;
     if (A.guided && p.guide) { // wire-guided: steer toward where the gunner is aiming
       const tgt = p.guide(); if (tgt && A.saclos && typeof shtoraJam === 'function') shtoraJam(p, tgt, dt); // a dazzler in the target's turret can blind the launcher's tracker
-      if (tgt) { const want = tgt.clone().sub(p.pos).normalize(), cur = p.vel.clone().normalize(), ang = cur.angleTo(want), k = Math.min(1, (A.turn || 1.6) * dt / Math.max(ang, 1e-3)); p.vel.copy(cur.lerp(want, k).normalize().multiplyScalar(Math.max(A.v, p.vel.length() * (1 - dt * .05)))); }
+      if (A.glide) p.vel.y -= p.g * dt; // a guided bomb still falls: its fins only bend the fall towards the target
+      if (tgt) { const want = tgt.clone().sub(p.pos).normalize(), cur = p.vel.clone().normalize(), ang = cur.angleTo(want), k = Math.min(1, (A.turn || 1.6) * dt / Math.max(ang, 1e-3)); p.vel.copy(cur.lerp(want, k).normalize().multiplyScalar(A.glide ? p.vel.length() : Math.max(A.v, p.vel.length() * (1 - dt * .05)))); }
     } else p.vel.y -= p.g * dt;
     p.prev.copy(p.pos); p.pos.addScaledVector(p.vel, dt); p.dist += p.vel.length() * dt;
     if ((A.look === 'rocket' || A.look === 'missile') && (p.trail -= dt) <= 0) { p.trail = .03; sprite(p.prev, .7, 1.6, .8, 0xcfcac0, false, .3, .6); }
