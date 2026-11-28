@@ -640,6 +640,8 @@ function spawnBot(b) {
   if (airN < Math.max(1, Math.round(GAME.bots * .25))) { if (b.sp >= SP_COST.jet && r2 < .35) type = 'jet'; else if (b.sp >= SP_COST.heli && r2 < .6) type = 'heli'; }
   type = tacPickUnit(b, type, walk); // the side's command answers what the enemy fields (tactics.js)
   if ((SP_COST[type] || 0) > b.sp) type = b.sp >= SP_COST.ifv && Math.random() < .5 ? 'ifv' : Math.random() < .3 || walk > 1200 ? 'jeep' : 'inf';
+  if (type === 'jeep') type = walk > 1200 && b.sp >= SP_COST.ifv ? 'ifv' : 'inf'; // (no light vehicles or helicopters in the game: only vehicles with an uploaded model)
+  if (type === 'heli') type = b.sp >= SP_COST.jet && airN < Math.max(1, Math.round(GAME.bots * .25)) ? 'jet' : b.sp >= SP_COST.mbt ? 'mbt' : b.sp >= SP_COST.ifv ? 'ifv' : 'inf';
   b.sp -= SP_COST[type] || 0;
   const s = new Soldier(team, { bot: b, name: b.name }); b.soldier = s; s.bot = b;
   if (type === 'inf') {
@@ -1226,8 +1228,8 @@ function drawBig() { const cv = $('bigCv'), g = cv.getContext('2d'); g.fillStyle
 /* ---------------- deploy screen ---------------- */
 const CLASSES = [
   { id: 'inf', name: 'Rifleman', info: 'Rifle and 3 rockets. Can spawn at checkpoints you hold.' },
-  { id: 'mbt', veh: true }, { id: 'ifv', veh: true }, { id: 'jeep', veh: true },
-  { id: 'heli', air: true }, { id: 'jet', air: true }, { id: 'boat', name: 'Patrol boat', info: 'Next update', off: true },
+  { id: 'mbt', veh: true }, { id: 'ifv', veh: true }, { id: 'jeep', veh: true, off: true, name: 'Light vehicle', info: 'No model uploaded yet' }, // (only vehicles with an uploaded model are in the game)
+  { id: 'heli', air: true, off: true, name: 'Helicopter', info: 'No model uploaded yet' }, { id: 'jet', air: true }, { id: 'boat', name: 'Patrol boat', info: 'Next update', off: true },
 ];
 function openDeploy(why) {
   GAME.deploying = true; document.exitPointerLock && document.exitPointerLock();

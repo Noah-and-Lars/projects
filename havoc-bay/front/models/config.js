@@ -24,6 +24,12 @@
 */
 'use strict';
 
+// Blue's main battle tank: "T-90SM Main Battle Tank" by Muhamad Mirza Arrafi (CC-BY-4.0). Its turret and gun are separate parts; its gun points down -x,
+// so the game turns it round by itself (kitVehicle: a gun behind the middle means the model faces backwards). Only the look changes: armour and weapons are the M1A2's.
+kitUse('m1a2', 't90sm', { fit: { length: 9.6 }, turret: /^Object_(6|7|8|10)$/, gun: /^Object_5$/, tracks: /track_1/, trackScroll: [0, -.5] });
+// Both sides' troop carrier / anti-tank vehicle: "Missile Tank" by MoAbuAkb (CC-BY-4.0), a tracked launcher with two big missiles. One piece: the launcher
+// (everything above the hull deck) is cut out as the turret. Only the look changes: armour and weapons are the Bradley's and the BMP-2's.
+for (const u of ['m2a2', 'bmp2']) kitUse(u, 'missiletank', { fit: { length: 7.6, yaw: Math.PI / 2 }, split: (x, y, z) => y > 2.45 ? 'turret' : 'hull' });
 // Red's main battle tank: "Uralvagonzavod T-90AM Main Battle Tank" by Muhamad Mirza Arrafi (CC-BY-4.0). One piece, so it is cut up here:
 // the turret is the raised part round its ring (behind the middle), the gun the thin part ahead of the hull at gun height.
 kitUse('t90a', 't90am', { fit: { length: 9.6 }, tracks: /03babf5e/, trackScroll: [0, -3.15], // (the tracks have their own material; their texture runs about 3 turns a metre along the hull)
@@ -74,3 +80,9 @@ function applyJetChoice() { // at the start of each match: each side flies the j
 // the F-2's Sidewinders and Mavericks drawn with the collection's models (same pylons and sizes; the weapons themselves are unchanged)
 if (typeof AIR !== 'undefined' && AIR.f2) { const f2Model = AIR.f2.model; AIR.f2.model = team => { const M = f2Model(team); AIR.f2.weapons.forEach((w, slot) => { const list = M.stores[slot]; if (!list || !STORE_OF[w.k]) return;
   M.stores[slot] = list.map(g => { const r = storeMesh(w.k); if (!r) return g; r.position.copy(g.position); r.userData.drag = g.userData.drag; g.parent && g.parent.remove(g); M.root.add(r); return r; }); }); return M; }; }
+
+// the names follow the models you see (armour, guns and handling stay those of the vehicles defined in vehicles.js)
+if (typeof VEH !== 'undefined') {
+  Object.assign(VEH.m1a2, { name: 'T-90SM', short: 'T-90SM' }); Object.assign(VEH.t90a, { name: 'T-90AM', short: 'T-90AM' });
+  for (const u of ['m2a2', 'bmp2']) Object.assign(VEH[u], { name: 'Missile Tank', short: 'Missile Tank' });
+}

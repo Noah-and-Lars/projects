@@ -1,0 +1,11 @@
+Model Information:
+* title:	T-90SM Main Battle Tank
+* source:	https://sketchfab.com/3d-models/t-90sm-main-battle-tank-35968fbefd9a4188a18ca9163ea3e175
+* author:	Muhamad Mirza Arrafi (https://sketchfab.com/nazidefenseforceofficial)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "T-90SM Main Battle Tank" (https://sketchfab.com/3d-models/t-90sm-main-battle-tank-35968fbefd9a4188a18ca9163ea3e175) by Muhamad Mirza Arrafi (https://sketchfab.com/nazidefenseforceofficial) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

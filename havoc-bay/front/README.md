@@ -291,6 +291,18 @@ Nothing is flat paint: the menus, windows, buttons and HUD plates carry a worn f
 
 All of it is in `ui.css`; the Barlow typeface and the wear tiles are packed into that file so the game still opens from disk.
 
+## Vehicles in play
+
+Only vehicles with an uploaded model are in the game:
+
+| Class | Blue | Red | Model |
+|---|---|---|---|
+| Tank | T-90SM | T-90AM | uploaded; armour, guns and handling stay those of the M1A2 and T-90A defined in `vehicles.js` |
+| Troop carrier / anti-tank | Missile Tank | Missile Tank | uploaded; armour and weapons stay the Bradley's and the BMP-2's |
+| Jet | chosen on the title screen (F-2, Typhoon, MiG-35, A-10, F/A-18) | | uploaded |
+
+Helicopters and light vehicles are out (marked off on the deploy screen, and bots that would have taken one go on foot, take a ground vehicle or a jet instead), because no models for them have been uploaded. They come back by uploading a model and fitting it in `models/config.js`, then removing `off: true` from their entry in `CLASSES` (`game.js`) and the two lines in `spawnBot` that turn them into something else.
+
 ## The map
 
 What changed to make the battlefield less plain, on every graphics level unless it says otherwise:
@@ -362,6 +374,10 @@ Roadside wrecks: This work is based on "Panzer IV Medium Tank - Toshueyi" (https
 
 Red's main battle tank (T-90): This work is based on "Uralvagonzavod T-90AM Main Battle Tank" (https://sketchfab.com/3d-models/uralvagonzavod-t-90am-main-battle-tank-619de9f0908e4c8395fe036ffe6e3884) by Muhamad Mirza Arrafi (https://sketchfab.com/nazidefenseforceofficial) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: cut into hull, turret and gun, textures shrunk to 1024 pixels. The licence note is in `models/t90am-license.txt`.
 
+Blue's tank (T-90SM): This work is based on "T-90SM Main Battle Tank" (https://sketchfab.com/3d-models/t-90sm-main-battle-tank-35968fbefd9a4188a18ca9163ea3e175) by Muhamad Mirza Arrafi (https://sketchfab.com/nazidefenseforceofficial) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: turned round, textures shrunk to 1024 pixels. The licence note is in `models/t90sm-license.txt`.
+
+Missile Tank: This work is based on "Missile Tank" (https://sketchfab.com/3d-models/missile-tank-29de297a4a2547d189e9be0cc7e86e68) by MoAbuAkb (https://sketchfab.com/moabuakb) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: cut into hull and launcher, textures shrunk to 1024 pixels. The licence note is in `models/missiletank-license.txt`.
+
 Aircraft weapons: This work is based on "Missile & Bomb Collection - Fighter Jets - Free" (https://sketchfab.com/3d-models/missile-bomb-collection-fighter-jets-free-d203b678424a43568703bf85ba680f47) by bohmerang (https://sketchfab.com/bohmerang) licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/). Changed for the game: individual weapons taken out, turned and centred, textures shrunk to 512 pixels. Non-commercial use only. The licence note is in `models/weapons-license.txt`.
 
 MiG-35 fighter model: This work is based on "MiG-35 - Fighter Jet - Free" (https://sketchfab.com/3d-models/mig-35-fighter-jet-free-1dcea306e8a14ed4ab4d11a819cb6676) by bohmerang (https://sketchfab.com/bohmerang) licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/). Changed for the game: scaled, cut into damage parts, textures shrunk to 1024 pixels. Non-commercial use only. The licence note is in `models/mig35-license.txt`.
@@ -400,6 +416,8 @@ Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://g
 | `models/farmhouse.js` | An abandoned farmhouse with hay (scenery prop) |
 | `models/panzer4.js` | A Panzer IV, darkened and used as a roadside wreck (scenery prop) |
 | `models/t90am.js` | The T-90AM, used for Red's main battle tank (fitted in `models/config.js`) |
+| `models/t90sm.js` | The T-90SM, used for Blue's main battle tank (fitted in `models/config.js`) |
+| `models/missiletank.js` | The Missile Tank, used for both sides' troop carrier and anti-tank vehicle |
 | `models/mig35.js`, `models/a10.js`, `models/fa18.js` | Extra jet looks for the title screen's jet choice (fitted by `kitJet` in `model-kit.js`) |
 | `models/weapons.js` | The weapon collection: AIM-9, AIM-7, AGM-65, GBU-12, JDAM, R-77, Kh-29, KAB-500L (and more) hung on the jets (`storeMesh` in `model-kit.js`) |
 | `props.js` | Scenery props from downloaded models: drawn instanced, culled by distance, with colliders; where they go |
