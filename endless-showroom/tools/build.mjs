@@ -23,7 +23,7 @@ if (!html.includes(`three@${three}/`)) throw new Error(`src/index.html import ma
 
 const result = await build({
   entryPoints: [join(src, 'js', 'main.js')],
-  bundle: true, format: 'iife', minify: true, target: ['es2020', 'safari15'], legalComments: 'none',
+  bundle: true, format: 'iife', minify: process.env.DEV !== '1', target: ['es2020', 'safari15'], legalComments: 'none',
   nodePaths: [join(here, 'node_modules')], write: false, logLevel: 'warning',
 });
 const js = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
@@ -52,6 +52,6 @@ swap('<link rel="apple-touch-icon" id="apple-icon" href="icon.svg">', `<link rel
 swap('<link rel="stylesheet" href="style.css">', `<style>\n${css}</style>`);
 swap('<script type="module" src="js/main.js"></script>', `<script>${js}</script>`);
 out = out.replace('<!doctype html>\n', `<!doctype html>\n${notice}\n`);
-const dest = join(root, 'index.html');
+const dest = join(root, process.env.DEV === '1' ? 'index-dev.html' : 'index.html'); // DEV=1: readable, for profiling (not shipped)
 writeFileSync(dest, out);
 console.log(`wrote ${dest} (${(statSync(dest).size / 1024).toFixed(0)} KB; three ${three})`);

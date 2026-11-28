@@ -10,6 +10,7 @@
 // it is always loaded, wherever it ended up. Untouched items come and go with
 // their chunk.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { hashInts, rng } from './rng.js';
 import { restockEpoch } from './env.js';
 import { GeoBuilder } from './geo.js';
@@ -885,6 +886,21 @@ function signTexture(label, color, line2) {
 }
 
 
+// The aisle signs' shared pieces: both faces in one geometry, both cables in another.
+let _signFaces = null, _signCables = null, _cableMat = null;
+function signFaces() {
+  if (_signFaces) return _signFaces;
+  const front = new THREE.PlaneGeometry(3.2, 1.2), back = new THREE.PlaneGeometry(3.2, 1.2);
+  front.translate(0, 0, 0.01); back.rotateY(Math.PI); back.translate(0, 0, -0.01);
+  return (_signFaces = mergeGeometries([front, back]));
+}
+function signCables() {
+  if (_signCables) return _signCables;
+  const parts = [-1.3, 1.3].map((dx) => new THREE.BoxGeometry(0.03, 120, 0.03).translate(dx, 60.6, 0));
+  return (_signCables = mergeGeometries(parts));
+}
+function signCableMat() { return _cableMat || (_cableMat = new THREE.MeshBasicMaterial({ color: 0x3a3c40, fog: true })); }
+
 export class World {
   constructor(scene) {
     this.scene = scene;
@@ -902,6 +918,10 @@ export class World {
     this.focusX = 0; this.focusZ = 0;
     this.inst = new Map(); this.itemsDirty = true;
     this.version = 0; // bumps whenever anything solid moves (staff path cache)
+    // Where things changed since (x0, z0, x1, z1, at version), so the staff's
+    // path cache only forgets the spots that changed, not everything (1.2).
+    this.changed = []; this.changedBase = 0;
+    this._stamp = 0; // forItems: a number per call instead of a new Set
   }
 
   reset(seed) {
@@ -910,6 +930,7 @@ export class World {
     if (this.shadowInst) { this.group.remove(this.shadowInst); this.shadowInst.dispose(); this.shadowInst = null; }
     this.inst.clear(); this.itemsDirty = true; this._lastFocus = null;
     this.chunks.clear(); this.items.clear(); this.mods.clear(); this.modTime.clear(); this.grid.clear();
+    this.changed.length = 0; this.changedBase = this.version + 1; this.version++;
     this.seed = seed >>> 0;
     this.day = 1; this.epoch = 1;
   }
@@ -949,25 +970,30 @@ export class World {
 
   _load(cx, cz) {
     const gen = new ChunkGen(this, cx, cz).run().moreFood().materials();
-    this.version++;
+    this.version++; this._changed(cx * CHUNK - 1, cz * CHUNK - 1, (cx + 1) * CHUNK + 1, (cz + 1) * CHUNK + 1);
     const ch = { cx, cz, key: World.key(cx, cz), gen, boxes: gen.boxes, skylights: gen.skylights, itemIds: [], mesh: null, sign: null };
+    this._quiet = true;
     gen.items.forEach((spec, i) => {
       const id = ch.key + ':' + i;
       ch.itemIds.push(id);
       if (this.mods.has(id)) return; // modded items are already loaded
       this._addItem(id, spec);
     });
+    this._quiet = false;
     this.chunks.set(ch.key, ch);
     return ch;
   }
 
   _unload(ch) {
     this._dropVisual(ch);
+    this._changed(ch.cx * CHUNK - 1, ch.cz * CHUNK - 1, (ch.cx + 1) * CHUNK + 1, (ch.cz + 1) * CHUNK + 1);
+    this._quiet = true;
     for (const id of ch.itemIds) {
       if (this.mods.has(id)) continue;
       const it = this.items.get(id);
       if (it) { this._gridRemove(it); this.items.delete(id); this.itemsDirty = true; }
     }
+    this._quiet = false; this.version++;
     this.chunks.delete(ch.key);
   }
 
@@ -985,14 +1011,11 @@ export class World {
     const sec = SECTIONS[ch.gen.section];
     const tex = signTexture(sec.label, sec.color, 'AISLE ' + (ch.cx >= 0 ? 'E' : 'W') + Math.abs(ch.cx) + ' · ' + (ch.cz >= 0 ? 'S' : 'N') + Math.abs(ch.cz));
     const mat = new THREE.MeshBasicMaterial({ map: tex, fog: true });
-    // Two faces back to back, so the text reads the right way from both sides.
-    const sign = new THREE.Group(), plane = new THREE.PlaneGeometry(3.2, 1.2);
-    const front = new THREE.Mesh(plane, mat), back = new THREE.Mesh(plane, mat);
-    front.position.z = 0.01; back.position.z = -0.01; back.rotation.y = Math.PI;
-    sign.add(front, back);
-    // it hangs from two cables that disappear up into the fog
-    const cable = new THREE.Mesh(new THREE.BoxGeometry(0.03, 120, 0.03), new THREE.MeshBasicMaterial({ color: 0x3a3c40, fog: true }));
-    for (const dx of [-1.3, 1.3]) { const c = cable.clone(); c.position.set(dx, 60.6, 0); sign.add(c); }
+    // Two faces back to back, so the text reads the right way from both sides,
+    // and the two cables it hangs from, up into the fog. (1.2: each pair is one
+    // shared geometry, so a sign is 2 draws instead of 4; it looks the same.)
+    const sign = new THREE.Group();
+    sign.add(new THREE.Mesh(signFaces(), mat), new THREE.Mesh(signCables(), signCableMat()));
     sign.position.set(ch.cx * CHUNK + 6, 4.9, ch.cz * CHUNK + 0.6);
     this.group.add(sign);
     ch.sign = sign;
@@ -1016,7 +1039,7 @@ export class World {
     if (ch.shadow) { this.group.remove(ch.shadow); ch.shadow.geometry.dispose(); ch.shadow = null; }
     if (ch.sky) { for (const m of ch.sky) { this.group.remove(m); m.geometry.dispose(); } ch.sky = null; }
     if (ch.screens) { this.group.remove(ch.screens); const m = ch.screens.children[0]; m.material.map.dispose(); m.material.dispose(); m.geometry.dispose(); ch.screens = null; }
-    if (ch.sign) { this.group.remove(ch.sign); const m = ch.sign.children[0]; m.material.map.dispose(); m.material.dispose(); m.geometry.dispose(); ch.sign = null; }
+    if (ch.sign) { this.group.remove(ch.sign); const m = ch.sign.children[0]; m.material.map.dispose(); m.material.dispose(); ch.sign = null; } // (the geometry is shared)
   }
 
   // Open skylights (garden centres) near a point.
@@ -1077,18 +1100,27 @@ export class World {
     return { x0: it.x - w, x1: it.x + w, z0: it.z - w, z1: it.z + w, y0: it.y, y1: it.y + s.h, item: it };
   }
 
+  // Note a changed rectangle for the staff's path cache (and bump the version).
+  _changed(x0, z0, x1, z1) {
+    if (this._quiet) return; // a whole chunk loading or unloading: noted once, for the chunk
+    if (this.changed.length >= 1600) { this.changedBase = this.version; this.changed.length = 0; this.changedLost = (this.changedLost || 0) + 1; } // too many: they forget everything
+    this.changed.push(x0, z0, x1, z1);
+  }
   _gridAdd(it) {
     this.version++;
     if (!this.active(it)) { it.cells = null; return; }
     const b = this.itemBox(it);
+    this._changed(b.x0, b.z0, b.x1, b.z1);
     it.cells = [];
     for (let i = Math.floor(b.x0 / CELL); i <= Math.floor(b.x1 / CELL); i++) for (let j = Math.floor(b.z0 / CELL); j <= Math.floor(b.z1 / CELL); j++) {
       const k = i + ',' + j; let s = this.grid.get(k); if (!s) this.grid.set(k, s = new Set()); s.add(it); it.cells.push(k);
     }
+    it.cellBox = { x0: b.x0, z0: b.z0, x1: b.x1, z1: b.z1 };
   }
   _gridRemove(it) {
     this.version++;
     if (!it.cells) return;
+    { const b = it.cellBox || this.itemBox(it); this._changed(b.x0, b.z0, b.x1, b.z1); }
     for (const k of it.cells) { const s = this.grid.get(k); if (s) { s.delete(it); if (!s.size) this.grid.delete(k); } }
     it.cells = null;
   }
@@ -1216,11 +1248,24 @@ export class World {
   }
 
   forItems(x0, z0, x1, z1, fn) {
-    const seen = new Set();
-    for (let i = Math.floor(x0 / CELL); i <= Math.floor(x1 / CELL); i++) for (let j = Math.floor(z0 / CELL); j <= Math.floor(z1 / CELL); j++) {
-      const s = this.grid.get(i + ',' + j); if (!s) continue;
-      for (const it of s) if (!seen.has(it)) { seen.add(it); fn(it); }
+    // each item once, even when it spans several cells (a stamp per call: no
+    // Set to allocate; a call made from inside another one's callback uses a Set)
+    if (this._inFor) {
+      const seen = new Set();
+      for (let i = Math.floor(x0 / CELL); i <= Math.floor(x1 / CELL); i++) for (let j = Math.floor(z0 / CELL); j <= Math.floor(z1 / CELL); j++) {
+        const s = this.grid.get(i + ',' + j); if (!s) continue;
+        for (const it of s) if (!seen.has(it)) { seen.add(it); fn(it); }
+      }
+      return;
     }
+    const st = ++this._stamp;
+    this._inFor = true;
+    try {
+      for (let i = Math.floor(x0 / CELL); i <= Math.floor(x1 / CELL); i++) for (let j = Math.floor(z0 / CELL); j <= Math.floor(z1 / CELL); j++) {
+        const s = this.grid.get(i + ',' + j); if (!s) continue;
+        for (const it of s) if (it._st !== st) { it._st = st; fn(it); }
+      }
+    } finally { this._inFor = false; }
   }
 
   // Calls fn(box) for every solid box overlapping the rectangle. Flat items
@@ -1294,7 +1339,7 @@ export class World {
     }
     const sp = items[+m[3]];
     if (m[4] !== undefined && !(sp && sp.mat)) return null; // only building materials grow back as new pieces
-    return sp ? { t: sp.t, k: sp.k === 'i' ? 'i' : 'f' } : null;
+    return sp ? { t: sp.t, k: sp.k === 'i' ? 'i' : 'f', x: sp.x, y: sp.y, z: sp.z } : null;
   }
 
   // Everything modded, for a newcomer.

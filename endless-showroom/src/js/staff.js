@@ -46,7 +46,7 @@ export class StaffSim {
     this.world = world;
     this.staff = new Map();
     this.cache = new Map();
-    this.cacheVer = -1;
+    this.cacheVer = -1; this.readTo = 0; this.cacheBase = -1; this.cacheLost = undefined;
     this.spawnT = 0;
     this.noises = []; // { x, z, r, t } whistles and the like
   }
@@ -56,7 +56,7 @@ export class StaffSim {
   // Standing surfaces in a grid cell: heights you could stand at with 1.9 m
   // of headroom. climb = the surface is the top of something climbable.
   surfaces(cx, cz, hc = 1) {
-    if (this.cacheVer !== this.world.version) { this.cache.clear(); this.cacheVer = this.world.version; }
+    if (this.cacheVer !== this.world.version) this._forget();
     const k = (cx * 100003 + cz) * 4 + hc, BODY_H = NEED[hc];
     let v = this.cache.get(k);
     if (v === undefined) {
@@ -82,6 +82,25 @@ export class StaffSim {
       if (this.cache.size > 120000) this.cache.clear();
     }
     return v;
+  }
+
+  // Something solid moved, or a chunk came or went: forget only the cells
+  // around what changed (1.2; it used to forget every cell, so the staff
+  // planned every path from scratch while anyone was building).
+  _forget() {
+    const w = this.world, ch = w.changed;
+    if (this.cacheLost !== w.changedLost || this.cacheBase !== w.changedBase || this.readTo > ch.length) { this.cache.clear(); this.readTo = 0; }
+    else {
+      const pad = RADIUS + 0.05;
+      for (let i = this.readTo; i < ch.length; i += 4) {
+        const a0 = Math.floor((ch[i] - pad) / CELL), b0 = Math.floor((ch[i + 1] - pad) / CELL), a1 = Math.floor((ch[i + 2] + pad) / CELL), b1 = Math.floor((ch[i + 3] + pad) / CELL);
+        if ((a1 - a0 + 1) * (b1 - b0 + 1) > 6000) { this.cache.clear(); break; }
+        for (let a = a0; a <= a1; a++) for (let b = b0; b <= b1; b++) { const k = (a * 100003 + b) * 4; this.cache.delete(k); this.cache.delete(k + 1); this.cache.delete(k + 2); this.cache.delete(k + 3); }
+      }
+    }
+    this.readTo = ch.length; this.cacheBase = w.changedBase; this.cacheLost = w.changedLost; this.cacheVer = w.version;
+    // the list is only kept until every reader has caught up
+    if (ch.length > 800 && this.readTo === ch.length) { ch.length = 0; this.readTo = 0; }
   }
 
   // The surface index in a cell nearest to (and not above) height y.

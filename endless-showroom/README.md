@@ -20,11 +20,11 @@ the other arcade games use) when you choose an online mode, and like the
 other games it needs an online Arcade account.
 
 - **Play Online**: joins the first public store with room (`pub1` to `pub20`,
-  8 players each). A public store is **this week's store**: the same store
-  for everyone from the start of Sunday to the end of Saturday (Sydney time),
-  and what's built in it stays when everyone leaves. It's only reset at the
-  start of Sunday, when everyone in it moves into the new week's fresh store.
-  Public stores always run normal-length days.
+  8 players each). Since 1.2 a public store **never resets**: it's saved on
+  the arcade's server every 15 seconds, and when the last player leaves, the
+  next one in carries on from exactly the same day and time of day (the
+  store's clock stands still while it's empty). Public stores always run the
+  short days.
 - **Create Private Room**: makes a 4-letter code to give to friends.
 - **Join**: type a friend's code.
 - **New Solo Store**: your own store, no connection needed. It's saved
@@ -73,8 +73,9 @@ a controller it's Y.
 | Day | 6 minutes, 08:00 to 22:00 on the clock. The staff are harmless. The last 5 seconds tick down. |
 | Night | 5 minutes on the first night, and **4 seconds longer every night after** (day 10: 5 min 36 s; day 60: about 9 minutes). 22:00 to 08:00 on the clock. The overhead lights cut out with a clunk, and only the emergency lights (orange) and lamps stay lit. |
 | Restocks | **Food and first aid restock every 2 nights** (the mornings of day 3, 5, 7 and so on), not daily; the day's title says "Restock day". Food is plentiful: wherever the store stocks something, there are usually four of it together. |
+| Growing back | Since 1.2, anything taken also **grows back in its spot 2 hours later**: real hours of the store being open (`clock.rt`, which stands still while a public store is empty). It doesn't if what it stood on has been taken away. **Stacks of crates and pallets** (1 or 2 per aisle, 2 to 3 in storage and the warehouse streets) grow back the same way: once one has been carried off, a new piece appears in its spot 2 hours after it was first moved, if the spot is clear (ids `<chunk>:<i>:r<n>`; at most 40 per spot and 600 per store). The host decides both. |
 
-There are no special days: just day and night, every day. The screen shows the day number only. The real week only matters for public stores, whose builds reset at the start of Sunday in Sydney.
+There are no special days: just day and night, every day. The screen shows the day number only.
 
 Each day of a seven-day cycle has its own gentle tune, and now and then one
 plays a livelier take on it. Night has a low drone; being hunted brings in a pulsing chase
@@ -402,32 +403,35 @@ A newcomer asks the host for that list when they join. When the host leaves,
 the next-oldest player already has everything and takes over the clock and
 the staff.
 
-**Public stores keep their builds all week**, with no server storage:
+**Public stores are saved for good** (1.2), on the arcade's Worker
+(`/ct/get?r=pub3`, `/ct/put`, in the site repo's `realtime-worker/`):
 
-- The seed comes from the room and the week (the Sunday it started on, in
-  Sydney time), so a public store that empties comes back as the same store.
-- Every player's browser keeps a copy of the week's store (every change, and
-  the day and time) every 20 seconds and when they leave. The first person
-  back into an empty store brings their copy back. Someone joining a store
-  that has people in it doesn't save over their copy until they've offered it
-  to the host (or else their builds, not yet in the store, would be lost).
-- The host stamps every change with the time it was made. Someone joining
-  offers their copy to the host, which takes whatever it doesn't have, or
-  only has an older version of from a saved copy. A change made live while
-  the host has been there is never overridden by an offered copy. So builds
-  come back as long as anyone who saw them comes back during the week.
-- An offered copy is checked: it can move things and mark them taken, but
-  every piece must be the kind the store itself put there (the host
-  regenerates the chunk from the seed to check), anything new must have come
-  out of a gift box, and the day it brings can't be further on than real time
-  this week allows.
-- Each player's presence carries the week of the store they're in. Someone
-  whose clock has already reached Sunday, joining a host that hasn't opened
-  the new store yet, takes on the host's store *and week*, so they still move
-  with everyone when the host opens it. A guest also moves when it sees the
-  host's presence switch to a newer week, in case the `rs` message is lost.
-- At the start of Sunday the host sends everyone the new week's seed (`rs`),
-  and everyone moves into the fresh store and throws away last week's copy.
+- Every public store has one fixed layout: the seed of the week of Sunday
+  22 November 2026 (`PUB_WEEK` in `net.js`), the week 1.1 last reset them, so
+  what was built that week is still there. Rooms are `es2-pub1`… (1.1 copies,
+  which still reset on Sunday, are on `es1`).
+- The host saves the whole store (every change, the day, the time of day, the
+  store's running time `rt` and the day length) every 15 s and when it
+  leaves (`keepalive` if the page is closing). Saving needs an online Arcade
+  account; the Worker keeps one save per store plus an hourly backup, and
+  refuses saves less than 2 s apart or over 1.9 MB. Food that's grown back
+  where the store put it, and fields at their usual value, are left out.
+- Whoever is first into an empty store loads the save before the store opens
+  (the loading screen says "Opening the store…"); until then it doesn't
+  answer anyone's `need`. A guest who joins gets the store from the host as
+  before, and only saves it (should it become host) once it has had all of it.
+- Every piece in a save is checked against the store's own layout (the host
+  regenerates the chunk from the seed): it can move things and mark them
+  taken, but every piece must be the kind the store put there, anything new
+  must have come out of a gift box, and regrown crates and pallets must be at
+  a stack's spot.
+- If the server can't be reached when a store opens, the opener uses its own
+  browser's copy (kept once a minute, as in 1.1), never saves over the
+  server, and keeps asking every 15 s; when the server answers, its store is
+  merged in and the day and time move on to it if it had got further.
+- Anyone joining still offers their own copy to the host (as in 1.1), which
+  takes only what it doesn't have or has an older version of. An offer never
+  changes the day.
 
 | Message | From | What |
 | --- | --- | --- |
@@ -442,8 +446,7 @@ the staff.
 | `pu` | anyone | shove a member of staff (to the host) |
 | `wh` | anyone | I whistled here, short or long (the host lets the staff hear it) |
 | `nz` | anyone | I made a noise with a toy here (the host lets the staff hear it) |
-| `of` | a newcomer to a public store | my saved copy of this week's store, to the host (in parts) |
-| `rs` | host | a new week: here's the fresh public store's seed |
+| `of` | a newcomer to a public store | my saved copy of the store, to the host (in parts) |
 | `need` / `full` | newcomer / host | the list of changes, in parts |
 
 Furniture and staff are cheap to draw: each furniture model (type and
@@ -491,7 +494,7 @@ cd tools && npm install && npm run build
 | `tools/build.mjs` | Builds the single-file `index.html` |
 | `tools/test.cjs` | Solo smoke test (see below) |
 | `tools/test-items.cjs` | Whistling, sitting, TV light, kicking a ball, noisy toys, no flying on a held piece, drop all, a tapped throw, a fast ball against a crate, a new store starting clean |
-| `tools/test-pub.cjs` | Public stores: this week's seed, builds surviving an empty store and merging back, the Sunday reset, forged copies rejected, a newcomer whose clock is a week ahead |
+| `tools/test-pub.cjs`, `tools/mock-ct.js` | Public stores (with a stand-in for the Worker's saves): the fixed layout and short days, a save every 15 s, a joiner on the host's day and time, the store, day and time coming back after it stood empty, a tab closing without warning, forged saves, an unreachable server, food and crates growing back |
 | `tools/test-mp.cjs`, `tools/mock-rt.js` | Two-player test with a stand-in realtime server |
 | `tools/shots.cjs` | Screenshots of the look: day, close-up, night, lamps, staff, third person, a grid pillar, a cafeteria hall, a warehouse street |
 | `tools/soak.cjs` | Runs through every day and night transition, including an old store's long nights, checking for errors |
@@ -547,7 +550,7 @@ place of the realtime server). It checks:
 
 - Not on the arcade site yet. It isn't linked from the site's game list.
 - Private rooms don't keep their builds: a private room's store lasts as long
-  as someone is in it (public stores keep theirs for the week).
+  as someone is in it (public stores keep theirs for good).
 - Staff don't pile on top of each other, and there are no special staff.
 - Lit screens glow, but lamps don't cast shadows.
 - Touch controls have only been checked in an emulated iPhone.

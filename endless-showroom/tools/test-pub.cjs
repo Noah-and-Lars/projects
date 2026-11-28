@@ -152,7 +152,7 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
     const w = __game.world, P = __game.P;
     const all = [...w.items.values()].filter((i) => i.k === 'i' && w.active(i) && /^-?\d+,-?\d+:\d+$/.test(i.id)).sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z));
     // one on the floor or a shelf, and one standing on a piece of furniture
-    const onFurn = (it) => { let f = null; w.forBoxes(it.x - 0.04, it.z - 0.04, it.x + 0.04, it.z + 0.04, (b) => { if (b.item && b.y1 <= it.y + 0.02 && b.y1 >= it.y - 0.04) f = b.item; }); let st = false; w.forBoxes(it.x - 0.04, it.z - 0.04, it.x + 0.04, it.z + 0.04, (b) => { if (!b.item && b.y0 <= it.y + 0.02 && b.y1 >= it.y - 0.04) st = true; }); return st || it.y < 0.05 ? null : f; };
+    const onFurn = (it) => { let f = null; w.forBoxes(it.x - 0.06, it.z - 0.06, it.x + 0.06, it.z + 0.06, (b) => { if (b.item && b.y1 <= it.y + 0.02 && b.y1 >= it.y - 0.12) f = b.item; }); let st = false; w.forBoxes(it.x - 0.06, it.z - 0.06, it.x + 0.06, it.z + 0.06, (b) => { if (!b.item && b.y0 <= it.y + 0.02 && b.y1 >= it.y - 0.12) st = true; }); return st || it.y < 0.05 ? null : f; };
     const plain = all.find((i) => !onFurn(i)), top = all.find((i) => onFurn(i) && !__game.TYPES[onFurn(i).t].heavy);
     const take = (it) => __game.hostTakeForTest(it.id);
     take(plain); if (top) take(top);
@@ -163,7 +163,7 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
     return { plain: plain.id, top: top ? top.id : null, gone };
   });
   // move the piece under the second one well away (as the host)
-  const moved = food.top && await E.evaluate((id) => { const w = __game.world, it = w.items.get(id); let f = null; w.forBoxes(it.x - 0.04, it.z - 0.04, it.x + 0.04, it.z + 0.04, (b) => { if (b.item && b.y1 <= it.y + 0.02 && b.y1 >= it.y - 0.04) f = b.item; }); if (!f) return false; return __game.hostMoveForTest(f.id, f.x + 12, f.z); }, food.top);
+  const moved = food.top && await E.evaluate((id) => { const w = __game.world, it = w.items.get(id); let f = null; w.forBoxes(it.x - 0.06, it.z - 0.06, it.x + 0.06, it.z + 0.06, (b) => { if (b.item && b.y1 <= it.y + 0.02 && b.y1 >= it.y - 0.12) f = b.item; }); if (!f) return false; return __game.hostMoveForTest(f.id, f.x + 12, f.z); }, food.top);
   await E.evaluate(() => { __game.clock.rt += 3600; __game.regrowForTest(); });
   const half = await E.evaluate((f) => __game.world.isGone(__game.world.items.get(f.plain)), food);
   await E.evaluate(() => { __game.clock.rt += 3700; __game.regrowForTest(); });

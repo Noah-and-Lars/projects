@@ -305,7 +305,7 @@ const liveIds = new Set(); // changed live while we've been here: an offered cop
 // offerSent: our saved copy has been offered to the host (or brought back
 // ourselves). Until then we don't save over it: the store we joined doesn't have
 // our builds in it yet, and saving it would lose them for good.
-let offered = false, offerSent = false, srvT = SAVE_EVERY, srvBusy = false;
+let offered = false, offerSent = false, srvT = SAVE_EVERY, srvBusy = false, localN = 0;
 // srv.save: what the server had when we opened the store (undefined: couldn't
 // reach it); srv.ok: we've heard from the server, so our saves can't wipe a
 // store we never loaded; srv.had: the server had a saved store.
@@ -321,7 +321,20 @@ async function srvFetch(tries) {
   return undefined;
 }
 const modsForSave = () => world.allMods().map(([id, st]) => [id, st.c ? Object.assign({}, st, { c: 0 }) : st]);
-function pubSnapshot() { return { v: 2, seed: world.seed >>> 0, day: clock.day, t: +clock.t.toFixed(1), rt: Math.floor(clock.rt), k: DAY_SCALE, at: Date.now(), mods: modsForSave() }; }
+// The server's copy is kept small, so a store that's played for months still
+// fits: food that's grown back where the store put it is left out (it's just
+// as the store makes it), and fields at their usual value aren't written.
+function compactMods() {
+  const out = [], gen = new Map();
+  for (const [id, st] of world.allMods()) {
+    if (st.k === 'i' && !st.g && !id.startsWith('gift:')) { const sp = world.genSpec(id, gen); if (sp && sp.t === st.t && Math.abs(sp.x - st.x) < 0.01 && Math.abs(sp.y - st.y) < 0.01 && Math.abs(sp.z - st.z) < 0.01) continue; }
+    const o = Object.assign({}, st);
+    for (const k of ['c', 'g', 'tl', 'd', 'w', 'v', 'r', 's']) if (!o[k]) delete o[k];
+    out.push([id, o]);
+  }
+  return out;
+}
+function pubSnapshot(small) { return { v: 2, seed: world.seed >>> 0, day: clock.day, t: +clock.t.toFixed(1), rt: Math.floor(clock.rt), k: DAY_SCALE, at: Date.now(), mods: small ? compactMods() : modsForSave() }; }
 function pubLoad() {
   try {
     const c = JSON.parse(localStorage.getItem(PUB_KEY + net.room) || 'null');
@@ -348,7 +361,7 @@ let waitingFull = false;
 function srvSave(leaving) {
   if (!canSaveStore() || (srvBusy && !leaving)) return;
   srvBusy = true;
-  const snap = pubSnapshot();
+  const snap = pubSnapshot(true);
   savePublic(net.room, snap, leaving).then((ok) => { if (ok) { srv.at = Date.now(); srv.n++; } }).finally(() => { srvBusy = false; });
 }
 // Every 15 s while we host a public store (and our own copy alongside).
@@ -356,7 +369,8 @@ function pubTick(dt) {
   if (!net.on || !net.isPublic || mode !== 'play') return;
   if ((srvT -= dt) > 0) return;
   srvT = SAVE_EVERY;
-  pubSave();
+  // our own copy once a minute (the server's every 15 s): writing a big store to this browser takes a moment
+  if (++localN % 4 === 0) pubSave();
   if (!net.isHost()) return;
   // couldn't reach the server when we opened the store: keep trying, then
   // bring in what it had (it never saves over a store it hasn't loaded)
@@ -429,7 +443,6 @@ function onOffer(from, p) {
   for (let i = 0; i < u.length; i += 80) net.send('w', { u: u.slice(i, i + 80) });
   if (u.length) toast(`Someone brought back ${u.length} change${u.length === 1 ? '' : 's'} to the store.`);
 }
-setInterval(() => { if (mode === 'play') pubSave(); }, 20000);
 addEventListener('pagehide', () => { if (mode === 'play') { pubSave(); srvSave(true); } });
 
 // ---------------------------------------------------------------- solo saves
@@ -772,7 +785,8 @@ let regrowT = 2;
 function standsOnSomething(it) {
   if (it.y < 0.05) return true;
   let ok = false;
-  world.forBoxes(it.x - 0.04, it.z - 0.04, it.x + 0.04, it.z + 0.04, (b) => { if (!ok && b.y0 <= it.y + 0.02 && b.y1 >= it.y - 0.04) ok = true; });
+  // (the same allowance the store uses when it puts food out: it can sit a little above the top it's on)
+  world.forBoxes(it.x - 0.06, it.z - 0.06, it.x + 0.06, it.z + 0.06, (b) => { if (!ok && b.y0 <= it.y + 0.02 && b.y1 >= it.y - 0.12) ok = true; });
   return ok;
 }
 function regrowTick(dt) {
