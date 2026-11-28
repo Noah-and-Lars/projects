@@ -486,7 +486,7 @@ window.GAMES = [
     keys: [['W A S D', 'Walk / strafe'], ['Mouse', 'Look around'], ['Left click', 'Break block / attack'], ['Right click', 'Place / use / eat'], ['Space', 'Jump'], ['Shift', 'Sneak / descend in water'], ['Ctrl', 'Sprint'],
            ['E', 'Inventory and crafting'], ['1–9', 'Hotbar'], ['Q', 'Drop item'], ['T', 'Chat'], ['F', 'Toggle fly (creative)'], ['Esc', 'Pause / options']],
     path: 'eaglercraft/index.html',
-    thumb: 'eaglercraft/thumb.svg',
+    thumb: 'eaglercraft/thumb.jpg',
     added: '2026-11-28T12:00:00+11:00',
     updated: '2026-11-28T12:00:00+11:00',
     stat() { return null; },
