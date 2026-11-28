@@ -224,7 +224,7 @@
   </div>
 </div>
 
-<script src="games.js?v=299"></script>
+<script src="games.js?v=300"></script>
 <script src="account.js?v=48"></script>
 <script src="assistant.js?v=7"></script>
 <script src="console.js?v=6"></script>
@@ -280,6 +280,20 @@ const FIRST = ['mile-zero', 'closing-time', 'chess', 'havoc-bay', 'turn-turn-tur
 const rank = g => { const i = FIRST.indexOf(g.id); return i < 0 ? FIRST.length + GAMES.indexOf(g) : i; };
 // 2026-11-12: game trailers. These games' opening cinematics play here (the game opened with ?trailer), not in the game
 const TRAILERS = new Set(['gamble-your-life-away', 'russian-roulette', 'turn-turn-turn']);
+// 2026-11-28: estimated minimum specs in the Details sheet, 4 tiers. New games: add the id to a tier (no tier = no section).
+const SPEC_TIERS = [
+  { ids: ['2048', 'block-drop', 'bull-run', 'chess', 'checkers', 'uno', 'space-strike', 'card-royale', 'sproutling'],
+    rows: [['Runs on', 'Almost anything (light 2D)'], ['Device', 'Laptop or Chromebook from 2014, phone from 2016'], ['Memory', '2 GB RAM'], ['Processor', 'Dual-core'], ['Graphics', 'Any']] },
+  { ids: ['krill-dive', 'snow-rider-3d', 'cube-tower-defense', 'gamble-your-life-away', 'russian-roulette', 'football', 'rocket-rivals'],
+    rows: [['Runs on', 'Most devices (light 3D)'], ['Device', 'Laptop from 2015, phone from 2018 (iPhone 8 or similar)'], ['Memory', '4 GB RAM'], ['Processor', 'Dual-core, 2 GHz'], ['Graphics', 'Intel HD 4000 or better']] },
+  { ids: ['cube-assault', 'siege', 'free-criminal', 'blockcraft', 'throttle-ridge', 'wrecking-shift', 'rillstone', 'closing-time', 'turn-turn-turn'],
+    rows: [['Runs on', 'Mid-range computers (full 3D)'], ['Device', 'Laptop from 2018 or newer'], ['Memory', '8 GB RAM'], ['Processor', 'Quad-core'], ['Graphics', 'Intel UHD 620 or better (Low settings, about 30 fps)']] },
+  { ids: ['storm-drop', 'havoc-bay', 'mile-zero', 'poly-racer'],
+    rows: [['Runs on', 'Strong computers (heavy 3D)'], ['Device', 'Recent laptop or desktop, phones may struggle'], ['Memory', '8 GB RAM (16 GB recommended)'], ['Processor', 'Quad-core, 2.5 GHz'], ['Graphics', 'Intel Iris Xe, Apple M1 or GTX 1050 or better']] },
+];
+const SPECS = {};
+for (const t of SPEC_TIERS) for (const id of t.ids) SPECS[id] = t.rows;
+const SPEC_TAIL = [['Browser', 'Chrome, Edge or Firefox 90+, Safari 15+'], ['Internet', 'About 5 Mbps for online play']];
 // 2026-11-19: some trailers are a video file instead of the game's own cinematic
 // Cloudflare Pages answers Range requests with the whole file, and Safari (Mac, iPhone, iPad) won't play an MP4 without
 // byte ranges, so browsers that play HLS natively get the same video cut into segments (trailers/<id>/index.m3u8)
@@ -683,6 +697,7 @@ function openSheet(id) {
         <div><dt>Updated</dt><dd class="f-upd"></dd></div>
       </dl>
       ${(g.keys || []).length ? '<div class="span"><h3>Controls</h3><ul class="keys"></ul></div>' : ''}
+      ${SPECS[g.id] ? '<div class="span"><h3>Minimum specs</h3><ul class="keys specs"></ul></div>' : ''}
       <div class="span upd-wrap"><h3>Recent updates</h3><ol class="ups"></ol></div>
     </div>`;
   s.querySelector('.sheet-art img').src = backdrop(g);
@@ -697,7 +712,12 @@ function openSheet(id) {
     const u = new URL(playUrl(g), location.href).href, b = e.currentTarget;
     (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => { b.innerHTML = I.check; setTimeout(() => { b.innerHTML = I.link; }, 1400); }, () => prompt('Copy this link', u));
   };
-  const keys = s.querySelector('.keys');
+  const specs = s.querySelector('.specs');
+  if (specs) for (const [k, v] of SPECS[g.id].concat(SPEC_TAIL)) {
+    const li = el('li', '', '<span></span><span></span>');
+    li.firstChild.textContent = k; li.lastChild.textContent = v; specs.append(li);
+  }
+  const keys = s.querySelector('.keys:not(.specs)');
   if (keys) for (const [k, what] of g.keys) {
     const li = el('li', '', '<span class="kbds"></span><span></span>');
     for (const part of k.split(' / ')) { const kb = el('kbd'); kb.textContent = part; li.firstChild.append(kb); }
