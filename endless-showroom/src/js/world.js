@@ -180,6 +180,33 @@ class ChunkGen {
     }
     return this;
   }
+  // Building materials (1.2): a few stacks of wooden crates and pallets on
+  // open floor, more of them in storage and the warehouse streets. A stack
+  // that's carried off grows back in its spot 2 hours (of the store being
+  // open) later: see World.regrowMaterials. Like the extra food they go on the
+  // end of the list, so every other id stays the same.
+  materials() {
+    const r = rng(hashInts(this.w.seed, this.cx, this.cz, 91));
+    this.matBase = this.items.length;
+    const n = this.section === 'warehouse' || this.section === 'storage' ? 2 + r.int(2) : r.chance(0.6) ? 1 : 0;
+    const solids = this.boxes.slice();
+    for (const it of this.items) if (it.k === 'f' && Object.prototype.hasOwnProperty.call(TYPES, it.t) && !TYPES[it.t].flat) solids.push(this.w.itemBox(it));
+    // (world coordinates; the stack keeps inside this chunk)
+    const free = (x0, z0, x1, z1) => x0 > this.ox + 0.6 && z0 > this.oz + 0.6 && x1 < this.ox + CHUNK - 0.6 && z1 < this.oz + CHUNK - 0.6 && !solids.some((b) => b.y0 < 2 && b.x1 > x0 && b.x0 < x1 && b.z1 > z0 && b.z0 < z1);
+    for (let k = 0; k < n; k++) for (let tries = 0; tries < 30; tries++) {
+      const pallets = r.chance(0.45), t = pallets ? 'pallet' : 'crate', T = TYPES[t];
+      const x = this.ox + 1.5 + r() * (CHUNK - 3), z = this.oz + 1.5 + r() * (CHUNK - 3);
+      // a walkway's width clear all round, so a stack never blocks a gap
+      const pad = 1.1, w = Math.max(T.w, T.d) / 2;
+      if (!free(x - w - pad, z - w - pad, x + w + pad, z + w + pad)) continue;
+      const count = pallets ? 4 + r.int(3) : 2 + r.int(2), v = r.int(16);
+      for (let i = 0; i < count; i++) this.items.push({ t, k: 'f', v, x, y: +(i * T.h).toFixed(3), z, r: 0, mat: 1 });
+      solids.push({ x0: x - w, x1: x + w, z0: z - w, z1: z + w, y0: 0, y1: count * T.h });
+      break;
+    }
+    return this;
+  }
+
   // Furniture and food in a quadrant frame.
   ff(f, type, u, v, rot, y = 0) { const [x, z] = f.pt(u, v); return this.furn(type, x, z, rot + f.k, y); }
   fd(f, stock, u, v, y) { const [x, z] = f.pt(u, v); this.food(this.r.pick(stock), x, z, y); }
@@ -921,7 +948,7 @@ export class World {
   }
 
   _load(cx, cz) {
-    const gen = new ChunkGen(this, cx, cz).run().moreFood();
+    const gen = new ChunkGen(this, cx, cz).run().moreFood().materials();
     this.version++;
     const ch = { cx, cz, key: World.key(cx, cz), gen, boxes: gen.boxes, skylights: gen.skylights, itemIds: [], mesh: null, sign: null };
     gen.items.forEach((spec, i) => {
@@ -1018,7 +1045,7 @@ export class World {
   _addItem(id, s) {
     // unknown kinds (an old save, a newer screen) are skipped
     if (s.k === 'f' ? !Object.prototype.hasOwnProperty.call(TYPES, s.t) : !Object.prototype.hasOwnProperty.call(ITEMS, s.t)) return null;
-    const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: ((s.tl | 0) % 3 + 3) % 3, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: Math.max(0, Math.min(15, s.s | 0)), mesh: null, cells: null };
+    const it = { id, t: s.t, k: s.k, v: s.v | 0, x: s.x, y: s.y, z: s.z, r: s.r | 0, tl: ((s.tl | 0) % 3 + 3) % 3, hp: s.hp != null ? s.hp : (s.k === 'f' ? TYPES[s.t].hp : 1), g: !!s.g, c: s.c || null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: Math.max(0, Math.min(15, s.s | 0)), w: Math.max(0, s.w | 0), mesh: null, cells: null };
     if (it.k === 'f' && !Object.prototype.hasOwnProperty.call(TYPES, it.t)) return null;
     if (it.k === 'i' && !Object.prototype.hasOwnProperty.call(ITEMS, it.t)) return null;
     this.items.set(id, it);
@@ -1238,12 +1265,12 @@ export class World {
   }
 
   // ---- Shared state (net.js keeps every screen's mods the same) ----
-  stateOf(it) { const s = { t: it.t, k: it.k, v: it.v, x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), r: it.r, tl: it.tl | 0, hp: Math.round(it.hp), g: it.g ? 1 : 0, c: it.c || 0, d: it.d }; if (it.o) s.o = it.o; if (it.a) s.a = 1; if (it.s) s.s = it.s; return s; }
+  stateOf(it) { const s = { t: it.t, k: it.k, v: it.v, x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), r: it.r, tl: it.tl | 0, hp: Math.round(it.hp), g: it.g ? 1 : 0, c: it.c || 0, d: it.d }; if (it.w) s.w = it.w; if (it.o) s.o = it.o; if (it.a) s.a = 1; if (it.s) s.s = it.s; return s; }
 
   applyState(id, s) {
     if (!s || typeof s !== 'object') return null;
     const fin = (v, lo, hi) => { v = +v; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : 0; };
-    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: fin(s.x, -1e6, 1e6), y: fin(s.y, 0, CEIL), z: fin(s.z, -1e6, 1e6), r: (s.r | 0) & 3, tl: ((s.tl | 0) % 3 + 3) % 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: Math.max(0, Math.min(15, s.s | 0)) };
+    const st = { t: String(s.t), k: s.k === 'i' ? 'i' : 'f', v: s.v | 0, x: fin(s.x, -1e6, 1e6), y: fin(s.y, 0, CEIL), z: fin(s.z, -1e6, 1e6), r: (s.r | 0) & 3, tl: ((s.tl | 0) % 3 + 3) % 3, hp: +s.hp || 0, g: !!s.g, c: s.c ? String(s.c) : null, d: s.d | 0, o: cleanQuat(s.o), a: !!s.a, s: Math.max(0, Math.min(15, s.s | 0)), w: Math.max(0, s.w | 0) };
     if (st.k === 'f' ? !Object.prototype.hasOwnProperty.call(TYPES, st.t) : !Object.prototype.hasOwnProperty.call(ITEMS, st.t)) return null;
     this.mods.set(id, st);
     if (+s.tm > 0) this.modTime.set(id, +s.tm);
@@ -1256,16 +1283,17 @@ export class World {
   // What the store itself put at an id (its kind and type, from the seed), or
   // null for an id it didn't generate. cache: chunk key -> items, for many lookups.
   genSpec(id, cache) {
-    const m = /^(-?\d+),(-?\d+):(\d+)$/.exec(String(id));
+    const m = /^(-?\d+),(-?\d+):(\d+)(?::r(\d{1,3}))?$/.exec(String(id));
     if (!m) return null;
     const key = m[1] + ',' + m[2];
     let items = cache && cache.get(key);
     if (!items) {
       const ch = this.chunks.get(key);
-      items = ch ? ch.gen.items : new ChunkGen(this, +m[1], +m[2]).run().moreFood().items;
+      items = ch ? ch.gen.items : new ChunkGen(this, +m[1], +m[2]).run().moreFood().materials().items;
       if (cache) cache.set(key, items);
     }
     const sp = items[+m[3]];
+    if (m[4] !== undefined && !(sp && sp.mat)) return null; // only building materials grow back as new pieces
     return sp ? { t: sp.t, k: sp.k === 'i' ? 'i' : 'f' } : null;
   }
 

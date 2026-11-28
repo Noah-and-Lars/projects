@@ -16,14 +16,14 @@
 //            c  chat;  x  someone was caught
 //            pu a shove, to the host;  wh  someone whistled
 //            nz someone made a noise with a toy (the host lets the staff hear it)
-//            of a newcomer to a public store offers its saved copy of this week's store, to the host
-//            rs the host opens this week's fresh public store (Sunday)
+//            of a newcomer to a public store offers its saved copy of the store, to the host
 //            need / full  a newcomer asks for, and gets, the store's changes
 const RT_LIB = 'https://noah-and-lars.github.io/projects/rt.js?v=2';
 const MAX = 8;
 const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const TEST = (new URLSearchParams(location.search).get('esroom') || '').replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase();
-const BASE = TEST ? 'es1-test-' + TEST : 'es1';
+// es2: 1.2's public stores never reset (1.1 copies, on es1, still reset on Sunday)
+const BASE = TEST ? 'es2-test-' + TEST : 'es2';
 
 export const cleanName = (n) => String(n || '').replace(/[^A-Za-z0-9_ .'-]/g, '').trim().slice(0, 16);
 export const cleanChat = (m) => String(m || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 120);
@@ -40,9 +40,11 @@ export function myName() {
   return 'Shopper';
 }
 
-// Public stores are this week's store: the same store for everyone from the
-// start of Sunday to the end of Saturday (Sydney time), then a fresh one.
-// storeWeek() is the day number of the Sunday the week started on.
+// Until 1.2 a public store was this week's store and reset on Sunday (Sydney
+// time). Since 1.2 they never reset: every public store keeps the layout it
+// had in the week of Sunday 22 November 2026 (PUB_WEEK), so what was built
+// then is still there. storeWeek() is the day number of a week's Sunday.
+export const PUB_WEEK = 20779;
 export function storeWeek(now = Date.now()) {
   let y, m, d, wd;
   try {
@@ -101,13 +103,12 @@ export function createNet(h) {
   }
 
   // Join a room. Resolves 'ok' (with api.seed set to the room's store) or 'full'.
-  function enter(name, fixedSeed, week = 0) {
+  function enter(name, fixedSeed) {
     return new Promise((res, rej) => {
       drop();
       const joinedAt = Date.now();
       api.seed = fixedSeed != null ? fixedSeed >>> 0 : (Math.random() * 4294967296) >>> 0;
       me = { id: myId, n: myName(), t: joinedAt, sd: api.seed, lk: myShirt() };
-      if (week) me.wk = week;
       ch = client.channel(BASE + '-' + name, { config: { broadcast: { self: false, ack: false }, presence: { key: myId } } });
       const c = ch;
       let done = false;
@@ -133,9 +134,7 @@ export function createNet(h) {
               me.t = Math.max(...others.map((m) => +m.t || 0)) + 1;
               members = listMembers().map((m) => (m.id === myId ? Object.assign({}, m, { t: me.t }) : m)).sort((a, b) => (a.t - b.t) || (a.id < b.id ? -1 : 1));
             }
-            // a public store's host may still be on an earlier week's store (it
-            // opens the new one at its next check): take on its week with its seed
-            if (members[0] && members[0].id !== myId && members[0].sd) { api.seed = members[0].sd >>> 0; me.sd = api.seed; if (me.wk && (members[0].wk | 0) > 0) me.wk = members[0].wk | 0; }
+            if (members[0] && members[0].id !== myId && members[0].sd) { api.seed = members[0].sd >>> 0; me.sd = api.seed; }
             track();
             hostId = members[0].id;
             res('ok');
@@ -164,7 +163,6 @@ export function createNet(h) {
       on('wh', (p) => h.whistle?.(p.f, p));
       on('nz', (p) => h.noise?.(p.f, p));
       on('of', (p) => { if (api.isHost()) h.offer?.(p.f, p); });
-      on('rs', (p) => { if (fromHost(p)) h.reset?.(p); });
       on('full', (p) => { if (fromHost(p) && p.to === myId) h.full?.(p); });
       ch.subscribe((st) => {
         if (st === 'SUBSCRIBED') track();
@@ -176,8 +174,7 @@ export function createNet(h) {
   api.quick = async () => {
     await getClient();
     for (let n = 1; n <= 20; n++) {
-      const week = storeWeek();
-      if (await enter('pub' + n, publicSeed('pub' + n, week), week) === 'ok') { api.on = true; api.room = 'pub' + n; api.isPublic = true; api.week = me.wk !== week || api.seed === publicSeed('pub' + n, week) ? me.wk : week - 1; return 'ok'; }
+      if (await enter('pub' + n, publicSeed('pub' + n, PUB_WEEK)) === 'ok') { api.on = true; api.room = 'pub' + n; api.isPublic = true; api.week = PUB_WEEK; return 'ok'; }
     }
     return 'full';
   };
@@ -199,4 +196,36 @@ export function createNet(h) {
   };
   api.leave = () => { drop(); api.on = false; api.room = null; };
   return api;
+}
+
+// ---- Public stores on the arcade server (1.2) ----
+// The host saves the whole public store to the arcade's Worker every 15 s and
+// when it leaves; whoever is first into an empty store loads it from there, so
+// the store carries on exactly where it was left, even if the last player's
+// tab closed without warning. Saving needs an online Arcade account (the same
+// one online play needs); loading doesn't.
+const CT_API = 'https://arcade-realtime.arcade-realtime.workers.dev/ct/';
+const acctToken = () => { try { const a = JSON.parse(localStorage.getItem('arcade-acct') || 'null'); return a && a.token ? String(a.token) : ''; } catch (_) { return ''; } };
+// Resolves the saved store ({ v: 2, seed, day, t, rt, k, mods, ... }), null for
+// a store nobody has saved yet, and rejects if the server can't be reached.
+export async function loadPublic(room) {
+  if (window.__ctServer) return window.__ctServer.get(room); // tests
+  const c = new AbortController(), to = setTimeout(() => c.abort(), 6000);
+  try {
+    const r = await fetch(CT_API + 'get?r=' + encodeURIComponent(room), { signal: c.signal, cache: 'no-store' });
+    if (!r.ok) throw new Error('ct ' + r.status);
+    const j = await r.json();
+    return j && j.s && typeof j.s === 'object' ? j.s : null;
+  } finally { clearTimeout(to); }
+}
+// Resolves true when the server kept it.
+export async function savePublic(room, save, leaving) {
+  if (window.__ctServer) return window.__ctServer.put(room, save); // tests
+  const tok = acctToken(); if (!tok) return false;
+  const body = JSON.stringify({ r: room, s: save });
+  try {
+    // a page that's closing only gets to finish small requests (keepalive is capped at 64 KB)
+    const r = await fetch(CT_API + 'put', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok }, body, keepalive: !!leaving && body.length < 63000 });
+    return r.ok;
+  } catch (_) { return false; }
 }
