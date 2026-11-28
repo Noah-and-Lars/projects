@@ -373,6 +373,8 @@ function buildRealFlora(M) {
       addTree(trees, 'hazel', x, z, .7 + R() * .6, R, .2);
     }
   }
+  // copses, lone trees and scrub in the open country (ground.js: Optimised plants the same ones)
+  if (typeof openCountryTrees === 'function') for (const [x, z, kind, sc] of openCountryTrees(M)) addTree(trees, kind === 'pine' ? 'pine' : kind === 'bush' ? 'hazel' : R() < .55 ? 'oak' : R() < .6 ? 'beech' : 'birch', x, z, kind === 'bush' ? sc + .3 : sc, R, kind === 'bush' ? .2 : .3);
   // fruit and shade trees in the gardens, yews in the churchyards
   for (const [gx2, gy2] of M.gardens || []) { if (R() < .35) continue; const x = gx2 * 1000 + (R() - .5) * 6, z = gy2 * 1000 + (R() - .5) * 6; if (terrainY(x, z) < 3 || onRoad(x, z) || nearHouse(x, z, 2.5)) continue; addTree(trees, R() < .6 ? 'oak' : R() < .5 ? 'birch' : 'beech', x, z, .42 + R() * .25, R); }
   for (const e of REAL.hedgeExtra || []) if (e.yew) addTree(trees, 'yew', e.x, e.z, .8 + R() * .3, R, .1); else if (e.tree) addTree(trees, e.tree, e.x, e.z, e.s, R);

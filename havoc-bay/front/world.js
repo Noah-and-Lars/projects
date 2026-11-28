@@ -279,6 +279,10 @@ function buildTrees(M) {
       (h > 160 || R() < .35 ? t.pine : t.broad).push([x, h - .3, z, R() * TAU, 1.0 + R() * .8]);
     }
   }
+  if (typeof openCountryTrees === 'function') for (const [x, z, kind, sc] of openCountryTrees(M)) { // copses, lone trees and scrub in the open (ground.js)
+    const key = Math.floor(x / T) + ',' + Math.floor(z / T); let t = tiles.get(key); if (!t) tiles.set(key, t = { pine: [], broad: [], cx: (Math.floor(x / T) + .5) * T, cz: (Math.floor(z / T) + .5) * T });
+    (kind === 'pine' ? t.pine : t.broad).push([x, terrainY(x, z) - .3, z, R() * TAU, kind === 'bush' ? sc * .45 : sc * 1.2]);
+  }
   WORLD.trees = [];
   for (const t of tiles.values()) for (const kind of ['pine', 'broad']) {
     const list = t[kind]; if (!list.length) continue;

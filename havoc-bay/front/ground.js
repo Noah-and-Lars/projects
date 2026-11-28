@@ -190,3 +190,21 @@ function optHedgesBuild(M) {
   OHEDGE.count = [...groups.values()].reduce((a, g) => a + g.m.length, 0);
 }
 function optHedgesUpdate(cam) { for (const p of OHEDGE.patches) p.im.visible = Math.hypot(p.x - cam.x, p.z - cam.z) < OHEDGE.R; }
+
+/* Trees in the open country (both graphics levels plant these): copses where a slow noise field rises, lone trees dotted over pasture and
+   hillside, and scrub on rough slopes. Kept off fields (their edges have hedgerow trees already), roads, compounds, villages, airfields,
+   beaches and cliffs. Returns [x, z, kind ('broad' | 'pine' | 'bush'), scale]. */
+function openCountryTrees(M) {
+  if (M._openTrees) return M._openTrees;
+  const out = [], R = rng((M.seed || 1) * 13 + 611), frames = farmFrames(M), WX = GW * CELL, WZ = GH * CELL, S = 40;
+  const zones = M.zones.concat(M.towns.map(t => t.zone)), inZone = (x, z) => zones.some(zn => { const dx = x / 1000 - zn.x, dz = z / 1000 - zn.y, c = Math.cos(zn.ang || 0), s = Math.sin(zn.ang || 0); return Math.abs(dx * c + dz * s) < zn.hx + .04 && Math.abs(-dx * s + dz * c) < zn.hy + .04; });
+  const ok = (x, z) => { const h = terrainY(x, z); if (h < 5 || h > 340 || inForest(x, z)) return 0; const sl = Math.hypot(terrainY(x + 4, z) - terrainY(x - 4, z), terrainY(x, z + 4) - terrainY(x, z - 4)) / 8; if (sl > .48) return 0;
+    if (onRoad(x, z) && roadNear(x, z)) return 0; if (inAirfield(x, z, 40) || inZone(x, z) || cropAtFrames(frames, x, z)) return 0; return 1 + sl; };
+  for (let z = S; z < WZ - S; z += S) for (let x = S; x < WX - S; x += S) {
+    const copse = fbm(x * .0032, z * .0032, (M.seed || 1) + 611, 3), rough = fbm(x * .01, z * .01, (M.seed || 1) + 612, 2);
+    if (copse > .3) { for (let k = 0; k < 5; k++) { if (R() > .72) continue; const px = x + (R() - .5) * S, pz = z + (R() - .5) * S, o = ok(px, pz); if (!o) continue; out.push([px, pz, terrainY(px, pz) > 170 || R() < .2 ? 'pine' : R() < .25 ? 'bush' : 'broad', .75 + R() * .5]); } continue; }
+    if (R() < .05) { const px = x + (R() - .5) * S, pz = z + (R() - .5) * S; if (ok(px, pz)) out.push([px, pz, terrainY(px, pz) > 200 ? 'pine' : 'broad', .85 + R() * .5]); } // a lone tree
+    if (rough > .15 && R() < .12) { const px = x + (R() - .5) * S, pz = z + (R() - .5) * S, o = ok(px, pz); if (o > 1.1) out.push([px, pz, 'bush', .5 + R() * .5]); } // scrub on the rough ground
+  }
+  return M._openTrees = out;
+}
