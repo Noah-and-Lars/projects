@@ -576,25 +576,26 @@ function buildGrassF() {
   makeFloraTextures();
   // the ground's grass albedo, linear: what the terrain shader makes of its grass texture
   const base = [.1, .135, .036];
-  const near = new THREE.InstancedMesh(bladeClump(9, 5, .2, .5, .16, .05), grassMat(base, { ring: [-1, 0, 20, 27], dry: 1 }), 16000);
+  const NEAR_MAX = 22000, FAR_MAX = 56000; // (blade clumps out to 36 m; cards from 28 m to 190 m)
+  const near = new THREE.InstancedMesh(bladeClump(9, 5, .2, .5, .16, .05), grassMat(base, { ring: [-1, 0, 30, 36], dry: 1 }), NEAR_MAX);
   const P = []; const card = a => { const c = Math.cos(a), s = Math.sin(a); return [[-c * .38, 0, -s * .38, 0, 0], [c * .38, 0, s * .38, 1, 0], [c * .38, .42, s * .38, 1, 1], [-c * .38, 0, -s * .38, 0, 0], [c * .38, .42, s * .38, 1, 1], [-c * .38, .42, -s * .38, 0, 1]]; };
   for (const a of [0, 1.05, 2.1]) P.push(...card(a));
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P.flatMap(p => [p[0], p[1], p[2]]), 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(P.flatMap(p => [p[3], p[4]]), 2)); g.setAttribute('normal', new THREE.Float32BufferAttribute(P.flatMap(() => [0, 1, 0]), 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(P.flatMap(p => { const k = .55 + p[4] * .75; return [k, k, k]; }), 3));
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P.flatMap(p => [p[0], p[1], p[2]]), 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(P.flatMap(p => [p[3], p[4]]), 2)); g.setAttribute('normal', new THREE.Float32BufferAttribute(P.flatMap(() => [0, 1, 0]), 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(P.flatMap(p => { const k = .45 + p[4] * 1.05; return [k, k, k]; }), 3)); // dark at the root, light at the tips
   if (!FL.bladeTex) { // finer blades for the far cards, white so the material colour shows through
     const cv = canvasOf(128), gg = cv.getContext('2d'), R = rng(31);
     for (let k = 0; k < 46; k++) { const x = 4 + R() * 120, h = 50 + R() * 76, bend = (R() - .5) * 30, w = 1.2 + R() * 1.8, v = 200 + R() * 55 | 0; gg.fillStyle = `rgb(${v},${v},${v})`; gg.beginPath(); gg.moveTo(x - w, 128); gg.quadraticCurveTo(x + bend * .3, 128 - h * .6, x + bend, 128 - h); gg.quadraticCurveTo(x + bend * .3 + w * .3, 128 - h * .6, x + w, 128); gg.fill(); }
     FL.bladeTex = alphaMips(cv, .5);
   }
-  const far = new THREE.InstancedMesh(g, grassMat(base, { ring: [18, 25, 62, 80], dry: 1, map: FL.bladeTex }), 26000);
+  const far = new THREE.InstancedMesh(g, grassMat(base, { ring: [28, 36, 165, 190], dry: 1, map: FL.bladeTex }), FAR_MAX);
   const fern = new THREE.InstancedMesh((() => { const f = new FG(), nf = p => v3norm([p[0], 1.2, p[2]]); for (let k = 0; k < 5; k++) { const a = k / 5 * TAU + .3, d = [Math.cos(a), 0, Math.sin(a)], up = v3norm([d[0], .9, d[2]]), side = [-d[2], 0, d[0]]; leafCard(f, v3add([0, 0, 0], up, .5), up, side, .8, 1.1, FC.fern, nf, p => .6 + p[1] * .5, [1, 1, 1], .25); } return f.geo(); })(), floraMat(FL.leaf, new THREE.Vector2(0, 1e9), { alpha: .45, wind: .03 }), 3000);
   const bush = new THREE.InstancedMesh(floraModels().hazel.near.leaf, floraMat(FL.leaf, new THREE.Vector2(0, 1e9), { alpha: .45, wind: .02 }), 900);
   const rockG = new THREE.IcosahedronGeometry(1, 1); { const p = rockG.attributes.position, Rr = rng(9); for (let i = 0; i < p.count; i++) { const k = .75 + Rr() * .5; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k * .7, p.getZ(i) * k); } rockG.computeVertexNormals(); }
   const rocks = new THREE.InstancedMesh(rockG, new THREE.MeshStandardMaterial({ map: TEX.rock, roughness: .95 }), 1600);
-  const flowers = new THREE.InstancedMesh(meadowGeo('flower', 3), grassMat([1, 1, 1], { ring: [-1, 0, 22, 27], dry: 0, noTone: true }), 2500);
-  const heads = new THREE.InstancedMesh(meadowGeo('stalk', 4), grassMat([1, 1, 1], { ring: [-1, 0, 22, 27], dry: 1 }), 3500);
+  const flowers = new THREE.InstancedMesh(meadowGeo('flower', 3), grassMat([1, 1, 1], { ring: [-1, 0, 30, 36], dry: 0, noTone: true }), 4000);
+  const heads = new THREE.InstancedMesh(meadowGeo('stalk', 4), grassMat([1, 1, 1], { ring: [-1, 0, 30, 36], dry: 1 }), 5500);
   for (const im of [flowers, heads]) im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(im.instanceMatrix.count * 3), 3);
   for (const im of [near, far, fern, bush, rocks, flowers, heads]) { im.frustumCulled = false; im.count = 0; im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); WORLD.group.add(im); }
-  near.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(16000 * 3), 3); far.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(26000 * 3), 3);
+  near.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(NEAR_MAX * 3), 3); far.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(FAR_MAX * 3), 3);
   fern.castShadow = bush.castShadow = rocks.castShadow = true; rocks.receiveShadow = fern.receiveShadow = bush.receiveShadow = true;
   FL.grass = { near, far, fern, bush, rocks, flowers, heads, lastN: new V3(1e9, 0, 1e9), lastF: new V3(1e9, 0, 1e9) };
 }
@@ -630,7 +631,7 @@ function updateGrassF(cam) {
   const G = FL.grass; if (!G) return;
   const dummy = new THREE.Object3D(), col = new THREE.Color();
   if (Math.hypot(cam.x - G.lastN.x, cam.z - G.lastN.z) > 3.5) { // blades
-    G.lastN.copy(cam); const S = .46, RAD = 28, im = G.near, cx = Math.floor(cam.x / S), cz = Math.floor(cam.z / S), r = Math.ceil(RAD / S), MAX = im.instanceMatrix.count, MF = G.flowers.instanceMatrix.count, MH = G.heads.instanceMatrix.count; let n = 0, nf = 0, nh = 0;
+    G.lastN.copy(cam); const S = .46, RAD = 36, im = G.near, cx = Math.floor(cam.x / S), cz = Math.floor(cam.z / S), r = Math.ceil(RAD / S), MAX = im.instanceMatrix.count, MF = G.flowers.instanceMatrix.count, MH = G.heads.instanceMatrix.count; let n = 0, nf = 0, nh = 0;
     for (let j = -r; j <= r && n < MAX; j++) for (let i = -r; i <= r && n < MAX; i++) {
       const gi = cx + i, gj = cz + j, x = (gi + hash2(gi, gj, 1)) * S, z = (gj + hash2(gi, gj, 2)) * S; if (Math.hypot(x - cam.x, z - cam.z) > RAD) continue;
       const w = grassKind(x, z); if (!w || hash2(gi, gj, 3) > w[0]) continue;
@@ -648,14 +649,18 @@ function updateGrassF(cam) {
   }
   if (Math.hypot(cam.x - G.lastF.x, cam.z - G.lastF.z) < 10) return;
   G.lastF.copy(cam);
-  { // far cards
-    const S = 1.0, RAD = 80, im = G.far, cx = Math.floor(cam.x / S), cz = Math.floor(cam.z / S), r = Math.ceil(RAD / S), MAX = im.instanceMatrix.count; let n = 0;
-    for (let j = -r; j <= r && n < MAX; j++) for (let i = -r; i <= r && n < MAX; i++) {
-      const gi = cx + i, gj = cz + j, x = (gi + hash2(gi, gj, 11)) * S, z = (gj + hash2(gi, gj, 12)) * S, d = Math.hypot(x - cam.x, z - cam.z); if (d > RAD || d < 16) continue;
-      const w = grassKind(x, z); if (!w || hash2(gi, gj, 13) > w[0]) continue;
-      const s = (.7 + hash2(gi, gj, 14) * .6) * (1 + d / 120);
-      dummy.position.set(x, terrainY(x, z) - .04, z); dummy.rotation.set(0, hash2(gi, gj, 15) * TAU, 0); dummy.scale.set(s, s * w[1] * (.8 + hash2(gi, gj, 16) * .4), s); dummy.updateMatrix(); im.setMatrixAt(n, dummy.matrix);
-      const k = hash2(gi, gj, 17) * .2 - .1; im.setColorAt(n, col.setRGB(w[2] * (1 + k), w[3] * (1 + k * .7), w[4] * (1 + k * .5))); n++;
+  { // far cards: two bands, the outer one sparser with bigger cards, so the meadow reads as full right out to 190 m
+    const im = G.far, MAX = im.instanceMatrix.count; let n = 0;
+    for (const [S, R0, R1, salt] of [[.85, 28, 72, 0], [1.7, 68, 190, 40]]) {
+      const cx = Math.floor(cam.x / S), cz = Math.floor(cam.z / S), r = Math.ceil(R1 / S);
+      for (let j = -r; j <= r && n < MAX; j++) for (let i = -r; i <= r && n < MAX; i++) {
+        const gi = cx + i, gj = cz + j, x = (gi + hash2(gi, gj, 11 + salt)) * S, z = (gj + hash2(gi, gj, 12 + salt)) * S, d = Math.hypot(x - cam.x, z - cam.z); if (d > R1 || d < R0) continue;
+        const w = grassKind(x, z); if (!w || hash2(gi, gj, 13 + salt) > w[0]) continue;
+        const s = (.8 + hash2(gi, gj, 14 + salt) * .5) * (S / .85) * (1 + d / 90);
+        dummy.position.set(x, terrainY(x, z) - .04, z); dummy.rotation.set(0, hash2(gi, gj, 15 + salt) * TAU, 0); dummy.scale.set(s, s * w[1] * (.85 + hash2(gi, gj, 16 + salt) * .35) * (1.15 - Math.min(.35, d / 500)), s); dummy.updateMatrix(); im.setMatrixAt(n, dummy.matrix);
+        const k = hash2(gi, gj, 17 + salt) * .24 - .12, patch = fbm(x * .035, z * .035, 91, 2), straw = hash2(gi, gj, 18 + salt) < .14 + Math.max(0, patch) * .35 ? 1 : 0; // straw-coloured seed heads in drifts
+        im.setColorAt(n, col.setRGB(w[2] * (1.2 + k + straw * .45), w[3] * (1.2 + k * .7 + straw * .22), w[4] * (1.12 + k * .5 - straw * .1))); n++;
+      }
     }
     im.count = n; im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true;
   }

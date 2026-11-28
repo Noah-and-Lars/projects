@@ -161,7 +161,7 @@ function terrainMaterial() {
         float dry = smoothstep(.42, .72, texture2D(tMacro, vWP.xz / 2300.0 + .37).r) * .8 + smoothstep(.6, .8, texture2D(tMacro, vWP.xz / 310.0 + .71).r) * .35;
         vec3 grassTone = mix(vec3(.7, .8, .56), vec3(1.16, 1.02, .62), clamp(dry, 0.0, 1.0)); // olive meadows with dry, straw-coloured patches
         tAlb *= mix(vec3(1.0), grassTone, w.x);
-        tAlb *= mix(1.0, .8, w.x * (1.0 - smoothstep(45.0, 85.0, dist))); // the ground between the grass blades is in their shade
+        tAlb *= mix(1.0, .74, w.x * (1.0 - smoothstep(150.0, 200.0, dist))); // the ground between the grass blades is in their shade (as far as the grass cards reach)
         { // farm fields: ploughed furrows, crop rows, fading out with distance so they don't shimmer
           float ft = vField.x, rowFade = 1.0 - smoothstep(120.0, 650.0, dist); vec2 fd = vec2(-sin(vField.y), cos(vField.y)); float fr = dot(vWP.xz, fd);
           float plough = 1.0 - smoothstep(.35, .6, abs(ft - 1.0)), crop = 1.0 - smoothstep(.35, .6, abs(ft - 3.0)), wheat = 1.0 - smoothstep(.35, .6, abs(ft - 2.0));

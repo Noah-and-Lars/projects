@@ -231,7 +231,8 @@ function buildTerrainMesh(M) {
   if (typeof gritColors === 'function') gritColors(col); // (chaos.js: a drier, muddier look)
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   g.setIndex(new THREE.BufferAttribute(idx, 1)); g.computeVertexNormals();
-  const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, map: noiseTex(256, 170, 255, 5) }));
+  WORLD.tcol = col; // (ground.js colours its grass from this)
+  const m = new THREE.Mesh(g, typeof optTerrainMat === 'function' ? optTerrainMat() : new THREE.MeshLambertMaterial({ vertexColors: true, map: noiseTex(256, 170, 255, 5) }));
   m.receiveShadow = true; m.name = 'terrain';
   return m;
 }
@@ -474,7 +475,7 @@ function buildWorld(M) {
 function updateWorldView(focus) {
   for (const t of WORLD.trees) { const d = Math.hypot(t.userData.cx - focus.x, t.userData.cz - focus.z); t.visible = t.userData.far ? d >= 1800 && d < 5200 : d < 1800; }
   for (const e of ENTS) if (e.model) { const d = Math.abs(e.pos.x - camera.position.x) + Math.abs(e.pos.z - camera.position.z); e.model.root.visible = !(e.kind === 'soldier' && e.veh) && d < (e.kind === 'soldier' ? 1100 : 6000); }
-  propsUpdate(camera.position);
+  propsUpdate(camera.position); if (typeof optGrassUpdate === 'function') optGrassUpdate(camera.position);
   sun.position.copy(focus).addScaledVector(SUN_DIR, 600); sun.target.position.copy(focus);
   if (WORLD.gfx === 'realistic') { const now = performance.now(); updateReal(focus, Math.min(.1, (now - (WORLD._t || now)) / 1000)); WORLD._t = now; }
   SKY.position.copy(camera.position); SKY.position.y = 0;
