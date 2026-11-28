@@ -52,7 +52,7 @@ function gritColors(col) { // the Optimised terrain's vertex colours, washed tow
   for (let i = 0; i < col.length; i += 3) { const l = col[i] * .299 + col[i + 1] * .587 + col[i + 2] * .114;
     col[i] = (col[i] + (l * 1.12 - col[i]) * .45) * .9; col[i + 1] = (col[i + 1] + (l * 1.0 - col[i + 1]) * .45) * .9; col[i + 2] = (col[i + 2] + (l * .8 - col[i + 2]) * .45) * .9; }
 }
-const GRIT_GLSL = '{ float gl_l = dot(gl_FragColor.rgb, vec3(.299, .587, .114)); gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_l * vec3(1.12, 1.0, .8), .42) * .93; }\n';
+const GRIT_GLSL = '{ float gritL = dot(gl_FragColor.rgb, vec3(.299, .587, .114)); gl_FragColor.rgb = mix(gl_FragColor.rgb, gritL * vec3(1.12, 1.0, .8), .42) * .93; }\n';
 if (typeof terrainMaterial === 'function') { const tm = terrainMaterial; terrainMaterial = function () { const m = tm.apply(this, arguments), ob = m.onBeforeCompile;
   m.onBeforeCompile = function (sh, r) { if (ob) ob.call(this, sh, r); sh.fragmentShader = sh.fragmentShader.replace('#include <dithering_fragment>', GRIT_GLSL + '#include <dithering_fragment>'); }; return m; }; }
 hemi.groundColor.set(0x4a4636); // (the light bounced off the ground: browner)
