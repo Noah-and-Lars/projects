@@ -1108,12 +1108,14 @@ function airBotThink(b, a, dt) {
   if (ai.t <= 0) {
     ai.t = .5 + Math.random() * .4;
     // enemy aircraft close by come first; then ground targets near the fight
-    if (ai.target && (!ai.target.alive || ai.target.pos.distanceTo(a.pos) > 6500)) ai.target = null;
+    if (ai.target && (!ai.target.alive || ai.target.pos.distanceTo(a.pos) > (ai.target.kind === 'gun' ? 22000 : 6500))) ai.target = null; // (a strike on a base is flown from home)
     const air = lockAir(a, a.vel.clone().normalize(), Math.PI, 3500);
     if (air && Math.random() < sk.aware) ai.target = air;
     else if (!ai.target || ai.target.kind === 'air' || Math.random() < .05) {
       const c = GAME.cps[targetCpFor(team)], cx = c.p.x * 1000, cz = c.p.y * 1000; let best = null, bs = 1e9;
-      for (const e of ENTS) { if (!e.alive || !hostile(team, e.team) || e.team === team || e.kind === 'air' || e.kind === 'gun' || (e.kind === 'soldier' && e.veh) || (e.kind === 'vehicle' && !e.driver && e.team !== 2)) continue; const d = Math.hypot(e.pos.x - cx, e.pos.z - cz); if (d > 1800) continue; const sc = d * (e.kind === 'vehicle' ? .5 : 1) * (e.team === 2 ? 1.6 : 1) + Math.random() * 300; if (sc < bs) { bs = sc; best = e; } }
+      if (a.cls === 'jet' && ai.striker === undefined) ai.striker = Math.random() < .35 && a.def.weapons.some(w => AMMO[w.k].look === 'bomb'); // some bomb-carrying jets go for the enemy base's guns: bombs there drain its side's strength
+      if (ai.striker && a.ammo.some((n, i) => n > 0 && AMMO[a.def.weapons[i].k].look === 'bomb')) for (const e of ENTS) if (e.kind === 'gun' && e.alive && e.team === 1 - team) { const sc = Math.random() * 400; if (sc < bs) { bs = sc; best = e; } }
+      for (const e of ENTS) { if (!e.alive || !hostile(team, e.team) || e.team === team || e.kind === 'air' || e.kind === 'gun' || (e.kind === 'soldier' && e.veh) || (e.kind === 'vehicle' && !e.driver && e.team !== 2) || best && best.kind === 'gun') continue; const d = Math.hypot(e.pos.x - cx, e.pos.z - cz); if (d > 1800) continue; const sc = d * (e.kind === 'vehicle' ? .5 : 1) * (e.team === 2 ? 1.6 : 1) + Math.random() * 300; if (sc < bs) { bs = sc; best = e; } }
       if (best && Math.random() < sk.aware) { ai.target = best; ai.settle = 2.5; }
     }
     ai.goHome = empty || a.parts.some(p => p.kind === 'fuse' && p.hp < p.max * .3) || (a.def.fuel0 && a.fuel < a.def.fuel0 * .2);

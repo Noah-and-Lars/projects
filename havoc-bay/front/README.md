@@ -237,6 +237,7 @@ Bots earn and spend SP the same way. Each bot has its own skill level, and bots 
 - A crew that runs out of shells drives back to the nearest checkpoint its side holds (or the base), restocks there and returns. An immobilised crew repairs as soon as it is not under fire.
 - With six or fewer guards left at a checkpoint, bots there go for the guards first.
 - When one of their side's checkpoints is being taken, about half the bots within 2.5 km of it go back to defend it.
+- About a third of bot jets that carry bombs fly strikes on the enemy base's howitzers from home, so bombs land in the base and drain its side's strength. They still break off to fight aircraft that come close.
 - Bot pilots will not dive below the height a pull-out needs, give up attack runs that are too steep, watch for rising ground, and come back if a dogfight drifts more than 3 km off the map.
 - Bot pilots flare late or not at all, and their aim wanders, more so right after they are hit.
 

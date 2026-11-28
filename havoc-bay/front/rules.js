@@ -15,7 +15,7 @@ function statOf(s) { return !s ? null : s.isPlayer ? PLAYER.st : s.bot ? s.bot.s
 function allStats() { return [PLAYER.st, ...GAME.botsList.map(b => b.st)].filter(Boolean); }
 
 function rulesStart() {
-  GAME.str = [STRENGTH, STRENGTH]; GAME.rulesT = 0; for (const b of GAME.M.bases) b.fires = []; GAME.warned = {}; GAME.baseHitT = [-99, -99];
+  GAME.str = [STRENGTH, STRENGTH]; GAME.baseDmg = [0, 0]; GAME.rulesT = 0; for (const b of GAME.M.bases) b.fires = []; GAME.warned = {}; GAME.baseHitT = [-99, -99];
   setHTML($('board'), ''); $('board').classList.add('hidden'); $('banner').innerHTML = '';
 }
 
@@ -59,7 +59,7 @@ function baseBlast(pt, A, owner) {
     if (owner.team === t) continue;
     const b = GAME.M.bases[t]; if (!inZone({ p: { zone: b.zone } }, pt)) continue;
     const n = Math.pow(A.splashDmg || 0, 1.5) / 1000; if (n < .05) return;
-    hurtStrength(t, n);
+    hurtStrength(t, n); GAME.baseDmg[t] += n;
     const by = creditOf(owner); if (by) awardSP(by, n * 3, 'base hit', n < 3);
     if (by && by.isPlayer && n >= 3) bigBanner('Base hit', `${TEAMS[t].name} strength −${Math.round(n)}`, 'base');
     if (t === GAME.team && GAME.time - GAME.baseHitT[t] > 20) { GAME.baseHitT[t] = GAME.time; showMsg('Our base is under attack!', 'Enemy fire is landing in the base and draining our strength.'); Sound.play('alarm'); }
