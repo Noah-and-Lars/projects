@@ -329,11 +329,11 @@ Red's main battle tank uses the T-90AM model (`models/t90am.js`, one piece, cut 
 
 | Jet | Gun | Engines (dry / with afterburner) | Notes |
 |---|---|---|---|
-| A-10C | GAU-8/A 30 mm, 3,900 rounds/min, 1,174 rounds, armour-piercing | 2 × 40.3 kN, no afterburner | 47 m² straight wing, light wing loading: slow (about 700 km/h) but turns very tight; +7.33 g |
-| MiG-35 | GSh-30-1 30 mm, about 1,800 rounds/min, 150 rounds | 2 × 53 / 88 kN | thrust-vectoring: the quickest nose; +9 g; Mach 2.25 |
-| F/A-18E | M61A2 20 mm, 6,000 rounds/min, 412 rounds | 2 × 62 / 98 kN | 46.5 m² wing, flies at angles of attack that stall the others; +7.5 g; Mach 1.8 |
+| A-10C | GAU-8/A 30 mm, 3,900 rounds/min, 1,174 rounds, armour-piercing; AIM-9, AGM-65, GBU-12 | 2 × 40.3 kN, no afterburner | 47 m² straight wing, light wing loading: slow (about 700 km/h) but turns very tight; +7.33 g |
+| MiG-35 | GSh-30-1 30 mm, about 1,800 rounds/min, 150 rounds; R-73, R-77, Kh-29T, KAB-500L | 2 × 53 / 88 kN | thrust-vectoring: the quickest nose; +9 g; Mach 2.25 |
+| F/A-18E | M61A2 20 mm, 6,000 rounds/min, 412 rounds; AIM-9X, AIM-7M, AGM-65, GBU-32 JDAM | 2 × 62 / 98 kN | 46.5 m² wing, flies at angles of attack that stall the others; +7.5 g; Mach 1.8 |
 
-The figures come from public sources (USAF and NAVAIR fact sheets, the Russian federal military-technical cooperation catalogue, Wikipedia); where sources disagreed (the MiG-35's ammunition, the Super Hornet's g limit) a commonly quoted value is used. War Thunder data was not used. The new jets' models are fitted by `kitJet` in `model-kit.js`: scaled, turned nose forward, lowered to the gear height, cut into damage parts stretched to their span, with their engine flames placed from `JET_FIT`; they carry the F-2's store layout with their own weapons.
+The figures come from public sources (USAF and NAVAIR fact sheets, the Russian federal military-technical cooperation catalogue, Wikipedia); where sources disagreed (the MiG-35's ammunition, the Super Hornet's g limit) a commonly quoted value is used. War Thunder data was not used. The new jets' models are fitted by `kitJet` in `model-kit.js`: scaled, turned nose forward, lowered to the gear height, cut into damage parts stretched to their span, with their engine flames placed from `JET_FIT`; each carries the weapons the real aircraft uses, on stations worked out from its own wing (air-to-air missiles outboard, air-to-ground missiles in the middle, bombs inboard), drawn with the weapon collection's models where it has them (the R-73 keeps the game's own shape). The F/A-18 model's own missiles are hidden (`hide`), so the ones you see are the ones you have; the A-10 is turned round by hand (`flip`), as the automatic nose-finder got it backwards. The F-2's Sidewinders and Mavericks use the collection's models too.
 
 To add another scenery model:
 
@@ -361,6 +361,8 @@ Abandoned farmhouses: This work is based on "Abandoned Farm House With Hay" (htt
 Roadside wrecks: This work is based on "Panzer IV Medium Tank - Toshueyi" (https://sketchfab.com/3d-models/panzer-iv-medium-tank-toshueyi-14c74d148326448c8edb5fee81be3894) by Joanthan To (https://sketchfab.com/Toshueyi) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: darkened as a burnt-out wreck, textures shrunk to 1024 pixels. The licence note is in `models/panzer4-license.txt`.
 
 Red's main battle tank (T-90): This work is based on "Uralvagonzavod T-90AM Main Battle Tank" (https://sketchfab.com/3d-models/uralvagonzavod-t-90am-main-battle-tank-619de9f0908e4c8395fe036ffe6e3884) by Muhamad Mirza Arrafi (https://sketchfab.com/nazidefenseforceofficial) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/). Changed for the game: cut into hull, turret and gun, textures shrunk to 1024 pixels. The licence note is in `models/t90am-license.txt`.
+
+Aircraft weapons: This work is based on "Missile & Bomb Collection - Fighter Jets - Free" (https://sketchfab.com/3d-models/missile-bomb-collection-fighter-jets-free-d203b678424a43568703bf85ba680f47) by bohmerang (https://sketchfab.com/bohmerang) licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/). Changed for the game: individual weapons taken out, turned and centred, textures shrunk to 512 pixels. Non-commercial use only. The licence note is in `models/weapons-license.txt`.
 
 MiG-35 fighter model: This work is based on "MiG-35 - Fighter Jet - Free" (https://sketchfab.com/3d-models/mig-35-fighter-jet-free-1dcea306e8a14ed4ab4d11a819cb6676) by bohmerang (https://sketchfab.com/bohmerang) licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/). Changed for the game: scaled, cut into damage parts, textures shrunk to 1024 pixels. Non-commercial use only. The licence note is in `models/mig35-license.txt`.
 
@@ -399,6 +401,7 @@ Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://g
 | `models/panzer4.js` | A Panzer IV, darkened and used as a roadside wreck (scenery prop) |
 | `models/t90am.js` | The T-90AM, used for Red's main battle tank (fitted in `models/config.js`) |
 | `models/mig35.js`, `models/a10.js`, `models/fa18.js` | Extra jet looks for the title screen's jet choice (fitted by `kitJet` in `model-kit.js`) |
+| `models/weapons.js` | The weapon collection: AIM-9, AIM-7, AGM-65, GBU-12, JDAM, R-77, Kh-29, KAB-500L (and more) hung on the jets (`storeMesh` in `model-kit.js`) |
 | `props.js` | Scenery props from downloaded models: drawn instanced, culled by distance, with colliders; where they go |
 | `chaos.js` | Battlefield chaos and grit: automatic artillery from the checkpoints, lasting crater marks, the browner terrain grade |
 | `ground.js` | Ground detail: the Optimised ground texture and grass, the farm field layout every level uses (and Optimised's field shader and hedgerows), trees in the open country |

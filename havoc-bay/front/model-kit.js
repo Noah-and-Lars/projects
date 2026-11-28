@@ -392,6 +392,7 @@ function kitSoldierFor(team, npc) { const u = MKIT.soldier && MKIT.soldier[team]
    nose is the other end) and lowered so its wheels sit def.gear below the origin, as the flight model expects. It is cut into the slot's damage parts
    by nearest part centre (the part positions stretched to this model's span), so a lost wing or fin disappears. Gear nodes named like
    "Landing On/Open" and "Landing Off/Closed" become the extended and stowed gear.
+   cfg.hide: /node names/ of parts to leave out (a model's own missiles and bombs); cfg.flip: turn it round where the nose-finder guesses wrong;
    cfg.nozzles: [[x, y, z, radius], ...] in metres with the wheels at y = 0 (where the engine flames start); own: the slot's own model, whose
    stores (missiles and bombs) are moved across, spread to this wing and hung under it at the same clearance. */
 function kitJet(key, team, def, cfg = {}, own = null) {
@@ -403,23 +404,29 @@ function kitJet(key, team, def, cfg = {}, own = null) {
     holder.updateMatrixWorld(true);
     holder.traverse(o => { if (!o.isMesh) return; const P = o.geometry.attributes.position; for (let i = 0; i < P.count; i += 3) { v.fromBufferAttribute(P, i).applyMatrix4(o.matrixWorld); if (v.y > top) { sx += v.x; n++; } } });
     if (n && sx / n > 0) holder = fitAt(holder.userData.yaw + Math.PI); }
+  if (cfg.flip) holder = fitAt(holder.userData.yaw + Math.PI); // (where the guess is wrong: the A-10's canopy and engine pods stand higher than most of its fins)
   holder.updateMatrixWorld(true);
   const span = kitBox(holder).getSize(new V3()).z / 2, zk = def.wid ? span / (def.wid / 2) : 1;
   const M = { root: new THREE.Group(), parts: {}, stores: [], kitJet: key }, ids = def.parts.filter(p => p.kind !== 'fuel');
   const nearest = (x, y, z) => { let best = ids[0].id, bd = 1e9; for (const p of ids) { const d = (x - p.p[0]) ** 2 + (y - p.p[1]) ** 2 * 2 + (z - p.p[2] * zk) ** 2; if (d < bd) { bd = d; best = p.id; } } return best; };
   const down = cfg.gearDown || /landing.?(on|open)/i, up = cfg.gearUp || /landing.?(off|closed)/i, named = o => { for (let q = o; q; q = q.parent) if (q.name) { if (down.test(q.name)) return 'down'; if (up.test(q.name)) return 'up'; } return null; };
   M.gearDown = new THREE.Group(); M.gearUp = new THREE.Group(); M.root.add(M.gearDown, M.gearUp);
-  for (const m of model.meshes.slice()) { const g = named(m), pieces = kitSplit(m, g ? () => g : nearest);
+  const hidden = o => { if (!cfg.hide) return false; for (let q = o; q; q = q.parent) if ((q.userData && q.userData.name && cfg.hide.test(q.userData.name)) || (q.name && cfg.hide.test(q.name))) return true; return false; }; // (the model's own missiles: the game hangs its own, which drop when fired)
+  for (const m of model.meshes.slice()) { if (hidden(m)) { m.parent && m.parent.remove(m); continue; } const g = named(m), pieces = kitSplit(m, g ? () => g : nearest);
     for (const [id, pm] of Object.entries(pieces)) { pm.castShadow = true; pm.receiveShadow = true; pm.userData.keep = true; (id === 'down' ? M.gearDown : id === 'up' ? M.gearUp : M.parts[id] || part(M, id)).add(pm); } }
   for (const p of def.parts) if (!M.parts[p.id]) part(M, p.id);
   const b = kitBox(M.root), eng = def.parts.filter(p => p.kind === 'engine');
   const nz = cfg.nozzles || [[b.min.x + .25, def.gear + .1, 0, .5]]; // (fallback: one flame at the tail)
   M.nozzles = nz.map((q, i) => [q[0], q[1] - def.gear, q[2], q[3], (eng[Math.min(i, eng.length - 1)] || {}).id]);
-  if (own && own.stores) { // the slot's missiles and bombs, moved across
+  if (cfg.stores !== 'own') kitStoreLayout(M, def, kitUnderside(Object.values(M.parts)), span, def.len); // the jet's own weapons, on stations worked out from its wing
+  else if (own && own.stores) { // the slot's missiles and bombs, moved across
     const under = kitUnderside(Object.values(M.parts)), ownUnder = kitUnderside(Object.values(own.parts)), ownSpan = def.wid ? def.wid / 2 : span;
+    const near = (x, z) => { for (let r = 0; r <= 2.01; r += .4) for (let a = 0; a < TAU; a += r ? .6 / r : TAU) { const px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r, u = under(px, pz); if (u !== null) return [px, pz, u]; } return null; }; // (the nearest bit of this airframe's underside)
     own.stores.forEach((list, slot) => { if (!list) return; for (const g of list) {
-      const x = g.position.x, z = g.position.z * Math.min(span / ownSpan, 1.6), u0 = ownUnder(x, g.position.z), u1 = under(x, z);
-      g.position.set(x, u0 !== null && u1 !== null ? g.position.y + (u1 - u0) : g.position.y, z); M.root.add(g); (M.stores[slot] = M.stores[slot] || []).push(g); } });
+      const z0 = g.position.z * Math.min(span / ownSpan, 1.6), u0 = ownUnder(g.position.x, g.position.z), hit = near(g.position.x, z0);
+      if (!hit) { g.visible = false; continue; } // nowhere to hang it on this airframe: leave it off rather than float it (the weapon still fires, from the airframe)
+      const gap = clamp(u0 !== null ? u0 - g.position.y : .35, .12, .7);
+      g.position.set(hit[0], hit[2] - gap, hit[1]); M.root.add(g); (M.stores[slot] = M.stores[slot] || []).push(g); } });
   }
   const ck = def.parts.find(p => p.id === 'cockpit');
   return Object.assign(M, { gun: [def.len * .2, 0, .7], cockpit: ck ? ck.p.slice() : [def.len * .27, 1.2, 0] });
@@ -431,4 +438,59 @@ function kitUnderside(groups) {
   for (const g of groups) g.traverse(o => { if (!o.isMesh) return; const P = o.geometry.attributes.position, mw = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
     for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i).applyMatrix4(mw); const k = Math.round(v.x / cell) + ',' + Math.round(v.z / cell), h = map.get(k); if (h === undefined || v.y < h) map.set(k, v.y); } });
   return (x, z) => { const h = map.get(Math.round(x / cell) + ',' + Math.round(z / cell)); return h === undefined ? null : h; };
+}
+
+/* ---------------- weapons on the pylons ----------------
+   storeMesh(key): the weapon's model from the downloaded collection ("Missile & Bomb Collection - Fighter Jets - Free", models/weapons.js), real size,
+   nose along +x and centred; or null when the collection has no model of it. kitStoreLayout: hangs a jet's weapons on stations worked out from its
+   own wing (air-to-air missiles outboard, air-to-ground missiles in the middle, bombs inboard), clear of the underside. */
+const STORE_OF = { aim9x: 'AIM-9 Sidewinder', aim7: 'AIM-7 Sparrow', agm65: 'AGM-65 Maverick', gbu12: 'GBU-12 Paveway II', jdam: 'JDAM (2)', r77: 'R-77', kh29t: 'Kh-29', kab500: 'KAB-500L' };
+const STORE_CACHE = {};
+function storeMesh(key) {
+  const pre = STORE_OF[key]; if (!pre || !kitData('weapons')) return null;
+  let c = STORE_CACHE[pre];
+  if (c === undefined) {
+    c = STORE_CACHE[pre] = null;
+    const m = gltfBuild('weapons', {}); m.root.updateMatrixWorld(true); let node = null;
+    m.root.traverse(o => { if (!node && o.userData && typeof o.userData.name === 'string' && o.userData.name.startsWith(pre + '_')) node = o; });
+    if (node) { const parts = [], box = new THREE.Box3(); node.traverse(o => { if (o.isMesh) { const g = o.geometry.clone(); g.applyMatrix4(o.matrixWorld); g.computeBoundingBox(); box.union(g.boundingBox); parts.push({ g, mat: o.material }); } });
+      const ctr = box.getCenter(new V3()), fix = new THREE.Matrix4().makeRotationY(-Math.PI / 2).multiply(new THREE.Matrix4().makeTranslation(-ctr.x, -ctr.y, -ctr.z)); // (the collection's noses point down -z)
+      for (const p of parts) { p.g.applyMatrix4(fix); p.g.computeBoundingSphere(); }
+      const sz = box.getSize(new V3()); c = STORE_CACHE[pre] = { parts, len: sz.z, r: Math.max(sz.x, sz.y) / 2 }; }
+  }
+  if (!c) return null;
+  const g = new THREE.Group(); for (const p of c.parts) { const mesh = new THREE.Mesh(p.g, p.mat); mesh.castShadow = true; mesh.userData.keep = true; g.add(mesh); }
+  g.userData.len = c.len; g.userData.r = c.r; return g;
+}
+function storeFallback(A) { // the game's own simple shapes, for weapons the collection does not have
+  if (A.look === 'bomb') { const g = bombModel(A.cal > 300 ? 3.7 : 2.2, A.cal > 300 ? .2 : .14); g.userData.len = 3; g.userData.r = .2; return g; }
+  const g = missileModel(A.aa ? 2.9 : 2.5, A.aa ? .065 : .15, A.aa ? 0xd8dad6 : 0x8f9488, A.aa ? .07 : .12); g.userData.len = 2.9; g.userData.r = A.aa ? .12 : .2; return g;
+}
+function kitStoreLayout(M, def, under, span, len) {
+  // stations: spanwise spots where the wing is, each at the middle of its chord
+  const stations = [];
+  for (const f of [.9, .78, .66, .54, .43, .33, .25]) {
+    const z = f * span; let best = null, run = null;
+    // a wing chord: a stretch of underside on both sides that stays roughly level (an engine pod, a gear pod or the tail is not wing)
+    const done = () => { if (run) { const L = run.x0 - run.x1; if (L >= 1 && L <= len * .4 && run.hi - run.lo < .7 && (!best || L > best.x0 - best.x1)) best = run; run = null; } };
+    for (let x = len / 2; x >= -len / 2; x -= .25) { const u = under(x, z), u2 = under(x, -z);
+      if (u !== null && u2 !== null && (!run || Math.abs(u - run.u) < .35)) { if (!run) run = { x0: x, x1: x, u, lo: u, hi: u }; run.x1 = x; run.u = u; run.lo = Math.min(run.lo, u); run.hi = Math.max(run.hi, u); }
+      else { done(); if (u !== null && u2 !== null) run = { x0: x, x1: x, u, lo: u, hi: u }; } }
+    done();
+    if (best) stations.push({ z, x: (best.x0 + best.x1) / 2 + .2, u: (best.lo + best.hi) / 2 });
+  }
+  if (!stations.length) return;
+  const rank = A => A.aa ? 0 : A.look === 'bomb' ? 2 : 1, slots = def.weapons.map((w, i) => ({ i, w, A: AMMO[w.k] })).filter(s => s.i > 0 && s.A && s.A.look).sort((a, b) => rank(a.A) - rank(b.A));
+  let next = 0;
+  for (const s of slots) {
+    const perSide = Math.ceil(s.w.n / 2); let placed = 0;
+    for (let k = 0; k < perSide; k++) {
+      const st = stations[Math.min(next, stations.length - 1)], tandem = next >= stations.length ? next - stations.length + 1 : 0; next++;
+      for (const sd of [1, -1]) { if (placed >= s.w.n) break;
+        const g = storeMesh(s.w.k) || storeFallback(s.A), L = g.userData.len, r = g.userData.r, x = st.x - tandem * (L + .3), z = st.z * sd;
+        let u = st.u; for (const dx of [-L / 2, 0, L / 2]) { const q = under(x + dx, z); if (q !== null && q < u && q > st.u - .45) u = q; } // (clear of the wing along the store's whole length, but not dropped below a gear pod)
+        if (u === null) continue;
+        g.position.set(x, u - r - .16, z); M.root.add(g); (M.stores[s.i] = M.stores[s.i] || []).push(g); g.userData.drag = s.A.look === 'bomb' ? 1.2 : s.A.aa ? .4 : .6; placed++; }
+    }
+  }
 }
