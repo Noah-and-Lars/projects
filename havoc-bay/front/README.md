@@ -205,7 +205,9 @@ The interface is laid out the way War Thunder lays its own out, studied from tha
 - **F1** shows or hides the controls for what you are in. They also show for 20 seconds each time you change unit.
 - **Menus** are flat slate windows with tabs and a row of buttons along the bottom. The title screen has the red "To battle" button at the top with the chosen map under it. The deploy screen shows the battle name, time left and score on top, your line-up as a strip of cards with their spawn-point costs, the chosen unit's weapons and figures and the mission objectives on the left, and the map on the right.
 
-All of it is in `ui.css`; the Barlow typeface is packed into that file so the game still opens from disk.
+Nothing is flat paint: the menus, windows, buttons and HUD plates carry a worn finish made of three small tiles (fine grain, a scuffed and scratched surface, and a mask that chips paint off the big lettering and the battle button). The tiles are generated from seeded noise, not taken from anywhere. The action bar is left clean so its pictures and counts stay easy to read.
+
+All of it is in `ui.css`; the Barlow typeface and the wear tiles are packed into that file so the game still opens from disk.
 
 ## Credits
 
