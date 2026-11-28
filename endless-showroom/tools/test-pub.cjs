@@ -133,7 +133,8 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   // a forged save can move things but not turn them into something else or add things
   const forged = await D.evaluate(() => {
     const w = __game.world, P = __game.P;
-    const real = [...w.items.values()].filter((i) => i.k === 'f' && w.active(i) && !i.c && !w.mods.has(i.id) && /^-?\d+,-?\d+:\d+$/.test(i.id) && __game.TYPES[i.t] && i.t !== 'safe').sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z));
+    const isMat = (id) => { const [ck, n] = id.split(':'), ch = w.chunks.get(ck); return !!ch && +n >= ch.gen.matBase; };
+    const real = [...w.items.values()].filter((i) => i.k === 'f' && w.active(i) && !i.c && !w.mods.has(i.id) && /^-?\d+,-?\d+:\d+$/.test(i.id) && !isMat(i.id) && __game.TYPES[i.t] && i.t !== 'safe').sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z));
     const [mv, swap] = real;
     const add = [[mv.id, Object.assign(w.stateOf(mv), { x: mv.x + 0.7, tm: Date.now() - 1000 })], [swap.id, Object.assign(w.stateOf(swap), { t: 'safe', tm: Date.now() - 1000 })],
       ['made:up', { t: 'medkit', k: 'i', v: 0, x: P.x, y: 0, z: P.z, r: 0 }], ['3,3:99999', { t: 'medkit', k: 'i', v: 0, x: P.x, y: 0, z: P.z, r: 0 }], [real[2].id + ':r1', Object.assign(w.stateOf(real[2]), { x: P.x })]];
@@ -163,7 +164,8 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
     return { plain: plain.id, top: top ? top.id : null, gone };
   });
   // move the piece under the second one well away (as the host)
-  const moved = food.top && await E.evaluate((id) => { const w = __game.world, it = w.items.get(id); let f = null; w.forBoxes(it.x - 0.06, it.z - 0.06, it.x + 0.06, it.z + 0.06, (b) => { if (b.item && b.y1 <= it.y + 0.02 && b.y1 >= it.y - 0.12) f = b.item; }); if (!f) return false; return __game.hostMoveForTest(f.id, f.x + 12, f.z); }, food.top);
+  // (everything it could be standing on: it may sit on two pieces at once)
+  const moved = food.top && await E.evaluate((id) => { const w = __game.world, it = w.items.get(id), under = new Set(); w.forBoxes(it.x - 0.06, it.z - 0.06, it.x + 0.06, it.z + 0.06, (b) => { if (b.item && b.y0 <= it.y + 0.02 && b.y1 >= it.y - 0.12) under.add(b.item); }); if (!under.size) return false; let ok = true; for (const f of under) ok = __game.hostMoveForTest(f.id, f.x + 12, f.z) && ok; return ok; }, food.top);
   await E.evaluate(() => { __game.clock.rt += 3600; __game.regrowForTest(); });
   const half = await E.evaluate((f) => __game.world.isGone(__game.world.items.get(f.plain)), food);
   await E.evaluate(() => { __game.clock.rt += 3700; __game.regrowForTest(); });

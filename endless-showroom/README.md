@@ -423,8 +423,8 @@ the staff.
 - Every piece in a save is checked against the store's own layout (the host
   regenerates the chunk from the seed): it can move things and mark them
   taken, but every piece must be the kind the store put there, anything new
-  must have come out of a gift box, and regrown crates and pallets must be at
-  a stack's spot.
+  must have come out of a gift box, and a regrown crate or pallet must belong
+  to one of the store's stacks (at most 40 per stack).
 - If the server can't be reached when a store opens, the opener uses its own
   browser's copy (kept once a minute, as in 1.1), never saves over the
   server, and keeps asking every 15 s; when the server answers, its store is

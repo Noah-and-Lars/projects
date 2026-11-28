@@ -1338,7 +1338,7 @@ export class World {
       if (cache) cache.set(key, items);
     }
     const sp = items[+m[3]];
-    if (m[4] !== undefined && !(sp && sp.mat)) return null; // only building materials grow back as new pieces
+    if (m[4] !== undefined && !(sp && sp.mat && +m[4] >= 1 && +m[4] <= 40)) return null; // only building materials grow back as new pieces (40 at most per spot)
     return sp ? { t: sp.t, k: sp.k === 'i' ? 'i' : 'f', x: sp.x, y: sp.y, z: sp.z } : null;
   }
 
