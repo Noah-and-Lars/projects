@@ -121,8 +121,7 @@ kbd { display: inline-block; font: 500 13px/1 var(--text); color: var(--ink); ba
 #loadText small { display: block; font: 400 16px/1.4 var(--text); color: var(--ink2); margin-top: 8px; }
 
 /* ---------- deploy: battle name and score on top, the line-up as a strip of cards, choices on the left, the map on the right ---------- */
-body:has(#deploy:not(.hidden)) #hud { visibility: hidden; } /* the world stays behind the deploy screen, the HUD does not */
-#deploy { background-color: rgba(7, 11, 16, .88); padding: 10px clamp(10px, 2vw, 26px) 14px; gap: 10px; }
+#deploy { background-color: var(--bg); padding: 10px clamp(10px, 2vw, 26px) 14px; gap: 10px; }
 .rhead { display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 12px; }
 .rhead .rname { font: 400 17px/1.25 var(--text); color: var(--ink); text-shadow: var(--edge); }
 .rhead .rname span { display: block; color: var(--ink2); }
@@ -326,7 +325,7 @@ body.realistic #gl::after { content: ""; position: fixed; inset: 0; pointer-even
 }
 html, body, #loading { background-image: var(--scuff), radial-gradient(ellipse at 50% 35%, #141c25, #080c11 80%); background-size: 512px, cover; }
 .screen { background-image: var(--scuff), radial-gradient(ellipse at 50% 30%, #141c25, #070a0e 82%); background-size: 512px, cover; }
-#deploy { background-image: var(--scuff), radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(0, 0, 0, .5)); background-size: 512px, cover; }
+#deploy, #bigmap { background-color: var(--bg); background-image: var(--scuff), radial-gradient(ellipse at 50% 35%, #141c25, #070a0e 82%); background-size: 512px, cover; } /* solid: nothing of the battle shows through */
 .ov.dim { background-image: var(--grain), radial-gradient(ellipse at 50% 50%, transparent 35%, rgba(0, 0, 0, .45)); background-size: 128px, cover; }
 .topbar { background-image: var(--scuff); background-size: 512px; background-position: 130px 44px; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .05), 0 3px 10px rgba(0, 0, 0, .5); }
 .win { background-image: linear-gradient(rgba(21, 29, 39, .5), rgba(21, 29, 39, .5)), var(--scuff); background-size: auto, 512px; background-position: 0 0, 60px 20px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .045), inset 0 0 90px rgba(0, 0, 0, .38), 0 10px 34px rgba(0, 0, 0, .55); }
