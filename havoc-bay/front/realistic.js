@@ -367,7 +367,7 @@ const GABLE_GEO = (() => { // unit gable roof: x along the ridge, z across, eave
 
 /* ---------------- military clutter for compounds (Realistic only) ---------------- */
 const WIRE = [];
-function placeFree(site, R, hx, hz, r, tries = 40) { for (let k = 0; k < tries; k++) { const fx = (R() - .5) * 2 * (hx - r - 4), fz = (R() - .5) * 2 * (hz - r - 4); if (Math.abs(fz) < 14) continue; const [x, z] = site.w(fx, fz), pt = new V3(x, site.y0 + 1, z); if (!pushOutCircle(pt, r, site.y0, site.y0 + 2)) return [fx, fz]; } return null; }
+function placeFree(site, R, hx, hz, r, tries = 40) { for (let k = 0; k < tries; k++) { const fx = (R() - .5) * 2 * (hx - r - 4), fz = (R() - .5) * 2 * (hz - r - 4); if (Math.abs(fz) < 14 || (site.keepClear && site.keepClear.some(([kx, kz, kr]) => Math.hypot(fx - kx, fz - kz) < kr + r))) continue; const [x, z] = site.w(fx, fz), pt = new V3(x, site.y0 + 1, z); /* (site.keepClear: spawn spots, helipads and the like) */ if (!pushOutCircle(pt, r, site.y0, site.y0 + 2)) return [fx, fz]; } return null; }
 function decorateCompound(site, hx, hz, size, seed) {
   const R = rng(seed), n = { S: [1, 2, 0, 1], M: [4, 3, 2, 2], L: [10, 6, 4, 4], B: [8, 5, 4, 3] }[size];
   const CONT = [0x5a6340, 0x9b8a62, 0x7a4a32, 0x4a5a6a];

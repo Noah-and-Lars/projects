@@ -351,7 +351,9 @@ function buildTeamBase(M, b, team) {
       addCollider(bx, bz, 2.7, .7, an + Math.PI / 2, y0 - 1, y0 + 1.1); }
     b.gunSpots.push([x, z]);
   }
+  site.keepClear = [[260, 200, 32], [300, -150, 45], [50, 270, 24], [50, -270, 24], [0, 0, 22], ...[-240, -80, 80, 240].map(z => [-310, z, 16])]; // spawn spots, helipads, the flag, the gun pits
   propsCompound(site, 380, 320, 6, team * 53 + M.seed, [[260, 200, 50], [300, -140, 80], [50, 270, 24], [50, -270, 24], [0, 0, 20]]); propsConcrete(site, 380, 320, team * 59 + M.seed, true); // sandbag positions, clear of the spawn spots and helipads
+  if (typeof dressBase === 'function') dressBase(site, team, team * 61 + M.seed); // (battlefield.js: containers, tents, trucks, fuel, nets, towers)
   if (WORLD.gfx === 'realistic') { decorateCompound(site, 380, 320, 'B', team * 97 + M.seed); razorWire(site, -gx, -gz, gx, -gz, y0 + 2.4); razorWire(site, -gx, gz, gx, gz, y0 + 2.4); }
   b.vehicleSpawn = site.w(300, -150); b.infSpawn = site.w(260, 200); b.site = site;
 }

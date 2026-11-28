@@ -102,3 +102,33 @@ function battleUpdate(cam, focus) {
     g.instanceCount = L.length; g.attributes.aPS.needsUpdate = true; g.attributes.aAS.needsUpdate = true;
   }
 }
+
+/* ---------------- base dressing ----------------
+   A base is 840 m by 720 m; this fills it like a working forward base: a container yard (some stacked two high), barracks tents, parked trucks
+   by the motor pool, a fuel depot, camouflage-net shelters, corner watchtowers, a radio mast and loose crates. Laid out in the base's own frame,
+   clear of the spawn spots, helipads, gun pits, buildings and the road through the middle. The colours are ones Realistic gives textures to. */
+const CONT_C = [0x5a6340, 0x9b8a62, 0x7a4a32, 0x4a5a6a], OLIVE = 0x4f5638, CANVAS = 0x5c6040, RUBBER = 0x4a4a44, CRATE = 0x6b5a46;
+function dressBase(site, team, seed) {
+  const R = rng(seed), box = (x, z, w, h, d, c, o = {}) => site.box(x, z, w, h, d, c, o);
+  // container yard, two blocks of three rows
+  for (const [bx, bz] of [[-150, 215], [-150, -215], [-30, 300]]) for (let row = 0; row < 3; row++) for (let k = 0; k < 6; k++) {
+    if (R() < .12) continue; const x = bx + k * 13.2 - 33, z = bz + row * 4.2 * Math.sign(bz), c = CONT_C[Math.floor(R() * 4)];
+    box(x, z, 12.2, 2.6, 2.45, c); if (R() < .3) box(x + (R() - .5) * .6, z, 12.2, 2.6, 2.45, CONT_C[Math.floor(R() * 4)], { y: site.y0 + 2.6 });
+  }
+  // barracks tents: two rows of six
+  for (let row = 0; row < 3; row++) for (let k = 0; k < 6; k++) site.roofHouse(-250 + k * 17, -100 - row * 22, 12, 7, 1.4, CANVAS, 0x55604f);
+  // parked trucks by the motor pool (cab, bed and canvas tilt)
+  for (let k = 0; k < 14; k++) { const x = 205 + (k % 7) * 9, z = -290 - Math.floor(k / 7) * 14; box(x, z - 3.2, 2.5, 2.4, 2.2, OLIVE); box(x, z + 1.2, 2.5, 1.2, 5.6, OLIVE, { dy: .5 }); box(x, z + 1.2, 2.4, 1.6, 5.2, CANVAS, { dy: 1.7, collide: false }); }
+  // fuel depot: rubber bladders behind a berm, drum stacks
+  for (let k = 0; k < 3; k++) box(140 + k * 14, 265, 10, 1.3, 6, RUBBER);
+  box(160, 252, 46, 1.4, 1.6, 0x6e6450); box(160, 280, 46, 1.4, 1.6, 0x6e6450);
+  for (let k = 0; k < 14; k++) box(118 + (k % 7) * 1.1, 246 + Math.floor(k / 7) * 1.1, .9, 1.1, .9, k % 3 ? 0x7a6440 : 0x5a6340);
+  // camouflage-net shelters over vehicle bays
+  for (let k = 0; k < 4; k++) { const x = 110 + k * 22, z = -60; for (const [px, pz] of [[-6, -5], [6, -5], [-6, 5], [6, 5]]) box(x + px, z + pz, .2, 3.2, .2, 0x5a4a38, { collide: false }); box(x, z, 14, .25, 12, 0x4d5546, { y: site.y0 + 3.2, collide: false }); }
+  // corner watchtowers
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const x = sx * 405, z = sz * 345; for (const [px, pz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) box(x + px, z + pz, .3, 7, .3, 0x5a4a38, { collide: false }); box(x, z, 4.4, 2.2, 4.4, 0x6b6656, { y: site.y0 + 7 }); box(x, z, 5, .3, 5, 0x55604f, { y: site.y0 + 9.4, collide: false }); }
+  // radio mast by the HQ, with its hut
+  box(-95, -150, .5, 26, .5, 0x8d9091, { collide: false }); box(-95, -150, 2.4, .3, 2.4, 0x8d9091, { y: site.y0 + 22, collide: false }); box(-88, -150, 4, 2.6, 3, 0x9b9585);
+  // loose crates and pallets round the stores
+  for (let k = 0; k < 26; k++) { const x = -80 + R() * 70, z = (R() < .5 ? -1 : 1) * (185 + R() * 40), s = .9 + R() * .6; box(x, z, s * 1.2, s, s, R() < .7 ? CRATE : 0x5a6340, { collide: s > 1.2 }); }
+}
