@@ -309,7 +309,15 @@ Open country (`propsCountry` in `props.js`): clusters of rocks (`models/rocks.js
 
 Red's main battle tank uses the T-90AM model (`models/t90am.js`, one piece, cut into hull, turret and gun in `models/config.js`). Only its look changes; armour and weapons are as in `vehicles.js`. If any of these files is missing, the game falls back to what it drew before.
 
-**Jet choice.** On the title screen, "Blue jet" and "Red jet" pick how each side's jet looks: F-2, Typhoon, MiG-35, A-10 or F/A-18 (saved with the other settings). Only the look changes: each side keeps its slot's flight model, weapons and damage (Blue the F-2's, Red the Typhoon's), and the HUD still names the slot's aircraft. A jet other than the slot's own is fitted by `kitJet` in `model-kit.js`: scaled to the slot's length, turned nose forward (the tail fins are its highest part), cut into the slot's damage parts by nearest part centre, with "Landing On/Off" nodes as the gear. It is lowered so its wheels sit where the slot's flight model puts them, carries the slot's missiles and bombs (spread to its wingspan and hung under its own wing), and its engine flames start where its engines are (`JET_FIT` in `models/config.js`). The damage parts are stretched to its span.
+**Jet choice.** On the title screen, "Blue jet" and "Red jet" pick the aircraft each side flies: F-2, Typhoon, MiG-35, A-10 or F/A-18 (saved with the other settings; bots on that side fly it too). Each is a real aircraft with its own gun, engines, weight, wing, handling and g limit (`JET_STATS` in `models/config.js`, built on the F-2's flight model and store layout):
+
+| Jet | Gun | Engines (dry / with afterburner) | Notes |
+|---|---|---|---|
+| A-10C | GAU-8/A 30 mm, 3,900 rounds/min, 1,174 rounds, armour-piercing | 2 × 40.3 kN, no afterburner | 47 m² straight wing, light wing loading: slow (about 700 km/h) but turns very tight; +7.33 g |
+| MiG-35 | GSh-30-1 30 mm, about 1,800 rounds/min, 150 rounds | 2 × 53 / 88 kN | thrust-vectoring: the quickest nose; +9 g; Mach 2.25 |
+| F/A-18E | M61A2 20 mm, 6,000 rounds/min, 412 rounds | 2 × 62 / 98 kN | 46.5 m² wing, flies at angles of attack that stall the others; +7.5 g; Mach 1.8 |
+
+The figures come from public sources (USAF and NAVAIR fact sheets, the Russian federal military-technical cooperation catalogue, Wikipedia); where sources disagreed (the MiG-35's ammunition, the Super Hornet's g limit) a commonly quoted value is used. War Thunder data was not used. The new jets' models are fitted by `kitJet` in `model-kit.js`: scaled, turned nose forward, lowered to the gear height, cut into damage parts stretched to their span, with their engine flames placed from `JET_FIT`; they carry the F-2's store layout with their own weapons.
 
 To add another scenery model:
 

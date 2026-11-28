@@ -28,7 +28,7 @@ const turnTo = (a, b, max) => a + clamp(angDiff(a, b), -max, max);
 /* ---------------- match setup ---------------- */
 function startMatch(mapIdx, team, bots, diff) {
   Object.assign(GAME, { on: true, over: false, paused: false, time: 0, map: mapIdx, team, bots, diff, winner: -1, tipped: false });
-  clearMatch();
+  clearMatch(); if (typeof applyJetChoice === 'function') applyJetChoice();
   const M = GAME.M = MAPS[mapIdx];
   if (!M.H) buildMap(M);
   // Ultra is the Realistic world under better light: everything that asks "realistic?" says yes for both
@@ -1349,7 +1349,7 @@ function renderTitle() {
   [...$('gfxPick').children].forEach(b => b.classList.toggle('on', b.dataset.v === GAME.gfx));
   [...$('gunPick').children].forEach(b => b.classList.toggle('on', b.dataset.v === GAME.gunnery));
   [...$('jetPick').children].forEach(b => b.classList.toggle('on', b.dataset.v === GAME.jetSpeed));
-  for (const t of [0, 1]) $('jetLook' + t).innerHTML = Object.entries(typeof JET_LOOKS !== 'undefined' ? JET_LOOKS : {}).map(([k, n]) => `<button class="btn${GAME.jetLook[t] === k ? ' on' : ''}" data-v="${k}" title="How this side's jet looks. Its flying, weapons and armour stay the same">${n}</button>`).join('');
+  for (const t of [0, 1]) $('jetLook' + t).innerHTML = Object.entries(typeof JET_LOOKS !== 'undefined' ? JET_LOOKS : {}).map(([k, n]) => `<button class="btn${GAME.jetLook[t] === k ? ' on' : ''}" data-v="${k}" title="The jet this side flies: its own gun, engines and handling">${n}</button>`).join('');
   const gb = [...$('gfxPick').children].find(b => b.dataset.v === GAME.gfx); $('gfxNote').textContent = gb ? gb.title : '';
 }
 $('tTabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; for (const x of $('tTabs').children) x.classList.toggle('on', x === b); for (const pn of document.querySelectorAll('#title [data-pane]')) pn.hidden = pn.dataset.pane !== b.dataset.tab; };
