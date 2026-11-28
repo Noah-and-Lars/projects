@@ -581,10 +581,10 @@ function endMatch(winner, why) {
   GAME.over = true; GAME.winner = winner;
   setTimeout(() => {
     document.exitPointerLock && document.exitPointerLock();
-    $('endTitle').textContent = winner < 0 ? 'DRAW' : winner === GAME.team ? 'VICTORY' : 'DEFEAT';
-    $('endTitle').style.color = winner < 0 ? '#e8e5d6' : winner === GAME.team ? '#dfae2e' : '#ee5b4b';
+    $('endTitle').textContent = winner < 0 ? 'Draw' : winner === GAME.team ? 'Victory' : 'Defeat';
+    $('endTitle').style.color = winner < 0 ? '#c5ccd2' : winner === GAME.team ? '#f4f6f7' : '#e8483a';
     $('endWhy').textContent = why;
-    $('endStats').innerHTML = `<span class="mut">Kills</span><span class="mut">Deaths</span><span class="mut">Checkpoints</span><b>${PLAYER.kills}</b><b>${PLAYER.deaths}</b><b>${PLAYER.caps}</b>`;
+    $('endStats').innerHTML = `<span>Enemies knocked out</span><b>${PLAYER.kills}</b><span>Times knocked out</span><b>${PLAYER.deaths}</b><span>Checkpoints taken</span><b>${PLAYER.caps}</b><span>Spawn points left</span><b>${PLAYER.sp}</b>`;
     $('end').classList.remove('hidden');
   }, 2500);
 }
@@ -892,19 +892,83 @@ function addFeed(by, victim, wk) {
   $('feed').prepend(d); while ($('feed').children.length > 6) $('feed').lastChild.remove();
   setTimeout(() => d.remove(), 7000);
 }
-function chip(label, m, vacant) {
-  const st = vacant ? 'vac' : !m ? 'ok' : m.hp <= 0 ? 'dead' : m.hp < m.max * .6 ? 'dmg' : 'ok';
-  return `<span class="chip ${st}">${label}</span>`;
+/* --- HUD drawing: small pictures for the action bar, plan views for the damage panel, side views for the line-up cards (all drawn here) --- */
+const svg = (vb, body) => `<svg viewBox="0 0 ${vb}" aria-hidden="true">${body}</svg>`;
+const GLYPH = {
+  dart: svg('40 40', '<path d="M20 2l2.2 9v15l5 6v3l-5.6-2.2-.6 5h-2l-.6-5L12.8 35v-3l5-6V11z"/>'),
+  heat: svg('40 40', '<path d="M19 3h2v7l3 5v19h-8V15l3-5z"/><path d="M15 35h10v2.5H15z"/>'),
+  he: svg('40 40', '<path d="M20 4c4 4 5.5 9 5.5 14v16h-11V18c0-5 1.5-10 5.5-14z"/><path d="M14 35.500h12V38H14z"/>'),
+  bullets: svg('40 40', '<path d="M11.500 8c1.800 2 2.500 4.500 2.500 7v17h-5V15c0-2.500.7-5 2.500-7zM20 8c1.800 2 2.500 4.500 2.500 7v17h-5V15c0-2.500.7-5 2.500-7zM28.500 8c1.800 2 2.500 4.500 2.500 7v17h-5V15c0-2.500.7-5 2.500-7z"/>'),
+  missile: svg('40 40', '<path d="M20 2c2 2.500 2.600 5 2.600 8v6l5 5v3l-5-2v8l4 4v3l-5.400-2h-2.400L13.400 37v-3l4-4v-8l-5 2v-3l5-5v-6c0-3 .6-5.500 2.600-8z"/>'),
+  rocket: svg('40 40', '<path d="M20 3c1.800 2.200 2.400 4.400 2.400 7v20l3.600 4.500V38l-4.600-2h-2.800L14 38v-3.500l3.600-4.500V10c0-2.600.6-4.800 2.400-7z"/>'),
+  bomb: svg('40 40', '<path d="M20 4c5 4 7 9 7 14 0 5-2 9-4.500 12l2.500 3v5H15v-5l2.500-3C15 27 13 23 13 18c0-5 2-10 7-14z"/>'),
+  smoke: svg('40 40', '<circle cx="14" cy="22" r="7"/><circle cx="24" cy="17" r="8.500"/><circle cx="27" cy="26" r="6.500"/><circle cx="18" cy="28" r="5.500"/>'),
+  ext: svg('40 40', '<path d="M17 5h6v4h3l4 3-1.500 1.500-2.500-1.500h-2v3c2 1 3 3 3 5v15c0 1.100-.9 2-2 2h-8c-1.100 0-2-.9-2-2V20c0-2 1-4 3-5v-2.500h-1z"/>'),
+  repair: svg('40 40', '<path d="M27.500 4a8 8 0 0 0-7.600 10.600L5.500 29a3.900 3.900 0 0 0 5.500 5.500l14.400-14.400A8 8 0 0 0 35.600 12l-4.800 4.800-4.600-1-1-4.600L30 6.400A8 8 0 0 0 27.500 4z"/>'),
+  range: svg('40 40', '<path d="M19 3h2v9h-2zM19 28h2v9h-2zM3 19h9v2H3zM28 19h9v2h-9z"/><circle cx="20" cy="20" r="2.600"/><path fill-rule="evenodd" d="M20 8a12 12 0 1 0 0 24 12 12 0 0 0 0-24zm0 2.500a9.500 9.500 0 1 1 0 19 9.500 9.500 0 0 1 0-19z"/>'),
+  thermal: svg('40 40', '<path fill-rule="evenodd" d="M20 10c8 0 14 6 17 10-3 4-9 10-17 10S6 24 3 20c3-4 9-10 17-10zm0 3.500a6.500 6.500 0 1 0 0 13 6.500 6.500 0 0 0 0-13z"/><circle cx="20" cy="20" r="3.200"/>'),
+  flare: svg('40 40', '<path d="M20 3l2.600 10.500L31 7l-5 9.500 11 1.500-10.500 3.500L33 30l-9.500-4.200L20 37l-3.500-11.200L7 30l6.500-8.500L3 18l11-1.500L9 7l8.400 6.500z"/>'),
+  rifle: svg('40 40', '<path d="M2 17h22v-2h3v2h11v3H27l-2 3h-6l-1.500-3H13l-4 8H4l3-8H2z"/>'),
+  rpg: svg('40 40', '<path d="M2 18.500h21l5-5h3l-2 5h9v3h-9l2 5h-3l-5-5H2z"/>'),
+  crew: svg('40 40', '<circle cx="20" cy="11" r="7"/><path d="M6 37c0-9 6-15 14-15s14 6 14 15z"/>'),
+};
+const ammoGlyph = A => A.look === 'dart' ? 'dart' : A.look === 'missile' ? 'missile' : A.look === 'rocket' ? 'rocket' : A.look === 'bomb' ? 'bomb' : A.kind === 'bullet' || A.look === 'tracer' ? 'bullets' : A.kind === 'heat' ? 'heat' : 'he';
+const SIDE = { // side views for the line-up cards
+  inf: svg('78 40', '<circle cx="39" cy="6.500" r="4"/><path d="M33.500 12h11l2 12h-3l-1 15h-3.200l-.8-12-.8 12h-3.200l-1-15h-3z"/><path d="M25 17.500h23v-1.500h2.500v1.500H54v2.200H44l-1.500 2.500h-4l-1-2.500H25z"/>'),
+  mbt: svg('78 40', '<path d="M5 27h60l-4 9H10z"/><path d="M9 20h52l4 6H6z"/><path d="M22 10h23l5 9H19z"/><path d="M46 12.600h30V15H46z"/>'),
+  ifv: svg('78 40', '<path d="M5 27h62l-4 9H10z"/><path d="M7 16h44l15 10H7z"/><path d="M27 8.500h14l2.500 7H25.500z"/><path d="M41 10.500h22v1.900H41z"/>'),
+  jeep: svg('78 40', '<circle cx="20" cy="31" r="6.500"/><circle cx="58" cy="31" r="6.500"/><path d="M7 19h9l4-9h27l9 9h14v10h-3.500a8.500 8.500 0 0 0-17 0h-21a8.500 8.500 0 0 0-17 0H7z"/>'),
+  heli: svg('78 40', '<path d="M12 7h64v1.700H12z"/><path d="M43 8h2v5h-2z"/><path d="M28 13h22c9 0 16 5 17 13v2H42c-8 0-14-6-14-15z"/><path d="M4 15.500h26v4H4z"/><path d="M2 8h2.600v15H2z"/><path d="M38 31h28v1.700H38zM46 28h2v3.500h-2zM58 28h2v3.500h-2z"/>'),
+  jet: svg('78 40', '<path d="M3 25l9-2 15-6 18-2 30 8.500v2.500L46 29H14L3 27z"/><path d="M9 23L5 8h6l11 12.500z"/><path d="M40 15c4-4.500 11-4.500 15-.5z"/><path d="M24 27h18l-14 6h-6z"/>'),
+};
+const DCOL = { ok: '#3d66ad', dmg: '#ecc63a', dead: '#dc3a2c', vac: '#0d131a' };
+/* the damage panel: a plan view of what you are in on a round plate. st maps each part to ok, dmg, dead or vac (an empty seat) */
+function dmgPanel(kind, st, title, lN, rN, rGlyph) {
+  const P = (k, shape) => { const s = st[k]; if (!s) return ''; return shape.replace('/>', ` fill="${DCOL[s]}" stroke="${s === 'vac' ? '#8f9aa3' : '#eef2f5'}" stroke-width=".7"/>`); };
+  const base = shape => shape.replace('/>', ' fill="#253c63" stroke="#dfe6ec" stroke-width=".8"/>');
+  const crewAt = { driver: [50, 28.500], gunner: [55, 45.500], commander: [55, 52.500], loader: [45, 47] };
+  let b = '<circle cx="50" cy="50" r="49" fill="rgba(20,30,46,.62)" stroke="rgba(200,212,224,.34)" stroke-width="1"/><circle cx="50" cy="50" r="33" fill="none" stroke="rgba(200,212,224,.2)" stroke-width="1"/>';
+  if (kind === 'tank' || kind === 'car') {
+    b += '<g transform="translate(50 51) scale(1.1) translate(-50 -48)">';
+    if (kind === 'tank') b += (P('TRK L', '<rect x="30.500" y="23" width="7" height="58" rx="1.500"/>') + P('TRK R', '<rect x="62.500" y="23" width="7" height="58" rx="1.500"/>'));
+    else b += ['31 27', '62.500 27', '31 64', '62.500 64'].map(p => base(`<rect x="${p.split(' ')[0]}" y="${p.split(' ')[1]}" width="6.500" height="13" rx="1.500"/>`)).join('');
+    b += base('<rect x="38" y="21" width="24" height="62" rx="2.500"/>');
+    b += P('RAD', '<rect x="41" y="60.500" width="18" height="3"/>') + P('ENG', '<rect x="41" y="64.500" width="18" height="11"/>') + P('TRN', '<rect x="41" y="76.500" width="18" height="4.500"/>');
+    b += P('TRV', '<circle cx="50" cy="47" r="13.500"/>').replace(/fill="[^"]+"/, m => m.replace('#3d66ad', 'rgba(61,102,173,.35)'));
+    b += base('<rect x="40.500" y="36" width="19" height="22" rx="5"/>');
+    b += P('BRL', '<rect x="48.600" y="8" width="2.800" height="28"/>') + P('BRC', '<rect x="47" y="37" width="6" height="8"/>') + P('ELV', '<rect x="54" y="38" width="3" height="4.500"/>') + P('FCS', '<rect x="42.500" y="38" width="3.500" height="3.500"/>') + P('SGT', '<rect x="56" y="32.500" width="3.500" height="3.500"/>') + P('ALD', '<rect x="44" y="52" width="12" height="4.500"/>');
+    for (const role in crewAt) b += P(role, `<circle cx="${crewAt[role][0]}" cy="${crewAt[role][1]}" r="2.700"/>`);
+    b += '</g>';
+  } else if (kind === 'jet') {
+    b += P('WING L', '<path d="M45 42L14 64v7l31-5z"/>') + P('WING R', '<path d="M55 42l31 22v7l-31-5z"/>') + P('TAIL', '<path d="M45 76L31 87v4l14-3zM55 76l14 11v4l-14-3z"/>');
+    b += P('FUS', '<path d="M50 8c4 6 6 18 6 36v40H44V44c0-18 2-30 6-36z"/>');
+    b += P('CKPT', '<ellipse cx="50" cy="27" rx="3" ry="6.500"/>') + P('FUEL', '<rect x="46.500" y="42" width="7" height="20"/>');
+    b += P('ENG', '<rect x="46" y="68" width="8" height="15"/>') + P('ENG L', '<rect x="45" y="68" width="4.500" height="15"/>') + P('ENG R', '<rect x="50.500" y="68" width="4.500" height="15"/>');
+  } else {
+    const rs = st.ROTOR || 'ok';
+    b += `<circle cx="50" cy="45" r="37" fill="none" stroke="${rs === 'ok' ? 'rgba(238,242,245,.55)' : DCOL[rs]}" stroke-width="1.200" stroke-dasharray="3 2.500"/><path d="M50 8v74M13 45h74" stroke="${rs === 'ok' ? 'rgba(238,242,245,.5)' : DCOL[rs]}" stroke-width="1.600"/>`;
+    b += P('TAIL', '<path d="M48.500 58h3v32h5v2.500H43.500V90h5z"/>');
+    b += P('FUS', '<path d="M50 14c6 4 8 16 7 36l-4 10h-6l-4-10c-1-20 1-32 7-36z"/>');
+    b += P('ENG L', '<rect x="39" y="39" width="4.500" height="13"/>') + P('ENG R', '<rect x="56.500" y="39" width="4.500" height="13"/>');
+    b += P('FUEL', '<rect x="46.500" y="50" width="7" height="7"/>') + P('XMSN', '<circle cx="50" cy="45" r="3.800"/>') + P('GUNNER', '<circle cx="50" cy="23" r="2.700"/>') + P('PILOT', '<circle cx="50" cy="32" r="2.700"/>');
+  }
+  return `<div class="dmgp">${svg('100 100', b)}<span class="nm">${title}</span>${lN != null ? `<span class="cl">${GLYPH.crew}${lN}</span>` : ''}${rN != null ? `<span class="cr">${GLYPH[rGlyph || 'he']}${rN}</span>` : ''}</div>`;
 }
-const inst = rows => `<div class="inst">${rows.map(([l, v, u]) => `<div><i>${l}</i><b>${v}${u ? `<small>${u}</small>` : ''}</b></div>`).join('')}</div>`; // a row of instrument read-outs
-const noteLines = notes => notes.length ? `<div class="notes">${notes.map(n => `<div>${n}</div>`).join('')}</div>` : '';
-const CREW_TAG = { driver: 'DRV', gunner: 'GNR', commander: 'CMD', loader: 'LDR' };
+const stOf = (m, vacant) => vacant ? 'vac' : !m ? 'ok' : m.hp <= 0 ? 'dead' : m.hp < m.max * .6 ? 'dmg' : 'ok';
+const ro = rows => `<div class="ro">${rows.map(r => r === 0 ? '<span class="gap"></span>' : typeof r === 'string' ? `<span class="dimm">${r}</span>` : `<i${r[4] ? ' class="sel"' : ''}>${r[0]}</i><b${r[3] ? ` class="${r[3]}"` : ''}>${r[1]}${r[2] ? `<small>${r[2]}</small>` : ''}</b>`).join('')}</div>`; // a bare read-out: label, value, unit, colour, selected
+const HUDX = { alerts: [] };
+const noteLines = notes => { // warnings go to the middle of the screen, the rest stays by the read-out
+  HUDX.alerts = notes.filter(n => n.includes('class="warn"'));
+  const rest = notes.filter(n => !n.includes('class="warn"'));
+  return rest.length ? `<div class="notes">${rest.map(n => `<div>${n}</div>`).join('')}</div>` : '';
+};
+const slot = (key, glyph, label, count, o = {}) => `<div class="slot${o.sel ? ' sel' : ''}${o.out ? ' out' : ''}"><u>${key}</u><div>${o.rl != null ? `<i class="rl" style="height:${Math.round(o.rl * 100)}%"></i>` : ''}<em>${label}</em>${GLYPH[glyph]}${count === '' || count == null ? '' : `<b>${count}</b>`}${o.dot ? '<i class="dot"></i>' : ''}</div></div>`;
 function vehStatusHTML(v) {
-  const D = v.def, st = vState(v), r = v.roles;
-  const crew = D.crew.map(role => chip(CREW_TAG[role] || role.slice(0, 3).toUpperCase(), r[role], !r[role] || r[role].hp <= 0)).join('');
-  const mods = [['ENG', v.mods.find(m => m.kind === 'engine')], ['TRN', v.mods.find(m => m.kind === 'trans')], ...(D.wheeled ? [] : [['TRK L', v.mod('trackL')], ['TRK R', v.mod('trackR')]]), ['BRL', v.mod('barrel')], ['BRC', v.mod('breech')], ['TRV', v.mod('hdrive')], ['ELV', v.mod('vdrive')], ['SGT', v.mod('optics')], ['FCS', v.mod('fcs')], ['RAD', v.mod('radiator')], ['ALD', v.mod('autoloader')]].filter(([, m]) => m).map(([l, m]) => chip(l, m)).join('');
+  const D = v.def, st = vState(v), r = v.roles, S = {};
+  for (const role of D.crew) S[role] = stOf(r[role], !r[role] || r[role].hp <= 0);
+  for (const [l, m] of [['ENG', v.mods.find(m => m.kind === 'engine')], ['TRN', v.mods.find(m => m.kind === 'trans')], ...(D.wheeled ? [] : [['TRK L', v.mod('trackL')], ['TRK R', v.mod('trackR')]]), ['BRL', v.mod('barrel')], ['BRC', v.mod('breech')], ['TRV', v.mod('hdrive')], ['ELV', v.mod('vdrive')], ['SGT', v.mod('optics')], ['FCS', v.mod('fcs')], ['RAD', v.mod('radiator')], ['ALD', v.mod('autoloader')]]) if (m) S[l] = stOf(m);
   const notes = [];
-  if (v.fire > 0) notes.push(`<span class="warn">FIRE</span> ${v.fpe > 0 ? `X: extinguisher (${v.fpe} left)` : 'no extinguishers left'}`);
+  if (v.fire > 0) notes.push(`<span class="warn">FIRE</span> ${v.fpe > 0 ? 'X: extinguisher' : 'no extinguishers left'}`);
   if (v.def.lws && PROJS.some(p => p.team !== v.team && p.A.guided && !p.A.saclos && p.guide && (() => { const t = p.guide(); return t && t.distanceToSquared(v.pos) < 30 * 30; })())) notes.push('<span class="warn">LASER WARNING</span> G: smoke');
   if (v.heat > 1) notes.push('<span class="warn">ENGINE OVERHEATING</span> stop and repair');
   if (!st.drive) notes.push('<span class="warn">IMMOBILISED</span>');
@@ -912,29 +976,39 @@ function vehStatusHTML(v) {
   if (v.repairT > 0) notes.push(`Repairing: ${Math.ceil(v.repairT)} s`);
   else if (v.mods.some(m => m.kind !== 'crew' && m.kind !== 'ammo' && m.hp < m.max * .6)) notes.push('R: repair (stand still)');
   if (v.swapT > 0) notes.push('Crew changing seats');
-  const lased = D.lrf && st.fcs && v.sightR > 0 && GAME.time - v.lrfT < 45;
-  return `<div class="unit">${D.short || D.name}</div>${inst([['SPD', Math.round(Math.abs(v.speed) * 3.6), 'km/h'], ['SIGHT', D.cls === 'jeep' ? '--' : lased ? Math.round(v.sightR) : 400, D.cls === 'jeep' ? '' : 'm'], ['EXT', v.fpe], ['SMOKE', v.smoke || 0]])}<div class="mods crew">${crew}</div><div class="mods">${mods}</div>${noteLines(notes)}`;
+  const lased = D.lrf && st.fcs && v.sightR > 0 && GAME.time - v.lrfT < 45, crewN = D.crew.filter(role => r[role] && r[role].hp > 0).length, rounds = v.load ? D.ammo.reduce((n, k) => n + (v.load[k] || 0), 0) : null;
+  const rows = [['SPD', Math.round(Math.abs(v.speed) * 3.6), 'km/h']]; if (D.cls !== 'jeep') rows.push(['RNG', lased ? Math.round(v.sightR) : 400, 'm']);
+  return dmgPanel(D.wheeled ? 'car' : 'tank', S, (D.short || D.name).toUpperCase(), crewN, rounds, ammoGlyph(AMMO[D.ammo[0]])) + ro(rows) + noteLines(notes);
 }
 function vehAmmoHTML(v) {
-  const D = v.def;
-  const list = D.ammo.map((k, i) => `<div class="am${v.sel === k ? ' sel' : ''}"><i>${i + 1}</i><b>${AMMO[k].type}</b><span>${AMMO[k].name}${D.reload && v.loaded === k ? ' · in the gun' : ''}</span><u>${v.load ? v.load[k] : ''}</u></div>`).join('');
-  let state, bar = '';
-  if (!vState(v).fire) state = '<span class="warn">GUN OUT</span>';
-  else if (D.reload) { if (v.loaded) state = 'READY'; else if (!vState(v).loader) state = '<span class="warn">CANNOT LOAD</span>'; else if (v.load && D.ammo.every(k => v.load[k] <= 0)) state = '<span class="warn">NO AMMO</span>';
-    else { const f = clamp(1 - v.reload / (v.reloadOf || D.reload), 0, 1); state = `LOADING<small>${D.rack && v.rackN <= 0 ? 'ready rack empty: slow' : Math.ceil(v.reload) + ' s'}</small>`; bar = `<div class="load"><i style="width:${Math.round(f * 100)}%"></i></div>`; } }
+  const D = v.def, vs = vState(v);
+  let state, bar = '', f = null;
+  if (!vs.fire) state = '<span class="warn">GUN OUT</span>';
+  else if (D.reload) { if (v.loaded) state = 'READY'; else if (!vs.loader) state = '<span class="warn">CANNOT LOAD</span>'; else if (v.load && D.ammo.every(k => v.load[k] <= 0)) state = '<span class="warn">NO AMMO</span>';
+    else { f = clamp(1 - v.reload / (v.reloadOf || D.reload), 0, 1); state = `LOADING <small>${D.rack && v.rackN <= 0 ? 'ready rack empty: slow' : Math.ceil(v.reload) + ' s'}</small>`; bar = `<div class="load"><i style="width:${Math.round(f * 100)}%"></i></div>`; } }
   else state = 'READY';
-  const extra = [D.rack ? ['RACK', `${v.rackN} of ${D.rack} ready`] : 0, D.mg ? ['F', AMMO[D.mg].name] : 0, D.atgm ? ['T', `${AMMO[D.atgm].name} ×${v.atgmReady} (+${v.atgmLoad})`] : 0, D.smoke ? ['G', `Smoke ×${v.smoke}`] : 0, D.ess ? ['H', `Engine smoke ×${v.ess}`] : 0, D.lrf ? ['V', 'Rangefinder'] : 0, D.thermal ? ['N', 'Thermal sight'] : 0].filter(Boolean).map(([k, t]) => `<i>${k}</i><span>${t}</span>`).join('');
-  return `${list}<div class="gun">${state}</div>${bar}<div class="extra">${extra}</div>`;
+  const s = D.ammo.map((k, i) => slot(i + 1, ammoGlyph(AMMO[k]), AMMO[k].type, v.load ? v.load[k] : '', { sel: v.sel === k, out: v.load && v.load[k] <= 0, dot: D.reload && v.loaded === k, rl: v.sel === k && f != null ? f : null }));
+  if (D.mg) s.push(slot('F', 'bullets', 'MG', ''));
+  if (D.atgm) s.push(slot('T', 'missile', AMMO[D.atgm].type, v.atgmReady + v.atgmLoad, { out: v.atgmReady + v.atgmLoad <= 0 }));
+  if (D.smoke) s.push(slot('G', 'smoke', 'SMOKE', v.smoke, { out: v.smoke <= 0 }));
+  if (D.ess) s.push(slot('H', 'smoke', 'ENGINE', v.ess, { out: v.ess <= 0 }));
+  s.push(slot('X', 'ext', 'EXT', v.fpe, { out: v.fpe <= 0, sel: v.fire > 0 && v.fpe > 0 }));
+  s.push(slot('R', 'repair', 'REPAIR', '', { sel: v.repairT > 0 }));
+  if (D.lrf) s.push(slot('V', 'range', 'RANGE', ''));
+  if (D.thermal) s.push(slot('N', 'thermal', 'THERMAL', ''));
+  return `<div class="gunst">${state}${bar}${D.rack ? `<small>Ready rack ${v.rackN}/${D.rack}</small>` : ''}</div><div class="slots2">${s.join('')}</div>`;
 }
 function renderCpBar() {
-  const C = GAME.cps, me = GAME.team;
-  let h = `<span class="hq" style="color:var(--blue)">BLUE</span>`;
+  const C = GAME.cps, me = GAME.team, s = PLAYER.s, pos = s && s.alive ? (s.veh || s).pos : null;
+  let h = '';
   for (const c of C) {
-    const cls = c.owner === 0 ? ' blue' : c.owner === 1 ? ' red' : '', lock = !canCapture(me, c.i) && c.owner !== me ? ' lock' : '', pct = Math.abs(c.val) * 100, col = c.val > 0 ? 'var(--blue)' : 'var(--red)';
-    h += `<div class="cp${cls}${lock}${c.p.size === 'L' ? ' big' : ''}" title="${c.p.name}">${c.i + 1}${c.guardsLeft ? `<small>${c.guardsLeft}</small>` : ''}${c.owner === -1 ? (pct > 0 ? `<i style="width:${pct}%;background:${col}"></i>` : '') : pct < 100 ? `<i style="width:${pct}%;background:#fff"></i>` : ''}</div>`;
+    const cls = c.owner === 0 ? ' blue' : c.owner === 1 ? ' red' : '', lock = !canCapture(me, c.i) && c.owner !== me ? ' lock' : '', pct = Math.round(Math.abs(c.val) * 100), col = c.val > 0 ? 'var(--blue)' : 'var(--red)';
+    const fill = c.owner === -1 ? (pct > 0 ? `--fill:${col};--p:${pct}%` : '') : pct < 100 ? `--fill:#59646c;--p:${100 - pct}%` : ''; // a neutral diamond fills with the taker's colour; a held one drains as it is taken off you
+    h += `<div class="cp${cls}${lock}${c.p.size === 'L' ? ' big' : ''}${pos && inZone(c, pos) ? ' here' : ''}" title="${c.p.name}" style="${fill}"><em>${c.i + 1}</em>${c.guardsLeft ? `<small>${c.guardsLeft}</small>` : ''}</div>`;
   }
-  h += `<span class="hq" style="color:var(--red)">RED</span>`;
-  if ($('cpbar')._h !== h) { $('cpbar').innerHTML = h; $('cpbar')._h = h; }
+  setHTML($('cpbar'), h);
+  const n = [0, 1].map(t => C.filter(c => c.owner === t).length);
+  for (const [id, v] of [['scB', n[0]], ['scR', n[1]], ['dScB', n[0]], ['dScR', n[1]]]) if ($(id)._t !== v) { $(id).textContent = v; $(id)._t = v; }
 }
 const HELP = { // the key reminder for whatever you are in (F1 shows and hides it)
   foot: [['W A S D', 'Move'], ['Shift', 'Sprint'], ['C', 'Crouch'], ['Space', 'Jump'], ['1 / 2', 'Rifle / rockets'], ['R', 'Reload'], ['E', 'Get in a vehicle'], ['M', 'Map']],
@@ -976,37 +1050,41 @@ function updateHUD(dt) {
   const si = $('sightInfo'), showSi = alive && s.veh && !inAir && CAM.zoom;
   si.style.display = showSi ? 'block' : 'none';
   if (showSi) { const v = s.veh, k = v.def.reload ? (v.loaded || v.sel) : v.sel; si.textContent = `${v.cls === 'jeep' ? '' : CAM.lased ? `RNG ${Math.round(v.sightR)} m (lased)` : v.def.lrf ? 'RNG 400 m (battle sight) · V: lase' : 'RNG 400 m (battle sight)'} · ${AMMO[k].type} ${AMMO[k].name}${v.def.reload ? (v.loaded ? ' · LOADED' : ' · LOADING') : ''}`; }
-  // status and ammo
+  // the read-out, the damage panel and the action bar
+  HUDX.alerts = [];
   if (alive) {
+    $('status').classList.toggle('air', !!inAir);
     if (s.veh) {
-      const v = s.veh; if (v.kind === 'air') { setHTML($('status'), airStatusHTML(v)); setHTML($('ammo'), airAmmoHTML(v)); } else { setHTML($('status'), vehStatusHTML(v)); setHTML($('ammo'), vehAmmoHTML(v)); }
+      const v = s.veh; if (v.kind === 'air') { setHTML($('status'), airStatusHTML(v)); setHTML($('bar'), airAmmoHTML(v)); } else { setHTML($('status'), vehStatusHTML(v)); setHTML($('bar'), vehAmmoHTML(v)); }
     } else {
       const seg = Math.ceil(clamp(s.hp, 0, 100) / 10);
-      setHTML($('status'), `<div class="unit">Rifleman<small>${s.swim ? 'SWIMMING' : s.crouch ? 'CROUCHED' : ''}</small></div><div class="hpbar${s.hp < 35 ? ' low' : ''}">${'<i class="f"></i>'.repeat(seg)}${'<i></i>'.repeat(10 - seg)}</div>`);
-      setHTML($('ammo'), `<div class="am${s.slot === 0 ? ' sel' : ''}"><i>1</i><b>RIFLE</b><span>${s.reload > 0 ? 'reloading' : ''}</span><u>${s.ammo}</u></div><div class="am${s.slot === 1 ? ' sel' : ''}"><i>2</i><b>ROCKETS</b><span>RPG</span><u>${s.rpg}</u></div><div class="gun"><span class="big2">${s.slot === 1 ? s.rpg : s.mag}</span><small>${s.slot === 1 ? 'rockets left' : s.reload > 0 ? 'reloading' : 'in the magazine'}</small></div>`);
+      setHTML($('status'), `<div class="hpbar${s.hp < 35 ? ' low' : ''}">${'<i class="f"></i>'.repeat(seg)}${'<i></i>'.repeat(10 - seg)}</div>${ro([['HP', Math.max(0, Math.round(s.hp))], ...(s.swim ? ['Swimming'] : s.crouch ? ['Crouched'] : [])])}`);
+      setHTML($('bar'), `<div class="gunst">${s.slot === 1 ? `ROCKETS <small>${s.rpg} left</small>` : s.reload > 0 ? 'RELOADING' : `RIFLE <small>${s.mag} in the magazine</small>`}</div><div class="slots2">${slot(1, 'rifle', 'RIFLE', s.ammo, { sel: s.slot === 0 })}${slot(2, 'rpg', 'ROCKETS', s.rpg, { sel: s.slot === 1, out: s.rpg <= 0 })}</div>`);
     }
-  }
+  } else { setHTML($('status'), ''); setHTML($('bar'), ''); }
+  setHTML($('alerts'), HUDX.alerts.map(n => `<div>${n}</div>`).join(''));
   // the capture message
   let cm = '';
   if (alive) {
     const p = (s.veh || s).pos, c = GAME.cps.find(c => inZone(c, p));
     if (c) {
       const my = GAME.team, ownedByMe = c.owner === my;
-      if (c.guardsLeft > 0) cm = `${c.p.name.toUpperCase()}<br><span style="color:var(--guard)">Clear the guards first: ${c.guardsLeft} left</span>`;
-      else if (ownedByMe && Math.abs(c.val) >= 1) cm = `${c.p.name.toUpperCase()}<br><span>Held</span>`;
-      else if (!canCapture(my, c.i)) cm = `${c.p.name.toUpperCase()}<br><span>Not open yet: take ${GAME.cps[my === 0 ? c.i - 1 : c.i + 1].p.name} first</span>`;
-      else { const toward = my === 0 ? c.val : -c.val, contested = c.inside[1 - my] > 0; cm = `${contested ? 'CONTESTED' : toward >= 0 ? 'CAPTURING' : 'NEUTRALIZING'} ${c.p.name.toUpperCase()}<div class="bar"><i style="width:${(toward >= 0 ? toward : 1 + toward) * 100}%"></i></div>`; }
+      if (c.guardsLeft > 0) cm = `${c.p.name}<br><span style="color:var(--guard)">Clear the guards first: ${c.guardsLeft} left</span>`;
+      else if (ownedByMe && Math.abs(c.val) >= 1) cm = `${c.p.name}<br><span>Held</span>`;
+      else if (!canCapture(my, c.i)) cm = `${c.p.name}<br><span>Not open yet: take ${GAME.cps[my === 0 ? c.i - 1 : c.i + 1].p.name} first</span>`;
+      else { const toward = my === 0 ? c.val : -c.val, contested = c.inside[1 - my] > 0; cm = `${contested ? 'Contested:' : toward >= 0 ? 'Capturing' : 'Neutralising'} ${c.p.name}<div class="bar"><i style="width:${(toward >= 0 ? toward : 1 + toward) * 100}%"></i></div>`; }
     }
   }
   if ($('capMsg')._v !== cm) { $('capMsg').innerHTML = cm; $('capMsg')._v = cm; }
   // prompt
   let pr = '';
-  if (alive && !s.veh) { const v = nearbyVehicle(s); if (v) pr = `E  ·  Get in the ${(v.T || v.def).short || (v.T || v.def).name}`; }
+  if (alive && !s.veh) { const v = nearbyVehicle(s); if (v) pr = `<kbd>E</kbd>Get in the ${(v.T || v.def).short || (v.T || v.def).name}`; }
   else if (alive && s.veh) pr = '';
-  $('prompt').textContent = pr; $('prompt').classList.toggle('hidden', !pr);
+  setHTML($('prompt'), pr); $('prompt').classList.toggle('hidden', !pr);
   { const mode = !alive ? '' : inAir ? (s.veh.cls === 'jet' ? 'jet' : 'heli') : s.veh ? 'veh' : 'foot'; if (mode !== GAME.helpMode) { GAME.helpMode = mode; GAME.helpT = performance.now(); }
     const show = GAME.helpOn || performance.now() - (GAME.helpT || 0) < 20000;
-    setHTML($('help2'), !alive ? '' : `<div class="spnow">SPAWN POINTS<b>${PLAYER.sp}</b></div>` + (show ? `<div class="keys2">${HELP[mode].map(([k, t]) => `<i>${k}</i><span>${t}</span>`).join('')}<em>F1 hides this</em></div>` : '<div class="f1">F1: keys</div>')); }
+    $('help2').classList.toggle('air', !!inAir);
+    setHTML($('help2'), !alive ? '' : `<div class="spnow">SPAWN POINTS<b>${PLAYER.sp}</b></div>` + (show ? `<div class="keys2"><h5>Controls</h5>${HELP[mode].map(([k, t]) => `<span>${t}</span><i>${k}</i>`).join('')}<em>F1 hides this</em></div>` : '<div class="f1">F1: controls</div>')); }
   // ally tags
   let n = 0;
   if (alive) for (const e of ENTS) {
@@ -1065,7 +1143,7 @@ function openDeploy(why) {
   GAME.deploying = true; document.exitPointerLock && document.exitPointerLock();
   if (PLAYER.s && !PLAYER.s.alive) { const s = PLAYER.s; setTimeout(() => { if (PLAYER.s !== s) removeEnt(s); }, 8000); PLAYER.s = null; }
   if (why === 'redeploy' && PLAYER.s) { const s = PLAYER.s, v = s.veh; if (v) { exitVehicle(s); v.emptyBy = 'redeploy'; } removeEnt(s); PLAYER.s = null; } // (the vehicle left behind is cleared away like any other abandoned one)
-  $('dEye').textContent = why === 'dead' ? 'You were killed' : why === 'start' ? `${GAME.M.name} · you are ${TEAMS[GAME.team].name}` : 'Redeploy';
+  $('dEye').textContent = `[Checkpoints] ${GAME.M.name}`; $('dFlag').style.background = TEAMS[GAME.team].css; GAME.deployWhy = why;
   renderDeploy(); $('deploy').classList.remove('hidden');
 }
 function renderDeploy() {
@@ -1074,10 +1152,19 @@ function renderDeploy() {
   if (sel.where >= 0 && !canSpawnAt(GAME.team, sel.where)) sel.where = -1;
   if ((SP_COST[sel.cls] || 0) > PLAYER.sp) sel.cls = 'inf';
   const defOf = c => c.veh ? VEH[TEAM_VEH[GAME.team][c.id]] : c.air ? AIR[TEAM_AIR[GAME.team][c.id]] : null, list = CLASSES.filter(c => !c.off);
-  $('dClasses').innerHTML = list.map(c => { const d = defOf(c), name = d ? d.name : c.name, cost = SP_COST[c.id] || 0, poor = cost > PLAYER.sp;
-    const line = c.veh ? `${Math.round(d.vmax * 3.6)} km/h · ${d.mass} t · ${d.ammo.map(k => AMMO[k].type).join(' / ')}${d.atgm ? ' · ' + AMMO[d.atgm].name : ''}` : c.air ? d.info.split(':')[0] : 'Rifle and 3 rockets';
-    return `<button class="urow${sel.cls === c.id ? ' on' : ''}" data-c="${c.id}" ${poor ? 'disabled' : ''}><b>${name}</b><span>${poor ? `Needs ${cost - PLAYER.sp} more spawn points` : line}</span><em>${cost || 'Free'}${cost ? '<small>SP</small>' : ''}</em></button>`; }).join('');
-  { const c = list.find(c => c.id === sel.cls) || list[0], d = defOf(c); $('dInfo').textContent = (d ? d.info : c.info) + (c.id === 'inf' ? '' : ' Vehicles and aircraft start at your base.'); }
+  $('dClasses').innerHTML = list.map(c => { const d = defOf(c), cost = SP_COST[c.id] || 0, poor = cost > PLAYER.sp;
+    const sub = poor ? `Needs ${cost - PLAYER.sp} more spawn points` : c.veh ? `${{ mbt: 'Tank', ifv: 'Infantry fighting vehicle', jeep: 'Light vehicle' }[d.cls]}` : c.air ? (d.cls === 'jet' ? 'Jet fighter' : 'Attack helicopter') : 'Infantry';
+    return `<button class="card${sel.cls === c.id ? ' on' : ''}" data-c="${c.id}" ${poor ? 'disabled' : ''}><div class="face">${SIDE[c.id]}<b>${d ? d.short || d.name : c.name}</b><em>${cost || 'Free'}${cost ? '<small>SP</small>' : ''}</em></div><div class="sub">${sub}</div></button>`; }).join('');
+  { const c = list.find(c => c.id === sel.cls) || list[0], d = defOf(c);
+    const tile = (t, n) => `<div><b>${t}</b><span>${n}</span></div>`;
+    $('dTabs').innerHTML = `<span>${c.air ? 'Weapons' : c.veh ? 'Ammunition' : 'Kit'}</span>`;
+    $('dLoad').innerHTML = c.veh ? d.ammo.map(k => tile(`${AMMO[k].type} × ${d.load ? d.load[k] : ''}`, AMMO[k].name)).join('') + (d.atgm ? tile(`${AMMO[d.atgm].type} × ${1 + (d.atgmLoad || 0)}`, AMMO[d.atgm].name) : '') + (d.mg ? tile('Machine gun', AMMO[d.mg].name) : '')
+      : c.air ? d.weapons.map(w => tile(`${AMMO[w.k].type} × ${w.n}`, AMMO[w.k].name)).join('') : tile('Rifle', '30-round magazines') + tile('Rockets × 3', 'RPG');
+    const F = c.veh ? [['Vehicle', d.name], ['Top speed', `${Math.round(d.vmax * 3.6)} km/h`], ['Weight', `${d.mass} t`], ['Crew', d.crew.length]] : c.air ? [['Aircraft', d.name], ['Type', d.cls === 'jet' ? 'Jet fighter' : 'Attack helicopter'], ['Weight', `${(d.mass / 1000).toFixed(1)} t`], ['Starts', d.cls === 'jet' ? 'On your runway' : 'On your helipad']] : [['Soldier', 'Rifleman'], ['Starts', 'Base or a checkpoint you hold']];
+    $('dFields').innerHTML = F.map(([l, v]) => `<label>${l}<b>${v}</b></label>`).join('');
+    $('dInfo').textContent = (d ? d.info : c.info) + (c.id === 'inf' ? '' : ' Vehicles and aircraft start at your base.'); }
+  { const me = GAME.team, order = me === 0 ? GAME.cps : [...GAME.cps].reverse(), next = order.find(c => c.owner !== me && canCapture(me, c.i)), held = GAME.cps.filter(c => c.owner === me).length;
+    $('dObj').innerHTML = [next ? `Capture ${next.p.name}${next.guardsLeft ? `: clear its ${next.guardsLeft} guards, then stand inside` : ''}` : 'Hold every checkpoint', `Hold what you have: ${held} of ${GAME.cps.length}`, 'Hold all five to win, or the most when the time runs out'].map(t => `<li>${t}</li>`).join(''); }
   $('dSp').textContent = PLAYER.sp;
   const spots = [{ i: -1, n: `${TEAMS[GAME.team].name} base` }, ...GAME.cps.filter(c => canSpawnAt(GAME.team, c.i)).map(c => ({ i: c.i, n: `${c.i + 1} · ${c.p.name}` }))];
   $('dWhere').innerHTML = spots.map(s => `<button class="btn${sel.where === s.i ? ' on' : ''}" data-w="${s.i}" ${s.i >= 0 && sel.cls !== 'inf' ? 'disabled title="Vehicles start at your base"' : ''}>${s.n}</button>`).join('');
@@ -1088,7 +1175,8 @@ function refreshDeploy() { // the parts that change while you look at it (rebuil
   const key = [-1, ...GAME.cps.filter(c => canSpawnAt(GAME.team, c.i)).map(c => c.i)].join() + '|' + PLAYER.sp;
   if (key !== $('dWhere')._key) return renderDeploy();
   const g = $('dMap').getContext('2d'); drawMapLayer(g, 0, 0, $('dMap').width / WORLD_W, 751, 496, true);
-  const wait = Math.max(0, GAME.deployT); $('dGo').disabled = wait > 0; $('dWait').textContent = wait > 0 ? `Ready in ${Math.ceil(wait)} s` : 'Click a place you hold on the map to start there on foot';
+  const wait = Math.max(0, GAME.deployT); $('dGo').disabled = wait > 0; $('dWait').textContent = wait > 0 ? `${GAME.deployWhy === 'dead' ? 'You were killed. ' : ''}Ready in ${Math.ceil(wait)} s` : 'Click a checkpoint you hold on the map to start there on foot';
+  const left = Math.max(0, MATCH_S - GAME.time), clk = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}`; $('dTime').textContent = `Time left: ${clk}`; $('dClock').textContent = clk; renderCpBar();
 }
 $('dClasses').onclick = e => { const b = e.target.closest('[data-c]'); if (!b || b.disabled) return; GAME.sel.cls = b.dataset.c; Sound.init(); Sound.play('ui'); renderDeploy(); };
 $('dWhere').onclick = e => { const b = e.target.closest('[data-w]'); if (!b || b.disabled) return; GAME.sel.where = +b.dataset.w; renderDeploy(); };
@@ -1158,7 +1246,8 @@ $('eMenu').onclick = () => { $('end').classList.add('hidden'); toTitle(); };
 const PREF = (() => { try { return JSON.parse(localStorage.getItem('islandfront.v1') || '{}'); } catch (e) { return {}; } })();
 Object.assign(GAME, { map: PREF.map ?? 0, team: PREF.team ?? 0, bots: PREF.bots ?? 8, diff: PREF.diff ?? 1, gfx: PREF.gfx || 'optimised' });
 function renderTitle() {
-  $('mapPick').innerHTML = MAPS.map((m, i) => `<button class="mrow${GAME.map === i ? ' on' : ''}" data-v="${i}"><i>${String(i + 1).padStart(2, '0')}</i><b>${m.name}</b><span>${m.pitch}</span></button>`).join('');
+  $('mapPick').innerHTML = MAPS.map((m, i) => `<button class="mrow${GAME.map === i ? ' on' : ''}" data-v="${i}">${m.name}<small>${m.pitch}</small></button>`).join('');
+  $('tbMode').textContent = `Checkpoints · ${MAPS[GAME.map].name}`;
   for (const [id, key] of [['teamPick', 'team'], ['botPick', 'bots'], ['diffPick', 'diff']]) [...$(id).children].forEach(b => b.classList.toggle('on', +b.dataset.v === GAME[key]));
   [...$('gfxPick').children].forEach(b => b.classList.toggle('on', b.dataset.v === GAME.gfx));
   const gb = [...$('gfxPick').children].find(b => b.dataset.v === GAME.gfx); $('gfxNote').textContent = gb ? gb.title : '';
@@ -1167,7 +1256,7 @@ $('tTabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) re
 for (const [id, key] of [['mapPick', 'map'], ['teamPick', 'team'], ['botPick', 'bots'], ['diffPick', 'diff'], ['gfxPick', 'gfx']]) $(id).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; GAME[key] = key === 'gfx' ? b.dataset.v : +b.dataset.v; try { localStorage.setItem('islandfront.v1', JSON.stringify({ map: GAME.map, team: GAME.team, bots: GAME.bots, diff: GAME.diff, gfx: GAME.gfx })); } catch (err) {} renderTitle(); };
 function begin() {
   Sound.init();
-  $('title').classList.add('hidden'); $('loadText').innerHTML = `Building ${MAPS[GAME.map].name}<small>${GAME.gfx === 'optimised' ? 'Optimised graphics.' : GAME.gfx === 'ultra' ? 'Ultra graphics: this takes several seconds.' : 'Realistic graphics: this takes several seconds.'}</small>`; $('loading').classList.remove('hidden');
+  $('title').classList.add('hidden'); $('loadText').innerHTML = `${MAPS[GAME.map].name}<small>Checkpoints. ${GAME.gfx === 'optimised' ? 'Optimised graphics.' : GAME.gfx === 'ultra' ? 'Ultra graphics: this takes several seconds.' : 'Realistic graphics: this takes several seconds.'}</small>`; $('loading').classList.remove('hidden');
   setTimeout(() => { startMatch(GAME.map, GAME.team, GAME.bots, GAME.diff); $('loading').classList.add('hidden'); }, 40);
 }
 function toTitle() { GAME.on = false; clearMatch(); $('hud').classList.add('hidden'); $('deploy').classList.add('hidden'); $('title').classList.remove('hidden'); document.exitPointerLock && document.exitPointerLock(); Sound.engine(false, 0); renderTitle(); }

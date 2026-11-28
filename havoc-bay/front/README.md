@@ -194,12 +194,18 @@ Bots earn and spend SP the same way. Each bot has its own skill level, and bots 
 
 ## Interface
 
-The menus and the HUD are drawn as flat plates with square corners and thin rules, in the style of a field order: one typeface family (Barlow Condensed for headings and read-outs, Barlow Semi Condensed for text), one signal colour (amber) for the thing you act on, and colour otherwise used only for the two teams and for part states (green working, amber damaged, red knocked out). The selected row is shown as an inverted light plate. All of it is in `ui.css`; the fonts are packed into that file so the game still opens from disk.
+The interface is laid out the way War Thunder lays its own out, studied from that game's official wiki and news screenshots. Only the layout and conventions are borrowed: every drawing, icon and colour here is the game's own, and no War Thunder artwork, logo or font is used.
 
-- **Top:** the five checkpoints with their guard counts between the two bases, the match clock, and a compass tape that scrolls with your view.
-- **Bottom left:** your unit: instrument read-outs (speed, sight range, altitude, fuel and so on), crew and module states, and short notes.
-- **Bottom right:** weapons, with the selected one inverted, and the gun's state.
-- **F1** shows or hides the key list for what you are in. It also shows for 20 seconds each time you change unit.
+- **Top centre:** how many checkpoints each side holds on slanted blue and red plates with the clock between them, the five checkpoints as diamonds under that (blue, red or neutral, filling as they are taken, with the number of guards left beneath and corner brackets round the one you are standing in), then a compass tape.
+- **Top left:** spawn points. In an aircraft the flight read-out sits here as bare text: throttle, speed, altitude, then the weapons with `>` marking the chosen one, flares and fuel time, then the other instruments.
+- **Bottom left:** the damage panel, a plan view of what you are in on a round plate. Each part and crew seat is blue when working, yellow when damaged and red when knocked out; an empty seat is dark. Speed and sight range are under it.
+- **Bottom centre:** the action bar. One slot for each thing you can use, with its key on a tab above, a picture, and how many are left. The chosen shell or weapon is lit, the shell in the gun has a gold marker, and the slot fills as the gun loads.
+- **Bottom right:** the map. **Top right:** who knocked out whom.
+- **Warnings** (fire, missile, stall and so on) appear in red under the compass.
+- **F1** shows or hides the controls for what you are in. They also show for 20 seconds each time you change unit.
+- **Menus** are flat slate windows with tabs and a row of buttons along the bottom. The title screen has the red "To battle" button at the top with the chosen map under it. The deploy screen shows the battle name, time left and score on top, your line-up as a strip of cards with their spawn-point costs, the chosen unit's weapons and figures and the mission objectives on the left, and the map on the right.
+
+All of it is in `ui.css`; the Barlow typeface is packed into that file so the game still opens from disk.
 
 ## Credits
 

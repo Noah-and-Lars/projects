@@ -10,7 +10,7 @@
 <div id="gl"></div>
 
 <div id="hud" class="hidden">
-  <div id="top"><div id="cpbar"></div><div id="clock"></div><div id="compass"><div id="compStrip"></div></div></div>
+  <div id="top"><div class="score" id="score"><b class="bl" id="scB">0</b><span id="clock"></span><b class="rd" id="scR">0</b></div><div id="cpbar"></div><div id="compass"><div id="compStrip"></div></div></div>
   <div id="scope"><div class="ret"><i style="left:-180px;top:-1px;width:160px;height:2px"></i><i style="left:20px;top:-1px;width:160px;height:2px"></i><i style="left:-1px;top:14px;width:2px;height:150px"></i><i style="left:-8px;top:0;width:16px;height:2px;transform:rotate(35deg);transform-origin:left"></i><i style="left:-14px;top:0;width:16px;height:2px;transform:rotate(-35deg);transform-origin:right"></i><i style="left:-30px;top:40px;width:60px;height:1px"></i><i style="left:-20px;top:80px;width:40px;height:1px"></i><i style="left:-12px;top:120px;width:24px;height:1px"></i></div></div>
   <div id="cross"></div>
   <div id="gunMark"></div>
@@ -18,83 +18,93 @@
   <div id="dmgFlash"></div>
   <div id="tags"></div>
   <div id="msg"></div>
+  <div id="alerts"></div>
   <div id="capMsg"></div>
   <div id="prompt" class="hidden"></div>
   <div id="hitInfo"></div>
   <div id="vehMsg"></div>
   <div id="sightInfo"></div>
-  <canvas id="mini" width="420" height="420"></canvas>
+  <canvas id="mini" width="456" height="456"></canvas>
   <div id="feed"></div>
   <div id="status"></div>
-  <div id="ammo"></div>
+  <div id="bar"></div>
   <div id="help2"></div>
 </div>
 
 <div id="title" class="screen">
-  <aside class="rail">
-    <div class="brand"><span>Havoc Bay</span><h1>Island <br>Front</h1><p>Tanks, aircraft and infantry fighting for one island. Offline against bots, keyboard and mouse.</p></div>
-    <nav class="tabs" id="tTabs"><button data-tab="battle" class="on">Battle</button><button data-tab="controls">Controls</button><button data-tab="credits">Credits</button></nav>
-    <div class="railfoot"><button class="btn go big" id="startBtn">Start battle</button><a class="tlink" href="../index.html">Back to Havoc Bay</a></div>
-  </aside>
-  <main class="tmain">
-    <section data-pane="battle">
-      <h3>Objective</h3>
-      <p class="lead">Five checkpoints lie between the two bases: small, medium, the main base, medium, small. Each is held by guards who shoot both sides and do not come back. Clear the guards, then stand inside to take it. Hold all five to win, or hold the most when the 30 minutes run out.</p>
-      <h3>Map</h3>
-      <div class="mlist" id="mapPick"></div>
-      <h3>Setup</h3>
-      <div class="setup">
-        <div class="srow"><span>Your team</span><div class="seg" id="teamPick"><button class="btn" data-v="0">Blue</button><button class="btn" data-v="1">Red</button></div></div>
-        <div class="srow"><span>Bots per team</span><div class="seg" id="botPick"><button class="btn" data-v="4">4</button><button class="btn" data-v="8">8</button><button class="btn" data-v="12">12</button></div></div>
-        <div class="srow"><span>Difficulty</span><div class="seg" id="diffPick"><button class="btn" data-v="0">Easy</button><button class="btn" data-v="1">Normal</button><button class="btn" data-v="2">Hard</button></div></div>
-        <div class="srow"><span>Graphics</span><div class="seg" id="gfxPick"><button class="btn" data-v="optimised" title="The lighter map: runs on most computers">Optimised</button><button class="btn" data-v="realistic" title="European countryside: stone villages, mixed woods, hedgerows, wind-blown grass, detailed soldiers. Needs a good graphics card">Realistic</button><button class="btn" data-v="ultra" title="The Realistic world under a low golden sun: sun shafts through trees and cloud, glow, lens flare, haze that warms towards the sun, glitter on the sea. Needs a strong graphics card">Ultra</button></div></div>
-      </div>
-      <p class="note" id="gfxNote"></p>
-    </section>
-    <section data-pane="controls" hidden>
-      <h3>Controls</h3>
-      <div class="keycols"><div class="keys"><h4>On foot</h4><kbd>W A S D</kbd><span>Move</span><kbd>Mouse</kbd><span>Look and aim</span><kbd>Left click</kbd><span>Fire</span><kbd>Shift</kbd><span>Sprint</span><kbd>C</kbd><span>Crouch</span><kbd>Space</kbd><span>Jump</span><kbd>R</kbd><span>Reload</span><kbd>1 / 2</kbd><span>Rifle / rocket launcher</span><kbd>E</kbd><span>Get in a vehicle</span><kbd>M</kbd><span>Big map</span></div><div class="keys"><h4>Tanks and vehicles</h4><kbd>W A S D</kbd><span>Drive</span><kbd>Right click</kbd><span>Gun sight (Shift: more zoom)</span><kbd>1 2 3</kbd><span>Choose shell</span><kbd>F / T</kbd><span>Machine gun / missile</span><kbd>V</kbd><span>Laser rangefinder</span><kbd>N</kbd><span>Thermal sight</span><kbd>G / H</kbd><span>Smoke grenades / engine smoke</span><kbd>R</kbd><span>Repair (stand still)</span><kbd>X</kbd><span>Fire extinguisher</span><kbd>E</kbd><span>Get out</span></div><div class="keys"><h4>Aircraft</h4><kbd>Mouse</kbd><span>The aircraft follows your aim</span><kbd>W / S</kbd><span>Jet: throttle · Heli: nose down / up</span><kbd>A / D</kbd><span>Roll</span><kbd>Q / E</kbd><span>Jet: rudder</span><kbd>Space / C</kbd><span>Heli: collective up / down</span><kbd>H</kbd><span>Heli: hover mode</span><kbd>B</kbd><span>Jet: airbrake</span><kbd>1-4 · F</kbd><span>Weapons · gun</span><kbd>G</kbd><span>Flares</span><kbd>J</kbd><span>Bail out</span></div></div>
-    </section>
-    <section data-pane="credits" class="credits" hidden>
-      <h3>Credits</h3>
+  <header class="topbar">
+    <div class="brand"><span>Havoc Bay</span><b>Island Front</b></div>
+    <div class="tb"><button class="tobattle" id="startBtn">To battle</button><div id="tbMode"></div></div>
+    <a class="tlink" href="../index.html">&lsaquo; Back to Havoc Bay</a>
+  </header>
+  <div class="hwrap"><div class="win">
+    <nav class="wtabs" id="tTabs"><button data-tab="battle" class="on">Battle</button><button data-tab="controls">Controls</button><button data-tab="credits">Credits</button></nav>
+    <div class="wbody">
+      <section data-pane="battle" class="cols2">
+        <div class="nav"><h4>Location</h4><div class="mlist" id="mapPick"></div></div>
+        <div class="pane">
+          <h4>Mission objectives</h4>
+          <ul class="obj"><li>Clear the guards out of each checkpoint, then stand inside it to take it</li><li>Take the five checkpoints in order, starting from your own base</li><li>Hold all five to win, or hold the most when the 30 minutes run out</li></ul>
+          <p class="lead">Five checkpoints lie between the two bases: small, medium, the main base, medium, small. The guards shoot both sides and do not come back.</p>
+          <h4>Battle settings</h4>
+          <div class="setup">
+            <div class="srow"><span>Your team</span><div class="seg" id="teamPick"><button class="btn" data-v="0">Blue</button><button class="btn" data-v="1">Red</button></div></div>
+            <div class="srow"><span>Bots per team</span><div class="seg" id="botPick"><button class="btn" data-v="4">4</button><button class="btn" data-v="8">8</button><button class="btn" data-v="12">12</button></div></div>
+            <div class="srow"><span>Difficulty</span><div class="seg" id="diffPick"><button class="btn" data-v="0">Easy</button><button class="btn" data-v="1">Normal</button><button class="btn" data-v="2">Hard</button></div></div>
+            <div class="srow"><span>Graphics</span><div class="seg" id="gfxPick"><button class="btn" data-v="optimised" title="The lighter map: runs on most computers">Optimised</button><button class="btn" data-v="realistic" title="European countryside: stone villages, mixed woods, hedgerows, wind-blown grass, detailed soldiers. Needs a good graphics card">Realistic</button><button class="btn" data-v="ultra" title="The Realistic world under a low golden sun: sun shafts through trees and cloud, glow, lens flare, haze that warms towards the sun, glitter on the sea. Needs a strong graphics card">Ultra</button></div></div>
+          </div>
+          <p class="note" id="gfxNote"></p>
+        </div>
+      </section>
+      <section data-pane="controls" class="pane" hidden>
+        <div class="keycols"><div class="keys"><h4>On foot</h4><span>Move</span><kbd>W A S D</kbd><span>Look and aim</span><kbd>Mouse</kbd><span>Fire</span><kbd>Left click</kbd><span>Sprint</span><kbd>Shift</kbd><span>Crouch</span><kbd>C</kbd><span>Jump</span><kbd>Space</kbd><span>Reload</span><kbd>R</kbd><span>Rifle / rocket launcher</span><kbd>1 / 2</kbd><span>Get in a vehicle</span><kbd>E</kbd><span>Big map</span><kbd>M</kbd></div><div class="keys"><h4>Tanks and vehicles</h4><span>Drive</span><kbd>W A S D</kbd><span>Gun sight (Shift: more zoom)</span><kbd>Right click</kbd><span>Choose shell</span><kbd>1 2 3</kbd><span>Machine gun / missile</span><kbd>F / T</kbd><span>Laser rangefinder</span><kbd>V</kbd><span>Thermal sight</span><kbd>N</kbd><span>Smoke grenades / engine smoke</span><kbd>G / H</kbd><span>Repair (stand still)</span><kbd>R</kbd><span>Fire extinguisher</span><kbd>X</kbd><span>Get out</span><kbd>E</kbd></div><div class="keys"><h4>Aircraft</h4><span>The aircraft follows your aim</span><kbd>Mouse</kbd><span>Jet: throttle · Heli: nose down / up</span><kbd>W / S</kbd><span>Roll</span><kbd>A / D</kbd><span>Jet: rudder</span><kbd>Q / E</kbd><span>Heli: collective up / down</span><kbd>Space / C</kbd><span>Heli: hover mode</span><kbd>H</kbd><span>Jet: airbrake</span><kbd>B</kbd><span>Weapons · gun</span><kbd>1-4 · F</kbd><span>Flares</span><kbd>G</kbd><span>Bail out</span><kbd>J</kbd></div></div>
+      </section>
+      <section data-pane="credits" class="pane credits" hidden>
+        <h4>Credits</h4>
       <p><b>F-2A fighter model.</b> This work is based on "<a href="https://sketchfab.com/3d-models/mitsubishi-f-2-fighter-jet-free-d3d7244554974f499b106e6c11fe3aaf" target="_blank" rel="noopener">Mitsubishi F-2 - Fighter Jet - Free</a>" by <a href="https://sketchfab.com/bohmerang" target="_blank" rel="noopener">bohmerang</a>, licensed under <a href="http://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC-BY-NC-SA-4.0</a>. Non-commercial use only.</p>
       <p><b>Typeface.</b> Barlow, Copyright 2017 The Barlow Project Authors, under the SIL Open Font License 1.1.</p>
       <p><b>Engine.</b> three.js r128, under the MIT licence.</p>
-    </section>
-  </main>
+      </section>
+    </div>
+  </div></div>
 </div>
 
 <div id="loading" class="ov hidden"><div id="loadText">Building the island</div></div>
 
 <div id="deploy" class="screen hidden">
-  <header class="sbar"><div><div class="kicker" id="dEye">Deploy</div><h2 id="dTitle">Choose how to go in</h2></div><div class="spbox">Spawn points<b id="dSp">0</b></div></header>
-  <div class="dgrid">
-    <section class="dleft"><div class="thead"><span>Unit</span><span>Cost</span></div><div class="ulist" id="dClasses"></div><div class="uinfo" id="dInfo"></div></section>
-    <section class="dright">
-      <div class="mapwrap"><canvas id="dMap" width="751" height="496"></canvas></div>
-      <div class="where"><div class="lbl">Deploy at</div><div class="row" id="dWhere"></div></div>
+  <header class="rhead"><div class="rname"><b id="dEye"></b><span id="dTime"></span></div><div class="score"><b class="bl" id="dScB">0</b><span id="dClock"></span><b class="rd" id="dScR">0</b></div><div class="spbox">Spawn points<b id="dSp">0</b></div></header>
+  <div class="slots"><div class="flagbox"><i id="dFlag"></i></div><div class="cards" id="dClasses"></div></div>
+  <div class="rbody">
+    <section class="rleft">
+      <div><div class="rtabs" id="dTabs"></div><div class="loadout" id="dLoad"></div></div>
+      <div class="fields" id="dFields"></div>
+      <p class="rinfo" id="dInfo"></p>
+      <h4>Mission objectives</h4>
+      <ul class="obj" id="dObj"></ul>
+      <div class="where"><h4>Spawn point</h4><div class="seg" id="dWhere"></div></div>
     </section>
+    <section class="rmap"><canvas id="dMap" width="751" height="496"></canvas></section>
   </div>
-  <footer class="sfoot"><span id="dWait"></span><button class="btn go" id="dGo">Deploy</button></footer>
+  <footer class="rfoot"><span id="dWait"></span><button class="tobattle" id="dGo">To battle</button></footer>
 </div>
 
 <div id="pause" class="ov dim hidden">
-  <div class="menu">
-    <h2>Paused</h2>
-    <p>The battle is stopped. Resume takes the mouse back.</p>
-    <button id="pResume">Resume</button><button id="pRedeploy">Redeploy</button><button id="pQuit">Quit to menu</button>
+  <div class="win menu">
+    <div class="wbar">Menu</div>
+    <div class="wbody"><p>The battle is stopped. Resume takes the mouse back.</p>
+    <button class="btn" id="pResume">Resume</button><button class="btn" id="pRedeploy">Choose another vehicle</button><button class="btn" id="pQuit">Leave the battle</button></div>
   </div>
 </div>
 
 <div id="bigmap" class="ov dim hidden"><canvas id="bigCv" width="1502" height="992"></canvas></div>
 
 <div id="end" class="ov dim hidden">
-  <div class="band"><div class="bandin">
-    <h1 id="endTitle">Victory</h1>
-    <p id="endWhy"></p>
-    <div class="endstats" id="endStats"></div>
-    <div class="row"><button class="btn go" id="eAgain">Play again</button><button class="btn" id="eMenu">Menu</button></div>
-  </div></div>
+  <h1 id="endTitle">Victory</h1>
+  <div class="win results">
+    <div class="wbar">Battle results</div>
+    <div class="wbody"><p id="endWhy"></p><div class="endstats" id="endStats"></div></div>
+    <div class="wfoot"><button class="btn" id="eMenu">To menu</button><span class="sp"></span><button class="btn on" id="eAgain">Play again</button></div>
+  </div>
 </div>
 
 

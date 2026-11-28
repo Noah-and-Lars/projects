@@ -683,14 +683,16 @@ function airStatusHTML(a) {
   const D = a.def, V = a.vel.length(), alt = a.pos.y - Math.max(0, groundY(a.pos.x, a.pos.z));
   const groups = D.cls === 'jet' ? [['CKPT', 'cockpit'], ['FUS', 'fuseF', 'fuseR'], ['FUEL', 'fuel'], ...a.parts.filter(p => p.kind === 'engine').map(p => [p.id === 'eng1' ? 'ENG' : p.id === 'engL' ? 'ENG L' : 'ENG R', p.id]), ['WING L', 'wingLi', 'wingLo'], ['WING R', 'wingRi', 'wingRo'], ['TAIL', ...a.parts.filter(p => p.kind === 'stab' || p.kind === 'fin').map(p => p.id)]]
     : [['PILOT', 'cockpit'], ['GUNNER', 'gunner'], ['FUS', 'fuse'], ['FUEL', 'fuel'], ['ENG L', 'engL'], ['ENG R', 'engR'], ['XMSN', 'trans'], ['ROTOR', 'rotor'], ['TAIL', 'boom', ...(D.tailRotor ? ['trot'] : ['fin'])]];
-  const chips = groups.map(([l, ...ids]) => { const ps = ids.map(i => a.part(i)).filter(Boolean), worst = Math.min(...ps.map(p => p.hp / p.max)); return `<span class="chip ${worst <= 0 ? 'dead' : worst < .6 ? 'dmg' : 'ok'}">${l}</span>`; }).join('');
+  const S = {}; for (const [l, ...ids] of groups) { const ps = ids.map(i => a.part(i)).filter(Boolean); if (!ps.length) continue; const worst = Math.min(...ps.map(p => p.hp / p.max)); S[l] = worst <= 0 ? 'dead' : worst < .6 ? 'dmg' : 'ok'; }
+  const code = A => A.look === 'bomb' ? 'BMB' : A.look === 'rocket' ? 'RKT' : A.look === 'missile' ? (A.aa ? 'AAM' : 'AGM') : 'GUN';
+  const wpn = D.weapons.map((w, i) => [code(AMMO[w.k]), a.ammo[i], '', a.ammo[i] <= 0 ? 'red' : '', a.sel === i]);
   const notes = []; if (a.fire > 0) notes.push(`<span class="warn">FIRE${a.extT > 0 ? '' : ' · X: fire handle'}</span>`); if (incoming(a)) notes.push('<span class="warn">MISSILE · G: flares</span>');
   if (a.cls === 'heli' && a.spin > .5) notes.push('<span class="warn">SPINNING</span>'); if (a.onGround && a.rearmT > 0) notes.push('rearming');
   let extra, spd = V;
   if (D.cls === 'jet') {
     spd = a.ias ?? V; // indicated airspeed: what the wings feel
     const thr = a.throttle <= .85 ? Math.round(a.throttle / .85 * 100) + '%' : 'WEP', left = a.burn > 0 ? a.fuel / a.burn : 1e9, ft = left > 5940 ? '99:00' : `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
-    extra = [['THR', thr], ['FUEL', ft], ['MACH', (a.mach || 0).toFixed(2)], ['G', (a.gload || 1).toFixed(1)], ['AOA', Math.round((a.alpha || 0) * 57.3), '°'], ['GEAR', a.gearDown || a.onGround ? 'DN' : 'UP']]; if (a.onGround && a.throttle < .05) notes.push('Wheel brakes on');
+    extra = [['THR', thr, '', thr === 'WEP' ? 'red' : ''], ['IAS', Math.round(spd * 3.6), 'km/h'], ['ALT', Math.round(alt), 'm'], 0, ...wpn, ['FLR', a.flares], ['FUEL', ft, '', left < 90 ? 'red' : ''], 0, ['MACH', (a.mach || 0).toFixed(2)], ['G', (a.gload || 1).toFixed(1)], ['AOA', Math.round((a.alpha || 0) * 57.3) + '°'], ['GEAR', a.gearDown || a.onGround ? 'DOWN' : 'UP']]; if (a.onGround && a.throttle < .05) notes.push('Wheel brakes on');
     if (a.fuel <= 0) notes.push('<span class="warn">NO FUEL</span>'); else if (left < 90) notes.push('<span class="warn">FUEL LOW</span>'); if (a.leaking) notes.push('<span class="warn">FUEL LEAK</span>');
     if (!a.onGround) {
       if (a.gloc > 0) notes.push('<span class="warn">BLACKED OUT</span>');
@@ -700,19 +702,20 @@ function airStatusHTML(a) {
     } else if (a.vlo && V > a.vlo * .78 && a.throttle > .5) notes.push('rotate: look up');
     if (a.airbrake) notes.push('airbrake');
   } else {
-    extra = [['COLL', Math.round((a.lever ?? a.col ?? 0) * 100), '%'], ['V/S', (a.vel.y >= 0 ? '+' : '') + a.vel.y.toFixed(1), 'm/s'], ['RPM', Math.round(a.rpm * 100), '%'], ['TQ', Math.round((a.tq || 0) * 100), '%']];
+    extra = [['COLL', Math.round((a.lever ?? a.col ?? 0) * 100) + ' %'], ['SPD', Math.round(spd * 3.6), 'km/h'], ['ALT', Math.round(alt), 'm'], ['V/S', (a.vel.y >= 0 ? '+' : '') + a.vel.y.toFixed(1), 'm/s'], 0, ...wpn, ['FLR', a.flares], 0, ['RPM', Math.round(a.rpm * 100) + ' %', '', a.rpm < .9 ? 'red' : ''], ['TQ', Math.round((a.tq || 0) * 100) + ' %']];
     const dead = a.parts.filter(p => p.kind === 'engine').every(p => !pOK(p)) || !pOK(a.part('trans'));
-    if (a.hover) notes.push('HOVER MODE · H: off');
     for (const pr of PROJS) if (pr.owner === a && pr.A.guided && pr.guide) { const g = pr.guide(); if (g) { notes.push(`missile: ${Math.max(0, g.distanceTo(pr.pos) / Math.max(50, pr.vel.length())).toFixed(0)} s to impact · keep the crosshair on the target`); break; } }
     if (dead && !a.onGround) notes.push('<span class="warn">NO POWER · autorotate: lower the collective (C), keep 120+ km/h, flare, then raise it (Space) at the bottom</span>');
     else if (a.rpm < .9 && !a.onGround) notes.push('<span class="warn">LOW ROTOR RPM · lower the collective</span>');
     if (a.vrs > .3) notes.push('<span class="warn">SINKING IN OWN DOWNWASH · fly forward</span>');
   }
-  return `<div class="unit">${D.short || D.name}</div>${inst([[D.cls === 'jet' ? 'IAS' : 'SPD', Math.round(spd * 3.6), 'km/h'], ['ALT', Math.round(alt), 'm'], ...extra])}<div class="mods">${chips}</div>${noteLines(notes)}`;
+  if (a.hover) extra.push('HOVER MODE');
+  return ro(extra) + noteLines(notes) + dmgPanel(D.cls === 'jet' ? 'jet' : 'heli', S, (D.short || D.name).toUpperCase());
 }
 function airAmmoHTML(a) {
-  const list = a.def.weapons.map((w, i) => `<div class="am${a.sel === i ? ' sel' : ''}"><i>${i + 1}</i><b>${AMMO[w.k].type}</b><span>${AMMO[w.k].name}</span><u>${a.ammo[i]}</u></div>`).join('');
-  return `${list}<div class="extra"><i>F</i><span>Gun</span><i>G</i><span>Flares ×${a.flares}</span></div>`;
+  const s = a.def.weapons.map((w, i) => slot(i + 1, ammoGlyph(AMMO[w.k]), AMMO[w.k].type.toUpperCase(), a.ammo[i], { sel: a.sel === i, out: a.ammo[i] <= 0 }));
+  s.push(slot('F', 'bullets', 'GUN', '')); s.push(slot('G', 'flare', 'FLARES', a.flares, { out: a.flares <= 0 }));
+  return `<div class="gunst">${AMMO[a.def.weapons[a.sel].k].name}</div><div class="slots2">${s.join('')}</div>`;
 }
 function rocketPoint(a, A, out) { // the ballistic computer: where a rocket fired now would land (rockets leave along the nose)
   axes(a); const p = airGunWorld(a, new V3()), v = _ax.clone().multiplyScalar(A.v).add(a.vel), dt = .05, g = A.g ?? 9.8;
