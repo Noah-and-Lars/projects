@@ -56,6 +56,7 @@ function startMatch(mapIdx, team, bots, diff) {
   const b = M.bases[team]; CAM.yaw = b.ang; CAM.pitch = -.1;
   CAM.pos.set(b.x * 1000, b.zone.y0 + 40, b.y * 1000);
   $('hud').classList.remove('hidden');
+  GAME.sel.where = frontCp(team); // start at the front checkpoint, where your side's bots are, unless you choose otherwise
   renderCpBar();
   openDeploy('start');
 }
@@ -649,6 +650,12 @@ function spawnBot(b) {
   b.spawnT = GAME.time; b.huntPick = undefined; b.holdPick = Math.random() < .4; b.flankSide = Math.random() < .5 ? -1 : 1;
   b.ai = { t: Math.random(), target: null, stuck: 0, rev: 0, goal: null, think: 0, lastS: 0, holdT: 0 };
 }
+function botSpawnFailed(b, err) { // whatever went wrong, clear the half-made bot and bring it back on foot at its base a moment later
+  console.warn('Island Front: a bot failed to spawn', err);
+  if (b.soldier) { const s = b.soldier; if (s.veh) { s.veh.driver = null; s.veh = null; } removeEnt(s); } b.soldier = null; b.unit = null;
+  if ((b.fails = (b.fails || 0) + 1) >= 2) { b.fails = 0; const s = new Soldier(b.team, { bot: b, name: b.name }), [x, z] = spawnSpot(b.team, -1); s.pos.set(x, groundY(x, z) + .1, z); s.yaw = GAME.M.bases[b.team].ang; b.soldier = s; s.bot = b; b.unit = s; b.spawnT = GAME.time; b.ai = { t: Math.random(), target: null, stuck: 0, rev: 0, goal: null, think: 0, lastS: 0, holdT: 0 }; }
+  else b.respawn = 2;
+}
 function routePoint(s, lane, out) { // point on the route at distance s, shifted sideways by lane
   const M = GAME.M, R = M.route, L = M.routeLen; s = clamp(s, 0, L[L.length - 1]);
   let k = 0; while (k < L.length - 2 && L[k + 1] < s) k++;
@@ -661,7 +668,7 @@ function botsStep(dt) {
   for (const b of GAME.botsList) {
     if (!b.soldier || !b.soldier.alive) {
       if (b.soldier && b.soldier.dead > 12) { removeEnt(b.soldier); b.soldier = null; }
-      if ((b.respawn -= dt) <= 0 && !GAME.over) spawnBot(b);
+      if ((b.respawn -= dt) <= 0 && !GAME.over) { try { spawnBot(b); } catch (err) { botSpawnFailed(b, err); } } // (one bot failing to spawn must never stop the others)
       if (b.soldier && !b.soldier.alive) poseSoldier(b.soldier, dt);
       continue;
     }
@@ -890,7 +897,7 @@ function updateCamera(dt) {
   const s = PLAYER.s;
   CAM.zoom = MOUSE.r && locked;
   thermalUpdate(dt);
-  let fov = 65;
+  let fov = GAME.fov || 65;
   pilotG(s && s.alive && s.veh && s.veh.alive && s.veh.kind === 'air' ? s.veh : null, dt);
   if (s && s.veh && s.veh.alive && s.veh.kind === 'air') fov = airCamera(s.veh, dt);
   else if (s && !s.alive && PLAYER.wreck && PLAYER.wreck.model && GAME.time - PLAYER.wreckT < 16) fov = wreckCamera(PLAYER.wreck, dt); // your aircraft was destroyed: watch it go down
@@ -1281,7 +1288,7 @@ renderer.domElement.addEventListener('mousedown', e => { if (!locked) { requestL
 addEventListener('mouseup', e => { if (e.button === 0) MOUSE.l = false; if (e.button === 2) MOUSE.r = false; });
 addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('mousemove', e => {
-  if (!locked) return; const k = .0022 * (CAM.zoom ? camera.fov / 65 : 1);
+  if (!locked) return; const k = .0022 * (GAME.sens || 1) * (CAM.zoom ? camera.fov / (GAME.fov || 65) : 1);
   CAM.yaw += e.movementX * k; CAM.pitch = clamp(CAM.pitch - e.movementY * k, -1.35, 1.2);
 });
 addEventListener('keydown', e => {
@@ -1332,7 +1339,9 @@ $('eMenu').onclick = () => { $('end').classList.add('hidden'); toTitle(); };
 
 /* ---------------- title ---------------- */
 const PREF = (() => { try { return JSON.parse(localStorage.getItem('islandfront.v1') || '{}'); } catch (e) { return {}; } })();
-Object.assign(GAME, { map: PREF.map ?? 0, team: PREF.team ?? 0, bots: PREF.bots ?? 8, diff: PREF.diff ?? 1, gfx: PREF.gfx || 'optimised', gunnery: PREF.gunnery || 'assisted', jetSpeed: PREF.jetSpeed || 'arcade' });
+Object.assign(GAME, { map: PREF.map ?? 0, team: PREF.team ?? 0, bots: PREF.bots ?? 8, diff: PREF.diff ?? 1, gfx: PREF.gfx || 'optimised', gunnery: PREF.gunnery || 'assisted', jetSpeed: PREF.jetSpeed || 'arcade', sens: PREF.sens ?? 1, fov: PREF.fov ?? 65, vol: PREF.vol ?? 70 });
+Sound.volume(GAME.vol / 100);
+function savePref() { try { localStorage.setItem('islandfront.v1', JSON.stringify({ map: GAME.map, team: GAME.team, bots: GAME.bots, diff: GAME.diff, gfx: GAME.gfx, gunnery: GAME.gunnery, jetSpeed: GAME.jetSpeed, sens: GAME.sens, fov: GAME.fov, vol: GAME.vol })); } catch (err) {} }
 function renderTitle() {
   $('mapPick').innerHTML = MAPS.map((m, i) => `<button class="mrow${GAME.map === i ? ' on' : ''}" data-v="${i}">${m.name}<small>${m.pitch}</small></button>`).join('');
   $('tbMode').textContent = `Checkpoints · ${MAPS[GAME.map].name}`;
@@ -1343,7 +1352,7 @@ function renderTitle() {
   const gb = [...$('gfxPick').children].find(b => b.dataset.v === GAME.gfx); $('gfxNote').textContent = gb ? gb.title : '';
 }
 $('tTabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; for (const x of $('tTabs').children) x.classList.toggle('on', x === b); for (const pn of document.querySelectorAll('#title [data-pane]')) pn.hidden = pn.dataset.pane !== b.dataset.tab; };
-for (const [id, key] of [['mapPick', 'map'], ['teamPick', 'team'], ['botPick', 'bots'], ['diffPick', 'diff'], ['gfxPick', 'gfx'], ['gunPick', 'gunnery'], ['jetPick', 'jetSpeed']]) $(id).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; GAME[key] = key === 'gfx' || key === 'gunnery' || key === 'jetSpeed' ? b.dataset.v : +b.dataset.v; try { localStorage.setItem('islandfront.v1', JSON.stringify({ map: GAME.map, team: GAME.team, bots: GAME.bots, diff: GAME.diff, gfx: GAME.gfx, gunnery: GAME.gunnery, jetSpeed: GAME.jetSpeed })); } catch (err) {} renderTitle(); };
+for (const [id, key] of [['mapPick', 'map'], ['teamPick', 'team'], ['botPick', 'bots'], ['diffPick', 'diff'], ['gfxPick', 'gfx'], ['gunPick', 'gunnery'], ['jetPick', 'jetSpeed']]) $(id).onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; GAME[key] = key === 'gfx' || key === 'gunnery' || key === 'jetSpeed' ? b.dataset.v : +b.dataset.v; savePref(); renderTitle(); };
 function begin() {
   Sound.init();
   $('title').classList.add('hidden'); $('loadText').innerHTML = `${MAPS[GAME.map].name}<small>Checkpoints. ${GAME.gfx === 'optimised' ? 'Optimised graphics.' : GAME.gfx === 'ultra' ? 'Ultra graphics: this takes several seconds.' : 'Realistic graphics: this takes several seconds.'}</small>`; $('loading').classList.remove('hidden');

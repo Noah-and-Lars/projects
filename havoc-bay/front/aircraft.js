@@ -1023,7 +1023,7 @@ function pilotG(a, dt) {
 }
 function airCamera(a, dt) {
   const dir = _av.set(Math.cos(CAM.yaw) * Math.cos(CAM.pitch), Math.sin(CAM.pitch), Math.sin(CAM.yaw) * Math.cos(CAM.pitch));
-  let fov = 65;
+  let fov = GAME.fov || 65;
   if (CAM.zoom) { a.model.root.updateMatrixWorld(true); camera.position.set(...a.model.cockpit).applyMatrix4(a.model.root.matrixWorld); fov = 34; }
   else { camera.position.copy(a.pos).addScaledVector(dir, -a.def.cam); camera.position.y += a.def.cam * .2; }
   // buffet: the airframe shakes near the stall and at the edge of the lift it can give

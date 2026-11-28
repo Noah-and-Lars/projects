@@ -402,3 +402,11 @@ html, body, #loading { background-image: var(--scuff), radial-gradient(ellipse a
 .top3 { margin: 0 0 14px; padding: 0 0 0 22px; } .top3 li { display: flex; justify-content: space-between; padding: 4px 0; font: 500 16px var(--text); } .top3 i { font-style: normal; color: var(--gold); font-weight: 700; }
 .awards { list-style: none; margin: 0; padding: 0; } .awards li { display: flex; justify-content: space-between; padding: 4px 0; font: 400 15px var(--text); border-top: 1px solid rgba(255, 255, 255, .06); }
 @media (max-width: 700px) { .rcols, .bcols { grid-template-columns: 1fr; } .strbars { gap: 80px; } .strbars .sb { width: 90px; } }
+/* settings window */
+.setwin { width: min(720px, 94vw); max-height: 92vh; }
+.setwin .wbody { padding: 6px 14px 10px; }
+.setwin .btn { min-width: 0; flex: 0 1 110px; padding-left: 8px; padding-right: 8px; }
+.rng { display: flex; align-items: center; gap: 12px; }
+.rng input { flex: 1; accent-color: var(--acc); }
+.rng b { min-width: 56px; text-align: right; font: 600 16px var(--disp); color: var(--gold); }
+.snote { display: block; margin-top: 4px; color: var(--ink3); font-size: 13px; }

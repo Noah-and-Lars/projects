@@ -309,11 +309,11 @@ function splash(pt, A, owner, skip) {
 
 /* ---------------- sound: made with Web Audio, no files ---------------- */
 const Sound = (() => {
-  let ctx = null, master = null, noise = null, eng = null, listener = new V3();
+  let vol = .7, ctx = null, master = null, noise = null, eng = null, listener = new V3();
   function init() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
-    master = ctx.createGain(); master.gain.value = .55; master.connect(ctx.destination);
+    master = ctx.createGain(); master.gain.value = .55 * vol / .7; master.connect(ctx.destination);
     noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   }
   function burst(vol, dur, freq, q, type = 'lowpass', pitchDrop = 0) {
@@ -379,5 +379,6 @@ const Sound = (() => {
     }
   }
 
-  return { init, play, at, engine, listener, get ok() { return !!ctx; } };
+  function volume(v) { vol = v; if (master) master.gain.value = .55 * v / .7; } // 70 % on the slider is the old level
+  return { init, play, at, engine, listener, volume, get ok() { return !!ctx; } };
 })();

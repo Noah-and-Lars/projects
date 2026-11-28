@@ -59,6 +59,7 @@
             <div class="srow"><span>Graphics</span><div class="seg" id="gfxPick"><button class="btn" data-v="optimised" title="The lighter map: runs on most computers">Optimised</button><button class="btn" data-v="realistic" title="European countryside: stone villages, mixed woods, hedgerows, wind-blown grass, detailed soldiers. Needs a good graphics card">Realistic</button><button class="btn" data-v="ultra" title="The Realistic world under a low golden sun: sun shafts through trees and cloud, glow, lens flare, haze that warms towards the sun, glitter on the sea. Needs a strong graphics card">Ultra</button></div></div>
           </div>
           <p class="note" id="gfxNote"></p>
+          <div class="srow"><span>More</span><div><button class="btn" id="tSettings">Settings…</button> <small class="snote">Mouse, field of view, volume. Also in the battle: Esc, then Settings.</small></div></div>
         </div>
       </section>
       <section data-pane="controls" class="pane" hidden>
@@ -98,11 +99,19 @@
   <div class="win menu">
     <div class="wbar">Menu</div>
     <div class="wbody"><p>The battle is stopped. Resume takes the mouse back.</p>
-    <button class="btn" id="pResume">Resume</button><button class="btn" id="pRedeploy">Choose another vehicle</button><button class="btn" id="pQuit">Leave the battle</button></div>
+    <button class="btn" id="pResume">Resume</button><button class="btn" id="pRedeploy">Choose another vehicle</button><button class="btn" id="pSettings">Settings</button><button class="btn" id="pQuit">Leave the battle</button></div>
   </div>
 </div>
 
 <div id="board" class="ov hidden"></div>
+
+<div id="settings" class="ov dim hidden">
+  <div class="win setwin">
+    <div class="wbar">Settings<small>Most changes apply at once, even mid-battle</small></div>
+    <div class="wbody"><div class="setup" id="setRows"></div></div>
+    <div class="wfoot"><span class="sp"></span><button class="btn on" id="setDone">Done</button></div>
+  </div>
+</div>
 
 <div id="bigmap" class="ov dim hidden"><canvas id="bigCv" width="1502" height="992"></canvas></div>
 
@@ -136,5 +145,6 @@
 <script src="game.js"></script>
 <script src="rules.js"></script>
 <script src="tactics.js"></script>
+<script src="settings.js"></script>
 </body>
 </html>

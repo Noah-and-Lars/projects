@@ -17,6 +17,8 @@ Open `index.html` in this folder, or use the **Island Front** card on Havoc Bay'
   - Infantry and ground vehicles can start at the base or at any checkpoint your side holds, if no enemy is inside it.
   - Vehicles starting at your front checkpoint are put up to 1.6 km down the road towards the fight, but never closer than 1 km to the objective, and only if no enemy is within 500 m of that spot.
   - Aircraft start at the base.
+  - The deploy screen starts with your front checkpoint chosen, where most of your side's bots are.
+  - If a bot fails to spawn for any reason, the failure is logged to the console, it tries again 2 seconds later, and the second time it comes back on foot at its base. One bot's failure never stops the others.
   - A soldier who has just spawned can't be hurt for 3 seconds.
   - After being knocked out you choose again after 5 seconds; the deploy screen says who knocked you out and with what. On the deploy screen, Enter sends you back in with the same unit at the same place.
 
@@ -282,6 +284,7 @@ The interface is laid out the way War Thunder lays its own out, studied from tha
 - **Scoreboard:** hold Tab. Both sides with their strength, and for each player their current unit, score, kills, assists, deaths and checkpoints taken.
 - **Battle results:** both sides' strength, your score, place, kills, assists, deaths, checkpoints taken and best streak, the top three players, and awards (top score, most kills, most captures, best streak, best helper).
 - **First battles:** in your first two battles, three short tips appear one after another after you first deploy on the ground: the objective marker, enemy markers and aiming, and what wins.
+- **Settings:** Esc, then **Settings**, in a battle, or **Settings…** on the title screen. Mouse sensitivity, field of view, volume, gunnery, jet speed, bot difficulty and bots per team all apply at once, even mid-battle. Bots join or leave straight away; one that leaves takes its aircraft with it and leaves a ground vehicle behind. Graphics apply from the next battle. Everything is remembered (`settings.js`).
 - **F1** shows or hides the controls for what you are in. They also show for 20 seconds each time you change unit.
 - **Menus** are flat slate windows with tabs and a row of buttons along the bottom. The title screen has the red "To battle" button at the top with the chosen map under it. The deploy screen shows the battle name, time left and score on top, your line-up as a strip of cards with their spawn-point costs, the chosen unit's weapons and figures and the mission objectives on the left, and the map on the right.
 
@@ -324,6 +327,7 @@ Interface typeface: Barlow, Copyright 2017 The Barlow Project Authors (https://g
 | `units.js` | Howitzer and soldier models, projectiles, effects, sound |
 | `game.js` | Match setup, checkpoints, NPC guards, howitzers, bots, player controls, camera, HUD, menus |
 | `tactics.js` | Each side's bot command: reads the enemy, counter-picks, aircraft jobs, defence, flanking, push or hold, hunting |
+| `settings.js` | The settings window and bots joining or leaving a battle |
 | `rules.js` | Front strength, the spawn-point economy, kill and streak rewards, objective and enemy markers, scoreboard, battle results |
 
 ## Tuning
